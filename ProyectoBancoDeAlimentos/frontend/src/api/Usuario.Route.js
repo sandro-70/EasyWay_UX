@@ -115,3 +115,13 @@ export function createLog(id_usuario) {
 export function getLogsUsuario(id_usuario) {
   return axiosInstance.get(`/api/forget-password/get-log/${id_usuario}`);
 }
+
+// api/Usuario.Route.js
+export function uploadProfilePhoto1(file, safeName) {
+  const formData = new FormData();
+  formData.append("foto", file, safeName ?? file.name); // 👈 campo debe ser "foto"
+  return axiosInstance.post("/api/uploads/profile-photo", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+}
+

@@ -13,30 +13,46 @@ import checkout from "../images/checkout.png";
 import soporte from "../images/soporte.png";
 import idioma from "../images/idioma.png";
 import { ViewCar } from "../api/CarritoApi";
-import { UserContext } from "./userContext"; 
+import { UserContext } from "./userContext";
 import { useCart } from "../utils/CartContext";
+
+/* ====================== UTILIDAD: nombre/ruta → URL pública ====================== */
+// Si sirve desde el mismo host:
+const toPublicFotoSrc = (nameOrPath) => {
+  if (!nameOrPath) return "";
+  const s = String(nameOrPath);
+  if (/^https?:\/\//i.test(s) || s.startsWith("/")) return s;
+  return `/images/fotoDePerfil/${s}`;
+};
+
+// // Si las imágenes viven en un backend distinto, usa esto:
+// // const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+// // const toPublicFotoSrc = (nameOrPath) => {
+// //   if (!nameOrPath) return "";
+// //   const s = String(nameOrPath);
+// //   if (/^https?:\/\//i.test(s) || s.startsWith("/")) return s;
+// //   return `${API_BASE}/images/fotoDePerfil/${s}`;
+// // };
 
 const Headerr = () => {
   const [reportesMenu, setReportesMenu] = useState(false);
-  const { cartCount, setCount } = useCart();
-
-  const navigate = useNavigate();
   const [logMenu, setLogOpen] = useState(false);
-  const { user, userRole, loading, isAuthenticated, isAdmin, logout } = useContext(UserContext);
+  const navigate = useNavigate();
 
+  const { cartCount, setCount } = useCart();
+  const { user, userRole, loading, isAuthenticated, isAdmin, logout } =
+    useContext(UserContext);
+
+  const isCliente = isAuthenticated && !isAdmin;
+
+  // Badge del carrito
   useEffect(() => {
     const fetchCartCount = async () => {
       if (!isAuthenticated || isAdmin) return setCount(0);
-
       try {
         const response = await ViewCar();
         const cart = response.data;
-
-        if (!cart || !cart.carrito_detalles) {
-          setCount(0);
-          return;
-        }
-
+        if (!cart || !cart.carrito_detalles) return setCount(0);
         const total = cart.carrito_detalles.reduce(
           (acc, item) => acc + item.cantidad_unidad_medida,
           0
@@ -47,10 +63,7 @@ const Headerr = () => {
         setCount(0);
       }
     };
-
-    if (!loading) {
-      fetchCartCount();
-    }
+    if (!loading) fetchCartCount();
   }, [isAuthenticated, isAdmin, loading, setCount]);
 
   const handleLogout = () => {
@@ -60,10 +73,15 @@ const Headerr = () => {
     navigate("/login");
   };
 
-  const fotoUrl = user?.foto_perfil_url ? user.foto_perfil_url : UserIcon;
+  // Normaliza la foto (si solo viene "KennyFotoPerfil.png" → /images/fotoDePerfil/KennyFotoPerfil.png)
+  const computedFoto = toPublicFotoSrc(user?.foto_perfil_url);
+  const fotoUrl = computedFoto || UserIcon;
+
+  if (loading) return null;
 
   return (
     <div style={{ ...styles.fixedShell, boxShadow: "none" }}>
+      {/* Barra superior */}
       <div style={styles.topBar}>
         <img
           src={logo}
@@ -71,11 +89,8 @@ const Headerr = () => {
           style={styles.logo}
           onClick={() => {
             if (isAuthenticated) {
-              if (isAdmin) {
-                navigate("/dashboard");
-              } else {
-                navigate("/");
-              }
+              if (isAdmin) navigate("/dashboard");
+              else navigate("/");
             } else {
               navigate("/");
             }
@@ -87,18 +102,14 @@ const Headerr = () => {
             <button style={styles.iconBtn}>
               <img src={FilterIcon} alt="Filter" style={styles.icon} />
             </button>
-            <input
-              type="text"
-              placeholder="Buscar..."
-              style={styles.searchInput}
-            />
+            <input type="text" placeholder="Buscar..." style={styles.searchInput} />
             <button style={styles.iconBtn}>
               <img src={SearchIcon} alt="Search" style={styles.icon} />
             </button>
           </div>
 
           {/* 🛒 Carrito: solo clientes autenticados */}
-          {isAuthenticated && !isAdmin && (
+          {isCliente && (
             <button
               style={{
                 position: "relative",
@@ -115,11 +126,7 @@ const Headerr = () => {
               }}
               onClick={() => navigate("/carrito")}
             >
-              <img
-                src={CartIcon}
-                alt="Carrito"
-                style={{ width: 28, height: 28, objectFit: "contain" }}
-              />
+              <img src={CartIcon} alt="Carrito" style={{ width: 28, height: 28, objectFit: "contain" }} />
               {cartCount > 0 && (
                 <span
                   style={{
@@ -146,15 +153,24 @@ const Headerr = () => {
           )}
         </div>
 
+        {/* Usuario */}
         <div style={styles.user}>
-          <button
-            style={styles.SmallWrapperUser}
-            onClick={() => setLogOpen((prev) => !prev)}
-          >
-            <img src={fotoUrl} alt="User" style={styles.iconUser} />
+          <button style={styles.SmallWrapperUser} onClick={() => setLogOpen((prev) => !prev)}>
+            <img
+              src={fotoUrl}
+              alt="User"
+              style={styles.iconUser}
+              onError={(e) => {
+                e.currentTarget.src = UserIcon; // Fallback si la URL no carga
+              }}
+            />
           </button>
           <span>
-            {isAuthenticated ? `Bienvenido, ${userRole}` : "Invitado"}
+            {isAuthenticated
+              ? isAdmin
+                ? "Bienvenido, Administrador"
+                : `Bienvenido, ${userRole}`
+              : "Invitado"}
           </span>
 
           {logMenu && (
@@ -164,12 +180,8 @@ const Headerr = () => {
                   <Link
                     to={isAdmin ? "/EditarPerfilAdmin" : "/miPerfil"}
                     style={styles.dropdownLink}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.backgroundColor = "#D8572F")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.backgroundColor = "transparent")
-                    }
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#D8572F")}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                   >
                     Ver mi Perfil
                   </Link>
@@ -178,12 +190,8 @@ const Headerr = () => {
                     <Link
                       to="/gestionProductos"
                       style={styles.dropdownLink}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.backgroundColor = "#D8572F")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.backgroundColor = "transparent")
-                      }
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#D8572F")}
+                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                     >
                       Gestión de Productos
                     </Link>
@@ -193,12 +201,8 @@ const Headerr = () => {
                     type="button"
                     style={{ ...styles.dropdownLink, textAlign: "left" }}
                     onClick={handleLogout}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.backgroundColor = "#D8572F")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.backgroundColor = "transparent")
-                    }
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#D8572F")}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                   >
                     Cerrar Sesión
                   </button>
@@ -207,12 +211,8 @@ const Headerr = () => {
                 <Link
                   to="/login"
                   style={styles.dropdownLink}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.backgroundColor = "#D8572F")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.backgroundColor = "transparent")
-                  }
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#D8572F")}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                 >
                   Iniciar Sesión
                 </Link>
@@ -223,7 +223,7 @@ const Headerr = () => {
       </div>
 
       {/* 📌 BottomBar: solo clientes */}
-      {isAuthenticated && !isAdmin && (
+      {isCliente && (
         <div style={styles.bottomBar}>
           <nav style={styles.nav} aria-label="Categorías">
             <a href="#" style={styles.navLink}>
@@ -236,11 +236,7 @@ const Headerr = () => {
             </a>
             <div style={{ position: "relative" }}>
               <button
-                style={{
-                  ...styles.navLink,
-                  background: "none",
-                  border: "none",
-                }}
+                style={{ ...styles.navLink, background: "none", border: "none" }}
                 onClick={() => setReportesMenu((prev) => !prev)}
               >
                 <img src={reportesPer} alt="" style={styles.navIcon} />
@@ -252,38 +248,24 @@ const Headerr = () => {
                   <Link
                     to="/reportes/compras"
                     style={styles.dropdownLink}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.backgroundColor = "#D8572F")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.backgroundColor = "transparent")
-                    }
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#D8572F")}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                   >
                     Historial de Compras
                   </Link>
-
                   <Link
                     to="/reportes/ventas"
                     style={styles.dropdownLink}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.backgroundColor = "#D8572F")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.backgroundColor = "transparent")
-                    }
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#D8572F")}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                   >
                     Descuentos aplicados
                   </Link>
-
                   <Link
                     to="/SistemaValoracion"
                     style={styles.dropdownLink}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.backgroundColor = "#D8572F")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.backgroundColor = "transparent")
-                    }
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#D8572F")}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                   >
                     Resumen de Actividad
                   </Link>

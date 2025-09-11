@@ -1,6 +1,7 @@
 const express = require("express");
 const { route } = require("./direcciones");
 const router = express.Router();
+const path = require("path");
 
 router.use("/auth", require("./routesLogin")); // /api/auth/...
 router.use("/prueba", require("./prueba")); // /api/prueba/...
@@ -35,5 +36,9 @@ router.use('/roles-privilegios',require('./roles_privilegios'));
 router.use('/pedidos',require('./pedidoRoute'));
 
 router.use('/reportes-usuario', require('./reportesUsuarioRoute'));
+router.use('/uploads', require('./routesuploads'));
+
+// 1) Estáticos públicos (para ver /images/fotoDePerfil/...)
+router.use("/images", express.static(path.join(process.cwd(), "public", "images")));
 
 module.exports = router;

@@ -80,29 +80,32 @@ exports.updateMe = async (req, res) => {
     return res.status(400).json({ message: String(e?.message || e) });
   }
 };
-
 exports.updateById = async (req, res) => {
   try {
-    const id = getAuthUserId(req);
-    if (!Number.isFinite(id) || id <= 0) {
-      return res.status(400).json({ message: 'id inválido' });
+    const authId = getAuthUserId(req);
+    if (!Number.isFinite(authId) || authId <= 0) {
+      return res.status(401).json({ message: 'No autenticado' });
     }
 
+    // Solo admin puede editar a OTROS
     const isAdmin =
       req.auth?.role === 'administrador' ||
       req.user?.rol?.nombre_rol === 'administrador';
-
     if (!isAdmin) {
       return res.status(403).json({ message: 'No autorizado' });
     }
 
-    const data = await editPerfil(id, req.body, { isAdmin }); // 👈 definido arriba
+    // ID objetivo viene de la URL, no del token
+    const targetId = Number(req.params.id || req.params.id_usuario);
+    if (!Number.isInteger(targetId) || targetId <= 0) {
+      return res.status(400).json({ message: 'id inválido en URL' });
+    }
+
+    const data = await editPerfil(targetId, req.body, { isAdmin: true });
     return res.status(200).json(data);
   } catch (e) {
     return res.status(400).json({ message: String(e?.message || e) });
   }
-
-
 };
 
 

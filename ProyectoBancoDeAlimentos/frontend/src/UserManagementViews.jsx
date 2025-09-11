@@ -125,6 +125,18 @@ const detectCurrentUserIsAdmin = () => {
     return r === "administrador" || id === "1";
   } catch { return false; }
 };
+// Quién está logueado (ajusta claves si tu localStorage usa otros nombres)
+const detectCurrentUser = () => {
+  try {
+    return {
+      id: Number(localStorage.getItem("id_usuario") || localStorage.getItem("id") || 0),
+      role: (localStorage.getItem("rol") || localStorage.getItem("role") || "").toLowerCase(),
+    };
+  } catch {
+    return { id: 0, role: "" };
+  }
+};
+
 
 /** Normaliza privilegios desde backend a {ids:number[], names:string[]} */
 const splitPrivileges = (privs) => {
@@ -175,6 +187,7 @@ export default function UserManagementViews() {
   const [editTab, setEditTab] = useState("datos");
 
   const [roleMaps, setRoleMaps] = useState({ idToName: new Map(), nameToId: new Map() });
+  const currentUser = useMemo(() => detectCurrentUser(), []);
 
   // Crear (rol fijo Consultor)
   const [newUser, setNewUser] = useState({
@@ -308,84 +321,129 @@ export default function UserManagementViews() {
   const closeInfo = () => { setInfoOpen(false); setInfoUser(null); };
 
   /** ==== Editar ==== */
-  const openEdit = (u) => {
-    const view = buildPrivilegeView(u.privilegeNames?.length ? u.privilegeNames : u.privileges);
-    setEditUser({
-      ...u,
-      _privView: view.list,
-      privileges: view.checkedIds,
-      _originalRole: u.role, // guardamos rol original para reglas
-    });
-    setEditTab("datos");
-    setEditOpen(true);
-  };
+const openEdit = (u) => {
+  const view = buildPrivilegeView(u.privilegeNames?.length ? u.privilegeNames : u.privileges);
+  setEditUser({
+    ...u,
+    _privView: view.list,
+    privileges: view.checkedIds,
+    _originalRole: u.role,
+    _originalCorreo: (u.correo ?? "").trim().toLowerCase(), 
+  });
+  setEditTab("datos");
+  setEditOpen(true);
+};
+
   const closeEdit = () => { setEditOpen(false); setEditUser(null); };
 
-  const saveEdit = async () => {
-    if (!editUser) return;
+const saveEdit = async () => {
+  if (!editUser) return;
 
+  try {
+    const isEditingSelf =
+      Number(editUser.dbId) === Number(currentUser.id) && currentUser.id !== 0;
+
+    // Resuelve el rol destino SOLO si es admin y está permitido
+    let roleNameForPayload = editUser._originalRole;
+    if (currentUserIsAdmin && isAdminRoleName(editUser._originalRole)) {
+      roleNameForPayload =
+        editUser.role === "Consultor" ? "Consultor" : "Administrador";
+    }
+
+    // Construye payload de forma segura (solo campos válidos)
+    const payload = {};
+    if ((editUser.firstName ?? "").trim()) payload.nombre = editUser.firstName.trim();
+    if ((editUser.lastName ?? "").trim())  payload.apellido = editUser.lastName.trim();
+    if ((editUser.telefono ?? "").trim())  payload.telefono = String(editUser.telefono).trim();
+    if (typeof editUser.tema !== "undefined") payload.tema = !!editUser.tema;
+    if ((editUser.genero ?? "").trim())    payload.genero = editUser.genero.trim(); // opcional si lo activaste
+
+    // Solo admin editando a OTROS puede tocar correo/id_rol/activo
+    if (!isEditingSelf && currentUserIsAdmin) {
+      if ((editUser.correo ?? "").trim()) {
+        payload.correo = String(editUser.correo).trim().toLowerCase();
+      }
+      // id_rol desde el nombre calculado arriba
+      const maybeRolId =
+        roleMaps.nameToId.get(roleNameForPayload) ??
+        roleMaps.nameToId.get(editUser._originalRole);
+      if (Number.isInteger(maybeRolId)) payload.id_rol = Number(maybeRolId);
+
+      // estado -> activo
+      if (typeof editUser.status !== "undefined") {
+        payload.activo = String(editUser.status).toUpperCase() === "ACTIVO";
+      }
+    }
+
+    // Evita mandar payload vacío (dispararía "Nada que actualizar")
+    if (Object.keys(payload).length === 0) {
+      alert("No hay cambios válidos para enviar.");
+      return;
+    }
+
+    if (isEditingSelf) {
+      // /perfil (PUT/PATCH) – tu helper ya lo envía así
+      await EditProfile({ id: editUser.dbId, ...payload });
+    } else {
+      // /usuarios/:id – ADMIN
+      await updateUserById(editUser.dbId, payload);
+    }
+
+    // Refrescar tabla...
     try {
-      // Determinar el rol a enviar según reglas:
-      // - Si NO es admin -> mantener rol original
-      // - Si es admin y el usuario ORIGINAL es Administrador -> puede ser "Administrador" o "Consultor"
-      // - Si el usuario original es Usuario o Consultor -> mantener original
-      let roleNameForPayload = editUser._originalRole;
-      if (currentUserIsAdmin && isAdminRoleName(editUser._originalRole)) {
-        roleNameForPayload =
-          editUser.role === "Consultor" ? "Consultor" : "Administrador";
-      }
+      const r = await getAllInformacionUsuario();
+      const arr = Array.isArray(r?.data) ? r.data : (r?.data?.usuarios || []);
+      const uiUsers = (arr || []).map((u, idx) => {
+        const { ids, names } = splitPrivileges(u.privilegios ?? u.privileges);
+        return {
+          dbId: u.id_usuario ?? u.id ?? idx + 1,
+          id: String(u.id_usuario ?? u.id ?? idx + 1).padStart(3, "0"),
+          firstName: u.nombre ?? "",
+          lastName: u.apellido ?? "",
+          role: roleMaps.idToName.get(String(u.id_rol)) || u.rol || "Usuario",
+          status: (u.activo ? "ACTIVO" : "INACTIVO"),
+          correo: u.correo ?? u.email ?? "-",
+          genero: u.genero ?? "otro",
+          privileges: ids,
+          privilegeNames: names,
+        };
+      });
+      setUsers(uiUsers);
+    } catch (errRefresh) {
+      // fallback local
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === editUser.id ? { ...u, ...editUser, role: roleNameForPayload } : u
+        )
+      );
+    }
 
-      const payload = {
-        nombre: editUser.firstName,
-        apellido: editUser.lastName,
-        id_rol: roleMaps.nameToId.get(roleNameForPayload) ?? roleMaps.nameToId.get(editUser._originalRole) ?? 2,
-        estado: editUser.status,
-        correo: editUser.correo,
-        genero: editUser.genero,
-      };
-
-      // Intento 1: /perfil/:id
-      try {
-        await updateUserById(editUser.dbId, payload);
-      } catch (e1) {
-        // Intento 2 (fallback): /perfil (sin :id)
-        await EditProfile({ id: editUser.dbId, ...payload });
-      }
-
-      // Privilegios SOLO si es Consultor/Consultante
-      if (showPrivTab(roleNameForPayload)) {
-        for (const p of editUser.privileges || []) {
-          const privObj = (editUser._privView || PRIV_LIST).find(x => x.id === p);
-          const label = privObj?.label;
-          if (label) {
-            try {
-              await addPrivilegio(editUser.dbId, label);
-              await asignarPrivilegioARol(
-                editUser.dbId,
-                roleMaps.nameToId.get(roleNameForPayload) ?? 3,
-                p
-              );
-            } catch (e) {
-              console.warn("No se pudo asignar privilegio:", label, e);
-            }
+    // Asignación de privilegios (si aplica)
+    if (showPrivTab(roleNameForPayload) && !isEditingSelf && currentUserIsAdmin) {
+      for (const p of editUser.privileges || []) {
+        const privObj = (editUser._privView || PRIV_LIST).find((x) => x.id === p);
+        const label = privObj?.label;
+        if (label) {
+          try {
+            await addPrivilegio(editUser.dbId, label);
+            await asignarPrivilegioARol(
+              editUser.dbId,
+              roleMaps.nameToId.get(roleNameForPayload) ?? 3,
+              p
+            );
+          } catch (e) {
+            console.warn("No se pudo asignar privilegio:", label, e);
           }
         }
       }
-
-      // Refrescar UI local
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === editUser.id
-            ? { ...u, ...editUser, role: roleNameForPayload }
-            : u
-        )
-      );
-      closeEdit();
-    } catch (err) {
-      console.error("Error guardando edición:", err);
-      alert("No se pudo guardar. Revisa el backend/logs.");
     }
-  };
+
+    closeEdit();
+  } catch (err) {
+    console.error("Error guardando edición:", err);
+    alert("No se pudo guardar. Revisa permisos y datos válidos.");
+  }
+};
 
   return (
     <div className="page-container">

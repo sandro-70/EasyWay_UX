@@ -65,7 +65,10 @@ function Carrito() {
     await SumarItem(id, n);
   };
   const updateQuantity = async (idDetalle, id, n) => {
-    if (n < 1) return;
+    if (n < 1) {
+      incrementCart();
+      return;
+    }
     try {
       await SumarBackend(id, n);
       setDetalles((prev) =>

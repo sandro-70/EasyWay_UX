@@ -16,9 +16,9 @@ import { ViewCar } from "../api/CarritoApi";
 import { UserContext } from "./userContext"; 
 import { useCart } from "../utils/CartContext";
 
-const Headerr = ({ isAdminPage }) => {
+const Headerr = () => {
   const [reportesMenu, setReportesMenu] = useState(false);
-  const { cartCount, setCartCount } = useCart();
+  const { cartCount, setCount } = useCart();
 
   const navigate = useNavigate();
   const [logMenu, setLogOpen] = useState(false);
@@ -26,34 +26,32 @@ const Headerr = ({ isAdminPage }) => {
 
   useEffect(() => {
     const fetchCartCount = async () => {
-      if (!isAuthenticated) return setCartCount(0);
+      if (!isAuthenticated || isAdmin) return setCount(0);
 
       try {
         const response = await ViewCar();
         const cart = response.data;
 
         if (!cart || !cart.carrito_detalles) {
-          setCartCount(0);
+          setCount(0);
           return;
         }
 
-        // sumar todas las cantidades de los items
         const total = cart.carrito_detalles.reduce(
           (acc, item) => acc + item.cantidad_unidad_medida,
           0
         );
-        setCartCount(total);
+        setCount(total);
       } catch (err) {
         console.error("Error obteniendo carrito:", err);
-        setCartCount(0);
+        setCount(0);
       }
     };
 
-  if (loading) return;
-  console.log("Header user", user); // 🔹 aquí
-
-    fetchCartCount();
-  }, [isAuthenticated]); // se ejecuta al montar y cuando cambia la autenticación
+    if (!loading) {
+      fetchCartCount();
+    }
+  }, [isAuthenticated, isAdmin, loading, setCount]);
 
   const handleLogout = () => {
     logout();
@@ -62,7 +60,8 @@ const Headerr = ({ isAdminPage }) => {
     navigate("/login");
   };
 
-  const fotoUrl = user?.foto_perfil_url ? user.foto_perfil_url : UserIcon; // icono por defecto
+  const fotoUrl = user?.foto_perfil_url ? user.foto_perfil_url : UserIcon;
+
   return (
     <div style={{ ...styles.fixedShell, boxShadow: "none" }}>
       <div style={styles.topBar}>
@@ -73,15 +72,16 @@ const Headerr = ({ isAdminPage }) => {
           onClick={() => {
             if (isAuthenticated) {
               if (isAdmin) {
-                navigate("/dashboard"); // 🔹 ruta del admin
+                navigate("/dashboard");
               } else {
-                navigate("/"); // 🔹 ruta del cliente
+                navigate("/");
               }
             } else {
-              navigate("/"); // 🔹 por si no está logueado
+              navigate("/");
             }
           }}
         />
+
         <div style={styles.divBar}>
           <div style={styles.searchWrapper}>
             <button style={styles.iconBtn}>
@@ -97,7 +97,7 @@ const Headerr = ({ isAdminPage }) => {
             </button>
           </div>
 
-          {/* carrito habilitado sólo para clientes autenticados (ejemplo) */}
+          {/* 🛒 Carrito: solo clientes autenticados */}
           {isAuthenticated && !isAdmin && (
             <button
               style={{
@@ -159,10 +159,8 @@ const Headerr = ({ isAdminPage }) => {
 
           {logMenu && (
             <div style={styles.dropdown}>
-              {/* Si está logueado */}
               {isAuthenticated ? (
                 <>
-                  {/* Perfil: visible para todos los logueados, o sólo admin si quieres */}
                   <Link
                     to={isAdmin ? "/EditarPerfilAdmin" : "/miPerfil"}
                     style={styles.dropdownLink}
@@ -176,23 +174,19 @@ const Headerr = ({ isAdminPage }) => {
                     Ver mi Perfil
                   </Link>
 
-                  {/* Opciones admin-only */}
                   {isAdmin && (
-                    <>
-                      <Link
-                        to="/gestionProductos"
-                        style={styles.dropdownLink}
-                        onMouseEnter={(e) =>
-                          (e.currentTarget.style.backgroundColor = "#D8572F")
-                        }
-                        onMouseLeave={(e) =>
-                          (e.currentTarget.style.backgroundColor =
-                            "transparent")
-                        }
-                      >
-                        Gestión de Productos
-                      </Link>
-                    </>
+                    <Link
+                      to="/gestionProductos"
+                      style={styles.dropdownLink}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.backgroundColor = "#D8572F")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.backgroundColor = "transparent")
+                      }
+                    >
+                      Gestión de Productos
+                    </Link>
                   )}
 
                   <button
@@ -210,7 +204,6 @@ const Headerr = ({ isAdminPage }) => {
                   </button>
                 </>
               ) : (
-                // Si NO está logueado
                 <Link
                   to="/login"
                   style={styles.dropdownLink}
@@ -229,8 +222,8 @@ const Headerr = ({ isAdminPage }) => {
         </div>
       </div>
 
-      {/* BottomBar sólo clientes (no admin ni invitado) */}
-      {!isAdmin && (
+      {/* 📌 BottomBar: solo clientes */}
+      {isAuthenticated && !isAdmin && (
         <div style={styles.bottomBar}>
           <nav style={styles.nav} aria-label="Categorías">
             <a href="#" style={styles.navLink}>
@@ -279,7 +272,7 @@ const Headerr = ({ isAdminPage }) => {
                       (e.currentTarget.style.backgroundColor = "transparent")
                     }
                   >
-                    Descuents aplicados
+                    Descuentos aplicados
                   </Link>
 
                   <Link
@@ -329,7 +322,6 @@ const styles = {
     display: "flex",
     flexDirection: "column",
   },
-
   topBar: {
     display: "flex",
     justifyContent: "space-between",
@@ -362,17 +354,6 @@ const styles = {
     border: "1px solid #2b6daf",
     padding: "5px 10px",
   },
-  SmallWrapper: {
-    backgroundColor: "white",
-    border: "1px solid #2b6daf",
-    borderRadius: "20px",
-    width: "50px",
-    height: "40px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: "pointer",
-  },
   searchInput: {
     flex: 1,
     border: "none",
@@ -390,12 +371,11 @@ const styles = {
     height: "20px",
     width: "20px",
   },
-
   iconUser: {
     height: "40px",
     width: "40px",
-    borderRadius: "50%", // 🔹 hace la imagen redonda
-    objectFit: "cover", // 🔹 mantiene proporción y recorta si es necesario
+    borderRadius: "50%",
+    objectFit: "cover",
   },
   SmallWrapperUser: {
     backgroundColor: "transparent",
@@ -415,7 +395,6 @@ const styles = {
     height: "20px",
     width: "250px",
   },
-
   dropdown: {
     position: "absolute",
     top: "75px",
@@ -432,7 +411,6 @@ const styles = {
     zIndex: 1000,
     border: "2px solid #2b6daf",
   },
-
   dropdownLink: {
     padding: "8px 12px",
     borderRadius: "8px",
@@ -440,10 +418,9 @@ const styles = {
     color: "black",
     transition: "background 0.3s, color 0.3s",
   },
-
   dropdownReportes: {
     position: "absolute",
-    top: "55px", // justo debajo del bottom bar
+    top: "55px",
     left: "50%",
     transform: "translateX(-50%)",
     width: "200px",
@@ -458,7 +435,6 @@ const styles = {
     zIndex: 1000,
     border: "2px solid #2b6daf",
   },
-
   bottomBar: {
     backgroundColor: "#004985",
     height: "55px",
@@ -468,14 +444,12 @@ const styles = {
     margin: "0",
     width: "100%",
   },
-
   nav: {
     display: "grid",
     gridTemplateColumns: "repeat(6, 1fr)",
     width: "100%",
     height: "100%",
   },
-
   navLink: {
     display: "flex",
     alignItems: "center",
@@ -487,7 +461,6 @@ const styles = {
     width: "100%",
     transition: "background 0.3s, color 0.3s",
   },
-
   navIcon: {
     width: "40px",
     height: "40px",

@@ -10,10 +10,12 @@ import {
 } from "../api/InventarioApi";
 import { AddNewCarrito, ViewCar, SumarItem } from "../api/CarritoApi";
 import axiosInstance from "../api/axiosInstance"; // valoraciones
+import { useCart } from "../utils/CartContext";
 
 function AgregarCarrito() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { incrementCart } = useCart();
 
   // ======= Estado base =======
   const [product, setProduct] = useState(null);
@@ -236,11 +238,11 @@ function AgregarCarrito() {
       if (productoExistente) {
         // Usar SumarItem con la cantidad TOTAL que debe quedar
         await SumarItem(id_producto, nuevaCantidad);
-
+        incrementCart(q);
         alert(`Cantidad actualizada a ${nuevaCantidad} unidades`);
       } else {
         console.log("Producto nuevo, agregando al carrito");
-
+        incrementCart(q);
         // Agregar nuevo producto con la cantidad especificada
         await AddNewCarrito(id_producto, q);
       }

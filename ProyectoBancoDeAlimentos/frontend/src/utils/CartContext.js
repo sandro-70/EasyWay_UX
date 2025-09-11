@@ -7,9 +7,10 @@ export const CartProvider = ({ children }) => {
 
   const incrementCart = (n = 1) => setCartCount((prev) => prev + n);
   const decrementCart = (n = 1) => setCartCount((prev) => prev - n);
+  const setCount = (n) => setCartCount((prev) => n);
 
   return (
-    <CartContext.Provider value={{ cartCount, setCartCount, incrementCart, decrementCart }}>
+    <CartContext.Provider value={{ cartCount, setCount, incrementCart, decrementCart }}>
       {children}
     </CartContext.Provider>
   );

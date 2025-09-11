@@ -55,7 +55,7 @@ export default function ReportesInventario() {
   };
 
   return (
-    <div className="w-screen h-screen bg-white flex flex-col justify-start items-center pt-10">
+    <div className="flex flex-col justify-start items-center pt-10">
       {/* Icono notificaciones */}
       <img
         src={NotiIcon}
@@ -66,37 +66,40 @@ export default function ReportesInventario() {
 
       {/* Contenedor principal */}
       <div className="relative w-full max-w-[900px] mx-auto">
-        {/* Título */}
-        <h1 className="text-3xl font-semibold text-orange-500 mb-6 border-b border-orange-500 pb-2 text-left">
-          Reportes de Inventario
-        </h1>
+        {/* Título con línea decorativa igual al ancho de la tabla */}
+        <div className="mb-6 w-full">
+          <h1 className="text-3xl font-semibold text-orange-500 pb-2 text-left">
+            Reportes de Inventario
+          </h1>
+<div className="h-0.5 w-[128%] bg-orange-500 mt-1 rounded mx-[-1%]"></div>
+        </div>
 
         {/* Controles superiores */}
-        <div className="flex items-center justify-between mt-6 mb-6 flex-wrap gap-4">
-          <div className="flex items-center gap-4">
-            <div className="border border-gray-200 rounded-md px-2 py-2 flex items-center gap-2 shadow-sm">
-              <img src={FiltroIcon} alt="Filtro" className="w-5 h-5" />
-              <span className="font-bold text-sm">Filtro</span>
-              <select
-                className="appearance-none border-l border-gray-200 pl-2 pr-4 py-1 text-sm"
-                value={filtro}
-                onChange={(e) => setFiltro(e.target.value)}
-              >
-                <option>Todos</option>
-                <option>Más vendidos</option>
-                <option>Menos vendidos</option>
-              </select>
-            </div>
+<div className="flex items-center justify-between mt-6 mb-6 flex-wrap gap-4">
+  <div className="flex items-center gap-4">
+    <div className="bg-white border border-gray-200 rounded-md px-2 py-2 flex items-center gap-2 shadow-sm">
+      <img src={FiltroIcon} alt="Filtro" className="w-5 h-5" />
+      <span className="font-bold text-sm">Filtro</span>
+      <select
+        className="appearance-none border-l border-gray-200 pl-2 pr-4 py-1 text-sm bg-white"
+        value={filtro}
+        onChange={(e) => setFiltro(e.target.value)}
+      >
+        <option>Todos</option>
+        <option>Más vendidos</option>
+        <option>Menos vendidos</option>
+      </select>
+    </div>
 
-            <div className="border border-gray-200 rounded-md px-2 py-2 flex items-center gap-2 shadow-sm">
-              <img src={MonedaIcon} alt="Moneda" className="w-5 h-5" />
-              <div className="text-sm">
-                Valor total de inventario:{" "}
-                <span className="font-semibold text-green-600">$110,000.00</span>
-              </div>
-            </div>
-          </div>
-        </div>
+    <div className="bg-white border border-gray-200 rounded-md px-3 py-3 flex items-center gap-2 shadow-sm h-full">
+  <img src={MonedaIcon} alt="Moneda" className="w-5 h-5" />
+  <div className="text-sm flex-1 flex items-center">
+    Valor total de inventario:{" "}
+    <span className="font-semibold text-green-600 ml-1">$110,000.00</span>
+  </div>
+</div>
+  </div>
+</div>
 
         {/* Flechas */}
         <button
@@ -106,53 +109,39 @@ export default function ReportesInventario() {
           <ChevronLeft size={30} color="#2B6DAF" />
         </button>
         <button
-          className="absolute right-[-40px] top-[315px] transform -translate-y-1/2"
+          className="absolute right-[-200px] top-[315px] transform -translate-y-1/2"
           onClick={handleDerecha}
         >
           <ChevronRight size={30} color="#2B6DAF" />
         </button>
 
-        // Tabla centralizada
-<div
-  style={{
-    position: "absolute",
-    top: "145px",
-    left: 0,
-    right: 0,
-    width: "100%",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-  }}
->
-
-  <table className="table-auto w-full border border-black rounded-lg border-collapse text-center">
-    <thead>
-      <tr className="border-b border-black">
-        <th className="px-4 py-2 bg-[#2B6DAF] text-white text-center border-r border-white">ID de producto</th>
-        <th className="px-4 py-2 bg-[#2B6DAF] text-white text-center border-r border-white">Producto</th>
-        <th className="px-4 py-2 bg-[#2B6DAF] text-white text-center border-r border-white">Categoría</th>
-        <th className="px-4 py-2 bg-[#2B6DAF] text-white text-center border-r border-white">Subcategoría</th>
-        <th className="px-4 py-2 bg-[#2B6DAF] text-white text-center border-r border-white">Stock</th>
-        <th className="px-4 py-2 bg-[#2B6DAF] text-white text-center border-r border-white">Entrada/Salida</th>
-        <th className="px-4 py-2 bg-[#2B6DAF] text-white text-center">Estado</th>
+      {/* Tabla centralizada */}
+<table className="table-auto w-full border border-black rounded-lg border-collapse text-center">
+  <thead>
+    <tr className="border-b border-black">
+      <th className="px-4 py-2 bg-[#2B6DAF] text-white text-center border-r border-white rounded-tl-lg">ID de producto</th>
+      <th className="px-4 py-2 bg-[#2B6DAF] text-white text-center border-r border-white">Producto</th>
+      <th className="px-4 py-2 bg-[#2B6DAF] text-white text-center border-r border-white">Categoría</th>
+      <th className="px-4 py-2 bg-[#2B6DAF] text-white text-center border-r border-white">Subcategoría</th>
+      <th className="px-4 py-2 bg-[#2B6DAF] text-white text-center border-r border-white">Stock</th>
+      <th className="px-4 py-2 bg-[#2B6DAF] text-white text-center border-r border-white">Entrada/Salida</th>
+      <th className="px-4 py-2 bg-[#2B6DAF] text-white text-center rounded-tr-lg">Estado</th>
+    </tr>
+  </thead>
+  <tbody>
+    {filasFiltradas.map((r, idx) => (
+      <tr key={idx} className="border-b border-black last:border-b-0">
+        <td className="px-4 py-2 text-center border-black rounded-bl-lg">{r.code}</td>
+        <td className="px-4 py-2 text-center border-black">{r.product}</td>
+        <td className="px-4 py-2 text-center border-black">{r.category}</td>
+        <td className="px-4 py-2 text-center border-black">{r.subcategory}</td>
+        <td className="px-4 py-2 text-center border-black">{r.stock}</td>
+        <td className="px-4 py-2 text-center border-black">{r.movimiento}</td>
+        <td className="px-4 py-2 text-center border-black rounded-br-lg">{r.estado}</td>
       </tr>
-    </thead>
-    <tbody>
-      {filasFiltradas.map((r, idx) => (
-        <tr key={idx} className="border-b border-black last:border-b-0">
-          <td className="px-4 py-2 text-center border-black">{r.code}</td>
-          <td className="px-4 py-2 text-center border-black">{r.product}</td>
-          <td className="px-4 py-2 text-center border-black">{r.category}</td>
-          <td className="px-4 py-2 text-center border-black">{r.subcategory}</td>
-          <td className="px-4 py-2 text-center border-black">{r.stock}</td>
-          <td className="px-4 py-2 text-center border-black">{r.movimiento}</td>
-          <td className="px-4 py-2 text-center border-black">{r.estado}</td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-</div>
+    ))}
+  </tbody>
+</table>
 
       </div>
     </div>

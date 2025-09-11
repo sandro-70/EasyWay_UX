@@ -117,7 +117,7 @@ const ReportesPedidos = () => {
           </button>
 
           <div className="w-full overflow-x-auto">
-            <table className="table-auto w-full border border-black rounded border-collapse text-center">
+<table className="table-auto w-full border border-black rounded-lg border-separate" style={{ borderSpacing: "0" }}>
               <thead>
                 <tr>
                   {/** Encabezados con líneas verticales blancas separadas */}
@@ -134,7 +134,7 @@ const ReportesPedidos = () => {
                         <span className="whitespace-pre-line">{col.title}</span>
                         {col.icon && <img src={col.icon} alt="icono" className="w-4 h-4 ml-2" />}
                       </div>
-                      <div className="absolute top-2 bottom-2 right-0 w-[1px] bg-white"></div>
+<div className="absolute inset-y-0 right-0 w-[1px] bg-white"></div>
                     </th>
                   ))}
                   <th className="px-4 py-3 text-white text-center bg-[#2B6DAF]">

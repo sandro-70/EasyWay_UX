@@ -43,6 +43,7 @@ function emptyDraft() {
     activo: true,
     imagePreviews: [],
     imageFiles: [],
+    imageUploadsNames: [], // <- aquí guardaremos SOLO los nombres para enviar a la BD
 
     descuentoGeneral: false,
     tipoDescuento: "", // "porcentaje" | "monto"
@@ -470,6 +471,20 @@ export default function Inventario() {
       setShowSucursalPicker(false);
     }
   }
+  // extrae el nombre del archivo desde una URL o string (ej. "https://.../fotos/jaguar.jpg?x=1" -> "jaguar.jpg")
+  // Saca un nombre de archivo desde una URL absoluta/relativa
+  function getFileNameFromUrl(u) {
+    try {
+      const url = new URL(u, window.location.origin);
+      const path = url.pathname || "";
+      const last = path.split("/").pop() || "";
+      return last || String(u);
+    } catch {
+      const s = String(u).split("?")[0].split("#")[0];
+      const parts = s.split("/");
+      return parts[parts.length - 1] || s;
+    }
+  }
 
   async function refreshProductsBySucursal(sucursalId = "") {
     setLoading(true);
@@ -658,8 +673,45 @@ export default function Inventario() {
     return `${b}/${u}`;
   }
 
+  function readAsDataURL(file) {
+    return new Promise((res, rej) => {
+      const fr = new FileReader();
+      fr.onload = () => res(fr.result); // data URL
+      fr.onerror = rej;
+      fr.readAsDataURL(file);
+    });
+  }
+
+  // Reemplaza tu mapApiImagen por este
   function mapApiImagen(i) {
-    return i?.url_imagen || i?.url || i?.imagen_url || i?.src || i?.path || "";
+    return (
+      i?.url_imagen ?? // <-- tu API
+      i?.url ??
+      i?.imagen_url ??
+      i?.src ??
+      i?.path ??
+      (typeof i === "string" ? i : "")
+    );
+  }
+  function isHttpUrl(s) {
+    return typeof s === "string" && /^https?:\/\//i.test(s);
+  }
+
+  function buildImagenesPayloadFromPreviews(previews = []) {
+    // Solo URLs públicas; los data: y blob: no sirven para tu API
+    const urls = previews.filter(isHttpUrl);
+    return urls.map((url, idx) => ({ url_imagen: url, orden_imagen: idx }));
+  }
+  function buildImagenesNamesOnlyFromDraft(d) {
+    const files = Array.isArray(d?.imageFiles) ? d.imageFiles : [];
+    // Solo nombres (incluye la extensión). También asignamos un orden.
+    const fromFiles = files
+      .map((f, idx) =>
+        f && f.name ? { url_imagen: f.name, orden_imagen: idx } : null
+      )
+      .filter(Boolean);
+
+    return fromFiles; // ← si quieres **solo** lo que el usuario acaba de seleccionar
   }
 
   function toggleSort(key) {
@@ -735,24 +787,32 @@ export default function Inventario() {
       fr.readAsDataURL(file);
     });
   }
+
   async function handleImagesSelected(ev) {
     const files = Array.from(ev.target.files || []);
     if (!files.length) return;
-    const previews = await Promise.all(files.map(readAsDataURL));
+
+    const previews = files.map((f) => URL.createObjectURL(f)); // para mostrar en el modal
+    const names = files.map((f) => f.name); // SOLO NOMBRES para BD
+
     setModal((m) => {
       const prevFiles = m.draft.imageFiles || [];
       const prevPreviews = m.draft.imagePreviews || [];
+      const prevNames = m.draft.imageUploadsNames || [];
       return {
         ...m,
         draft: {
           ...m.draft,
           imageFiles: [...prevFiles, ...files],
           imagePreviews: [...prevPreviews, ...previews],
+          imageUploadsNames: [...prevNames, ...names], // 👈 lo que enviaremos
         },
       };
     });
+
     ev.target.value = "";
   }
+
   function removePreview(idx) {
     setModal((m) => {
       const nextPreviews = [...(m.draft.imagePreviews || [])];
@@ -851,6 +911,10 @@ export default function Inventario() {
 
     try {
       // pide detalle + imágenes en paralelo
+      const res = await getImagenesProducto(row.id);
+      const arr = Array.isArray(res?.data)
+        ? res.data
+        : (res?.data ?? res) || [];
       const [detailRes, imgsRes] = await Promise.all([
         getProductoById(row.id),
         getImagenesProducto(row.id),
@@ -861,18 +925,27 @@ export default function Inventario() {
         .map(mapApiImagen)
         .filter(Boolean);
 
+      const urls = arr
+        .map(
+          (i) =>
+            i?.url_imagen ||
+            i?.imagen_url ||
+            i?.src ||
+            i?.path ||
+            (typeof i === "string" ? i : "")
+        )
+        .filter(Boolean);
       // carga subcategorías para la categoría del detalle
       if (d.categoriaId) {
         listarSubcategoriaPorCategoria(d.categoriaId);
       }
 
-      // aplica al draft (todo editable)
       setModal((m) => ({
         ...m,
         draft: {
           ...m.draft,
-          ...d, // id, producto, descripcion, marcaId, categoriaId, subcategoriaId, unidadMedida, precioBase, porcentajeGanancia, etiquetasText, activo
-          imagePreviews: imgs,
+          imagePreviews: urls, // para verlas en el grid
+          imageUploadsNames: urls.map(getFileNameFromUrl), // 👈 solo nombres para reenviar
           imageFiles: [],
         },
       }));
@@ -916,9 +989,9 @@ export default function Inventario() {
   function closeModal() {
     setModal((m) => ({ ...m, open: false }));
   }
+
   async function saveModal() {
     const d = modal.draft;
-    const imageFiles = Array.isArray(d.imageFiles) ? d.imageFiles : [];
 
     // Validaciones mínimas
     if (!d.producto?.trim())
@@ -935,6 +1008,31 @@ export default function Inventario() {
         .split(",")
         .map((t) => t.trim())
         .filter(Boolean);
+      // 👇 NUEVO: arma el payload de imágenes con SOLO NOMBRE + ORDEN
+      const imagenesPayload = (modal?.draft?.imageUploadsNames || []).map(
+        (name, idx) => ({
+          url_imagen: name,
+          orden_imagen: idx,
+        })
+      );
+
+      console.debug("[DEBUG] imagenesPayload", imagenesPayload);
+
+      console.groupCollapsed("[DEBUG] Imagenes que voy a enviar");
+      console.log(
+        "draft.imageFiles →",
+        (d.imageFiles || []).map((f) => ({
+          name: f?.name,
+          size: f?.size,
+          type: f?.type,
+        }))
+      );
+      console.log(
+        "draft.imagePreviews (conteo) →",
+        d.imagePreviews?.length || 0
+      );
+      console.log("imagenesPayload →", imagenesPayload);
+      console.groupEnd();
 
       if (modal.mode === "edit") {
         // --- 1) Llamada al backend ---
@@ -949,7 +1047,7 @@ export default function Inventario() {
           etiquetas,
           d.unidadMedida ?? "unidad",
           !!d.activo,
-          imageFiles
+          imagenesPayload
         );
 
         // --- 2) Actualización optimista en la tabla (sin volver a pedir) ---
@@ -993,7 +1091,7 @@ export default function Inventario() {
           Number(d.marcaId ?? d.marca ?? 0),
           etiquetas,
           d.unidadMedida ?? "unidad",
-          imageFiles
+          imagenesPayload
         );
 
         // Recargar productos después de crear
@@ -1369,7 +1467,7 @@ export default function Inventario() {
         <div className="p-5 grid grid-cols-2 gap-4">
           {/* input file oculto (compartido) */}
           <input
-            ref={imgInputRef}
+            id="imgPicker"
             type="file"
             accept="image/*"
             multiple
@@ -1379,17 +1477,14 @@ export default function Inventario() {
 
           {/* Uploader vs Grid */}
           {(modal.draft.imagePreviews?.length ?? 0) === 0 ? (
-            <div
-              className="col-span-2 w-full border border-dashed border-[#d8dadc] rounded-xl p-6 flex flex-col items-center justify-center text-center cursor-pointer"
-              onClick={triggerImagePicker}
-            >
+            <div className="col-span-2 w-full border border-dashed border-[#d8dadc] rounded-xl p-6 flex flex-col items-center justify-center text-center">
               <svg
                 className="w-12 h-12 text-gray-400"
                 viewBox="0 0 24 24"
                 fill="none"
               >
                 <path
-                  d="M19 11.5V12.5C19 16.9183 15.4183 20.5 11 20.5C6.58172 20.5 3 8.08172 3 12.5C3 8.08172 6.58172 4.5 11 4.5H12"
+                  d="M19 11.5V12.5C19 16.9183 15.4183 20.5 11 20.5C6.58172 20.5 3 16.9183 3 12.5C3 8.08172 6.58172 4.5 11 4.5H12"
                   stroke="currentColor"
                   strokeWidth="1.5"
                   strokeLinecap="round"
@@ -1418,17 +1513,15 @@ export default function Inventario() {
                 />
               </svg>
               <span className="text-gray-500 mt-2">Haz clic para cargar</span>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  triggerImagePicker();
-                }}
-                className="mt-3 px-4 py-2 rounded-xl text-white font-medium"
+
+              {/* Usa label para abrir el input */}
+              <label
+                htmlFor="imgPicker"
+                className="mt-3 px-4 py-2 rounded-xl text-white font-medium cursor-pointer"
                 style={{ backgroundColor: "#2b6daf" }}
               >
                 Cargar imágenes
-              </button>
+              </label>
             </div>
           ) : (
             <>
@@ -1450,25 +1543,25 @@ export default function Inventario() {
                     </button>
                   </div>
                 ))}
-                {/* Tile para añadir más */}
-                <button
-                  type="button"
-                  onClick={triggerImagePicker}
-                  className="aspect-[4/3] w-full rounded-lg border border-dashed border-[#d8dadc] flex flex-col items-center justify-center hover:bg-gray-50"
+
+                {/* Tile para añadir más (también usa label) */}
+                <label
+                  htmlFor="imgPicker"
+                  className="aspect-[4/3] w-full rounded-lg border border-dashed border-[#d8dadc] flex flex-col items-center justify-center hover:bg-gray-50 cursor-pointer"
                   title="Añadir más imágenes"
                 >
                   <Icon.Plus />
                   <span className="text-sm text-gray-600 mt-1">Añadir</span>
-                </button>
+                </label>
               </div>
+
               <div className="col-span-2 flex justify-end">
-                <button
-                  type="button"
-                  onClick={triggerImagePicker}
-                  className="mt-2 px-3 py-2 rounded-lg border border-[#d8dadc] hover:bg-gray-50"
+                <label
+                  htmlFor="imgPicker"
+                  className="mt-2 px-3 py-2 rounded-lg border border-[#d8dadc] hover:bg-gray-50 cursor-pointer"
                 >
                   + Añadir imágenes
-                </button>
+                </label>
               </div>
             </>
           )}

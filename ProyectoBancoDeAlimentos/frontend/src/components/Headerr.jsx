@@ -13,11 +13,12 @@ import checkout from "../images/checkout.png";
 import soporte from "../images/soporte.png";
 import idioma from "../images/idioma.png";
 import { ViewCar } from "../api/CarritoApi";
-import { UserContext } from "./userContext"; // <- ruta correcta
+import { UserContext } from "./userContext"; 
+import { useCart } from "../utils/CartContext";
 
 const Headerr = ({ isAdminPage }) => {
   const [reportesMenu, setReportesMenu] = useState(false);
-  const [cartCount, setCartCount] = useState(0);
+  const { cartCount, setCartCount } = useCart();
 
   const navigate = useNavigate();
   const [logMenu, setLogOpen] = useState(false);

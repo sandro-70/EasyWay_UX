@@ -3,16 +3,41 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { EffectCoverflow, Autoplay } from "swiper/modules";
 import { useNavigate } from "react-router-dom";
 import { getAllProducts, getProductoById } from "../api/InventarioApi";
-import { ListarCategoria } from "../api/CategoriaApi";
+import { ObtenerCategoria, ListarCategoria } from "../api/CategoriaApi";
 import { AddNewCarrito, ViewCar, SumarItem } from "../api/CarritoApi";
 import { getPromociones } from "../api/PromocionesApi"; 
+import { useCart } from "../utils/CartContext";
+
 
 import "swiper/css";
 import "swiper/css/effect-coverflow";
 import "swiper/css/autoplay";
 
+import carrot from "../images/carrot.png";
+import apple from "../images/apple.png";
+import pet from "../images/pet.png";
+import ham from "../images/ham.png";
+import cake from "../images/cake.png";
+import bread from "../images/bread.png";
+//import juice from "../images/juice.png";
+import clean from "../images/clean.png";
+import soccer from "../images/soccer.png";
+import phone from "../images/phone.png";
+import pharmacy from "../images/pharmacy.png";
+//import milk from "../images/milk.png";
 import arrowL from "../images/arrowL.png";
 import arrowR from "../images/arrowR.png";
+import appleImage from "../images/appleImage.png";
+//import coffee from "../images/coffee.png";
+import banner1 from "../images/banner1.png";
+import banner2 from "../images/banner2.png";
+import banner3 from "../images/banner3.png";
+
+const banners = [
+  { idCategoriaEnDescuento: 1, imagen: banner1 },
+  { idCategoriaEnDescuento: 2, imagen: banner2 },
+  { idCategoriaEnDescuento: 3, imagen: banner3 },
+];
 
 const InicioUsuario = () => {
   const navigate = useNavigate();
@@ -22,36 +47,39 @@ const InicioUsuario = () => {
   const prodRefTendencias = useRef(null);
   const swiperRef = useRef(null);
 
+  const {incrementCart}=useCart();
+
   const [hoveredIndex, setHoveredIndex] = React.useState(null);
   const [hoveredProductDest, setHoveredProductDest] = React.useState(null);
   const [hoveredProductTrend, setHoveredProductTrend] = React.useState(null);
   const [hoveredBanner, setHoveredBanner] = React.useState(null);
 
   const [products, setProducts] = useState([]);
-  const [categoriesData, setCategoriesData] = useState([]);
-  const [carrito, setCarrito] = useState([]);
-  const [promociones, setPromociones] = useState([]); 
+  const [promociones, setPromociones] = useState([]);
 
-  // Productos
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         const res = await getAllProducts();
+        console.log(res.data);
         setProducts(res.data);
       } catch (err) {
         console.error("[PRODUCTS] error:", err?.response?.data || err);
         alert(err?.response?.data?.message || "Error al cargar productos");
       }
     };
+
     fetchProducts();
   }, []);
 
-  // Categorías
+  const [categoriesData, setCategoriesData] = useState([]);
+
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const res = await ListarCategoria();
         setCategoriesData(res.data);
+        console.log(res.data);
       } catch (err) {
         console.error("[CATEGORIES] error:", err?.response?.data || err);
         alert(err?.response?.data?.message || "Error al cargar categorías");
@@ -59,6 +87,8 @@ const InicioUsuario = () => {
     };
     fetchCategories();
   }, []);
+
+  const [carrito, setCarrito] = useState([]);
 
   // Promociones
   useEffect(() => {
@@ -75,59 +105,94 @@ const InicioUsuario = () => {
     fetchPromociones();
   }, []);
 
-  // 🛒 Carrito
   const handleAgregar = async (id_producto) => {
     if (!id_producto) {
       alert("ID de producto no válido");
       return;
     }
+
     try {
-      let carritoActual = null;
-      let carritoVacio = false;
+      console.log("Agregando producto:", id_producto);
 
-      try {
-        carritoActual = await ViewCar();
-      } catch (error) {
-        if (error?.response?.status === 404) {
-          carritoVacio = true;
-        } else throw error;
-      }
+      // Obtener carrito actual
+      const carritoActual = await ViewCar();
+      const carritoDetalles = carritoActual.data.carrito_detalles ?? [];
 
-      let existe = false;
-      if (!carritoVacio && carritoActual?.data) {
-        const items = carritoActual.data.carrito_detalles || carritoActual.data;
-        existe = Array.isArray(items)
-          ? items.find((item) => item.id_producto === id_producto)
-          : false;
-      }
+      // Buscar si el producto ya existe
+      const productoExistente = carritoDetalles.find(
+        (item) => item.producto.id_producto === id_producto
+      );
 
-      let response;
-      if (existe) {
-        response = await SumarItem(id_producto, 1);
-        alert(`Se aumentó la cantidad del producto`);
+      if (productoExistente) {
+        const cantidadActual = productoExistente.cantidad_unidad_medida || 0;
+        const nuevaCantidad = cantidadActual + 1;
+
+        console.log(`Actualizando de ${cantidadActual} a ${nuevaCantidad}`);
+        alert(`Actualizando a ${nuevaCantidad}`);
+
+        // Actualizar en backend
+        await SumarItem(id_producto, nuevaCantidad);
+
+        // Actualizar estado local del carrito (si lo tienes)
+        setCarrito((prev) => {
+          if (Array.isArray(prev)) {
+            return prev.map((item) =>
+              item.producto.id_producto === id_producto
+                ? {
+                    ...item,
+                    cantidad_unidad_medida: nuevaCantidad,
+                    subtotal_detalle: item.producto.precio_base * nuevaCantidad,
+                  }
+                : item
+            );
+          }
+          return prev;
+        });
+        incrementCart(1);
       } else {
-        response = await AddNewCarrito(id_producto, 1);
+        console.log("Producto nuevo, agregando al carrito");
+
+        // Agregar nuevo producto
+        await AddNewCarrito(id_producto, 1);
+
+        // Recargar carrito completo para obtener el nuevo producto
+        const carritoActualizado = await ViewCar();
+        const nuevosDetalles = carritoActualizado.data.carrito_detalles ?? [];
+        setCarrito(nuevosDetalles);
+
+        incrementCart(1);
         alert(`Producto agregado al carrito`);
       }
-
-      try {
-        const actualizado = await ViewCar();
-        setCarrito(actualizado.data);
-      } catch {
-        console.log("No se pudo recargar el carrito, pero el producto se agregó");
-      }
     } catch (error) {
-      console.error("Error completo:", error);
-      const errorMessage =
-        error?.response?.data?.msg ||
-        error?.response?.data?.message ||
-        error?.message ||
-        "No se pudo procesar el carrito";
-      alert(errorMessage);
+      console.error("Error:", error);
+
+      // Si el carrito está vacío, intentar crear uno nuevo
+      if (error?.response?.status === 404) {
+        try {
+          await AddNewCarrito(id_producto, 1);
+
+          // Recargar carrito
+          const carritoNuevo = await ViewCar();
+          const nuevosDetalles = carritoNuevo.data.carrito_detalles ?? [];
+          setCarrito(nuevosDetalles);
+
+          alert(`Producto agregado al carrito`);
+        } catch (err) {
+          console.error("Error creando carrito:", err);
+          alert("No se pudo agregar el producto al carrito");
+        }
+      } else {
+        const errorMessage =
+          error?.response?.data?.msg ||
+          error?.response?.data?.message ||
+          error?.message ||
+          "No se pudo procesar el carrito";
+
+        alert(errorMessage);
+      }
     }
   };
 
-  // Navegaciones
   const handleProductClick = (productId) => {
     navigate(`/producto/${productId}`);
   };
@@ -137,10 +202,22 @@ const InicioUsuario = () => {
   };
 
   const handlePromoClick = async (promo) => {
-    navigate(`/promocion/${promo.id_tipo_promo}`);
+    try {
+      const result=await getProductoById(promo.id_tipo_promo); // id del producto
+      const producto=result.data;
+      const categoria=producto?.subcategoria?.categoria;
+
+      if (categoria) {
+        navigate(`/promocion/${categoria.id_categoria}`);
+      } else {
+        alert("No se encontró la categoría del producto");
+      }
+    } catch (error) {
+      console.error("Error obteniendo categoría:", error);
+      alert("Hubo un error al obtener la categoría del producto");
+    }
   };
 
-  // Scroll
   const scroll = (direction, ref, itemWidth) => {
     if (ref.current) {
       ref.current.scrollBy({
@@ -167,43 +244,43 @@ const InicioUsuario = () => {
             style={{ width: "100%", height: "100%" }}
           />
         </button>
-    <div style={styles.divCat} ref={catRef}>
-      {(categoriesData ?? []).map((cat, index) => {
-        const file = cat?.imagenes?.[0]?.url_imagen; 
-        const src = file
-          ? `/images/categorias/${file}`
-          : "/images/PlaceHolder.png"; 
+        <div style={styles.divCat} ref={catRef}>
+          {(categoriesData ?? []).map((cat, index) => {
+            const file = cat?.imagenes?.[0]?.url_imagen; // ✅ nunca truena
+            const src = file
+              ? `/images/categorias/${file}`
+              : "/images/PlaceHolder.png"; // tu placeholder
 
-    return (
-      <div key={cat?.id_categoria ?? index} style={styles.catItem}>
-        <div
-          style={{
-            ...styles.CategoriesBox,
-            border:
-              hoveredIndex === index
-                ? "2px solid #2b6daf"
-                : "2px solid transparent",
-            transform:
-              hoveredIndex === index ? "scale(1.05)" : "scale(1)",
-            transition: "all 0.2s ease-in-out",
-          }}
-          onMouseEnter={() => setHoveredIndex(index)}
-          onMouseLeave={() => setHoveredIndex(null)}
-          onClick={() => handleCategoryClick(cat?.id_categoria)}
-        >
-          <img
-          src={
-            cat?.icono_categoria
-              ? `/images/categorias/${cat.icono_categoria}`
-              : "/PlaceHolder.png"
-          }
-          alt={cat?.nombre ?? "Categoría"}
-          style={{ width: 70, height: 70, objectFit: "contain" }}
-          onError={(e) => {
-            e.currentTarget.onerror = null;
-            e.currentTarget.src = "/PlaceHolder.png";
-          }}
-        />
+            return (
+              <div key={cat?.id_categoria ?? index} style={styles.catItem}>
+                <div
+                  style={{
+                    ...styles.CategoriesBox,
+                    border:
+                      hoveredIndex === index
+                        ? "2px solid #2b6daf"
+                        : "2px solid transparent",
+                    transform:
+                      hoveredIndex === index ? "scale(1.05)" : "scale(1)",
+                    transition: "all 0.2s ease-in-out",
+                  }}
+                  onMouseEnter={() => setHoveredIndex(index)}
+                  onMouseLeave={() => setHoveredIndex(null)}
+                  onClick={() => handleCategoryClick(cat?.id_categoria)}
+                >
+                  <img
+                    src={
+                      cat?.icono_categoria
+                        ? `/images/categorias/${cat.icono_categoria}`
+                        : "/PlaceHolder.png"
+                    }
+                    alt={cat?.nombre ?? "Categoría"}
+                    style={{ width: 70, height: 70, objectFit: "contain" }}
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = "/PlaceHolder.png";
+                    }}
+                  />
                 </div>
                 <span style={styles.catTitle}>{cat?.nombre ?? "-"}</span>
               </div>

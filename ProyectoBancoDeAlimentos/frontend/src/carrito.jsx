@@ -11,9 +11,15 @@ import { GetCupones } from "./api/CuponesApi";
 import { getProductosRecomendados } from "./api/InventarioApi";
 import { crearPedido } from "./api/PedidoApi";
 import { UserContext } from "./components/userContext";
+import { useCart } from "../src/utils/CartContext";
+
 //Agregar Parametro que diga cuantos productos en carrito?
 function Carrito() {
+
   //Objeto de producto
+
+  const { incrementCart, decrementCart } = useCart();
+
 
   //Productos de pagina de inicio //necesita cantidad, imagen
   const [detalles, setDetalles] = useState([]);
@@ -166,7 +172,7 @@ function Carrito() {
         const carritoDetalles = res.data.carrito_detalles ?? [];
         setDetalles(carritoDetalles);
         setRec(rec.data);
-        if (detalles.length === 0) {
+        if (carritoDetalles.length === 0) {
           setShowProd(false);
         }
 
@@ -239,13 +245,14 @@ function Carrito() {
                             <p className="py-2 text-xl">{p.producto.nombre}</p>
                             <div className="flex flex-row gap-1">
                               <button
-                                onClick={() =>
+                                onClick={() => {
                                   updateQuantity(
                                     p.id_carrito_detalle,
                                     p.producto.id_producto,
                                     p.cantidad_unidad_medida - 1
-                                  )
-                                }
+                                  );
+                                  decrementCart();
+                                }}
                                 className=" bg-[#114C87] text-white rounded-md h-9 px-1"
                               >
                                 <span class="material-symbols-outlined text-3xl">
@@ -257,13 +264,14 @@ function Carrito() {
                                 value={p.cantidad_unidad_medida}
                               ></input>
                               <button
-                                onClick={() =>
+                                onClick={() =>{
                                   updateQuantity(
                                     p.id_carrito_detalle,
                                     p.producto.id_producto,
                                     p.cantidad_unidad_medida + 1
-                                  )
-                                }
+                                  );
+                                  incrementCart();
+                                }}
                                 className="bg-[#114C87] text-white rounded-md h-9 px-1"
                               >
                                 <span class="material-symbols-outlined text-3xl">
@@ -278,12 +286,13 @@ function Carrito() {
                             </div>
                           </div>
                           <button
-                            onClick={() =>
+                            onClick={() =>{
                               eliminarProducto(
                                 p.id_carrito_detalle,
                                 p.producto.id_producto
-                              )
-                            }
+                              );
+                              decrementCart(p.cantidad_unidad_medida);
+                            }}
                             className=" text-black hover:bg-red-500 hover:text-white rounded-md p-8"
                           >
                             <span class="material-symbols-outlined text-5xl ">
@@ -466,6 +475,7 @@ function Carrito() {
                       backgroundColor:
                         hoveredProductDest === i ? "#2b6daf" : "#F0833E",
                     }}
+                    onClick={()=>incrementCart()}
                   >
                     Agregar
                   </button>

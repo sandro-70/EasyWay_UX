@@ -8,9 +8,12 @@ import { listarSubcategoria, listarPorCategoria } from "./api/SubcategoriaApi";
 import { AddNewCarrito, ViewCar, SumarItem } from "./api/CarritoApi";
 import { useNavigate } from "react-router-dom";
 import CompararProducto from "./components/compararProducto";
+import {useCart} from "./utils/CartContext";
 
 function Categoria() {
   const navigate = useNavigate();
+
+  const {incrementCart} = useCart();
 
   const prodRefRecomendados = useRef(null);
   const [products, setProducts] = useState([]);
@@ -307,6 +310,7 @@ function Categoria() {
           }
           return prev;
         });
+        incrementCart();
       } else {
         console.log("Producto nuevo, agregando al carrito");
 
@@ -319,6 +323,7 @@ function Categoria() {
         setCarrito(nuevosDetalles);
 
         alert(`Producto agregado al carrito`);
+        incrementCart();
       }
     } catch (error) {
       console.error("Error:", error);

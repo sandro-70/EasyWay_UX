@@ -7,9 +7,12 @@ import { useParams } from "react-router-dom";
 import { listarSubcategoria, listarPorCategoria } from "./api/SubcategoriaApi";
 import { AddNewCarrito, ViewCar, SumarItem } from "./api/CarritoApi";
 import { useNavigate } from "react-router-dom";
+import {useCart} from "./utils/CartContext";
 
 function Promocion() {
   const navigate = useNavigate();
+
+  const {incrementCart} = useCart();
 
   const prodRefRecomendados = useRef(null);
   const [products, setProducts] = useState([]);
@@ -195,7 +198,7 @@ function Promocion() {
     selectedSubcategorias,
     priceRange,
     selectedMarca,
-    soloOferta, // 👉 Nuevo: recalcular cuando cambie
+    soloOferta, 
   ]);
 
   useEffect(() => {
@@ -284,9 +287,11 @@ function Promocion() {
       }
 
       if (existe) {
+        incrementCart();
         await SumarItem(id_producto, 1);
         alert(`Se aumentó la cantidad del producto`);
       } else {
+        incrementCart();
         await AddNewCarrito(id_producto, 1);
         alert(`Producto agregado al carrito`);
       }

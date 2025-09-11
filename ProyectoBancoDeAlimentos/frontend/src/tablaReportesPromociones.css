@@ -103,7 +103,7 @@
 }
 
 .inventario-export-btn-green {
-  background-color: #28a745;
+  background-color: #f0833e;
   color: #fff;
   padding: 6px 12px;
   border-radius: 4px;
@@ -115,5 +115,5 @@
 }
 
 .inventario-export-btn-green:hover {
-  background-color: #218838;
+  background-color: #ea6b1c;
 }

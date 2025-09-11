@@ -1,10 +1,10 @@
 import "./login.css";
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import LoginUser from "./api/Usuario.Route";
 import { InformacionUser, forgetPassword } from "./api/Usuario.Route";
-import { useContext } from "react";
 import { UserContext } from "./components/userContext";
+
 const Login = () => {
   const [correo, setCorreo] = useState("");
   const [contraseña, setContrasena] = useState("");
@@ -12,14 +12,11 @@ const Login = () => {
   const navigate = useNavigate();
   const { login } = useContext(UserContext);
 
-  // Asegúrate de importar estas funciones correctamente
-  // import { LoginUser, InformacionUser, forgetPassword } from "./api/Usuario.Route";
-
+  // --- Enviar código para 2FA ---
   async function enviarCodigo(correo, navigate, setLoading) {
     try {
       setLoading(true);
-      // En la mayoría de APIs el body es un objeto:
-      await forgetPassword(correo); // 👈 importante: objeto, no string
+      await forgetPassword(correo);
       alert("Te enviamos un código a tu correo.");
 
       sessionStorage.setItem(
@@ -27,7 +24,6 @@ const Login = () => {
         JSON.stringify({ correo, contraseña })
       );
 
-      // 3) Vamos a verificar el código; ahí recién haremos el login real
       navigate("/verificar-codigoAuth", { state: { correo, contraseña } });
     } catch (err) {
       alert(err?.response?.data?.error || "No se pudo enviar el correo.");
@@ -36,12 +32,10 @@ const Login = () => {
     }
   }
 
+  // --- Manejo de login ---
   const onSubmit = async (e) => {
     e.preventDefault();
-    const { data } = await LoginUser({ correo, contraseña });
-    if (!data?.token) throw new Error("No se recibió token");
 
-    await login(data.token);
     if (!correo || !contraseña) {
       alert("Ingresa correo y contraseña.");
       return;
@@ -49,35 +43,35 @@ const Login = () => {
 
     setLoading(true);
     try {
-      // 1) Login
+      // 1) Intentar login
       const { data } = await LoginUser({ correo, contraseña });
       const token = data?.token;
       if (!token) throw new Error("No se recibió token de autenticación");
 
       // 2) Guardar token
       localStorage.setItem("token", token);
+      await login(token);
 
       // 3) Obtener info del usuario autenticado (/me)
       let me;
       try {
-        const meRes = await InformacionUser(); // 👈 sin parámetros
-        // Si tu backend responde { userId, role, user: {...} }
+        const meRes = await InformacionUser();
         me = meRes?.data?.user ?? meRes?.data ?? null;
       } catch {
-        me = null; // si falla, tratamos como cliente
+        me = null;
       }
 
-      // 4) Two-factor (si está activo, salimos luego de navegar)
+      // 4) Two-factor
       if (me?.autenticacion_dos_pasos === true) {
-        await enviarCodigo(correo, navigate, setLoading); // 👈 hace navigate y finaliza loading
-        return; // 👈 muy importante para NO continuar con más navegación
+        await enviarCodigo(correo, navigate, setLoading);
+        return;
       }
 
       // 5) Resolver rol
       const roleName =
-        me?.rol?.nombre_rol || // { rol: { nombre_rol: 'administrador' } }
-        me?.rol || // 'administrador'
-        (typeof me?.id_rol === "number" // numérico (1 admin, otro cliente)
+        me?.rol?.nombre_rol ||
+        me?.rol ||
+        (typeof me?.id_rol === "number"
           ? me.id_rol === 1
             ? "administrador"
             : "cliente"
@@ -85,18 +79,24 @@ const Login = () => {
 
       localStorage.setItem("rol", roleName);
 
-      // 6) Redirección por rol (una sola navegación)
+      // 6) Redirección por rol
       if (roleName?.toLowerCase() === "administrador") {
         navigate("/dashboard");
       } else {
         navigate("/");
       }
     } catch (err) {
-      console.error(err?.response?.data || err);
-      alert(err?.response?.data?.message || "Error de login");
+      console.error("Error en login:", err?.response?.data || err);
+
+      const backendMsg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        (err?.response?.status === 401
+          ? "Correo o contraseña inválidos"
+          : null);
+
+      alert(backendMsg || "Error de login");
     } finally {
-      // OJO: si hubo 2FA, ya hicimos setLoading(false) dentro de enviarCodigo
-      // pero este finally igual lo pondrá false de nuevo (no pasa nada)
       setLoading(false);
     }
   };
@@ -106,7 +106,7 @@ const Login = () => {
       <img className="logo-titulo" src="/logo-easyway.png" alt="Logo" />
       <p className="inicio-sesion-text">Inicio de Sesión</p>
       <p className="facil-text">
-        Inicia sesion para comprar facil, rapido y seguro
+        Inicia sesion para comprar facil, rápido y seguro
       </p>
 
       <hr className="linea"></hr>
@@ -140,7 +140,7 @@ const Login = () => {
           className="forgot-pass-link"
           rel="noopener noreferrer"
         >
-          Olvidaste tu contraseña?
+          ¿Olvidaste tu contraseña?
         </Link>
 
         <button className="login-button" disabled={loading}>
@@ -148,7 +148,7 @@ const Login = () => {
         </button>
       </form>
       <Link to="/crear_cuenta" className="new-link" rel="noopener noreferrer">
-        Nuevo aquí?
+        ¿Nuevo aquí?
       </Link>
     </div>
   );

@@ -1,10 +1,20 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import "./notFoundPage.css";
-import cartIcon from "./images/logo.png"; // Usa.png aquí el ícono que subiste
+import cartIcon from "./images/logo.png"; // Usa .png aquí el ícono que subiste
 
 export default function Error404() {
   const navigate = useNavigate();
+
+  const handleRedirect = () => {
+    const role = localStorage.getItem("rol");
+
+    if (role?.toLowerCase() === "administrador") {
+      navigate("/dashboard");
+    } else {
+      navigate("/");
+    }
+  };
 
   return (
     <div
@@ -29,8 +39,8 @@ export default function Error404() {
         <p className="ntF-error-message">
           ¡Ups! La página que buscas no existe o fue movida.
         </p>
-        <button className="ntF-error-button" onClick={() => navigate("/")}>
-          ⬅ Regresar al inicio
+        <button className="ntF-error-button" onClick={handleRedirect}>
+          Regresar al inicio
         </button>
       </div>
     </div>

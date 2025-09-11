@@ -1,6 +1,9 @@
 // ReportesInventario.jsx
 import React, { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import FiltroIcon from "../images/filtro.png";
+import MonedaIcon from "../images/moneda.png";
+import NotiIcon from "../images/noti.png";
 
 export default function ReportesInventario() {
   const paginas = [
@@ -34,7 +37,14 @@ export default function ReportesInventario() {
   ];
 
   const [paginaActual, setPaginaActual] = useState(0);
+  const [filtro, setFiltro] = useState("Todos"); 
   const rows = paginas[paginaActual];
+
+  const filasFiltradas = [...rows].sort((a, b) => {
+    if (filtro === "Más vendidos") return b.stock - a.stock;
+    if (filtro === "Menos vendidos") return a.stock - b.stock;
+    return 0; 
+  });
 
   const handleIzquierda = () => {
     setPaginaActual((prev) => (prev === 0 ? paginas.length - 1 : prev - 1));
@@ -45,25 +55,41 @@ export default function ReportesInventario() {
   };
 
   return (
-    <div className="w-screen min-h-screen bg-gray-50 p-6 flex justify-center">
-      <div className="w-full max-w-[1400px] relative">
+    <div className="w-screen h-screen bg-white flex flex-col justify-start items-center pt-10">
+      {/* Icono notificaciones */}
+      <img
+        src={NotiIcon}
+        alt="Notificaciones"
+        className="absolute top-4 right-10 w-8 h-8 cursor-pointer hover:scale-110 transition-transform duration-200"
+        onClick={() => alert("No hay notificaciones de momento")}
+      />
+
+      {/* Contenedor principal */}
+      <div className="relative w-full max-w-[900px] mx-auto">
         {/* Título */}
-        <h1 className="text-3xl font-semibold text-orange-500 mb-4 border-b border-orange-500 pb-2 text-left">
+        <h1 className="text-3xl font-semibold text-orange-500 mb-6 border-b border-orange-500 pb-2 text-left">
           Reportes de Inventario
         </h1>
 
         {/* Controles superiores */}
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+        <div className="flex items-center justify-between mt-6 mb-6 flex-wrap gap-4">
           <div className="flex items-center gap-4">
-            <div className="relative">
-              <select className="appearance-none bg-white border border-gray-200 rounded-md py-2 px-3 pr-8 text-sm shadow-sm">
-                <option>Filtro</option>
+            <div className="border border-gray-200 rounded-md px-2 py-2 flex items-center gap-2 shadow-sm">
+              <img src={FiltroIcon} alt="Filtro" className="w-5 h-5" />
+              <span className="font-bold text-sm">Filtro</span>
+              <select
+                className="appearance-none border-l border-gray-200 pl-2 pr-4 py-1 text-sm"
+                value={filtro}
+                onChange={(e) => setFiltro(e.target.value)}
+              >
+                <option>Todos</option>
                 <option>Más vendidos</option>
                 <option>Menos vendidos</option>
               </select>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-md px-3 py-2 flex items-center gap-2 shadow-sm">
+            <div className="border border-gray-200 rounded-md px-2 py-2 flex items-center gap-2 shadow-sm">
+              <img src={MonedaIcon} alt="Moneda" className="w-5 h-5" />
               <div className="text-sm">
                 Valor total de inventario:{" "}
                 <span className="font-semibold text-green-600">$110,000.00</span>
@@ -72,72 +98,63 @@ export default function ReportesInventario() {
           </div>
         </div>
 
-  {/* Flechas izquierda y derecha, sin fondo, azul */}
-<button
-  className="absolute left-[-30px] top-[41%] transform -translate-y-1/2"
-  onClick={handleIzquierda}
->
-  <ChevronLeft size={30} color="#2B6DAF" />
-</button>
-<button
-  className="absolute right-[-30px] top-[41%] transform -translate-y-1/2"
-  onClick={handleDerecha}
->
-  <ChevronRight size={30} color="#2B6DAF" />
-</button>
+        {/* Flechas */}
+        <button
+          className="absolute left-[-40px] top-[315px] transform -translate-y-1/2"
+          onClick={handleIzquierda}
+        >
+          <ChevronLeft size={30} color="#2B6DAF" />
+        </button>
+        <button
+          className="absolute right-[-40px] top-[315px] transform -translate-y-1/2"
+          onClick={handleDerecha}
+        >
+          <ChevronRight size={30} color="#2B6DAF" />
+        </button>
 
+        // Tabla centralizada
+<div
+  style={{
+    position: "absolute",
+    top: "145px",
+    left: 0,
+    right: 0,
+    width: "100%",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+  }}
+>
 
-   {/* Tabla de inventario */}
-<div className="w-full overflow-x-auto relative">
-  <table className="table-auto w-full border border-black rounded-lg border-collapse">
+  <table className="table-auto w-full border border-black rounded-lg border-collapse text-center">
     <thead>
-      <tr>
-        <th className="px-6 py-3 text-left bg-[#2B6DAF] text-white relative">
-          <span>ID de Producto</span>
-          <div className="absolute top-1/4 right-0 h-1/2 w-px bg-white"></div>
-        </th>
-        <th className="px-6 py-3 text-left bg-[#2B6DAF] text-white relative">
-          <span>Producto</span>
-          <div className="absolute top-1/4 right-0 h-1/2 w-px bg-white"></div>
-        </th>
-        <th className="px-6 py-3 text-left bg-[#2B6DAF] text-white relative">
-          <span>Categoría</span>
-          <div className="absolute top-1/4 right-0 h-1/2 w-px bg-white"></div>
-        </th>
-        <th className="px-6 py-3 text-left bg-[#2B6DAF] text-white relative">
-          <span>Subcategoría</span>
-          <div className="absolute top-1/4 right-0 h-1/2 w-px bg-white"></div>
-        </th>
-        <th className="px-6 py-3 text-left bg-[#2B6DAF] text-white relative">
-          <span>Stock</span>
-          <div className="absolute top-1/4 right-0 h-1/2 w-px bg-white"></div>
-        </th>
-        <th className="px-6 py-3 text-left bg-[#2B6DAF] text-white relative">
-          <span>Entrada/Salida</span>
-          <div className="absolute top-1/4 right-0 h-1/2 w-px bg-white"></div>
-        </th>
-        <th className="px-6 py-3 text-left bg-[#2B6DAF] text-white">
-          Estado
-        </th>
+      <tr className="border-b border-black">
+        <th className="px-4 py-2 bg-[#2B6DAF] text-white text-center border-r border-white">ID de producto</th>
+        <th className="px-4 py-2 bg-[#2B6DAF] text-white text-center border-r border-white">Producto</th>
+        <th className="px-4 py-2 bg-[#2B6DAF] text-white text-center border-r border-white">Categoría</th>
+        <th className="px-4 py-2 bg-[#2B6DAF] text-white text-center border-r border-white">Subcategoría</th>
+        <th className="px-4 py-2 bg-[#2B6DAF] text-white text-center border-r border-white">Stock</th>
+        <th className="px-4 py-2 bg-[#2B6DAF] text-white text-center border-r border-white">Entrada/Salida</th>
+        <th className="px-4 py-2 bg-[#2B6DAF] text-white text-center">Estado</th>
       </tr>
     </thead>
     <tbody>
-      {rows.map((r, idx) => (
-        <tr key={idx} className="text-left border-b border-black last:border-b-0">
-          <td className="px-6 py-2 border-r border-black">{r.code}</td>
-          <td className="px-6 py-2 border-r border-black">{r.product}</td>
-          <td className="px-6 py-2 border-r border-black">{r.category}</td>
-          <td className="px-6 py-2 border-r border-black">{r.subcategory}</td>
-          <td className="px-6 py-2 border-r border-black">{r.stock}</td>
-          <td className="px-6 py-2 border-r border-black">{r.movimiento}</td>
-          <td className="px-6 py-2 border-black">{r.estado}</td>
+      {filasFiltradas.map((r, idx) => (
+        <tr key={idx} className="border-b border-black last:border-b-0">
+          <td className="px-4 py-2 text-center border-black">{r.code}</td>
+          <td className="px-4 py-2 text-center border-black">{r.product}</td>
+          <td className="px-4 py-2 text-center border-black">{r.category}</td>
+          <td className="px-4 py-2 text-center border-black">{r.subcategory}</td>
+          <td className="px-4 py-2 text-center border-black">{r.stock}</td>
+          <td className="px-4 py-2 text-center border-black">{r.movimiento}</td>
+          <td className="px-4 py-2 text-center border-black">{r.estado}</td>
         </tr>
       ))}
     </tbody>
   </table>
 </div>
+
       </div>
     </div>
   );
 }
-

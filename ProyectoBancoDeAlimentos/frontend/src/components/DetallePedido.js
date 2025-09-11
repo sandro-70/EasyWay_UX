@@ -5,10 +5,10 @@ const DetallePedido = ({ order, onClose }) => {
 
   return (
     <div className="fixed inset-0 flex items-start justify-center pt-48 bg-black bg-opacity-40 z-50">
-      <div className="bg-white rounded-lg w-[400px] p-3 relative shadow-lg">
+      <div className="bg-white rounded-lg w-[400px] p-0 relative shadow-lg">
         {/* Encabezado */}
-        <div className="flex justify-between items-center mb-3 bg-[#2B6DAF] p-2 rounded-t">
-          <h2 className="text-white font-bold text-base text-left w-full">Detalle de Pedido</h2>
+        <div className="flex justify-between items-center bg-[#2B6DAF] p-3 rounded-t w-full">
+          <h2 className="text-white font-bold text-base flex-1">Detalle de Pedido</h2>
           <button
             className="text-white font-bold text-lg"
             onClick={onClose}
@@ -18,7 +18,7 @@ const DetallePedido = ({ order, onClose }) => {
         </div>
 
         {/* Contenido */}
-        <div className="grid grid-cols-2 gap-2 mt-2">
+        <div className="p-3 grid grid-cols-2 gap-2 mt-2">
           {/* ID del Pedido */}
           <div>
             <label className="block text-sm font-medium mb-1 text-left">ID del Pedido</label>
@@ -36,7 +36,7 @@ const DetallePedido = ({ order, onClose }) => {
             <input
               className="p-1 rounded w-full text-sm text-left border"
               style={{ borderColor: "#80838A", backgroundColor: "#F5F5F5" }}
-              value={order.nombreCliente || "N/A"}
+              value={order.nombreCliente}
               readOnly
             />
           </div>
@@ -102,7 +102,7 @@ const DetallePedido = ({ order, onClose }) => {
             <input
               className="p-1 rounded w-full text-sm text-left border"
               style={{ borderColor: "#80838A", backgroundColor: "#F5F5F5" }}
-              value={order.frecuenciaCompra || "N/A"}
+              value={order.frecuenciaCompra}
               readOnly
             />
           </div>

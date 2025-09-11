@@ -45,6 +45,9 @@ import DescuentosAplicados from "./descuentos_aplicados.jsx";
 import Categoria from "./categoria.jsx";
 import HistorialCompras from "./HistorialCompras.jsx";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ReportesPedidos from "./pages/ReportesPedidos.jsx"; // ajusta la ruta según donde lo ubiques
+import DetallePedido from "./components/DetallePedido.js";
+import ReportesInventario from "./pages/ReportesInventario.jsx";
 
 const HEADER_HEIGHT = 60; // px
 
@@ -111,6 +114,9 @@ function App() {
               <Route path="/tablaVentas" element={<TablaVentas />} />
               <Route path="/facturas" element={<Facturas />} />
               <Route path="/factura/:id" element={<DetalleFactura />} />
+              <Route path="/reportesPedidos" element={<ReportesPedidos />} />
+            <Route path="/detallePedidos" element={<DetallePedido />} />
+            <Route path="/reportesInventario" element={<ReportesInventario />} />
               <Route
                 path="/descuentos_aplicados"
                 element={<DescuentosAplicados />}

@@ -3,28 +3,63 @@ import ExcelIcon from "../images/excel.png";
 import InfoIcon from "../images/info.png";
 import LupaIcon from "../images/lupa.png";
 import AbajoIcon from "../images/abajo.png";
+import IzqIcon from "../images/izq.png";
+import DerIcon from "../images/der.png";
 import DetallePedido from "../components/DetallePedido";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
+// 📌 Generamos 49 registros de ejemplo
+const ordersData = Array.from({ length: 49 }, (_, i) => {
+  const id = (i + 1).toString().padStart(3, "0");
+  const fechaPedido = new Date(2025, i % 12, (i % 28) + 1);
+  const fechaEntrega = new Date(fechaPedido);
+  fechaEntrega.setDate(fechaPedido.getDate() + ((i % 5) + 1));
 
-const ordersData = [
-  { id: "001", estado: "En preparación", fechaPedido: "4/7/2025", fechaEntrega: "8/7/2025", tiempoPromedio: 4, metodoPago: "Tarjeta" },
-  { id: "002", estado: "En preparación", fechaPedido: "4/7/2025", fechaEntrega: "8/7/2025", tiempoPromedio: 4, metodoPago: "Tarjeta" },
-  { id: "003", estado: "En preparación", fechaPedido: "4/7/2025", fechaEntrega: "8/7/2025", tiempoPromedio: 4, metodoPago: "Tarjeta" },
-  { id: "004", estado: "En preparación", fechaPedido: "4/7/2025", fechaEntrega: "8/7/2025", tiempoPromedio: 4, metodoPago: "Tarjeta" },
-  { id: "005", estado: "En preparación", fechaPedido: "4/7/2025", fechaEntrega: "8/7/2025", tiempoPromedio: 4, metodoPago: "Tarjeta" },
-  { id: "006", estado: "En preparación", fechaPedido: "4/7/2025", fechaEntrega: "8/7/2025", tiempoPromedio: 4, metodoPago: "Tarjeta" },
-  { id: "007", estado: "En preparación", fechaPedido: "4/7/2025", fechaEntrega: "8/7/2025", tiempoPromedio: 4, metodoPago: "Tarjeta" },
-];
+  // Función para formatear fecha a dd/mm/yyyy
+  const formatoFecha = (date) => {
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  return {
+    id,
+    estado: i % 2 === 0 ? "En preparación" : "Entregado",
+    fechaPedido: formatoFecha(fechaPedido),   // fecha completa
+    fechaEntrega: formatoFecha(fechaEntrega), // fecha completa
+    tiempoPromedio: (i % 5) + 1,
+    metodoPago: i % 2 === 0 ? "Tarjeta" : "Efectivo",
+  };
+});
 
 const ReportesPedidos = () => {
-  const [mes, setMes] = useState("Enero");
-  const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null); // <--- Estado para DetallePedido
+  const [mes, setMes] = useState("");
+  const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
+  const [paginaActual, setPaginaActual] = useState(1);
+  const pedidosPorPagina = 7;
 
-  // Función para exportar Excel
+  const meses = [
+    "Enero","Febrero","Marzo","Abril","Mayo","Junio",
+    "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
+  ];
+
+  const pedidosFiltrados = mes
+    ? ordersData.filter(order => {
+        const [day, month, year] = order.fechaPedido.split("/");
+        return meses[parseInt(month) - 1].toLowerCase() === mes.toLowerCase();
+      })
+    : ordersData;
+
+  const totalPaginas = Math.ceil(pedidosFiltrados.length / pedidosPorPagina);
+  const indiceInicio = (paginaActual - 1) * pedidosPorPagina;
+  const indiceFinal = indiceInicio + pedidosPorPagina;
+  const pedidosPaginados = pedidosFiltrados.slice(indiceInicio, indiceFinal);
+
   const exportToExcel = () => {
-    const exportData = ordersData.map(order => ({
+    const exportData = pedidosFiltrados.map(order => ({
       "ID de Pedido": order.id,
       "Estado": order.estado,
       "Fecha de Pedido": order.fechaPedido,
@@ -36,130 +71,167 @@ const ReportesPedidos = () => {
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Pedidos");
-
     const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    const data = new Blob([excelBuffer], { type: "application/octet-stream" });
-    saveAs(data, `ReportePedidos_${mes}.xlsx`);
+    saveAs(new Blob([excelBuffer], { type: "application/octet-stream" }), `ReportePedidos_${mes || "Todos"}.xlsx`);
   };
 
   return (
-    <div className="w-screen min-h-screen bg-white p-6 flex justify-center">
+    <div className="absolute top-[145px] left-0 right-0 w-full flex flex-col items-center">
       <div className="w-full max-w-[1200px]">
-        {/* Título */}
         <h1 className="text-2xl font-semibold text-orange-400 mb-4 border-b border-orange-400 pb-2 text-left">
           Reportes de Pedidos
         </h1>
 
-        {/* Filtros y N° de pedidos */}
-        <div className="flex items-center mb-4 flex-wrap">
-          <div className="flex items-center space-x-2">
-            <label className="font-medium">Filtrar Mes de Pedido:</label>
-            <select
-              value={mes}
-              onChange={(e) => setMes(e.target.value)}
-              className="border rounded px-3 py-1 bg-[#E6E6E6]"
-            >
-              {["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"].map((m) => (
-                <option key={m}>{m}</option>
-              ))}
-            </select>
-          </div>
+        {/* Filtros y número de pedidos */}
+<div className="flex items-center mb-4 flex-wrap w-full">
+  <div className="flex items-center space-x-2 ml-11">
+    <label className="font-medium">Filtrar Mes de Pedido:</label>
+    <select
+      value={mes}
+      onChange={(e) => { setMes(e.target.value); setPaginaActual(1); }}
+      className="border rounded px-3 py-1 bg-[#E6E6E6]"
+    >
+      <option value="">Todos</option>
+      {meses.map((m) => (
+        <option key={m}>{m}</option>
+      ))}
+    </select>
+  </div>
+  <div className="flex items-center space-x-2 ml-6 font-medium">
+    <span>N° de pedidos:</span>
+    <div className="w-8 h-8 rounded-full bg-[#2B6DAF] text-white flex items-center justify-center">
+      {pedidosFiltrados.length}
+    </div>
+  </div>
+</div>
 
-          <div className="flex items-center space-x-2 ml-6 font-medium">
-            <span>N° de pedidos:</span>
-            <div className="w-8 h-8 rounded-full bg-[#2B6DAF] text-white flex items-center justify-center">
-              12
-            </div>
-          </div>
-        </div>
 
         {/* Tabla de pedidos */}
-        <div className="w-full overflow-x-auto">
-          <table className="table-auto w-full border border-gray-300 rounded border-collapse">
-            <thead>
-              <tr>
-                <th className="px-4 py-3 text-white text-left" style={{ backgroundColor: "#2B6DAF" }}>
-                  <div className="flex items-center">
-                    <span>ID de<br />Pedido</span>
-                    <img src={LupaIcon} alt="lupa" className="w-4 h-4 ml-2"/>
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-white text-left" style={{ backgroundColor: "#2B6DAF" }}>
-                  <div className="flex items-center">
-                    <span>Estado</span>
-                    <img src={AbajoIcon} alt="abajo" className="w-4 h-4 ml-2"/>
-                  </div>
-                </th>
-                <th className="px-4 py-3 text-white text-left" style={{ backgroundColor: "#2B6DAF" }}>
-                  Fecha de<br />Pedido
-                </th>
-                <th className="px-4 py-3 text-white text-left" style={{ backgroundColor: "#2B6DAF" }}>
-                  Fecha de<br />Entrega
-                </th>
-                <th className="px-4 py-3 text-white text-left" style={{ backgroundColor: "#2B6DAF" }}>
-                  Tiempo promedio<br />de entrega(días)
-                </th>
-                <th className="px-4 py-3 text-white text-left" style={{ backgroundColor: "#2B6DAF" }}>
-                  Método<br />de Pago
-                </th>
-                <th className="px-4 py-3 text-white text-left" style={{ backgroundColor: "#2B6DAF" }}>
-                  Más<br />Información
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {ordersData.map((order) => (
-                <tr key={order.id} className="text-center border-b">
-                  <td className="px-4 py-2 text-left">{order.id}</td>
-                  <td className="px-4 py-2 text-left">{order.estado}</td>
-                  <td className="px-4 py-2 text-left">{order.fechaPedido}</td>
-                  <td className="px-4 py-2 text-left">{order.fechaEntrega}</td>
-                  <td className="px-4 py-2 text-left">{order.tiempoPromedio}</td>
-                  <td className="px-4 py-2 text-left">{order.metodoPago}</td>
-                  <td className="px-4 py-2">
-                    <button
-                      className="flex items-center justify-center w-6 h-6"
-                      onClick={() => setPedidoSeleccionado(order)} // <--- Abrir detalle
-                    >
-                      <img src={InfoIcon} alt="info" className="w-4 h-4"/>
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <div className="w-full flex items-center justify-between">
+          <button
+            className="p-2 disabled:opacity-50"
+            onClick={() => setPaginaActual(prev => Math.max(prev - 1, 1))}
+            disabled={paginaActual === 1}
+          >
+            <ChevronLeft size={28} className="text-[#2B6DAF]" />
+          </button>
 
-        {/* Paginación y exportar */}
-        <div className="flex items-center justify-between mt-4 flex-wrap">
-          <div className="flex items-center space-x-2 mb-2 md:mb-0">
-            {[1, 2, 3, 4].map((page) => (
-              <button
-                key={page}
-                className="px-3 py-1 border rounded-full border-gray-300"
-              >
-                {page}
-              </button>
-            ))}
-            <span className="px-2">...</span>
-            <button
-              className="px-3 py-1 border rounded-full border-orange-400 text-orange-400 bg-white"
-            >
-              7
-            </button>
+          <div className="w-full overflow-x-auto">
+            <table className="table-auto w-full border border-black rounded border-collapse text-center">
+              <thead>
+                <tr>
+                  {/** Encabezados con líneas verticales blancas separadas */}
+                  {[
+                    { title: "ID de\nPedido", icon: LupaIcon },
+                    { title: "Estado", icon: AbajoIcon },
+                    { title: "Fecha de\nPedido" },
+                    { title: "Fecha de\nEntrega" },
+                    { title: "Tiempo promedio\n de entrega (días)" },
+                    { title: "Método\n de Pago" }
+                  ].map((col, idx) => (
+                    <th key={idx} className="px-4 py-3 text-white text-center bg-[#2B6DAF] relative">
+                      <div className="flex items-center justify-center">
+                        <span className="whitespace-pre-line">{col.title}</span>
+                        {col.icon && <img src={col.icon} alt="icono" className="w-4 h-4 ml-2" />}
+                      </div>
+                      <div className="absolute top-2 bottom-2 right-0 w-[1px] bg-white"></div>
+                    </th>
+                  ))}
+                  <th className="px-4 py-3 text-white text-center bg-[#2B6DAF]">
+                    Más Información
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {pedidosPaginados.map(order => (
+                  <tr key={order.id} className="border-b border-black text-center">
+                    <td className="px-4 py-2 border-black text-center">{order.id}</td>
+                    <td className="px-4 py-2 border-black text-center">{order.estado}</td>
+                    <td className="px-4 py-2 border-black text-center">{order.fechaPedido}</td>
+                    <td className="px-4 py-2 border-black text-center">{order.fechaEntrega}</td>
+                    <td className="px-4 py-2 border-black text-center">{order.tiempoPromedio}</td>
+                    <td className="px-4 py-2 border-black text-center">{order.metodoPago}</td>
+                    <td className="px-4 py-2 border-black text-center">
+                      <button
+                        className="flex items-center justify-center w-6 h-6 mx-auto"
+                        onClick={() => setPedidoSeleccionado(order)}
+                      >
+                        <img src={InfoIcon} alt="info" className="w-4 h-4"/>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {pedidosPaginados.length === 0 && (
+                  <tr>
+                    <td colSpan="7" className="py-4 text-black border-black text-center">No hay pedidos</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
 
           <button
-            onClick={exportToExcel}
-            className="bg-[#009900] text-white px-4 py-1 rounded flex items-center space-x-2"
+            className="p-2 disabled:opacity-50"
+            onClick={() => setPaginaActual(prev => Math.min(prev + 1, totalPaginas))}
+            disabled={paginaActual === totalPaginas || totalPaginas === 0}
           >
-            <img src={ExcelIcon} alt="Excel" className="w-5 h-5" />
-            <span>EXPORTAR</span>
+            <ChevronRight size={28} className="text-[#2B6DAF]" />
           </button>
+        </div>
+
+        {/* Paginación centrada con íconos funcionales */}
+        <div className="flex flex-col items-center mt-4 w-full">
+          <div className="flex justify-center items-center space-x-2 mb-1">
+            {Array.from({ length: totalPaginas }, (_, i) => {
+              const page = i + 1;
+              return (
+                <React.Fragment key={page}>
+                  {page === 1 && (
+                    <img
+                      src={IzqIcon}
+                      alt="izq"
+                      className="w-4 h-4 mr-1 cursor-pointer"
+                      onClick={() => setPaginaActual(prev => Math.max(prev - 1, 1))}
+                    />
+                  )}
+
+                  <button
+                    onClick={() => setPaginaActual(page)}
+                    className={`
+                      w-8 h-8 flex items-center justify-center rounded-full border 
+                      ${page === paginaActual ? "border-orange-400 text-orange-400" : "border-gray-300 text-gray-700"}
+                    `}
+                  >
+                    {page}
+                  </button>
+
+                  {page === totalPaginas && (
+                    <img
+                      src={DerIcon}
+                      alt="der"
+                      className="w-4 h-4 ml-1 cursor-pointer"
+                      onClick={() => setPaginaActual(prev => Math.min(prev + 1, totalPaginas))}
+                    />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+
+          {/* Botón exportar alineado debajo de la tabla */}
+          <div className="w-full flex justify-end -mt-16 mr-20">
+            <button
+              onClick={exportToExcel}
+              className="bg-[#009900] text-white px-4 py-1 rounded flex items-center space-x-2"
+            >
+              <img src={ExcelIcon} alt="Excel" className="w-5 h-5" />
+              <span>EXPORTAR</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Componente DetallePedido */}
       {pedidoSeleccionado && (
         <DetallePedido
           order={pedidoSeleccionado}
@@ -170,4 +242,4 @@ const ReportesPedidos = () => {
   );
 };
 
-export default ReportesPedidos;   
+export default ReportesPedidos;

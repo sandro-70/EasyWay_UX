@@ -17,12 +17,13 @@ const MenuPromociones = () => {
         >
           Campañas programadas
         </Link>
-        <button className="border border-blue-300 rounded-2xl p-5 text-left hover:shadow-lg transition duration-300">
-          Estadísticas de promoción
-        </button>
-        <button className="border border-blue-300 rounded-2xl p-5 text-left hover:shadow-lg transition duration-300">
-          Definir cupones
-        </button>
+        <Link
+          to="/tablaPromociones"
+          className="border border-blue-300 rounded-2xl p-5 text-left hover:shadow-lg transition duration-300 block"
+        >
+          Estadisticas de Promocion
+        </Link>
+
         <Link
           to="/asignarDescuento"
           className="border border-blue-300 rounded-2xl p-5 text-left hover:shadow-lg transition duration-300 block"

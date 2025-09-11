@@ -46,7 +46,7 @@ import Categoria from "./categoria.jsx";
 import Promocion from "./promocion.jsx";
 import HistorialCompras from "./HistorialCompras.jsx";
 import ProtectedRoute from "./components/ProtectedRoute";
-import ReportesPedidos from "./pages/ReportesPedidos.jsx"; // ajusta la ruta según donde lo ubiques
+import ReportesPedidos from "./pages/ReportesPedidos.jsx";
 import DetallePedido from "./components/DetallePedido.js";
 import ReportesInventario from "./pages/ReportesInventario.jsx";
 import MenuPromociones from "./MenuPromociones.jsx";
@@ -84,7 +84,7 @@ function App() {
             <Route path="/categoria/:id" element={<Categoria />} />
             <Route path="/promocion/:id" element={<Promocion />} />
 
-            {/* ---------- CON SIDEBAR + PROTEGIDAS ---------- */}
+            {/* ---------- CON SIDEBAR + PROTEGIDAS ADMIN ---------- */}
             <Route
               element={
                 <ProtectedRoute rolesPermitidos={["administrador"]}>
@@ -200,6 +200,74 @@ function App() {
               element={
                 <ProtectedRoute rolesPermitidos={["cliente"]}>
                   <HistorialCompras />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* ---------- CONSULTOR SEGÚN PRIVILEGIOS ---------- */}
+            <Route
+              path="/inventario"
+              element={
+                <ProtectedRoute
+                  rolesPermitidos={["consultor"]}
+                  privilegiosNecesarios={["gestionar_inventario"]}
+                >
+                  <Inventario />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reportesInventario"
+              element={
+                <ProtectedRoute
+                  rolesPermitidos={["consultor"]}
+                  privilegiosNecesarios={["ver_reportes"]}
+                >
+                  <ReportesInventario />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/tablaVentas"
+              element={
+                <ProtectedRoute
+                  rolesPermitidos={["consultor"]}
+                  privilegiosNecesarios={["ver_reportes"]}
+                >
+                  <TablaVentas />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/personalizacionReportes"
+              element={
+                <ProtectedRoute
+                  rolesPermitidos={["consultor"]}
+                  privilegiosNecesarios={["personalizacion_reportes"]}
+                >
+                  <PersonalizacionReportes />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reportesPedidos"
+              element={
+                <ProtectedRoute
+                  rolesPermitidos={["consultor"]}
+                  privilegiosNecesarios={["ver_reportes_pedidos"]}
+                >
+                  <ReportesPedidos />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/descuentos_aplicados"
+              element={
+                <ProtectedRoute
+                  rolesPermitidos={["consultor"]}
+                  privilegiosNecesarios={["ver_descuentos"]}
+                >
+                  <DescuentosAplicados />
                 </ProtectedRoute>
               }
             />

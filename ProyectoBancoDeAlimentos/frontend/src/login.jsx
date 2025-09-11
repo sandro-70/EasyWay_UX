@@ -12,7 +12,6 @@ const Login = () => {
   const navigate = useNavigate();
   const { login } = useContext(UserContext);
 
-  // --- Enviar código para 2FA ---
   async function enviarCodigo(correo, navigate, setLoading) {
     try {
       setLoading(true);
@@ -32,7 +31,6 @@ const Login = () => {
     }
   }
 
-  // --- Manejo de login ---
   const onSubmit = async (e) => {
     e.preventDefault();
 
@@ -43,16 +41,13 @@ const Login = () => {
 
     setLoading(true);
     try {
-      // 1) Intentar login
       const { data } = await LoginUser({ correo, contraseña });
       const token = data?.token;
       if (!token) throw new Error("No se recibió token de autenticación");
 
-      // 2) Guardar token
       localStorage.setItem("token", token);
       await login(token);
 
-      // 3) Obtener info del usuario autenticado (/me)
       let me;
       try {
         const meRes = await InformacionUser();
@@ -61,13 +56,11 @@ const Login = () => {
         me = null;
       }
 
-      // 4) Two-factor
       if (me?.autenticacion_dos_pasos === true) {
         await enviarCodigo(correo, navigate, setLoading);
         return;
       }
 
-      // 5) Resolver rol
       const roleName =
         me?.rol?.nombre_rol ||
         me?.rol ||
@@ -77,17 +70,24 @@ const Login = () => {
             : "cliente"
           : "cliente");
 
-      localStorage.setItem("rol", roleName);
+      localStorage.setItem("rol", roleName.toLowerCase());
 
-      // 6) Redirección por rol
-      if (roleName?.toLowerCase() === "administrador") {
+      // ✅ Guardar privilegios si es consultor
+      if (roleName.toLowerCase() === "consultor") {
+        const privilegios = me?.privilegios || []; // Array con los 6 privilegios
+        localStorage.setItem("privilegios", JSON.stringify(privilegios));
+      }
+
+      // Redirección por rol
+      if (roleName.toLowerCase() === "administrador") {
         navigate("/dashboard");
+      } else if (roleName.toLowerCase() === "consultor") {
+        navigate("/consultor/dashboard");
       } else {
         navigate("/");
       }
     } catch (err) {
       console.error("Error en login:", err?.response?.data || err);
-
       const backendMsg =
         err?.response?.data?.message ||
         err?.response?.data?.error ||

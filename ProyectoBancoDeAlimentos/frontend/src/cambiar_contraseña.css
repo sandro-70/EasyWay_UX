@@ -1,0 +1,86 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  min-height: 100vh;
+  padding: 20px;
+  background-color: #f5f6fa; /* un gris suave de fondo */
+}
+
+#root {
+  width: 100%;
+  max-width: 600px;
+  padding: 0.5rem;
+}
+
+.cambiar-form {
+  width: 500px;
+  padding: 2rem 1.5rem;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  border-radius: 1.5rem;
+  background: #e6e6e6;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.cambiar-form .logo-titulo {
+  height: 80px;
+  width: 350px;
+  margin-bottom: 20px;
+}
+
+.cambiar-form .elige-text {
+  font-size: 1.5rem;
+  color: #2b6daf;
+  font-weight: bold;
+  margin-bottom: 1.2rem;
+  text-align: center;
+}
+
+.cambiar-form .input-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+   margin-bottom: 20px;
+}
+
+.cambiar-form .input-field {
+  width: 300px;
+  height: 50px;
+  padding: 0 15px;
+  border: 2px solid #2b6daf;
+  border-radius: 0.9rem;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+.cambiar-form .input-field:focus {
+  border-color: #f0833e;
+}
+
+.cambiar-form .cambiar-button {
+  margin-top: 20px;
+  background-color: #f0833e;
+  border-radius: 0.9rem;
+  border: none;
+  color: white;
+  font-weight: bold;
+  font-size: 1rem;
+  width: 320px;
+  height: 45px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.cambiar-form .cambiar-button:hover {
+  background-color: #d86f2e;
+}

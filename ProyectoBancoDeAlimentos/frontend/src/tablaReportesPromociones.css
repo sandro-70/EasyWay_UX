@@ -1,0 +1,119 @@
+.inventario-container {
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  margin: 0 auto;
+  max-width: 1200px;
+}
+
+.inventario-title {
+  color: #f0833e;
+  margin-bottom: 15px;
+  font-size: 1.8rem;
+  text-align: left;
+  border-bottom: 3px solid #f0833e;
+}
+
+.inventario-table {
+  padding: 12px 14px;
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 8px;
+}
+
+.inventario-thead th {
+  background-color: #f3f3f3;
+  padding: 12px 16px;
+  text-align: center;
+  position: relative;
+}
+
+.inventario-thead th .categoria-icon {
+  cursor: pointer;
+  vertical-align: middle;
+}
+.categoria-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 10;
+}
+
+.categoria-select-inline {
+  margin-left: 5px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 2px 6px;
+  background-color: #fff;
+  color: #000;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.categoria-select {
+  min-width: 140px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 3px 6px;
+  background-color: #fff;
+  color: #000;
+  cursor: pointer;
+}
+
+.inventario-table td {
+  padding: 8px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.inventario-table-empty {
+  text-align: center;
+  padding: 15px;
+  color: #555;
+}
+
+.inventario-pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 10px;
+  gap: 5px;
+}
+
+.inventario-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  width: 100%;
+}
+
+.inventario-pagination-btn {
+  background-color: #fff;
+  border: 1px solid #d8dadc;
+  padding: 5px 8px;
+  cursor: pointer;
+}
+
+.inventario-pagination button.w-9 {
+  background-color: #fff;
+}
+
+.inventario-pagination button.w-9.ring-2 {
+  background-color: #fff;
+  border-color: #f0833e;
+  color: #f0833e;
+}
+
+.inventario-export-btn-green {
+  background-color: #28a745;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: right;
+  gap: 5px;
+}
+
+.inventario-export-btn-green:hover {
+  background-color: #218838;
+}

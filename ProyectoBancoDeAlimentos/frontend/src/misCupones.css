@@ -1,0 +1,130 @@
+.cupones {
+  height: 700px;
+  width: 1000px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  border-radius: 2rem;
+  background: #fff;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+.titulo {
+  text-align: center;
+  margin-top: 30px;
+  margin-bottom: 10px;
+}
+
+.titulo_texto {
+  color: #f0833e;
+  margin-bottom: 15px;
+  font-size: 1.8rem;
+}
+
+.linea {
+  border: none;
+  border-top: 2px solid #f0833e;
+  margin: 0 auto 20px;
+  width: 60%;
+}
+
+.titulos_secundarios {
+  display: flex;
+  justify-content: center;
+  gap: 100px;
+  font-size: 1.5rem;
+}
+
+.titulos_secundarios p {
+  cursor: pointer;
+}
+
+.titulos_secundarios p:hover {
+  text-decoration: underline;
+}
+
+.cupones_reporte {
+  height: 480px;
+  width: 850px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  border-radius: 2rem;
+  background: #fff;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  margin: 0 auto;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  margin-top: 0;
+  overflow: hidden;
+}
+
+.lista_reportes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-items: flex-start;
+  width: 100%;
+  padding: 20px;
+  gap: 20px 30px;
+  max-height: 440px;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.lista_reportes::-webkit-scrollbar {
+  width: 10px;
+  background-color: transparent;
+}
+
+.lista_reportes::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 0 1rem 1rem 0;
+  margin: px 0;
+}
+
+.lista_reportes::-webkit-scrollbar-thumb {
+  background-color: rgba(240, 131, 62, 0.7);
+  border-radius: 5px;
+  border: 2px solid #f1f1f1;
+}
+
+.lista_reportes::-webkit-scrollbar-thumb:hover {
+  background-color: #f0833e;
+}
+
+.lista_reportes {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(240, 131, 62, 0.7) #f1f1f1;
+}
+
+.cupones_categoria {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cupones_categoria button {
+  border: 2px solid transparent;
+  height: 120px;
+  width: 200px;
+  border-radius: 1rem;
+  text-align: left;
+  background: #ffffff;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  padding-left: 10%;
+  cursor: pointer;
+}
+
+.cupones_categoria button:hover {
+  border-radius: 1rem;
+  border-color: #f0833e;
+}
+
+.boton_cupon .texto_cupon1 {
+  color: #f03e3e;
+}
+
+.boton_cupon .texto_cupon2 {
+  color: #80838a;
+}

@@ -1,0 +1,64 @@
+.ntF-error-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100vw;
+  background: linear-gradient(135deg, #007bff 40%, #00aaff 100%);
+  color: #fff;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    height: 100vh;
+    
+}
+
+.ntF-error-content {
+  text-align: center;
+  padding: 2rem;
+  background: #e7e4e4;
+  color: #333;
+  border-radius: 20px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+  max-width: 100%;
+  width: 700px;
+  height: auto;
+  animation: fadeIn 0.8s ease-in-out;
+}
+
+.ntF-error-icon {
+  width: 150px;
+  margin-bottom: 1rem;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+}
+
+.ntF-error-title {
+  font-size: 7.5rem;
+  margin-bottom:25px;
+  font-weight: bold;
+  color: #007bff;
+}
+
+.ntF-error-message {
+  margin: 1rem 0 3rem;
+  font-size: 1.2rem;
+  color: #444;
+}
+
+.ntF-error-button {
+  background: #ff6600;
+  color: #fff;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 30px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.ntF-error-button:hover {
+  background: #e65c00;
+  transform: scale(1.05);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}

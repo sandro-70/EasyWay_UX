@@ -1,0 +1,90 @@
+/* Tarjeta de creación */
+.crear-form {
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  margin: 4rem auto 2rem;   /* más limpio que margin-top:190px */
+  padding: 2rem 1.5rem;
+
+  border-radius: 2rem;
+  background: #e6e6e6;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Línea naranja separador */
+.linea {
+  border: none;
+  border-top: 2px solid #2b6daf;
+  width: 60%;
+  margin: 1.5rem auto 2rem;   /* más espacio abajo (antes 3.5rem) */
+}
+
+/* Inputs */
+.crear-form .input-wrapper {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem; /* más juntos */
+  margin-top: 1.5rem; /* distancia desde la línea naranja */
+}
+
+.crear-form .input-wrapper .input-field,
+.crear-form .input-field {
+  width: 100%;
+  height: 50px;
+  padding: 0 1rem;
+  border: 2px solid #2b6daf;
+  border-radius: 0.9rem;
+  background: #fff;
+  outline: none;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+/* Focus bonito */
+.crear-form .input-wrapper .input-field:focus,
+.crear-form .input-field:focus {
+  border-color: #2b6daf;
+  box-shadow: 0 0 0 3px rgba(43, 109, 175, 0.25);
+}
+
+/* Botón */
+.crear-form .crear-button {
+  background-color: #f0833e;
+  border-radius: 0.9rem;
+  color: white;
+  font-weight: bold;
+  width: 100%;
+  max-width: 360px;
+  height: 40px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.06s ease;
+  margin-top: 1rem; /* separación pequeña respecto a los inputs */
+}
+.crear-form .crear-button:hover {
+  background-color: #fc9e63;
+}
+.crear-form .crear-text {
+   color: #2b6daf;
+    margin-top: 1rem;
+    font-weight: bold;
+    font-size: 1.35rem;
+  }
+
+ .crear-form .menosmin-text {
+    font-size: 1.05rem;
+    color: #fc9e63;
+    font-weight: bold;
+  }
+
+
+  .crear-form .ya-tienes-cuenta-link {
+  margin-top: 10px;
+  color: #2b6daf;
+  font-weight: bold;
+  text-decoration: none;
+}

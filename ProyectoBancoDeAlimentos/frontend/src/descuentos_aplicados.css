@@ -1,0 +1,245 @@
+:root {
+  --primary: #123c54;
+  --accent: #e96803;
+  --bg: #f6f8fb;
+  --card: #ffffff;
+  --border: #d8dadc;
+  --text: #1f2937;
+  --text-mute: #6b7280;
+  --header: #2b6daf;
+
+  --title-color: #e96803; /* texto del título */
+  --rule-color: #f0833e; /* línea bajo el título */
+  --rule-thick: 2px; /* grosor de la línea */
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.discounts-page {
+  width: 100%;
+  max-width: none; /* ignora límites globales tipo #root {max-width} */
+  padding: 16px clamp(12px, 3vw, 32px);
+  background: var(--bg);
+  min-height: 100dvh;
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    Arial, sans-serif;
+}
+
+/* ======= TÍTULO NARANJA + LÍNEA ======= */
+.page-header--bleed {
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  padding-left: clamp(12px, 3vw, 32px);
+  padding-right: clamp(12px, 3vw, 32px);
+}
+
+.page-header {
+  position: relative;
+  text-align: left; /* fuerza alineación izquierda */
+  margin: 8px 0 14px;
+}
+
+.page-title {
+  margin: 0 0 8px 0;
+  color: var(--title-color);
+  font-weight: 800;
+  font-size: clamp(24px, 3vw, 36px);
+  letter-spacing: 0.3px;
+  text-align: left; /* por si hay estilos globales centrando h1 */
+}
+
+/* Línea que cruza TODO el ancho del header (full-bleed) */
+.page-header--bleed::after {
+  content: "";
+  display: block;
+  width: 100%;
+  height: var(--rule-thick);
+  background: var(--rule-color);
+  border-radius: 999px;
+}
+/* ======= CARD ======= */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.05);
+  padding: 14px;
+}
+
+/* Full-bleed: ocupa todo el ancho del viewport aunque el layout tenga max-width */
+.card--bleed {
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  padding-left: clamp(12px, 3vw, 32px);
+  padding-right: clamp(12px, 3vw, 32px);
+}
+
+/* ======= TABLA ======= */
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid var(--border, #d8dadc);
+  background: #fff;
+}
+
+.table {
+  width: 100%;
+  table-layout: fixed; /* respeta <colgroup> en el JSX */
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 14.5px;
+  min-width: 720px; /* base cómoda; ajusta si lo necesitas */
+}
+
+/* Encabezado sticky */
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--header);
+  color: #fff;
+  text-align: left;
+  padding: 14px;
+  font-weight: 700;
+  border-bottom: 1px solid #1f4f8a;
+}
+.table thead th.num {
+  text-align: right;
+}
+
+/* Botón de ordenar + caret */
+.th-sort {
+  background: transparent;
+  color: inherit;
+  border: 0;
+  font: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.th-sort .caret {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid #ffffffcc;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  opacity: 0.9;
+}
+.th-sort.is-asc .caret {
+  transform: rotate(180deg);
+  opacity: 1;
+}
+.th-sort.is-desc .caret {
+  transform: rotate(0deg);
+  opacity: 1;
+}
+
+/* Celdas */
+.table tbody td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.table tbody td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.table tbody td.mono {
+  letter-spacing: 0.6px;
+  font-weight: 700;
+}
+.table tbody tr:hover td {
+  background: #f3f6fb;
+}
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+.table .empty {
+  text-align: center;
+  color: var(--text-mute);
+  padding: 28px 0;
+}
+
+/* ======= FOOTER: paginación + export ======= */
+.card-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 12px 4px 4px;
+  margin-top: 10px;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pagination .page,
+.pagination .page-nav {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  font-weight: 700;
+  cursor: pointer;
+}
+.pagination .page:hover,
+.pagination .page-nav:hover {
+  filter: brightness(0.98);
+}
+.pagination .page.current {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.pagination .page-nav[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-export {
+  background: #fff;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.04s ease;
+}
+.btn-export:hover {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.07);
+}
+.btn-export:active {
+  transform: translateY(1px);
+}
+
+/* ======= RESPONSIVE ======= */
+@media (max-width: 900px) {
+  .table {
+    font-size: 13.5px;
+    min-width: 640px;
+  }
+}
+@media (max-width: 640px) {
+  .table {
+    min-width: 560px;
+  }
+  .btn-export {
+    padding: 9px 12px;
+    font-weight: 700;
+  }
+}

@@ -1,0 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.list-item {
+  @apply border-2 w-full rounded-md text-left text-2xl;
+}

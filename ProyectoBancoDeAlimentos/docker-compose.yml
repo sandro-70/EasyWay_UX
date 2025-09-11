@@ -1,0 +1,46 @@
+services:
+  database:
+    image: postgres:16
+    container_name: BaseDatos
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: clave123
+      POSTGRES_DB: postgres
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 5s
+      retries: 5
+
+  server:
+    depends_on:
+      database:
+        condition: service_healthy
+    build: ./backend
+    container_name: backend
+    ports:
+      - "${BACKEND_PORT}:3001"
+    environment:
+      DB_HOST: database
+      DB_USER: postgres
+      DB_PASSWORD: clave123
+      DB_NAME: postgres
+      DB_PORT: 5432
+      PORT: 3001
+      JWT_SECRET: secreto
+    command: npm run dev # o el comando que uses
+
+  client:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "${FRONTEND_PORT}:3000"
+    depends_on:
+      - server
+    command: npm start # o el comando que uses
+
+volumes:
+  db:

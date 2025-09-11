@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.sidebar {
+  @apply w-60 bg-[#2b6daf] text-white rounded fixed left-0 z-10;
+}
+.sidebar_item {
+  @apply block hover:bg-[#f0833e] pl-6 py-2 rounded-tl-full rounded-bl-full rounded-tr-none rounded-br-none transition flex flex-row text-[18px] items-center text-left gap-4;
+}
+.perfil {
+  @apply block bg-[#2ca9e3] pl-6 py-2 flex flex-row text-[18px]  items-center gap-6;
+}

@@ -1,0 +1,9 @@
+node_modules
+build
+dist
+.git
+.env
+*.log
+
+#Hacer npm install react-scripts --save para el package.json y que el docker lo lea al hacer docker-compose up --build
+

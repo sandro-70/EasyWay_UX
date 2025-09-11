@@ -1,0 +1,379 @@
+.reporte-usuarios {
+  font-family: 'Arial', sans-serif;
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  background: #f8f9fa;
+  min-height: 100vh;
+}
+
+/* Header y Filtros */
+.reporte-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding: 25px;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+}
+
+.reporte-header h1 {
+  color: #204778;
+  font-size: 2.5rem;
+  margin: 0;
+  font-weight: 700;
+}
+
+.filtros-container {
+  display: flex;
+  gap: 40px;
+  align-items: center;
+}
+
+.filtro-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.filtro-group label {
+  color: #204778;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.filtro-select {
+  padding: 12px 20px;
+  border: 2px solid #e1e5eb;
+  border-radius: 12px;
+  background: #fff;
+  color: #204778;
+  font-size: 1rem;
+  cursor: pointer;
+  min-width: 180px;
+  transition: all 0.3s ease;
+}
+
+.filtro-select:focus {
+  outline: none;
+  border-color: #204778;
+  box-shadow: 0 0 0 3px rgba(32, 71, 120, 0.1);
+}
+
+.filtro-select:hover {
+  border-color: #204778;
+}
+
+/* Grid Principal */
+.reporte-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 30px;
+  margin-bottom: 30px;
+}
+
+/* Tabla de Usuarios */
+.tabla-usuarios {
+  background: #fff;
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+}
+
+.tabla-usuarios h2 {
+  color: #204778;
+  font-size: 1.8rem;
+  margin-bottom: 25px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.tabla-header {
+  display: grid;
+  grid-template-columns: 80px 1fr 120px 100px 120px;
+  gap: 20px;
+  padding: 18px 25px;
+  background: #204778;
+  color: white;
+  border-radius: 12px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  font-size: 1.1rem;
+}
+
+.usuario-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 120px 100px 120px;
+  gap: 20px;
+  padding: 18px 25px;
+  border-bottom: 2px solid #f0f2f5;
+  align-items: center;
+  transition: background 0.3s ease;
+}
+
+.usuario-row:hover {
+  background: #f8f9fa;
+}
+
+.usuario-row:last-child {
+  border-bottom: none;
+}
+
+.id-usuario {
+  color: #204778;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.nombre-usuario {
+  color: #204778;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.fecha-registro {
+  color: #666;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.estado-badge {
+  padding: 8px 16px;
+  border-radius: 25px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.estado-activo {
+  background: linear-gradient(135deg, #4caf50, #2e7d32);
+  color: white;
+  box-shadow: 0 2px 8px rgba(46, 125, 50, 0.3);
+}
+
+.estado-inactivo {
+  background: linear-gradient(135deg, #f44336, #d32f2f);
+  color: white;
+  box-shadow: 0 2px 8px rgba(211, 47, 47, 0.3);
+}
+
+.btn-mas-info {
+  background: linear-gradient(135deg, #f0833e, #e0722c);
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1.1rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 3px 10px rgba(240, 131, 62, 0.3);
+}
+
+.btn-mas-info:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(240, 131, 62, 0.4);
+}
+
+/* Estadísticas */
+.estadisticas-container {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.stats-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+}
+
+.stats-card h3 {
+  color: #204778;
+  margin-bottom: 25px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Gráfico Circular */
+.grafico-circular-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 20px 0;
+}
+
+.grafico-circular {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: conic-gradient(
+    #f0833e 0% 29.1%,
+    #204778 29.1% 100%
+  );
+  position: relative;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+}
+
+.grafico-centro {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 120px;
+  height: 120px;
+  background: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.porcentaje-total {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #204778;
+}
+
+.leyendas {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 25px;
+}
+
+.leyenda-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f8f9fa;
+}
+
+.leyenda-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+}
+
+.leyenda-inactivos {
+  background: #f0833e;
+}
+
+.leyenda-activos {
+  background: #204778;
+}
+
+.leyenda-texto {
+  flex: 1;
+  color: #204778;
+  font-weight: 600;
+}
+
+.leyenda-porcentaje {
+  color: #204778;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+/* Gráfico de Barras Clientes Nuevos */
+.grafico-barras-clientes {
+  display: flex;
+  align-items: end;
+  gap: 20px;
+  height: 200px;
+  margin: 25px 0;
+  padding: 0 10px;
+}
+
+.barra-mes {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.barra-altura {
+  width: 40px;
+  background: linear-gradient(to top, #204778, #2d5a9e);
+  border-radius: 8px 8px 0 0;
+  transition: height 0.3s ease;
+  box-shadow: 0 2px 8px rgba(32, 71, 120, 0.3);
+}
+
+.barra-label {
+  color: #204778;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.total-clientes {
+  text-align: center;
+  margin-top: 20px;
+}
+
+.total-numero {
+  font-size: 3rem;
+  font-weight: 800;
+  color: #204778;
+  margin: 5px 0;
+}
+
+.total-texto {
+  color: #666;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .reporte-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .tabla-header,
+  .usuario-row {
+    grid-template-columns: 70px 1fr 100px 90px 100px;
+    gap: 15px;
+  }
+}
+
+@media (max-width: 768px) {
+  .reporte-header {
+    flex-direction: column;
+    gap: 25px;
+    text-align: center;
+  }
+  
+  .filtros-container {
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .tabla-header,
+  .usuario-row {
+    grid-template-columns: 1fr;
+    text-align: center;
+    gap: 12px;
+  }
+  
+  .grafico-circular {
+    width: 150px;
+    height: 150px;
+  }
+  
+  .grafico-centro {
+    width: 90px;
+    height: 90px;
+  }
+}

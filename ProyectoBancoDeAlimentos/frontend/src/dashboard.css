@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+/*[#fee9d6]*/
+.sm_grid {
+  @apply bg-[#fee9d6] h-full row-span-1 col-span-1 py-2 rounded-xl shadow-neutral-600 shadow-sm items-center text-center text-xl font-bold;
+}
+
+.lg_grid {
+  @apply bg-[#fee9d6] h-full row-span-5 col-span-2 py-2 rounded-xl shadow-neutral-600 shadow-sm items-center text-center;
+}

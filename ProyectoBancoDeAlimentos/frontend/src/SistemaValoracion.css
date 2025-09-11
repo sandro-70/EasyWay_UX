@@ -1,0 +1,425 @@
+:root {
+  --primary: #2b6daf;
+  --accent: #ff8c36;
+  --text: #1e2633;
+  --muted: #7a8796;
+  --light-bg: #f3f5f7;
+  --card-bg: #ffffff;
+  --border: #e9edf3;
+}
+
+
+/* ======= Fondo general ======= */
+.supermarket-dashboard {
+  background-color: var(--light-bg);
+  min-height: 100vh;
+  padding: 2rem;
+  display: block;    
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(500px, 1fr));
+  gap: 2.5rem;
+  max-width: 1400px;  
+  margin: 0 auto;     
+  align-items: stretch;
+}
+
+
+.dashboard-card {
+  background: var(--card-bg);
+  border-radius: 1.5rem;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  padding: 2rem;
+  min-height: 360px;  
+}
+
+
+.dashboard-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+}
+
+.card-header {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.card-header h2 {
+  color: var(--muted);
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.card-content {
+  padding-top: 1.5rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ======= Alturas mínimas por fila ======= */
+.suggestions-card, .recurrent-card { min-height: 300px; }
+.habits-card, .savings-card       { min-height: 400px; }
+
+/* ======= Tarjeta de Sugerencias ======= */
+.suggestions-card .card-content {
+  flex-direction: row;
+  align-items: center;
+  gap: 2rem;
+}
+
+.visual-icon {
+  width: 100px; height: 100px;
+  background-color: #ffe9d7;
+  border-radius: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.visual-icon svg {
+  width: 3rem;
+  height: 3rem;
+}
+
+.suggestion-text h3 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+}
+
+.suggestion-text p {
+  color: var(--muted);
+  font-size: 1.2rem;
+}
+
+/* ======= Tarjeta de Productos Recurrentes ======= */
+.product-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+}
+
+.nav-arrow {
+  width: 3.2rem;
+  height: 3.2rem;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: #f2f7ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text);
+  transition: all 0.2s ease;
+}
+
+.nav-arrow:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.nav-arrow svg {
+  width: 1.8rem;
+  height: 1.8rem;
+}
+
+.product-display {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  flex: 1;
+  margin: 0 1.5rem;
+}
+
+.product-image {
+  width: 120px;
+  height: 120px;
+  background: #f7fbff;
+  border: 2px dashed #d7e4f6;
+  border-radius: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.product-emoji {
+  font-size: 3.5rem;
+}
+
+.product-info h3 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.5rem;
+}
+
+.product-info p {
+  color: var(--muted);
+  font-size: 1.2rem;
+  line-height: 1.4;
+}
+
+/* ======= Tarjeta de Hábitos de Compra ======= */
+.habits-visualization {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+}
+
+.bars-container {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  height: 85%;
+}
+
+.bar-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  justify-content: flex-end;
+  flex: 1;
+  position: relative;
+}
+
+.bar-value {
+  position: absolute;
+  top: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.habit-bar {
+  width: 2.8rem;
+  background: linear-gradient(to top, var(--accent), #ffb580);
+  border-radius: 0.6rem 0.6rem 0 0;
+  margin-bottom: 0.5rem;
+  transition: height 0.5s ease;
+}
+
+.bar-label {
+  font-size: 1rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* ======= Tarjeta de Resumen de Ahorro ======= */
+.savings-card .card-content {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.savings-visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.savings-amount {
+  font-size: 3.2rem;
+  font-weight: 900;
+  color: var(--accent);
+}
+
+.savings-icon {
+  width: 4rem;
+  height: 4rem;
+  background: #ffe9d7;
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+}
+
+.savings-icon svg {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.savings-description p {
+  color: var(--muted);
+  font-size: 1.2rem;
+  line-height: 1.5;
+  max-width: 30rem;
+}
+
+/* ======= Responsive ======= */
+@media (max-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+.card-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.card-header h2 {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.card-content {
+  padding: 18px;
+  flex: 1;                /* rellena espacio vertical */
+  display: flex;
+  flex-direction: column;
+}
+
+/* ======= Alturas mínimas para simetría por fila ======= */
+.suggestions-card, .recurrent-card { min-height: 220px; }
+.habits-card, .savings-card       { min-height: 360px; }
+
+/* ======= Sugerencias ======= */
+.suggestions-card .card-content {
+  flex-direction: row;
+  align-items: center;
+  gap: 20px;
+}
+.visual-icon {
+  width: 88px; height: 88px;
+  background: #ffe9d7;
+  color: var(--accent);
+  border-radius: 16px;
+  display: grid; place-items: center;
+}
+.visual-icon svg { width: 44px; height: 44px; }
+.suggestion-text h3 {
+  margin: 0 0 6px 0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text);
+}
+.suggestion-text p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+/* ======= Recurrentes ======= */
+.product-navigation {
+  display: grid;
+  grid-template-columns: 48px 1fr 48px;
+  align-items: center;
+  gap: 12px;
+  height: 100%;
+}
+.nav-arrow {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: #f2f7ff;
+  color: var(--text);
+  display: grid; place-items: center;
+  cursor: pointer;
+}
+.product-display {
+  display: grid;
+  grid-template-columns: 112px 1fr;
+  align-items: center;
+  gap: 18px;
+}
+.product-image {
+  width: 112px; height: 112px;
+  border: 2px dashed #d7e4f6;
+  background: #f7fbff;
+  border-radius: 16px;
+  display: grid; place-items: center;
+}
+.product-emoji { font-size: 48px; }
+.product-info h3 {
+  margin: 0 0 6px 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--text);
+}
+.product-info p { margin: 0; color: var(--muted); }
+
+/* ======= Hábitos de compra (barras) ======= */
+.habits-visualization { flex: 1; display: flex; align-items: flex-end; }
+.bars-container { display: flex; justify-content: space-between; width: 100%; height: 80%; }
+.bar-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; flex: 1; position: relative; }
+.bar-value { position: absolute; top: 0; font-size: 0.8rem; font-weight: 600; color: var(--muted); }
+.habit-bar { width: 28px; background: linear-gradient(to top, var(--accent), #ffb580); border-radius: 8px 8px 0 0; margin-bottom: 6px; transition: height .4s ease; }
+.bar-label { font-size: .9rem; color: var(--muted); }
+
+/* ======= Resumen de ahorro ======= */
+.savings-card .card-content { justify-content: center; align-items: center; text-align: center; }
+.savings-visual { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; }
+.savings-amount { font-size: 2.8rem; font-weight: 900; color: var(--accent); }
+.savings-icon { width: 56px; height: 56px; border-radius: 12px; background: #ffe9d7; color: var(--accent); display: grid; place-items: center; }
+.savings-description p { color: var(--muted); max-width: 420px; line-height: 1.5; }
+
+/* ======= Responsive ======= */
+@media (max-width: 1024px) {
+  .supermarket-dashboard { padding: 16px; }
+  .dashboard-grid { grid-template-columns: 1fr; }
+}
+/* ======= CENTRADO FORZADO DEL GRID ======= */
+/* Ignora paddings/márgenes del contenedor padre */
+.supermarket-dashboard{
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  display: block !important;
+  box-sizing: border-box;
+}
+
+/* Centro real del bloque sin depender de auto/márgenes del padre */
+.dashboard-grid{
+  /* ancho de trabajo (ajusta 1400px si quieres más/menos) */
+  width: min(1400px, 94vw) !important;
+
+  /* truco de centrado absoluto */
+  position: relative !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+
+  /* layout */
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(520px, 1fr)) !important;
+  gap: 32px !important;
+  align-items: stretch !important;
+
+  /* anulamos márgenes que puedan desbalancear */
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* aseguramos que ninguna tarjeta empuje el grid */
+.dashboard-card{
+  min-width: 520px !important;
+  box-sizing: border-box !important;
+}
+
+/* (opcional) elimina cualquier padding lateral heredado globalmente */
+body, #root, main, .content{
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}

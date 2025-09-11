@@ -11,6 +11,7 @@ import {
   actualizarProducto,
   desactivarProducto,
   crearProducto,
+  getProductoById,
   getMarcas,
   listarProductosporsucursal,
 } from "../api/InventarioApi";
@@ -570,6 +571,8 @@ export default function Inventario() {
         p.categoria ??
         "",
       subcategoria: p.subcategoria?.nombre ?? p.subcategoria ?? "",
+      descripcion: p.descripcion ?? "", // ← añade esto
+      unidadMedida: p.unidad_medida ?? p.unidadMedida ?? "unidad", // ← y esto
 
       // ids (para selects)
       marcaId: String(marcaId || ""),
@@ -788,28 +791,142 @@ export default function Inventario() {
     setSubcategorias([]);
     setModal({ open: true, mode: "add", draft: emptyDraft() });
   }
+
+  function mapApiProductDetail(res) {
+    const p = res?.data ?? res;
+    const o = Array.isArray(p) ? p[0] : p;
+
+    const id = o?.id_producto ?? o?.id ?? o?.producto_id ?? "";
+    const nombre = o?.nombre ?? o?.producto ?? "";
+    const descripcion = o?.descripcion ?? "";
+    const unidadMedida =
+      (o?.unidad_medida ?? o?.unidadMedida ?? "").toString().toLowerCase() ||
+      "unidad";
+
+    const marcaId =
+      o?.id_marca ??
+      o?.marca_id ??
+      o?.marca?.id_marca_producto ??
+      o?.marca?.id ??
+      "";
+
+    const subcategoriaId =
+      o?.id_subcategoria ??
+      o?.subcategoria_id ??
+      o?.subcategoria?.id_subcategoria ??
+      o?.subcategoria?.id ??
+      "";
+
+    const categoriaId =
+      o?.id_categoria ??
+      o?.categoria_id ??
+      o?.subcategoria?.id_categoria_padre ??
+      o?.subcategoria?.categoria?.id_categoria ??
+      o?.subcategoria?.categoria?.id ??
+      "";
+
+    const precioBase = Number(o?.precio_base ?? o?.precioBase ?? 0);
+    const porcentajeGanancia = Number(
+      o?.porcentaje_ganancia ?? o?.porcentajeGanancia ?? 0
+    );
+
+    const etiquetasRaw = o?.etiquetas ?? [];
+    const etiquetas = Array.isArray(etiquetasRaw)
+      ? etiquetasRaw
+      : String(etiquetasRaw || "")
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean);
+
+    const activo = o?.activo ?? o?.is_active ?? o?.estado ?? true;
+
+    return {
+      id: String(id),
+      producto: nombre,
+      descripcion,
+      marcaId: marcaId ? String(marcaId) : "",
+      categoriaId: categoriaId ? String(categoriaId) : "",
+      subcategoriaId: subcategoriaId ? String(subcategoriaId) : "",
+      unidadMedida,
+      precioBase,
+      porcentajeGanancia,
+      etiquetasText: etiquetas.join(", "),
+      activo: !!activo,
+    };
+  }
+
   async function openEdit(row) {
-    setSelectedCategoria("");
+    // abre el modal inmediatamente con lo mínimo
     setModal({
       open: true,
       mode: "edit",
-      draft: { ...emptyDraft(), ...row, imagePreviews: [], imageFiles: [] },
+      draft: { ...emptyDraft(), id: String(row.id) },
     });
+
     try {
-      const res = await getImagenesProducto(row.id);
-      const urls = (
-        Array.isArray(res?.data) ? res.data : (res?.data ?? res) || []
-      )
+      // pide detalle + imágenes en paralelo
+      const [detailRes, imgsRes] = await Promise.all([
+        getProductoById(row.id),
+        getImagenesProducto(row.id),
+      ]);
+
+      const d = mapApiProductDetail(detailRes);
+      const imgs = ((imgsRes?.data ?? imgsRes) || [])
         .map(mapApiImagen)
         .filter(Boolean);
+
+      // carga subcategorías para la categoría del detalle
+      if (d.categoriaId) {
+        listarSubcategoriaPorCategoria(d.categoriaId);
+      }
+
+      // aplica al draft (todo editable)
       setModal((m) => ({
         ...m,
-        draft: { ...m.draft, imagePreviews: urls, imageFiles: [] },
+        draft: {
+          ...m.draft,
+          ...d, // id, producto, descripcion, marcaId, categoriaId, subcategoriaId, unidadMedida, precioBase, porcentajeGanancia, etiquetasText, activo
+          imagePreviews: imgs,
+          imageFiles: [],
+        },
       }));
     } catch (e) {
-      console.warn("No se pudieron cargar imágenes del producto", e);
+      console.error("No se pudo cargar el producto", e);
+      // fallback con lo que venga en la fila y lo que ya tengas en estado
+      const brandId =
+        row.marcaId || marcas.find((mm) => mm.nombre === row.marca)?.id || "";
+      const catId =
+        row.categoriaId ||
+        categorias.find((cc) => cc.nombre === row.categoria)?.id ||
+        "";
+      const subId =
+        row.subcategoriaId ||
+        subcategorias.find((ss) => ss.nombre === row.subcategoria)?.id ||
+        "";
+
+      if (catId) listarSubcategoriaPorCategoria(catId);
+
+      setModal((m) => ({
+        ...m,
+        draft: {
+          ...m.draft,
+          producto: row.producto || "",
+          descripcion: row.descripcion || "",
+          marcaId: String(brandId || ""),
+          categoriaId: String(catId || ""),
+          subcategoriaId: String(subId || ""),
+          unidadMedida: row.unidadMedida || "unidad",
+          precioBase: Number(row.precioBase ?? 0),
+          porcentajeGanancia: Number(row.porcentajeGanancia ?? 0),
+          etiquetasText: row.etiquetasText || "",
+          activo: row.activo !== false,
+          imagePreviews: [],
+          imageFiles: [],
+        },
+      }));
     }
   }
+
   function closeModal() {
     setModal((m) => ({ ...m, open: false }));
   }
@@ -937,43 +1054,58 @@ export default function Inventario() {
   }
 
   // Abastecer
-  async function openSupply(productToSupply) {
+  async function openSupply(row) {
+    // Resuelve el nombre de la marca a partir de la fila o del catálogo
+    const brandName =
+      row.marca ||
+      marcas.find((m) => String(m.id) === String(row.marcaId))?.nombre ||
+      "";
+
+    // Abre el modal con los datos básicos del producto
     setSupplyModal({
       open: true,
-      product: productToSupply,
+      product: row,
       images: [],
       draft: {
-        id: productToSupply.id,
-        producto: productToSupply.producto,
-        marca: productToSupply.marca,
+        id: row.id,
+        producto: row.producto || "",
+        marca: brandName, // <- nombre de marca a mostrar
         cantidad: "",
         sucursalId: "",
-        etiquetas: [],
       },
     });
-    try {
-      const res = await getImagenesProducto(productToSupply.id);
-      // extrae el array aunque venga anidado
-      const imgsRaw = pickArrayPayload(res, [
-        "imagenes",
-        "images",
-        "fotos",
-        "data",
-        "items",
-        "results",
-      ]);
-      const imgs = (imgsRaw || []).map(mapApiImagen).filter(Boolean);
 
-      // si no hay imágenes del backend, deja vacío (o pon un placeholder si quieres)
+    // (Opcional) Si por alguna razón no se pudo resolver la marca,
+    // pide el detalle al backend y completa el nombre:
+    if (!brandName) {
+      try {
+        const res = await getProductoById(row.id);
+        const d = mapApiProductDetail(res); // el helper que normaliza el detalle
+        setSupplyModal((m) => ({
+          ...m,
+          draft: { ...m.draft, marca: d.marca || "" },
+        }));
+      } catch (e) {
+        console.warn("No se pudo resolver la marca desde el backend", e);
+      }
+    }
+
+    // Imágenes del producto
+    try {
+      const imgRes = await getImagenesProducto(row.id);
+      const imgs = ((imgRes?.data ?? imgRes) || [])
+        .map(mapApiImagen)
+        .filter(Boolean);
       setSupplyModal((m) => ({ ...m, images: imgs }));
     } catch (e) {
       console.warn("No se pudieron cargar imágenes del producto", e);
-      setSupplyModal((m) => ({ ...m, images: [] }));
     }
   }
+
   function closeSupply() {
     setSupplyModal((m) => ({ ...m, open: false }));
   }
+
   async function saveSupply() {
     const { id, cantidad, sucursalId } = supplyModal.draft;
     const prodId = Number(String(id).trim());
@@ -1576,43 +1708,25 @@ export default function Inventario() {
         </div>
 
         <div className="px-5 pb-5 grid grid-cols-2 gap-4">
-          <Input label="ID" value={supplyModal.draft.id} onChange={() => {}} />
+          <Input
+            label="ID"
+            value={supplyModal.draft.id}
+            onChange={() => {}}
+            disabled
+          />
           <Input
             label="Producto"
             value={supplyModal.draft.producto}
             onChange={() => {}}
+            disabled
           />
 
-          <label className="flex flex-col gap-1">
-            <span className="text-sm text-gray-700">Marca</span>
-            <div className="relative">
-              <select
-                className="w-full px-3 py-2 rounded-xl border border-[#d8dadc] focus:outline-none focus:ring-2 appearance-none pr-10"
-                style={{ outlineColor: "#2ca9e3" }}
-                value={supplyModal.draft.marcaId}
-                onChange={(e) =>
-                  setSupplyModal((m) => ({
-                    ...m,
-                    draft: { ...m.draft, marcaId: e.target.value },
-                  }))
-                }
-              >
-                <option value="">Selecciona…</option>
-                {(marcas || []).map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.nombre}
-                  </option>
-                ))}
-              </select>
-              <svg
-                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500"
-                viewBox="0 0 24 24"
-              >
-                <path d="M7 10l5 5 5-5" fill="currentColor" />
-              </svg>
-            </div>
-          </label>
-
+          <Input
+            label="Marca"
+            value={supplyModal.draft.marca}
+            onChange={() => {}}
+            disabled
+          />
           <Input
             type="number"
             label="Cantidad"

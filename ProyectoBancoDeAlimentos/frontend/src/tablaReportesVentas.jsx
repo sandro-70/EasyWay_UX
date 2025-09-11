@@ -244,16 +244,6 @@ function TablaReportesVentas() {
       }}
     >
       <h1 className="inventario-title">Tabla de Reportes De Ventas</h1>
-      <div className="Button-Back-Inventario">
-        <button
-          className="Back-Inventario"
-          onClick={() => {
-            window.location.href = "/";
-          }}
-        >
-          Volver al Inicio 🏠
-        </button>
-      </div>
       <div className="inventario-filter">
         <div className="inventario-actions">
           <button

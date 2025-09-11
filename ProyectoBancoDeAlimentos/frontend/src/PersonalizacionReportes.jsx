@@ -25,15 +25,6 @@ function PersonalizacionReportes() {
     >
       <h2 className="inventario-title">Personalización de Reportes</h2>
 
-      <button
-        className="Button-Back-Inventario"
-        onClick={() => {
-          window.location.href = "/";
-        }}
-      >
-        Inicio 🏠
-      </button>
-
       <div className="secciones">
         {/* Dashboard General */}
         <div>

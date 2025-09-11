@@ -218,6 +218,7 @@ export default function Inventario() {
   const [selectedSucursalName, setSelectedSucursalName] = useState("");
   //const sucMenuRef = useRef(null);
   const [showSucursalPicker, setShowSucursalPicker] = useState(false);
+  const [sucursalFiltro, setSucursalFiltro] = useState("");
 
   // Abastecer
   const [savingSupply, setSavingSupply] = useState(false);
@@ -356,6 +357,39 @@ export default function Inventario() {
 
   // ===== HELPERS =====
 
+  async function cargarProductosPorSucursal(sucursalId) {
+    try {
+      let res;
+      if (sucursalId) {
+        // 🔹 solo esa sucursal
+        console.log("Endpoint usado: /api/producto/sucursal/" + sucursalId);
+        res = await listarProductosporsucursal(sucursalId);
+      } else {
+        // 🔹 todas las sucursales (inventario general)
+        console.log("Endpoint usado: /api/Inventario/");
+        res = await getAllProducts();
+      }
+
+      const productsRaw = pickArrayPayload(res, [
+        "productos",
+        "data",
+        "results",
+        "items",
+      ]);
+
+      // si hay sucursal, mapeamos prefiriendo el stock_en_sucursal
+      const mapped = productsRaw.map((p) =>
+        mapApiProduct(p, { preferSucursalStock: !!sucursalId })
+      );
+
+      setRows(mapped);
+      setSucursalFiltro(String(sucursalId || ""));
+    } catch (err) {
+      console.error("Error cargando productos:", err);
+      alert("No se pudo cargar los productos.");
+    }
+  }
+
   async function loadProductsBySucursal(sucursalId = "") {
     try {
       setLoading(true);
@@ -371,7 +405,7 @@ export default function Inventario() {
         "results",
         "items",
       ]);
-      // 👇 pasa el flag para que el mapper lea el campo de stock correcto
+
       const mapped = raw.map((x) =>
         mapApiProduct(x, { fromSucursal: !useAll })
       );
@@ -394,7 +428,6 @@ export default function Inventario() {
     }
   }
 
-  // Usa este helper para cargar según la sucursal seleccionada
   async function handleSelectSucursal(id) {
     try {
       setSelectedSucursalId(id || "");
@@ -487,64 +520,66 @@ export default function Inventario() {
     return list.find((x) => String(x.id) === String(maybeId))?.nombre;
   }
 
-  // 👇 acepta un flag fromSucursal para mapear el stock correcto
-  function mapApiProduct(p, { fromSucursal = false } = {}) {
-    // Muchos endpoints de sucursal devuelven { producto: {...}, stock: N }
-    const prod = p.producto ?? p.Producto ?? p.item ?? p;
+  function mapApiProduct(p, { preferSucursalStock = false } = {}) {
+    const activo = p.activo ?? p.is_active ?? p.enabled ?? p.estado ?? true;
 
-    const activo =
-      prod.activo ?? prod.is_active ?? prod.enabled ?? prod.estado ?? true;
-
-    // ids para selects
-    const marcaId = prod.id_marca ?? prod.marca?.id ?? prod.marca_id ?? "";
+    // IDs (para selects)
+    const marcaId =
+      p.id_marca ??
+      p.marca?.id_marca_producto ??
+      p.marca?.id ??
+      p.marca_id ??
+      "";
     const categoriaId =
-      prod.id_categoria ?? prod.categoria?.id ?? prod.categoria_id ?? "";
-    const subcatId =
-      prod.id_subcategoria ??
-      prod.subcategoria?.id ??
-      prod.subcategoria_id ??
+      p.id_categoria ??
+      p.categoria?.id_categoria ??
+      p.categoria?.id ??
+      p.categoria_id ??
+      "";
+    const subcategoriaId =
+      p.id_subcategoria ??
+      p.subcategoria?.id_subcategoria ??
+      p.subcategoria?.id ??
+      p.subcategoria_id ??
       "";
 
-    // 🔥 stock: si viene de sucursal, prioriza campos típicos de stock-por-sucursal,
-    // si no, toma los del total del producto.
-    let stock = 0;
-    if (fromSucursal) {
-      stock = Number(
-        // campos típicos en respuestas por sucursal:
-        p.stock_sucursal ??
-          p.stockSucursal ??
-          p.sucursal_stock ??
-          p.cantidad ??
-          p.cantidad_stock ??
-          p.existencias ??
-          p.stock ?? // a veces ya se llama "stock"
-          prod.stock_sucursal ??
-          prod.stockSucursal ??
-          0
-      );
-    } else {
-      stock = Number(
-        prod.stock_total ?? prod.stock ?? prod.existencia ?? prod.stockKg ?? 0
-      );
-    }
+    // STOCK: si viene de sucursal, usa el campo expuesto por el controller
+    // (stock_en_sucursal) y si no, usa los totales.
+    const stockSucursal =
+      p.stock_en_sucursal ??
+      p.stockSucursal ??
+      p.stock_sucursal ??
+      p.stock_suc ??
+      null;
+
+    const stockTotal = p.stock_total ?? p.stock ?? p.existencia ?? null;
+
+    const stock = preferSucursalStock
+      ? stockSucursal ?? stockTotal ?? 0
+      : stockTotal ?? stockSucursal ?? 0;
 
     return {
-      id: String(prod.id ?? prod.id_producto ?? prod.producto_id ?? ""),
-      producto: prod.producto ?? prod.nombre ?? "",
+      id: String(p.id ?? p.id_producto ?? p.producto_id ?? ""),
+      producto: p.producto ?? p.nombre ?? "",
 
-      // nombres para la tabla
-      marca: prod.marca?.nombre ?? prod.marca ?? "",
-      categoria: prod.categoria?.nombre ?? prod.categoria ?? "",
-      subcategoria: prod.subcategoria?.nombre ?? prod.subcategoria ?? "",
+      // nombres (para la tabla)
+      marca: p.marca?.nombre ?? p.marca ?? "",
+      categoria:
+        p.categoria?.nombre ??
+        p.categoria?.nombre_categoria ??
+        p.categoria ??
+        "",
+      subcategoria: p.subcategoria?.nombre ?? p.subcategoria ?? "",
 
-      // ids para selects
+      // ids (para selects)
       marcaId: String(marcaId || ""),
       categoriaId: String(categoriaId || ""),
-      subcategoriaId: String(subcatId || ""),
+      subcategoriaId: String(subcategoriaId || ""),
 
-      stockKg: stock,
-      precioBase: Number(prod.precioBase ?? prod.precio_base ?? 0),
-      precioVenta: Number(prod.precioVenta ?? prod.precio_venta ?? 0),
+      stockKg: Number(stock || 0),
+      precioBase: Number(p.precioBase ?? p.precio_base ?? 0),
+      // tu controller ya envía 'precio_venta' calculado
+      precioVenta: Number(p.precioVenta ?? p.precio_venta ?? 0),
       activo,
     };
   }
@@ -747,6 +782,7 @@ export default function Inventario() {
   }
 
   // ===== CRUD / Acciones =====
+
   function openAdd() {
     setSelectedCategoria("");
     setSubcategorias([]);
@@ -974,7 +1010,19 @@ export default function Inventario() {
 
   /* ===================== UI ===================== */
   return (
-    <div className="w-full px-4 bg-[#f9fafb]">
+    <div
+      className="w-screen px-4 bg-[#f9fafb]"
+      style={{
+        position: "absolute",
+        top: "165px",
+        left: 0,
+        right: 0,
+        width: "100%",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+      }}
+    >
       {/* Sidebar */}
 
       <div className="mx-auto py-6 max-w-[1100px]">
@@ -1484,215 +1532,6 @@ export default function Inventario() {
             />
             <span className="text-sm text-gray-700">Activo</span>
           </label>
-
-          {/* ===== Descuentos (solo en EDITAR) ===== */}
-          {/* ==================== DESCUENTOS / ESCALONADOS ==================== */}
-          {/* Toggle (mutuamente excluyentes) */}
-          <div className="col-span-2 border-t mt-4 pt-4">
-            <div className="flex items-center gap-10">
-              <label className="inline-flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  className="w-5 h-5 accent-[#2b6daf]"
-                  checked={!!modal.draft.descuentoGeneral}
-                  onChange={(e) =>
-                    setModal((m) => ({
-                      ...m,
-                      draft: {
-                        ...m.draft,
-                        descuentoGeneral: e.target.checked,
-                        // si activo descuento general, apago escalonados
-                        preciosEscalonados: e.target.checked
-                          ? false
-                          : m.draft.preciosEscalonados,
-                      },
-                    }))
-                  }
-                />
-                <span className="text-sm text-gray-700">Descuento general</span>
-              </label>
-
-              <label className="inline-flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  className="w-5 h-5 accent-[#2b6daf]"
-                  checked={!!modal.draft.preciosEscalonados}
-                  onChange={(e) =>
-                    setModal((m) => ({
-                      ...m,
-                      draft: {
-                        ...m.draft,
-                        preciosEscalonados: e.target.checked,
-                        // si activo escalonados, apago descuento general
-                        descuentoGeneral: e.target.checked
-                          ? false
-                          : m.draft.descuentoGeneral,
-                      },
-                    }))
-                  }
-                />
-                <span className="text-sm text-gray-700">
-                  Precios escalonados
-                </span>
-              </label>
-            </div>
-          </div>
-
-          {/* --------- Sección: Descuento general --------- */}
-          {modal.draft.descuentoGeneral && (
-            <div className="col-span-2 mt-4">
-              <div className="grid grid-cols-2 gap-4">
-                {/* Tipo de descuento */}
-                <label className="flex flex-col gap-1">
-                  <span className="text-sm text-gray-700">
-                    Tipo de descuento
-                  </span>
-                  <div className="relative">
-                    <select
-                      className="w-full px-3 py-2 rounded-xl border border-[#d8dadc] focus:outline-none focus:ring-2 appearance-none pr-10"
-                      style={{ outlineColor: "#2ca9e3" }}
-                      value={modal.draft.descuentoTipo}
-                      onChange={(e) =>
-                        setModal((m) => ({
-                          ...m,
-                          draft: { ...m.draft, descuentoTipo: e.target.value },
-                        }))
-                      }
-                    >
-                      <option value="">Selecciona...</option>
-                      {DISCOUNT_TYPES.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.label}
-                        </option>
-                      ))}
-                    </select>
-                    <svg
-                      className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M7 10l5 5 5-5" fill="currentColor" />
-                    </svg>
-                  </div>
-                </label>
-
-                {/* Valor */}
-                <label className="flex flex-col gap-1">
-                  <span className="text-sm text-gray-700">Valor</span>
-                  <input
-                    type="number"
-                    className="px-3 py-2 rounded-xl border border-[#d8dadc] focus:outline-none focus:ring-2"
-                    style={{ outlineColor: "#2ca9e3" }}
-                    value={modal.draft.descuentoValor}
-                    onChange={(e) =>
-                      setModal((m) => ({
-                        ...m,
-                        draft: { ...m.draft, descuentoValor: e.target.value },
-                      }))
-                    }
-                    placeholder="Ej: 10 (o 150)"
-                  />
-                </label>
-
-                {/* Válido desde */}
-                <label className="flex flex-col gap-1">
-                  <span className="text-sm text-gray-700">Válido desde</span>
-                  <input
-                    type="date"
-                    className="px-3 py-2 rounded-xl border border-[#d8dadc] focus:outline-none focus:ring-2"
-                    style={{ outlineColor: "#2ca9e3" }}
-                    value={modal.draft.descuentoDesde}
-                    onChange={(e) =>
-                      setModal((m) => ({
-                        ...m,
-                        draft: { ...m.draft, descuentoDesde: e.target.value },
-                      }))
-                    }
-                  />
-                </label>
-
-                {/* Hasta */}
-                <label className="flex flex-col gap-1">
-                  <span className="text-sm text-gray-700">Hasta</span>
-                  <input
-                    type="date"
-                    className="px-3 py-2 rounded-xl border border-[#d8dadc] focus:outline-none focus:ring-2"
-                    style={{ outlineColor: "#2ca9e3" }}
-                    value={modal.draft.descuentoHasta}
-                    onChange={(e) =>
-                      setModal((m) => ({
-                        ...m,
-                        draft: { ...m.draft, descuentoHasta: e.target.value },
-                      }))
-                    }
-                  />
-                </label>
-              </div>
-            </div>
-          )}
-
-          {/* --------- Sección: Precios escalonados --------- */}
-          {modal.draft.preciosEscalonados && (
-            <div className="col-span-2 mt-4">
-              {/* cabecera */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-700">Cantidad</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-700">Precio</span>
-                </div>
-              </div>
-
-              {/* filas */}
-              <div className="mt-2 space-y-2">
-                {(modal.draft.escalones || []).map((row, i) => (
-                  <div key={i} className="grid grid-cols-2 gap-4">
-                    <input
-                      type="number"
-                      className="px-3 py-2 rounded-xl border border-[#d8dadc] focus:outline-none focus:ring-2"
-                      style={{ outlineColor: "#2ca9e3" }}
-                      placeholder="Ej: 3"
-                      value={row.cantidad}
-                      onChange={(e) =>
-                        updateEscalon(i, "cantidad", e.target.value)
-                      }
-                    />
-                    <div className="flex gap-2">
-                      <input
-                        type="number"
-                        className="flex-1 px-3 py-2 rounded-xl border border-[#d8dadc] focus:outline-none focus:ring-2"
-                        style={{ outlineColor: "#2ca9e3" }}
-                        placeholder="Ej: 100"
-                        value={row.precio}
-                        onChange={(e) =>
-                          updateEscalon(i, "precio", e.target.value)
-                        }
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeEscalon(i)}
-                        className="px-3 rounded-xl border border-[#d8dadc] hover:bg-red-50"
-                        title="Eliminar fila"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* botón agregar */}
-              <div className="mt-3">
-                <button
-                  type="button"
-                  onClick={addEscalon}
-                  className="px-3 py-2 rounded-xl border border-[#d8dadc] hover:bg-gray-50 text-sm"
-                >
-                  + Agregar
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
         <div className="p-5 pt-0 flex items-center justify-end gap-2 sticky bottom-0 bg-white">
@@ -1750,11 +1589,11 @@ export default function Inventario() {
               <select
                 className="w-full px-3 py-2 rounded-xl border border-[#d8dadc] focus:outline-none focus:ring-2 appearance-none pr-10"
                 style={{ outlineColor: "#2ca9e3" }}
-                value={supplyModal.draft.marca}
+                value={supplyModal.draft.marcaId}
                 onChange={(e) =>
                   setSupplyModal((m) => ({
                     ...m,
-                    draft: { ...m.draft, marca: e.target.value },
+                    draft: { ...m.draft, marcaId: e.target.value },
                   }))
                 }
               >

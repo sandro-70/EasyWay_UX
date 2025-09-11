@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import PerfilSidebar from "./components/perfilSidebar";
 import { useContext } from "react";
 import { UserContext } from "./components/userContext";
+import { createLog, getLogsUsuario } from "./api/Usuario.Route"; // usa tu ruta real
 
 import {
   InformacionUser,
@@ -91,11 +92,13 @@ export default function MiPerfil() {
   const { user, setUser } = useContext(UserContext);
 
   // NUEVOS STATES PARA MODALES 2FA
+  const [showHistorial, setShowHistorial] = useState(false);
   const [showTwoFactorModal, setShowTwoFactorModal] = useState(false);
   const [showTwoFactorCodeModal, setShowTwoFactorCodeModal] = useState(false);
   const [twoFactorCode, setTwoFactorCode] = useState("");
-  const [showHistorial, setShowHistorial] = useState(false);
-
+  const [loadingHistorial, setLoadingHistorial] = useState(false);
+  const [errorHistorial, setErrorHistorial] = useState("");
+  // tu estado historial puede quedarse (si quieres ver placeholders) — lo dejé tal cual:
   const [historial, setHistorial] = useState([
     { fecha: "14 de enero", hora: "10:45" },
     { fecha: "12 de enero", hora: "14:08" },
@@ -122,6 +125,189 @@ export default function MiPerfil() {
     }
   };
 
+  // Helper: intenta parsear muchos formatos comunes y devuelve un Date o null
+  const tryParseDate = (value) => {
+    if (!value && value !== 0) return null;
+
+    // Si ya es Date
+    if (value instanceof Date && !isNaN(value)) return value;
+
+    // Números => epoch (segundos o ms)
+    if (typeof value === "number") {
+      const s = String(value);
+      // 10 dígitos -> segundos
+      if (s.length === 10) return new Date(value * 1000);
+      // 13 dígitos -> ms
+      if (s.length === 13) return new Date(value);
+      // fallback
+      const byNum = new Date(value);
+      return isNaN(byNum) ? null : byNum;
+    }
+
+    // Cadenas
+    if (typeof value === "string") {
+      let s = value.trim();
+
+      // /Date(1600000000000)/  -> extraer número
+      const m = s.match(/\/Date\((\d+)\)\//);
+      if (m) {
+        const ms = Number(m[1]);
+        if (!isNaN(ms)) return new Date(ms);
+      }
+
+      // Si parece un número en string
+      if (/^\d{10,13}$/.test(s)) {
+        const n = Number(s);
+        return tryParseDate(n);
+      }
+
+      // Reemplazar espacio ' ' entre fecha y hora por 'T' (u otras transformaciones)
+      const withT = s.replace(" ", "T");
+
+      // Intento 1: Date con posible T (ISO)
+      const d1 = new Date(withT);
+      if (!isNaN(d1)) return d1;
+
+      // Intento 2: añadir Z (UTC)
+      const d2 = new Date(withT + "Z");
+      if (!isNaN(d2)) return d2;
+
+      // Intento 3: Date.parse directo
+      const p = Date.parse(s);
+      if (!isNaN(p)) return new Date(p);
+
+      // Intento 4: regex formato "YYYY-MM-DD HH:mm:ss" u "YYYY/MM/DD HH:mm"
+      const reg = s.match(
+        /(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?/
+      );
+      if (reg) {
+        const [_, Y, M, D, hh, mm, ss] = reg;
+        // Usamos Date UTC para evitar problemas con interpretación local; si quieres local quita Date.UTC
+        return new Date(
+          Number(Y),
+          Number(M) - 1,
+          Number(D),
+          Number(hh || 0),
+          Number(mm || 0),
+          Number(ss || 0)
+        );
+      }
+
+      // Si llega hasta aquí no se pudo parsear
+      return null;
+    }
+
+    // no soportado
+    return null;
+  };
+
+  // Formatea la fecha a "14 de enero" y hora "10:45"
+  const formatToFechaHora = (dateObj) => {
+    if (!dateObj || !(dateObj instanceof Date) || isNaN(dateObj)) return null;
+    const months = [
+      "enero",
+      "febrero",
+      "marzo",
+      "abril",
+      "mayo",
+      "junio",
+      "julio",
+      "agosto",
+      "septiembre",
+      "octubre",
+      "noviembre",
+      "diciembre",
+    ];
+    const day = String(dateObj.getDate()).padStart(2, "0");
+    const month = months[dateObj.getMonth()];
+    const hh = String(dateObj.getHours()).padStart(2, "0");
+    const mm = String(dateObj.getMinutes()).padStart(2, "0");
+    return {
+      fecha: `${day} de ${month}`,
+      hora: `${hh}:${mm}`,
+    };
+  };
+
+  // fetchHistorial robusto
+  const fetchHistorial = async () => {
+    const userId =
+      user?.id_usuario ?? user?.id ?? user?.usuario_id ?? user?.userId ?? null;
+    if (!userId) {
+      setErrorHistorial("Usuario no disponible para cargar historial");
+      return;
+    }
+
+    setLoadingHistorial(true);
+    setErrorHistorial("");
+    try {
+      const res = await getLogsUsuario(userId);
+      // Ver qué devuelve el backend (muy importante la primera vez)
+      console.log("getLogsUsuario raw:", res?.data);
+
+      const rawList = Array.isArray(res.data)
+        ? res.data
+        : res.data?.rows ?? res.data?.data ?? [];
+      // Si rawList sigue vacío y res.data no es array, intenta forzar un array con res.data
+      const items = Array.isArray(rawList)
+        ? rawList
+        : res.data
+        ? [res.data]
+        : [];
+
+      const logs = items.map((item) => {
+        // intenta varios campos habituales
+        const candidates = [
+          item.fecha_conexion,
+          item.created_at,
+          item.fecha_hora,
+          item.timestamp,
+          item.date,
+          item.datetime,
+          item.createdAt,
+          item.fecha,
+          item.log_date,
+          item.time,
+          item.hora,
+          item.created_at_iso,
+        ];
+
+        // buscar primer candidato que no sea null/undefined
+        let parsedDate = null;
+        for (const cand of candidates) {
+          if (
+            cand !== undefined &&
+            cand !== null &&
+            String(cand).trim() !== ""
+          ) {
+            parsedDate = tryParseDate(cand);
+            if (parsedDate) break;
+          }
+        }
+
+        // Si no se pudo parsear con candidatos, intenta parsear todo el objeto (por si el backend devolvió solo un string)
+        if (!parsedDate) {
+          // hay casos donde la API devuelve solo un string (res.data = "2025-09-10T03:45:12")
+          if (typeof item === "string") parsedDate = tryParseDate(item);
+        }
+
+        if (!parsedDate) {
+          console.warn("No se pudo parsear fecha del log:", item);
+          return { fecha: "Fecha desconocida", hora: "", raw: item };
+        }
+
+        const fh = formatToFechaHora(parsedDate);
+        return { ...fh, raw: item };
+      });
+
+      setHistorial(logs);
+    } catch (err) {
+      console.error("Error cargando historial:", err);
+      setErrorHistorial("No se pudo cargar el historial de accesos.");
+    } finally {
+      setLoadingHistorial(false);
+    }
+  };
+
   // carga la información del usuario autenticado
   useEffect(() => {
     let mounted = true;
@@ -136,6 +322,23 @@ export default function MiPerfil() {
           setDatosValidos(false);
           setCargando(false);
           return;
+        }
+
+        try {
+          const userId =
+            data.id_usuario ??
+            data.id ??
+            data.usuario_id ??
+            data.userId ??
+            null;
+          if (userId) {
+            // no bloqueamos el flujo principal si falla; sólo intentamos registrar
+            createLog(userId).catch((e) =>
+              console.warn("No se pudo crear log de acceso:", e)
+            );
+          }
+        } catch (e) {
+          console.warn("Error intentando crear log:", e);
         }
 
         setTelefono(
@@ -555,8 +758,11 @@ export default function MiPerfil() {
           {/* ---------------- MODAL HISTORIAL DE ACCESOS ---------------- */}
           {showHistorial && (
             <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-0 relative">
-                <div className="bg-[#2b6daf] text-white text-center py-2">
+              <div
+                className="bg-white rounded-lg shadow-lg w-full max-w-xl p-0 relative "
+                style={{ marginTop: "80px" }}
+              >
+                <div className="bg-[#2b6daf] text-white text-center py-3 rounded-t-lg">
                   <h2 className="font-semibold text-lg">
                     Historial de accesos
                   </h2>
@@ -567,26 +773,63 @@ export default function MiPerfil() {
                 >
                   ✖
                 </button>
+
                 <div className="p-6">
-                  <ul className="divide-y divide-gray-200 mb-4">
-                    {historial.map((item, idx) => (
-                      <li
-                        key={idx}
-                        className="flex justify-between items-center py-2"
-                      >
-                        <span className="text-gray-700">
-                          {item.fecha}, {item.hora}
-                        </span>
-                        <span className="text-[#2b6daf]">{">"}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <button
-                    className="w-full bg-[#2b6daf] hover:bg-blue-700 text-white py-2 rounded-md"
-                    onClick={() => console.log("Ver detalle historial")}
+                  {/* Card estilo similar a la imagen */}
+                  <div
+                    className="historial-card mx-auto"
+                    style={{
+                      maxWidth: "520px",
+                      borderRadius: 8,
+                      border: "1px solid rgba(0,0,0,0.06)",
+                    }}
                   >
-                    Ver detalle
-                  </button>
+                    {/* header ya mostrado arriba — mantenemos espacio si quieres */}
+                    <div style={{ padding: "8px 16px" }}>
+                      {loadingHistorial ? (
+                        <p className="text-center text-gray-500">
+                          Cargando historial...
+                        </p>
+                      ) : errorHistorial ? (
+                        <p className="text-center text-red-500">
+                          {errorHistorial}
+                        </p>
+                      ) : (
+                        <div
+                          className="historial-list"
+                          style={{
+                            maxHeight: 260,
+                            overflowY: "auto",
+                            paddingRight: 8,
+                          }}
+                        >
+                          <ul
+                            style={{ listStyle: "none", margin: 0, padding: 0 }}
+                          >
+                            {historial.length > 0 ? (
+                              historial.map((item, idx) => (
+                                <li
+                                  key={idx}
+                                  className="flex justify-between items-center py-2"
+                                >
+                                  <span className="text-gray-700">
+                                    {item.fecha}
+                                    {item.hora ? `, ${item.hora}` : ""}
+                                  </span>
+                                </li>
+                              ))
+                            ) : (
+                              <li className="flex justify-center text-gray-500 py-2">
+                                No hay registros de acceso.
+                              </li>
+                            )}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ padding: "16px", textAlign: "center" }}></div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -628,7 +871,11 @@ export default function MiPerfil() {
           <Link
             to="#"
             className="new-link"
-            onClick={() => setShowHistorial(true)}
+            onClick={(e) => {
+              e.preventDefault();
+              fetchHistorial();
+              setShowHistorial(true);
+            }}
           >
             Historial de Acceso
           </Link>

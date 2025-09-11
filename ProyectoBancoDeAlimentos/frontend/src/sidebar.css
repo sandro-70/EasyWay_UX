@@ -11,3 +11,6 @@
 .perfil {
   @apply block bg-[#2ca9e3] pl-6 py-2 flex flex-row text-[18px]  items-center gap-6;
 }
+.btn_sidebar {
+  @apply flex  bg-[#2b6daf]  items-center gap-2 fixed z-20 mt-5 hover:bg-[#2ca9e3] rounded-md transition-all duration-300;
+}

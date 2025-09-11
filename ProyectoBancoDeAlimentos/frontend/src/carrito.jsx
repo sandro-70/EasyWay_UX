@@ -99,7 +99,7 @@ function Carrito() {
 
       // Check if any coupon already exists in storedCoupons
       const exists = allCoupons.some(
-        (c) => c.id === cupon // or compare by code: c.code === storedCoupon?.code
+        (c) => c.tipo === cupon // or compare by code: c.code === storedCoupon?.code
       );
       //Muestra el apartado del descuento
       if (exists) {
@@ -429,7 +429,10 @@ function Carrito() {
                       className="input-field rounded-xl bg-gray-100 border-black border-2 pl-2"
                       onChange={(e) => setCupon(e.target.value)}
                     ></input>
-                    <button className="bg-[#114C87] rounded-md py-1 text-white px-12 text-xl">
+                    <button
+                      type="submit"
+                      className="bg-[#114C87] rounded-md py-1 text-white px-12 text-xl"
+                    >
                       Aplicar
                     </button>
                   </form>

@@ -3,6 +3,7 @@ import React, { useMemo, useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import Sidebar from "../sidebar";
 import axiosInstance from "../api/axiosInstance";
+
 import {
   getAllProducts,
   getAllSucursales,
@@ -658,22 +659,7 @@ export default function Inventario() {
   }
 
   function mapApiImagen(i) {
-    if (!i) return "";
-    if (typeof i === "string") return toAbsoluteUrl(i.trim());
-
-    const raw =
-      i.url_imagen || // 👈 ESTE es el que devuelve tu API
-      i.imagen_url ||
-      i.image_url ||
-      i.url ||
-      i.src ||
-      i.path ||
-      i.ruta ||
-      i.link ||
-      i.ubicacion ||
-      "";
-
-    return toAbsoluteUrl(String(raw).trim());
+    return i?.url_imagen || i?.url || i?.imagen_url || i?.src || i?.path || "";
   }
 
   function toggleSort(key) {
@@ -932,6 +918,7 @@ export default function Inventario() {
   }
   async function saveModal() {
     const d = modal.draft;
+    const imageFiles = Array.isArray(d.imageFiles) ? d.imageFiles : [];
 
     // Validaciones mínimas
     if (!d.producto?.trim())
@@ -961,7 +948,8 @@ export default function Inventario() {
           Number(d.marcaId ?? d.marca ?? 0),
           etiquetas,
           d.unidadMedida ?? "unidad",
-          !!d.activo
+          !!d.activo,
+          imageFiles
         );
 
         // --- 2) Actualización optimista en la tabla (sin volver a pedir) ---
@@ -1004,7 +992,8 @@ export default function Inventario() {
           Number(d.porcentajeGanancia ?? 0),
           Number(d.marcaId ?? d.marca ?? 0),
           etiquetas,
-          d.unidadMedida ?? "unidad"
+          d.unidadMedida ?? "unidad",
+          imageFiles
         );
 
         // Recargar productos después de crear

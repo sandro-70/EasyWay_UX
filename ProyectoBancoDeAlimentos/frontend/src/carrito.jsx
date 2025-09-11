@@ -5,8 +5,13 @@ import { useRef } from "react";
 import arrowL from "./images/arrowL.png";
 import arrowR from "./images/arrowR.png";
 import React from "react";
-import { useParams } from "react-router-dom";
-import { SumarItem, ViewCar, eliminarItem } from "./api/CarritoApi";
+import { useParams, useNavigate } from "react-router-dom";
+import {
+  SumarItem,
+  ViewCar,
+  eliminarItem,
+  AddNewCarrito,
+} from "./api/CarritoApi";
 import { GetCupones } from "./api/CuponesApi";
 import { getProductosRecomendados } from "./api/InventarioApi";
 import { crearPedido } from "./api/PedidoApi";
@@ -15,11 +20,9 @@ import { useCart } from "../src/utils/CartContext";
 
 //Agregar Parametro que diga cuantos productos en carrito?
 function Carrito() {
-
   //Objeto de producto
 
   const { incrementCart, decrementCart } = useCart();
-
 
   //Productos de pagina de inicio //necesita cantidad, imagen
   const [detalles, setDetalles] = useState([]);
@@ -49,6 +52,7 @@ function Carrito() {
   const [showProducts, setShowProd] = useState(true);
   const [total, setTotal] = useState(0);
   const { user } = useContext(UserContext);
+  const navigate = useNavigate();
   console.log("Header user carrito", user);
   const obtenerTotal = () => {
     return (total * 1.15 * descCupon).toFixed(2);
@@ -160,8 +164,103 @@ function Carrito() {
       console.error("Error eliminando item:", err);
     }
   };
+
+  const handleAgregar = async (id_producto) => {
+    if (!id_producto) {
+      alert("ID de producto no válido");
+      return;
+    }
+
+    try {
+      console.log("Agregando producto:", id_producto);
+
+      // Obtener carrito actual
+      const carritoActual = await ViewCar();
+      const carritoDetalles = carritoActual.data.carrito_detalles ?? [];
+
+      // Buscar si el producto ya existe
+      const productoExistente = carritoDetalles.find(
+        (item) => item.producto.id_producto === id_producto
+      );
+
+      if (productoExistente) {
+        const cantidadActual = productoExistente.cantidad_unidad_medida || 0;
+        const nuevaCantidad = cantidadActual + 1;
+
+        console.log(
+          "Actualizando de " + cantidadActual + " a " + nuevaCantidad
+        );
+        alert("Actualizando a " + nuevaCantidad);
+
+        // Actualizar en backend
+        await SumarItem(id_producto, nuevaCantidad);
+
+        // Actualizar estado local del carrito (si lo tienes)
+        setDetalles((prev) => {
+          if (Array.isArray(prev)) {
+            return prev.map((item) =>
+              item.producto.id_producto === id_producto
+                ? {
+                    ...item,
+                    cantidad_unidad_medida: nuevaCantidad,
+                    subtotal_detalle: item.producto.precio_base * nuevaCantidad,
+                  }
+                : item
+            );
+          }
+          return prev;
+        });
+        incrementCart(1);
+      } else {
+        console.log("Producto nuevo, agregando al carrito");
+
+        // Agregar nuevo producto
+        await AddNewCarrito(id_producto, 1);
+
+        // Recargar carrito completo para obtener el nuevo producto
+        const carritoActualizado = await ViewCar();
+        const nuevosDetalles = carritoActualizado.data.carrito_detalles ?? [];
+        setDetalles(nuevosDetalles);
+
+        incrementCart(1);
+        alert("Producto agregado al carrito");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+
+      // Si el carrito está vacío, intentar crear uno nuevo
+      if (error?.response?.status === 404) {
+        try {
+          await AddNewCarrito(id_producto, 1);
+
+          // Recargar carrito
+          const carritoNuevo = await ViewCar();
+          const nuevosDetalles = carritoNuevo.data.carrito_detalles ?? [];
+          setDetalles(nuevosDetalles);
+
+          alert("Producto agregado al carrito");
+        } catch (err) {
+          console.error("Error creando carrito:", err);
+          alert("No se pudo agregar el producto al carrito");
+        }
+      } else {
+        const errorMessage =
+          error?.response?.data?.msg ||
+          error?.response?.data?.message ||
+          error?.message ||
+          "No se pudo procesar el carrito";
+
+        alert(errorMessage);
+      }
+    }
+  };
   useEffect(() => {
     setTotal(sumaCarrito());
+    if (detalles.length === 0) {
+      setShowProd(false);
+    } else {
+      setShowProd(true);
+    }
   }, [detalles]);
   useEffect(() => {
     const productos = async () => {
@@ -211,7 +310,12 @@ function Carrito() {
 
                   <div className="mx-4 flex flex-col gap-y-6 font-medium">
                     <p className="text-[24px] mt-8">Tu carrito esta vacio</p>
-                    <button className="bg-[#2B6DAF] text-[28px] text-white rounded-[10px] p-3 px-6">
+                    <button
+                      onClick={() => {
+                        navigate("/");
+                      }}
+                      className="bg-[#2B6DAF] text-[28px] text-white rounded-[10px] p-3 px-6"
+                    >
                       Explora articulos
                     </button>
                   </div>
@@ -267,7 +371,7 @@ function Carrito() {
                                 value={p.cantidad_unidad_medida}
                               ></input>
                               <button
-                                onClick={() =>{
+                                onClick={() => {
                                   updateQuantity(
                                     p.id_carrito_detalle,
                                     p.producto.id_producto,
@@ -289,7 +393,7 @@ function Carrito() {
                             </div>
                           </div>
                           <button
-                            onClick={() =>{
+                            onClick={() => {
                               eliminarProducto(
                                 p.id_carrito_detalle,
                                 p.producto.id_producto
@@ -478,7 +582,10 @@ function Carrito() {
                       backgroundColor:
                         hoveredProductDest === i ? "#2b6daf" : "#F0833E",
                     }}
-                    onClick={()=>incrementCart()}
+                    onClick={() => {
+                      incrementCart();
+                      handleAgregar(p.id_producto, 1);
+                    }}
                   >
                     Agregar
                   </button>

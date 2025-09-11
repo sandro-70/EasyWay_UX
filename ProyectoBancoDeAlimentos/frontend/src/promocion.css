@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.header {
+  @apply font-medium text-[18px] text-left;
+}
+.btnSubCat {
+  @apply p-1 text-xl text-white rounded-md;
+}

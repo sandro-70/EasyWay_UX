@@ -43,6 +43,7 @@ import SistemaValoracion from "./SistemaValoracion.jsx";
 import PersonalizacionReportes from "./PersonalizacionReportes.jsx";
 import DescuentosAplicados from "./descuentos_aplicados.jsx";
 import Categoria from "./categoria.jsx";
+import Promocion from "./promocion.jsx";
 import HistorialCompras from "./HistorialCompras.jsx";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ReportesPedidos from "./pages/ReportesPedidos.jsx"; // ajusta la ruta según donde lo ubiques
@@ -80,6 +81,7 @@ function App() {
               element={<CompararProducto />}
             />
             <Route path="/categoria/:id" element={<Categoria />} />
+            <Route path="/promocion/:id" element={<Promocion />} />
 
             {/* ---------- CON SIDEBAR + PROTEGIDAS ---------- */}
             <Route

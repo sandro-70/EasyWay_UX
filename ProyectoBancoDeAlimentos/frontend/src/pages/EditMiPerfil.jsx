@@ -202,7 +202,7 @@ function CambioContrasenaModal({
 }
 
 export default function EditarPerfilAdmin() {
-  const { user } = useContext(UserContext);
+  const { user, setUser } = useContext(UserContext);
 
   // States de datos del perfil
   const [genero, setGenero] = useState("masculino");
@@ -234,7 +234,6 @@ export default function EditarPerfilAdmin() {
   const [fotoUrl, setFotoUrl] = useState("");
   const [fotoBase64, setFotoBase64] = useState(null);
   const [editMode, setEditMode] = useState(true);
-
 
   const id_usuario = localStorage.getItem("id_usuario") || user?.id;
 

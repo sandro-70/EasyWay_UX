@@ -1,5 +1,5 @@
 // src/components/Headerr.jsx
-import React, { useState, useContext } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import CartIcon from "../images/CartIcon.png";
 import FilterIcon from "../images/FilterIcon.png";
@@ -12,19 +12,47 @@ import reportesPer from "../images/reportesPer.png";
 import checkout from "../images/checkout.png";
 import soporte from "../images/soporte.png";
 import idioma from "../images/idioma.png";
-import { UserContext } from "./userContext";
+import { ViewCar } from "../api/CarritoApi";
+import { UserContext } from "./userContext"; // <- ruta correcta
 
 const Headerr = ({ isAdminPage }) => {
   const [reportesMenu, setReportesMenu] = useState(false);
-  const [logMenu, setLogOpen] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
 
   const navigate = useNavigate();
-  const { user, userRole, loading, isAuthenticated, isAdmin, logout } =
-    useContext(UserContext);
+  const [logMenu, setLogOpen] = useState(false);
+  const { user, userRole, loading, isAuthenticated, isAdmin, logout } = useContext(UserContext);
 
-  const isCliente = isAuthenticated && !isAdmin;
+  useEffect(() => {
+    const fetchCartCount = async () => {
+      if (!isAuthenticated) return setCartCount(0);
+
+      try {
+        const response = await ViewCar();
+        const cart = response.data;
+
+        if (!cart || !cart.carrito_detalles) {
+          setCartCount(0);
+          return;
+        }
+
+        // sumar todas las cantidades de los items
+        const total = cart.carrito_detalles.reduce(
+          (acc, item) => acc + item.cantidad_unidad_medida,
+          0
+        );
+        setCartCount(total);
+      } catch (err) {
+        console.error("Error obteniendo carrito:", err);
+        setCartCount(0);
+      }
+    };
 
   if (loading) return null;
+  console.log("Header user", user); // 🔹 aquí
+
+    fetchCartCount();
+  }, [isAuthenticated]); // se ejecuta al montar y cuando cambia la autenticación
 
   const handleLogout = () => {
     logout();
@@ -33,11 +61,9 @@ const Headerr = ({ isAdminPage }) => {
     navigate("/login");
   };
 
-  const fotoUrl = user?.foto_perfil_url ? user.foto_perfil_url : UserIcon;
-
+  const fotoUrl = user?.foto_perfil_url ? user.foto_perfil_url : UserIcon; // icono por defecto
   return (
     <div style={{ ...styles.fixedShell, boxShadow: "none" }}>
-      {/* Barra superior */}
       <div style={styles.topBar}>
         <img
           src={logo}
@@ -46,12 +72,12 @@ const Headerr = ({ isAdminPage }) => {
           onClick={() => {
             if (isAuthenticated) {
               if (isAdmin) {
-                navigate("/dashboard");
+                navigate("/dashboard"); // 🔹 ruta del admin
               } else {
-                navigate("/");
+                navigate("/"); // 🔹 ruta del cliente
               }
             } else {
-              navigate("/");
+              navigate("/"); // 🔹 por si no está logueado
             }
           }}
         />
@@ -70,17 +96,55 @@ const Headerr = ({ isAdminPage }) => {
             </button>
           </div>
 
-          {isCliente && (
+          {/* carrito habilitado sólo para clientes autenticados (ejemplo) */}
+          {isAuthenticated && !isAdmin && (
             <button
-              style={styles.SmallWrapper}
+              style={{
+                position: "relative",
+                border: "none",
+                background: "white",
+                borderRadius: "50%",
+                width: 50,
+                height: 50,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+                cursor: "pointer",
+              }}
               onClick={() => navigate("/carrito")}
             >
-              <img src={CartIcon} alt="Carrito" style={styles.icon} />
+              <img
+                src={CartIcon}
+                alt="Carrito"
+                style={{ width: 28, height: 28, objectFit: "contain" }}
+              />
+              {cartCount > 0 && (
+                <span
+                  style={{
+                    position: "absolute",
+                    top: -1,
+                    right: -6,
+                    minWidth: 24,
+                    height: 24,
+                    backgroundColor: "red",
+                    color: "white",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "11px",
+                    fontWeight: "bold",
+                    padding: "0 5px",
+                  }}
+                >
+                  {cartCount}
+                </span>
+              )}
             </button>
           )}
         </div>
 
-        {/* Usuario */}
         <div style={styles.user}>
           <button
             style={styles.SmallWrapperUser}
@@ -89,17 +153,15 @@ const Headerr = ({ isAdminPage }) => {
             <img src={fotoUrl} alt="User" style={styles.iconUser} />
           </button>
           <span>
-            {isAuthenticated
-              ? isAdmin
-                ? "Bienvenido, Administrador"
-                : `Bienvenido, ${userRole}`
-              : "Invitado"}
+            {isAuthenticated ? `Bienvenido, ${userRole}` : "Invitado"}
           </span>
 
           {logMenu && (
             <div style={styles.dropdown}>
+              {/* Si está logueado */}
               {isAuthenticated ? (
                 <>
+                  {/* Perfil: visible para todos los logueados, o sólo admin si quieres */}
                   <Link
                     to={isAdmin ? "/EditarPerfilAdmin" : "/miPerfil"}
                     style={styles.dropdownLink}
@@ -113,9 +175,28 @@ const Headerr = ({ isAdminPage }) => {
                     Ver mi Perfil
                   </Link>
 
+                  {/* Opciones admin-only */}
+                  {isAdmin && (
+                    <>
+                      <Link
+                        to="/gestionProductos"
+                        style={styles.dropdownLink}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.backgroundColor = "#D8572F")
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.backgroundColor =
+                            "transparent")
+                        }
+                      >
+                        Gestión de Productos
+                      </Link>
+                    </>
+                  )}
+
                   <button
                     type="button"
-                    style={{ ...styles.dropdownLink, textAlign: "center" }}
+                    style={{ ...styles.dropdownLink, textAlign: "left" }}
                     onClick={handleLogout}
                     onMouseEnter={(e) =>
                       (e.currentTarget.style.backgroundColor = "#D8572F")
@@ -128,6 +209,7 @@ const Headerr = ({ isAdminPage }) => {
                   </button>
                 </>
               ) : (
+                // Si NO está logueado
                 <Link
                   to="/login"
                   style={styles.dropdownLink}
@@ -146,8 +228,8 @@ const Headerr = ({ isAdminPage }) => {
         </div>
       </div>
 
-      {/* BottomBar siempre visible si es cliente */}
-      {isCliente && (
+      {/* BottomBar sólo clientes (no admin ni invitado) */}
+      {!isAdmin && (
         <div style={styles.bottomBar}>
           <nav style={styles.nav} aria-label="Categorías">
             <a href="#" style={styles.navLink}>
@@ -185,6 +267,7 @@ const Headerr = ({ isAdminPage }) => {
                   >
                     Historial de Compras
                   </Link>
+
                   <Link
                     to="/reportes/ventas"
                     style={styles.dropdownLink}
@@ -195,8 +278,9 @@ const Headerr = ({ isAdminPage }) => {
                       (e.currentTarget.style.backgroundColor = "transparent")
                     }
                   >
-                    Descuentos aplicados
+                    Descuents aplicados
                   </Link>
+
                   <Link
                     to="/SistemaValoracion"
                     style={styles.dropdownLink}

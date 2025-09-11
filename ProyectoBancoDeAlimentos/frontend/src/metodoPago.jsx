@@ -41,21 +41,21 @@ export default function MetodoPago() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
+
     // Formatear número de tarjeta con espacios cada 4 dígitos
     if (name === "numero_tarjeta") {
-      const formattedValue = value
-        .replace(/\s/g, "")
-        .replace(/(\d{4})/g, "$1 ")
-        .trim()
-        .slice(0, 19);
+      // Elimina todo lo que no sea número
+      const onlyNumbers = value.replace(/\D/g, "");
+      // Formatea cada 4 dígitos con espacio
+      const formattedValue = onlyNumbers.replace(/(\d{4})/g, "$1 ").trim().slice(0, 19);
+      
       setFormData({
         ...formData,
         [name]: formattedValue
       });
       return;
     }
-    
+
     // Separar mes y año de la fecha de vencimiento
     if (name === "vencimiento") {
       const [mes, ano] = value.split("/");
@@ -66,12 +66,13 @@ export default function MetodoPago() {
       });
       return;
     }
-    
+
     setFormData({
       ...formData,
       [name]: value
     });
   };
+
 
   const handleSubmit = async (e) => {
   e.preventDefault();
@@ -291,13 +292,17 @@ export default function MetodoPago() {
           <form className="form-tarjeta" onSubmit={handleSubmit}>
             <div className="campo">
               <label>Número de la tarjeta</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 name="numero_tarjeta"
                 value={formData.numero_tarjeta}
-                onChange={handleInputChange}
-                placeholder="0000 0000 0000 0000" 
-                maxLength="19"
+                onChange={(e) => {
+                  const value = e.target.value.replace(/\D/g, ""); 
+                  if (value.length <= 16) {
+                    handleInputChange({ target: { name: e.target.name, value } });
+                  }
+                }}
+                placeholder="0000 0000 0000 0000"
                 required
               />
             </div>

@@ -5,6 +5,8 @@ import { useNavigate } from "react-router-dom";
 import { getAllProducts } from "../api/InventarioApi";
 import { ObtenerCategoria, ListarCategoria } from "../api/CategoriaApi";
 import { AddNewCarrito, ViewCar, SumarItem } from "../api/CarritoApi";
+import { getPromociones } from "../api/PromocionesApi"; 
+
 
 import "swiper/css";
 import "swiper/css/effect-coverflow";
@@ -50,6 +52,7 @@ const InicioUsuario = () => {
   const [hoveredBanner, setHoveredBanner] = React.useState(null);
 
   const [products, setProducts] = useState([]);
+  const [promociones, setPromociones] = useState([]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -83,6 +86,21 @@ const InicioUsuario = () => {
   }, []);
 
   const [carrito, setCarrito] = useState([]);
+
+  // Promociones
+  useEffect(() => {
+    const fetchPromociones = async () => {
+      try {
+        const res = await getPromociones();
+        setPromociones(res.data);
+        console.log("[PROMOS]", res.data);
+      } catch (err) {
+        console.error("[PROMOS] error:", err?.response?.data || err);
+        alert(err?.response?.data?.message || "Error al cargar promociones");
+      }
+    };
+    fetchPromociones();
+  }, []);
 
   const handleAgregar = async (id_producto) => {
     if (!id_producto) {
@@ -178,6 +196,10 @@ const InicioUsuario = () => {
     navigate(`/categoria/${categoryId}`);
   };
 
+  const handlePromoClick = async (promo) => {
+    navigate(`/promocion/${promo.id_tipo_promo}`);
+  };
+
   const scroll = (direction, ref, itemWidth) => {
     if (ref.current) {
       ref.current.scrollBy({
@@ -259,115 +281,67 @@ const InicioUsuario = () => {
         </button>
       </div>
 
-      {/* Banner - Fixed Swiper */}
-      <div
-        style={{
-          position: "relative",
-          margin: "40px 0",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        {/* Left button */}
+      {/*Banner*/}
+      <div style={{ position: "relative", margin: "40px 0", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <button
           className="arrow-button"
-          style={{
-            position: "absolute",
-            left: 0,
-            zIndex: 10,
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            width: "40px",
-            height: "40px",
-          }}
+          style={{ position: "absolute", left: 0, zIndex: 10, background: "transparent", border: "none", cursor: "pointer", width: "40px", height: "40px" }}
           onClick={() => swiperRef.current?.slidePrev()}
         >
-          <img
-            src={arrowL}
-            alt="left"
-            style={{ width: "100%", height: "100%" }}
-          />
+          <img src={arrowL} alt="left" style={{ width: "100%", height: "100%" }} />
         </button>
 
-        {/* Swiper */}
         <div style={{ width: "90%", margin: "0 auto" }}>
           <Swiper
             modules={[EffectCoverflow, Autoplay]}
-            effect={"coverflow"}
+            effect="coverflow"
             centeredSlides={true}
             slidesPerView={1}
             loop={false}
             autoplay={{ delay: 3000, disableOnInteraction: false }}
-            coverflowEffect={{
-              rotate: 0,
-              stretch: 0,
-              depth: 100,
-              modifier: 2.5,
-              slideShadows: true,
-            }}
-            onSwiper={(swiper) => {
-              swiperRef.current = swiper;
-            }}
+            coverflowEffect={{ rotate: 0, stretch: 0, depth: 100, modifier: 2.5, slideShadows: true }}
+            onSwiper={(swiper) => { swiperRef.current = swiper; }}
           >
-            {banners.map((banner, index) => (
-              <SwiperSlide
-                key={index}
-                style={{ width: "33.333%", padding: "10px" }}
-              >
-                <div
-                  onMouseEnter={() => setHoveredBanner(index)}
-                  onMouseLeave={() => setHoveredBanner(null)}
-                  style={{
-                    transform:
-                      hoveredBanner === index ? "scale(1.017)" : "scale(1)",
-                    transition: "all 0.5s ease-in-out",
-                    cursor: "pointer",
-                    display: "flex",
-                    justifyContent: "center",
-                  }}
-                  onClick={() =>
-                    handleCategoryClick(banner.idCategoriaEnDescuento)
-                  }
-                >
-                  <img
-                    src={banner.imagen}
-                    alt={banner.categoriaEnDescuento}
-                    className="banner-img"
+            {promociones.length > 0 ? (
+              promociones.map((promo, index) => (
+                <SwiperSlide key={promo.id_promocion ?? index} style={{ width: "33.333%", padding: "10px" }}>
+                  <div
+                    onMouseEnter={() => setHoveredBanner(index)}
+                    onMouseLeave={() => setHoveredBanner(null)}
+                    onClick={() => handlePromoClick(promo)}
                     style={{
-                      width: "100%",
-                      height: "350px",
-                      borderRadius: "16px",
-                      objectFit: "cover",
+                      transform: hoveredBanner === index ? "scale(1.017)" : "scale(1)",
+                      transition: "all 0.2s ease-in-out",
+                      cursor: "pointer",
+                      display: "flex",
+                      justifyContent: "center",
                     }}
-                  />
-                </div>
-              </SwiperSlide>
-            ))}
+                  >
+                    <img
+                      src={`/images/promotions/${promo.banner_url}`}
+                      alt={promo.nombre_promocion}
+                      className="banner-img"
+                      style={{ width: "100%", height: "350px", borderRadius: "16px", objectFit: "cover" }}
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = "/PlaceHolder.png";
+                      }}
+                    />
+                  </div>
+                </SwiperSlide>
+              ))
+            ) : (
+              <p style={{ textAlign: "center" }}>No hay promociones disponibles</p>
+            )}
           </Swiper>
         </div>
 
-        {/* Right button */}
         <button
           className="arrow-button"
-          style={{
-            position: "absolute",
-            right: 0,
-            zIndex: 10,
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            width: "40px",
-            height: "40px",
-          }}
+          style={{ position: "absolute", right: 0, zIndex: 10, background: "transparent", border: "none", cursor: "pointer", width: "40px", height: "40px" }}
           onClick={() => swiperRef.current?.slideNext()}
         >
-          <img
-            src={arrowR}
-            alt="right"
-            style={{ width: "100%", height: "100%" }}
-          />
+          <img src={arrowR} alt="right" style={{ width: "100%", height: "100%" }} />
         </button>
       </div>
 

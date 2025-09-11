@@ -9,7 +9,7 @@ module.exports = (sequelize, DataTypes) => {
     compra_min:      DataTypes.DOUBLE,
     fecha_inicio:    DataTypes.DATEONLY,
     activa:          DataTypes.BOOLEAN,
-    banner_url:      DataTypes.BLOB('long'),
+    banner_url:      DataTypes.STRING(50),
     fecha_termina:   DataTypes.DATEONLY,
     creado_en:       DataTypes.DATEONLY,
   }, {

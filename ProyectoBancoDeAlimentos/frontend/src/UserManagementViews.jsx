@@ -91,7 +91,7 @@ function Tabs({ tabs, active, onChange }) {
   );
 }
 
-/** Utilidad: mapeo rol <-> id_rol */
+/** ==== Helpers de roles/permiso ==== */
 const buildRoleMaps = (rolesApi = []) => {
   const idToName = new Map();
   const nameToId = new Map();
@@ -109,11 +109,21 @@ const buildRoleMaps = (rolesApi = []) => {
   return { idToName, nameToId };
 };
 
-/** Helpers para Privilegios */
 const normRole = (roleName) => String(roleName || "").toLowerCase().trim();
 const showPrivTab = (roleName) => {
   const r = normRole(roleName);
   return r === "consultor" || r === "consultante";
+};
+const isAdminRoleName = (v) => normRole(v) === "administrador";
+const isUserRoleName  = (v) => normRole(v) === "usuario";
+
+// Detecta si el USUARIO ACTUAL es admin desde localStorage (ajusta si usas otro método)
+const detectCurrentUserIsAdmin = () => {
+  try {
+    const r  = (localStorage.getItem("rol") || localStorage.getItem("role") || "").toLowerCase();
+    const id = String(localStorage.getItem("id_rol") || "");
+    return r === "administrador" || id === "1";
+  } catch { return false; }
 };
 
 /** Normaliza privilegios desde backend a {ids:number[], names:string[]} */
@@ -165,18 +175,19 @@ export default function UserManagementViews() {
   const [editTab, setEditTab] = useState("datos");
 
   const [roleMaps, setRoleMaps] = useState({ idToName: new Map(), nameToId: new Map() });
-    const [moveButton, setLeft] = useState(false);
-    const [showSidebar, setShowSidebar] = useState(false);
-  // Crear (mantengo tu UI actual)
+
+  // Crear (rol fijo Consultor)
   const [newUser, setNewUser] = useState({
     firstName: "",
     lastName: "",
-    role: "Usuario",
+    role: "Consultor",   // fijo consultor
     status: "ACTIVO",
     privileges: [],
     correo: "",
     contraseña: ""
   });
+
+  const currentUserIsAdmin = useMemo(() => detectCurrentUserIsAdmin(), []);
 
   /** ==== Carga inicial ==== */
   useEffect(() => {
@@ -198,6 +209,7 @@ export default function UserManagementViews() {
             role: maps.idToName.get(String(u.id_rol)) || u.rol || "Usuario",
             status: (u.estado || "ACTIVO").toUpperCase(),
             correo: u.correo ?? u.email ?? "-",
+            genero: u.genero ?? u.gender ?? "Otro",
             privileges: ids,
             privilegeNames: names,
           };
@@ -210,16 +222,12 @@ export default function UserManagementViews() {
     })();
   }, []);
 
-  const handleClick = () => {
-    setLeft(!moveButton);
-    setShowSidebar(!showSidebar);
-  };
   /** ==== Búsqueda/paginación ==== */
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return users;
     return users.filter((u) =>
-      [u.id, u.firstName, u.lastName, u.role, u.status].join(" ").toLowerCase().includes(q)
+      [u.id, u.firstName, u.lastName, u.role, u.status, u.correo, u.genero].join(" ").toLowerCase().includes(q)
     );
   }, [users, query]);
 
@@ -227,7 +235,7 @@ export default function UserManagementViews() {
   const pageSafe = Math.min(page, totalPages);
   const visible = filtered.slice((pageSafe - 1) * pageSize, pageSafe * pageSize);
 
-  /** ==== Crear (sin tocar UI) ==== */
+  /** ==== Crear ==== */
   const handleCreate = async () => {
     const { firstName, lastName, role, correo, contraseña } = newUser;
     if (!firstName.trim() || !lastName.trim()) {
@@ -240,9 +248,10 @@ export default function UserManagementViews() {
     }
 
     try {
-      const id_rol = roleMaps.nameToId.get(role) ?? 2;
+      const id_rol = roleMaps.nameToId.get(role) ?? 3; // Consultor
       await RegistrarUser({
         nombre: firstName.trim(),
+        apellido: lastName.trim(),
         correo: correo.trim(),
         contraseña: contraseña.trim(),
         telefono: "",
@@ -262,6 +271,7 @@ export default function UserManagementViews() {
           role: roleMaps.idToName.get(String(u.id_rol)) || u.rol || "Usuario",
           status: (u.estado || "ACTIVO").toUpperCase(),
           correo: u.correo ?? u.email ?? "-",
+          genero: u.genero ?? u.gender ?? "Otro",
           privileges: ids,
           privilegeNames: names,
         };
@@ -271,7 +281,7 @@ export default function UserManagementViews() {
       setNewUser({
         firstName: "",
         lastName: "",
-        role: "Usuario",
+        role: "Consultor",
         status: "ACTIVO",
         privileges: [],
         correo: "",
@@ -304,6 +314,7 @@ export default function UserManagementViews() {
       ...u,
       _privView: view.list,
       privileges: view.checkedIds,
+      _originalRole: u.role, // guardamos rol original para reglas
     });
     setEditTab("datos");
     setEditOpen(true);
@@ -314,11 +325,23 @@ export default function UserManagementViews() {
     if (!editUser) return;
 
     try {
+      // Determinar el rol a enviar según reglas:
+      // - Si NO es admin -> mantener rol original
+      // - Si es admin y el usuario ORIGINAL es Administrador -> puede ser "Administrador" o "Consultor"
+      // - Si el usuario original es Usuario o Consultor -> mantener original
+      let roleNameForPayload = editUser._originalRole;
+      if (currentUserIsAdmin && isAdminRoleName(editUser._originalRole)) {
+        roleNameForPayload =
+          editUser.role === "Consultor" ? "Consultor" : "Administrador";
+      }
+
       const payload = {
         nombre: editUser.firstName,
         apellido: editUser.lastName,
-        id_rol: roleMaps.nameToId.get(editUser.role) ?? 2,
+        id_rol: roleMaps.nameToId.get(roleNameForPayload) ?? roleMaps.nameToId.get(editUser._originalRole) ?? 2,
         estado: editUser.status,
+        correo: editUser.correo,
+        genero: editUser.genero,
       };
 
       // Intento 1: /perfil/:id
@@ -329,15 +352,19 @@ export default function UserManagementViews() {
         await EditProfile({ id: editUser.dbId, ...payload });
       }
 
-      // Privilegios SOLO si es Consultante/Consultor
-      if (showPrivTab(editUser.role)) {
+      // Privilegios SOLO si es Consultor/Consultante
+      if (showPrivTab(roleNameForPayload)) {
         for (const p of editUser.privileges || []) {
           const privObj = (editUser._privView || PRIV_LIST).find(x => x.id === p);
           const label = privObj?.label;
           if (label) {
             try {
               await addPrivilegio(editUser.dbId, label);
-              await asignarPrivilegioARol(editUser.dbId, roleMaps.nameToId.get(editUser.role) ?? 3, p);
+              await asignarPrivilegioARol(
+                editUser.dbId,
+                roleMaps.nameToId.get(roleNameForPayload) ?? 3,
+                p
+              );
             } catch (e) {
               console.warn("No se pudo asignar privilegio:", label, e);
             }
@@ -345,8 +372,14 @@ export default function UserManagementViews() {
         }
       }
 
-      // Reflejar en UI
-      setUsers((prev) => prev.map((u) => (u.id === editUser.id ? { ...u, ...editUser } : u)));
+      // Refrescar UI local
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === editUser.id
+            ? { ...u, ...editUser, role: roleNameForPayload }
+            : u
+        )
+      );
       closeEdit();
     } catch (err) {
       console.error("Error guardando edición:", err);
@@ -454,12 +487,10 @@ export default function UserManagementViews() {
         <div className="modal-body modal-grid-2">
           <Field label="Nombre" value={newUser.firstName} onChange={(e) => setNewUser({ ...newUser, firstName: e.target.value })} placeholder="Nombre" />
           <Field label="Apellido" value={newUser.lastName} onChange={(e) => setNewUser({ ...newUser, lastName: e.target.value })} placeholder="Apellido" />
-          {/* UI actual */}
           <Field label="Correo" value={newUser.correo} onChange={(e) => setNewUser({ ...newUser, correo: e.target.value })} placeholder="correo@dominio.com" type="email" />
           <Field label="Contraseña" value={newUser.contraseña} onChange={(e) => setNewUser({ ...newUser, contraseña: e.target.value })} placeholder="********" type="password" />
-          <Field label="Rol" as="select" value={newUser.role} onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}>
-            <option>Consultor</option>
-          </Field>
+          {/* Rol fijo en "Consultor" y no editable */}
+          <Field label="Rol" value="Consultor" readOnly />
           <Field label="Estado" as="select" value={newUser.status} onChange={(e) => setNewUser({ ...newUser, status: e.target.value })}>
             <option value="ACTIVO">ACTIVO</option>
             <option value="INACTIVO">INACTIVO</option>
@@ -489,12 +520,12 @@ export default function UserManagementViews() {
                     <Field label="Nombre" value={infoUser.firstName ?? "-"} readOnly />
                     <Field label="Apellido" value={infoUser.lastName ?? "-"} readOnly />
                     <Field label="Correo" value={infoUser.correo ?? "-"} readOnly />
+                    <Field label="Género" value={infoUser.genero ?? "-"} readOnly />
                     <Field label="Rol" value={infoUser.role ?? "-"} readOnly />
                     <Field label="Estado" value={infoUser.status ?? "-"} readOnly />
                   </div>
                 ),
               },
-              // Tab Privilegios (Consultor/Consultante)
               ...( showPrivTab(infoUser.role)
                 ? [{
                     key: "priv",
@@ -541,16 +572,32 @@ export default function UserManagementViews() {
                 content: (
                   <div className="modal-body modal-grid-2">
                     <Field label="ID" value={editUser.id} readOnly />
-                    <Field
-                      label="Rol"
-                      as="select"
-                      value={editUser.role}
-                      onChange={(e) => setEditUser({ ...editUser, role: e.target.value })}
-                    >
-                      <option>Administrador</option>
-                      <option>Usuario</option>
-                      <option>Consultor</option>
-                    </Field>
+
+                    {/* ===== Rol (reglas) =====
+                       Select solo si el editor es Admin y el usuario ORIGINAL es Administrador.
+                       En caso contrario (Usuario/Consultor), solo lectura.
+                    */}
+                    {currentUserIsAdmin && isAdminRoleName(editUser._originalRole) ? (
+                      <Field
+                        label="Rol"
+                        as="select"
+                        value={editUser.role}
+                        onChange={(e) => {
+                          const next = e.target.value;
+                          if (next === "Consultor" || next === "Administrador") {
+                            setEditUser({ ...editUser, role: next });
+                          } else {
+                            setEditUser({ ...editUser, role: editUser._originalRole });
+                          }
+                        }}
+                      >
+                        <option value="Administrador">Administrador</option>
+                        <option value="Consultor">Consultor</option>
+                      </Field>
+                    ) : (
+                      <Field label="Rol" value={editUser.role} readOnly />
+                    )}
+
                     <Field
                       label="Nombre"
                       value={editUser.firstName}
@@ -561,6 +608,28 @@ export default function UserManagementViews() {
                       value={editUser.lastName}
                       onChange={(e) => setEditUser({ ...editUser, lastName: e.target.value })}
                     />
+
+                    {/* Correo */}
+                    <Field
+                      label="Correo"
+                      value={editUser.correo ?? ""}
+                      onChange={(e) => setEditUser({ ...editUser, correo: e.target.value })}
+                      type="email"
+                      placeholder="correo@dominio.com"
+                    />
+
+                    {/* Género */}
+                    <Field
+                      label="Género"
+                      as="select"
+                      value={editUser.genero ?? "Otro"}
+                      onChange={(e) => setEditUser({ ...editUser, genero: e.target.value })}
+                    >
+                      <option>Masculino</option>
+                      <option>Femenino</option>
+                      <option>Otro</option>
+                    </Field>
+
                     <Field
                       label="Estado"
                       as="select"
@@ -573,7 +642,6 @@ export default function UserManagementViews() {
                   </div>
                 ),
               },
-              // Tab Privilegios (Consultor/Consultante)
               ...( showPrivTab(editUser.role)
                 ? [{
                     key: "priv",
@@ -610,13 +678,11 @@ export default function UserManagementViews() {
           />
         )}
         <div className="modal-actions">
-          <button className="btn-secondary" onClick={closeEdit}>Cancelar</button>
           <button className="btn-primary" onClick={saveEdit}>
             <Icon icon="mdi:content-save-outline" /> Guardar
           </button>
         </div>
       </Modal>
     </div>
-    
   );
 }

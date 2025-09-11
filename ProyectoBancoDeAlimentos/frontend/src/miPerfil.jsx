@@ -1,20 +1,76 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import "./miPerfil.css";
 import { Link } from "react-router-dom";
 import PerfilSidebar from "./components/perfilSidebar";
-import { useContext } from "react";
 import { UserContext } from "./components/userContext";
-import { createLog, getLogsUsuario } from "./api/Usuario.Route"; // usa tu ruta real
+import { createLog, getLogsUsuario } from "./api/Usuario.Route";
 
 import {
   InformacionUser,
   EditProfile,
   changePassword,
-  uploadProfilePhoto,
+  uploadProfilePhoto1, // fallback si el POST directo no existe
   enviarCorreoDosPasos,
   validarCodigoDosPasos,
 } from "./api/Usuario.Route";
 import axiosInstance from "./api/axiosInstance";
+
+/* ====================== UTILIDADES NUEVAS (para foto) ====================== */
+
+// Normaliza un posible valor devuelto por la BD (nombre o ruta) a una URL pública
+const toPublicFotoSrc = (nameOrPath) => {
+  if (!nameOrPath) return "";
+  // Si ya es absoluta (http/https) o empieza con "/", úsala tal cual
+  if (/^https?:\/\//i.test(nameOrPath) || nameOrPath.startsWith("/"))
+    return nameOrPath;
+  // Si parece solo nombre de archivo, mápalo a la carpeta pública
+  return `/images/fotoDePerfil/${nameOrPath}`;
+};
+
+// Extrae solo el nombre de archivo (para guardar en BD)
+const fileNameFromPath = (p) => {
+  if (!p) return "";
+  const parts = String(p).split("/");
+  return parts[parts.length - 1] || "";
+};
+
+// Quita acentos, espacios y caracteres no válidos para nombre de archivo
+const sanitizeBaseName = (s) => {
+  if (!s) return "User";
+  const noAccents = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return noAccents.replace(/[^a-zA-Z0-9_-]/g, "");
+};
+
+// Toma primer nombre (si viene nombre completo)
+const firstName = (s) => (s ? s.trim().split(/\s+/)[0] : "User");
+
+// Busca extensión a partir del nombre original
+const getExt = (file) => {
+  const byName = file?.name?.match(/\.(\w{1,8})$/i)?.[1];
+  if (byName) return `.${byName}`;
+  // último recurso por MIME
+  const map = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+    "image/bmp": ".bmp",
+    "image/svg+xml": ".svg",
+  };
+  return map[file?.type] || ".png";
+};
+
+// Construye "KennyFotoPerfil.png" con datos del usuario
+const buildSafeProfileFileName = ({ nombre, apellidos, user }, file) => {
+  const base =
+    sanitizeBaseName(
+      firstName(user?.nombre || user?.nombre_usuario || nombre)
+    ) || "User";
+  const ext = getExt(file);
+  return `${base}FotoPerfil${ext}`;
+};
+
+/* ========================================================================== */
 
 function Icon({ name, className = "icon" }) {
   switch (name) {
@@ -84,11 +140,12 @@ export default function MiPerfil() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState("");
-  const [fotoUrl, setFotoUrl] = useState("");
+  const [fotoUrl, setFotoUrl] = useState(""); // URL pública para mostrar
+  const [fotoFileName, setFotoFileName] = useState(""); // SOLO nombre para BD
   const [cargando, setCargando] = useState(true);
   const [datosValidos, setDatosValidos] = useState(true);
   const [editMode, setEditMode] = useState(true);
-  const [fotoBase64, setFotoBase64] = useState(null);
+  const [fotoBase64, setFotoBase64] = useState(null); // (no usado ahora, lo dejo por compat.)
   const { user, setUser } = useContext(UserContext);
 
   // NUEVOS STATES PARA MODALES 2FA
@@ -106,22 +163,48 @@ export default function MiPerfil() {
     { fecha: "03 de enero", hora: "09:45" },
   ]);
 
-  //funcion para manejar la subida de la foto
+  /* =================== SUBIR FOTO (con nombre fijo y guardado) =================== */
   const handleFotoChange = async (e) => {
     if (!editMode) return;
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Preview local
+    // preview
     setFotoUrl(URL.createObjectURL(file));
 
+    // arma nombre "KennyFotoPerfil.png"
+    const safeName = buildSafeProfileFileName(
+      { nombre, apellidos, user },
+      file
+    );
+
     try {
-      await uploadProfilePhoto(file);
-      const res = await InformacionUser(); // obtiene info actualizada
-      setFotoUrl(res.data.foto_perfil || "");
-      setUser(res.data); // 🔹 actualiza contexto global
+      const fd = new FormData();
+      fd.append("foto", file, safeName);
+
+      // 1) Sube y guarda físico + UPDATE BD (si lo implementaste en el backend)
+      const { data } = await axiosInstance.post(
+        "/api/uploads/profile-photo",
+        fd,
+        {
+          headers: { "Content-Type": "multipart/form-data" },
+        }
+      );
+
+      const filename = data?.filename || safeName;
+
+      // 2) Si NO hiciste el UPDATE en el backend, hazlo aquí:
+
+      // 3) Refresca UI y contexto
+      setFotoUrl(`/images/fotoDePerfil/${filename}`);
+      setFotoFileName(filename);
+
+      // refrescar usuario
+      const res = await InformacionUser();
+      setUser(res.data);
     } catch (err) {
       console.error("Error subiendo foto:", err);
+      alert("No se pudo subir la foto.");
     }
   };
 
@@ -308,9 +391,10 @@ export default function MiPerfil() {
     }
   };
 
-  // carga la información del usuario autenticado
+  // ==================== CARGA INICIAL DE INFORMACIÓN ====================
   useEffect(() => {
     let mounted = true;
+
     const fetchUser = async () => {
       try {
         const res = await InformacionUser(1);
@@ -324,6 +408,7 @@ export default function MiPerfil() {
           return;
         }
 
+        // Intentamos registrar log de acceso si hay un id
         try {
           const userId =
             data.id_usuario ??
@@ -332,7 +417,6 @@ export default function MiPerfil() {
             data.userId ??
             null;
           if (userId) {
-            // no bloqueamos el flujo principal si falla; sólo intentamos registrar
             createLog(userId).catch((e) =>
               console.warn("No se pudo crear log de acceso:", e)
             );
@@ -341,6 +425,7 @@ export default function MiPerfil() {
           console.warn("Error intentando crear log:", e);
         }
 
+        // Asignaciones de datos generales
         setTelefono(
           data.telefono || data.numero_telefono || data.telefono_usuario || ""
         );
@@ -352,15 +437,12 @@ export default function MiPerfil() {
         if (data.genero) setGenero(data.genero);
         if (data.rol?.nombre_rol) setRol(data.rol.nombre_rol);
 
-        if (
-          data.foto_perfil_url &&
-          typeof data.foto_perfil_url === "string" &&
-          data.foto_perfil_url.trim() !== ""
-        ) {
-          setFotoUrl(data.foto_perfil_url);
-        } else {
-          setFotoUrl(""); // Usar imagen por defecto
-        }
+        // Normalizamos para UI y BD
+        const fromApi =
+          data.foto_perfil_url || data.foto_perfil || data.foto || "";
+        setFotoFileName(fileNameFromPath(fromApi)); // nombre limpio para BD
+        setFotoUrl(toPublicFotoSrc(fromApi)); // URL pública para mostrar
+
         setCargando(false);
       } catch (err) {
         console.error(
@@ -378,12 +460,11 @@ export default function MiPerfil() {
 
   useEffect(() => {
     if (!passwordError) return;
-
     const timer = setTimeout(() => setPasswordError(""), 2000);
     return () => clearTimeout(timer);
   }, [passwordError]);
 
-  // FUNCIONES MODALES 2FA
+  // FUNCIONES MODALES 2FA (sin cambios)
   const handleSendCode = async () => {
     if (!correo) return;
     try {
@@ -404,7 +485,7 @@ export default function MiPerfil() {
       console.log("Código verificado:", res.data);
       alert("Autenticación de dos pasos activada correctamente");
       setShowTwoFactorCodeModal(false);
-      setTwoFactorCode(""); // limpiar input
+      setTwoFactorCode("");
     } catch (err) {
       console.error("Error verificando código:", err);
       alert("Código inválido o expirado. Intenta de nuevo.");
@@ -522,23 +603,47 @@ export default function MiPerfil() {
                 className="boton-guardar"
                 onClick={async () => {
                   try {
+                    // Asegurar que a la BD se envíe SOLO el nombre del archivo
+                    const nombreParaBD =
+                      fotoFileName || fileNameFromPath(fotoUrl) || "";
+
                     const payload = {
                       telefono,
                       nombre,
                       apellido: apellidos,
                       correo,
                       genero,
-                      foto_perfil_url: fotoUrl,
+                      // En la BD guarda solo: "KennyFotoPerfil.png"
+                      foto_perfil_url: nombreParaBD,
                     };
+
                     await axiosInstance.put("/api/MiPerfil/perfil", payload);
+
+                    // Refrescar todo el usuario desde el backend
                     const fullRes = await InformacionUser();
-                    setUser(fullRes.data);
+                    const data = fullRes.data || {};
+
+                    // Normalizar inmediatamente para que el resto de la app muestre bien
+                    const freshName = fileNameFromPath(
+                      data.foto_perfil_url || data.foto || ""
+                    );
+                    setFotoFileName(freshName);
+                    setFotoUrl(toPublicFotoSrc(freshName));
+
+                    // Propagar al contexto global
+                    setUser({
+                      ...data,
+                      // nos aseguramos que el contexto tenga el nombre, no ruta absoluta
+                      foto_perfil_url: freshName,
+                    });
+
                     setEditMode(false);
                   } catch (err) {
                     console.error(
                       "Error guardando perfil:",
                       err?.response?.data || err.message || err
                     );
+                    alert("No se pudo guardar el perfil.");
                   }
                 }}
               >
@@ -556,6 +661,7 @@ export default function MiPerfil() {
             </div>
           )}
 
+          {/* ---------------- MODAL CAMBIO DE PASSWORD ---------------- */}
           {showPasswordModal && (
             <div className="modal-overlay">
               <div className="mPerfil-modal">
@@ -673,7 +779,7 @@ export default function MiPerfil() {
                   className="absolute top-3 right-3 text-white hover:text-gray-200"
                   onClick={() => setShowTwoFactorModal(false)}
                 >
-                  ✖
+                  ✕
                 </button>
                 <div className="p-6">
                   <div className="flex justify-center mb-4">
@@ -714,7 +820,7 @@ export default function MiPerfil() {
                   className="absolute top-3 right-3 text-white hover:text-gray-200"
                   onClick={() => setShowTwoFactorCodeModal(false)}
                 >
-                  ✖
+                  ✕
                 </button>
                 <div className="p-6">
                   <div className="flex flex-col items-center mb-4">
@@ -771,7 +877,7 @@ export default function MiPerfil() {
                   className="absolute top-3 right-3 text-white hover:text-gray-200"
                   onClick={() => setShowHistorial(false)}
                 >
-                  ✖
+                  ✕
                 </button>
 
                 <div className="p-6">

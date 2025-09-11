@@ -1,16 +1,18 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useContext } from "react";
 import { Icon } from "@iconify/react";
 import {
   getTopProductosUsuario,
   getProductosRecomendados,
   getDiasCompra,
   getTotalAhorrado,
-} from "./api/reporteusuarioApi"; // ajusta ruta si tu archivo está en otra carpeta
+} from "./api/reporteusuarioApi"; 
 import "./SistemaValoracion.css";
 
-const USER_ID = 1; // 👈 reemplázalo con el id_usuario real de tu login
+import { UserContext } from "./components/userContext";
 
 export default function SistemaValoracion() {
+    const { user } = useContext(UserContext);
+  const USER_ID = user?.id_usuario ?? 12;
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
 
@@ -47,7 +49,7 @@ export default function SistemaValoracion() {
     return () => {
       mounted = false;
     };
-  }, []);
+   }, [USER_ID, user]);
 
   // Mapear hábitos de compra a días de la semana
   const diasLabels = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -57,7 +59,7 @@ export default function SistemaValoracion() {
     );
     return Array.from({ length: 7 }, (_, i) => ({
       day: diasLabels[i],
-      value: map.get(i) || 0,
+      value: map.get(i+1) || 0,
     }));
   }, [diasCompra]);
   const maxValue = useMemo(

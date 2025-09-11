@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./misPedidos.css";
 import calendarIcon from "./images/calendar.png";
 import PedidoEmergente from "./components/pedidoEmergente";
 import PerfilSidebar from "./components/perfilSidebar";
+
+// Asegúrate de que la ruta sea correcta para tu archivo de API
+import { getPedidosConDetalles, listarPedido } from "./api/PedidoApi";
 
 const MisPedidos = () => {
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -10,22 +13,23 @@ const MisPedidos = () => {
   const [filtro, setFiltro] = useState("recientes");
   const [fechaExacta, setFechaExacta] = useState("");
   const [limite, setLimite] = useState(10);
+  const [pedidos, setPedidos] = useState([]);
+  const [cargando, setCargando] = useState(true);
 
-  const pedidos = [
-    { id: 123456, fecha: "2024-04-12", estado: "En curso", productos: [] },
-    { id: 123457, fecha: "2024-04-08", estado: "Entregado", productos: [] },
-    { id: 123458, fecha: "2024-04-06", estado: "Entregado", productos: [] },
-    { id: 123426, fecha: "2024-04-04", estado: "Entregado", productos: [] },
-    { id: 123436, fecha: "2024-04-02", estado: "Entregado", productos: [] },
-    { id: 123437, fecha: "2024-03-30", estado: "Entregado", productos: [] },
-    { id: 123438, fecha: "2024-03-25", estado: "Entregado", productos: [] },
-    { id: 123439, fecha: "2024-03-20", estado: "Entregado", productos: [] },
-    { id: 123440, fecha: "2024-03-15", estado: "Entregado", productos: [] },
-    { id: 123441, fecha: "2024-03-10", estado: "Entregado", productos: [] },
-    { id: 123442, fecha: "2024-03-05", estado: "Entregado", productos: [] },
-  ];
+  useEffect(() => {
+    const cargarPedidos = async () => {
+      try {
+        const response = await getPedidosConDetalles();
+        setPedidos(response.data);
+        setCargando(false);
+      } catch (error) {
+        console.error("Error al obtener los pedidos:", error);
+        setCargando(false);
+      }
+    };
+    cargarPedidos();
+  }, []);
 
-  // Aplicar filtro
   let pedidosFiltrados = [...pedidos];
 
   if (filtro === "recientes") {
@@ -36,13 +40,19 @@ const MisPedidos = () => {
     pedidosFiltrados = pedidosFiltrados.filter((p) => p.fecha === fechaExacta);
   }
 
-  // Limitar a 10 (o más si se presiona "Ver más")
   const pedidosMostrados = pedidosFiltrados.slice(0, limite);
 
-  const abrirModal = (pedido) => {
-    setPedidoSeleccionado(pedido);
+  const abrirModal = async (pedido) => {
+  try {
+    const response = await listarPedido(pedido.id || pedido.id_pedido);
+    // Asumiendo que response.data es el objeto del pedido completo con la propiedad 'productos'
+    const pedidoConProductos = { ...pedido, productos: response.data.productos };
+    setPedidoSeleccionado(pedidoConProductos);
     setModalAbierto(true);
-  };
+  } catch (error) {
+    console.error("Error al obtener los detalles del pedido:", error);
+  }
+};
 
   const cerrarModal = () => {
     setPedidoSeleccionado(null);
@@ -90,27 +100,33 @@ const MisPedidos = () => {
             </div>
 
             <div className="historial-list">
-              {pedidosMostrados.map((pedido) => (
-                <div key={pedido.id} className="pedido-item">
-                  <div
-                    className="pedido-info clickable"
-                    onClick={() => abrirModal(pedido)}
-                  >
-                    <p className="pedido-id">Pedido #{pedido.id}</p>
-                    <p className="pedido-fecha">{pedido.fecha}</p>
-                  </div>
-                  <span
-                    className={`pedido-estado ${
-                      pedido.estado === "En curso" ? "en-curso" : "entregado"
-                    }`}
-                  >
-                    {pedido.estado}
-                  </span>
-                </div>
-              ))}
+              {cargando ? (
+                <p>Cargando pedidos...</p>
+              ) : (
+                pedidosMostrados.map((pedido) => (
+                  <div key={pedido.id || pedido.id_pedido} className="pedido-item">
+                    <div
+                      className="pedido-info clickable"
+                      onClick={() => abrirModal(pedido)}
+                    >
+                      <p className="pedido-id">Pedido #{pedido.id || pedido.id_pedido}</p>
+                      <p className="pedido-fecha">{pedido.fecha}</p>
+                    </div>
+                    <span
+                      className={`pedido-estado ${
+                        pedido.estado === "En curso" ? "en-curso" : "entregado"
+                      }`}
+                    >
+                      {pedido.estado}
+                    </span>
+                  </div>  
+                ))
+              )}
+              {pedidosMostrados.length === 0 && !cargando && (
+                <p>No se encontraron pedidos.</p>
+              )}
             </div>
 
-            {/* Botón ver más si hay más pedidos */}
             {limite < pedidosFiltrados.length && (
               <div className="ver-mas-container">
                 <button
@@ -125,7 +141,6 @@ const MisPedidos = () => {
         </div>
       </div>
 
-      {/* Modal */}
       {modalAbierto && pedidoSeleccionado && (
         <PedidoEmergente
           pedido={pedidoSeleccionado}

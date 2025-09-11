@@ -24,7 +24,8 @@
 /* === Título naranja === */
 .historial-title {
   font-size: 22px;
-  color: #f0833e; /* naranja */
+  color: #f0833e;
+  /* naranja */
   margin-bottom: 15px;
   font-size: 1.5rem;
 }
@@ -52,7 +53,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #2b6daf; /* azul */
+  background: #2b6daf;
+  /* azul */
   color: #fff;
   padding: 20px 15px;
   margin-bottom: 15px;
@@ -69,6 +71,7 @@
   border-radius: 5px;
   padding: 6px 10px;
   font-size: 14px;
+
 }
 
 /* === Lista de pedidos === */
@@ -123,8 +126,10 @@
 }
 
 .pedido-estado.entregado {
-  background: #eaf8ea;
-  color: #2a7a2a;
+  background: #247924;
+  /* El color de fondo verde oscuro que quieres */
+  color: white;
+  /* El color de texto blanco para que se lea bien */
 }
 
 .filtro-fecha {

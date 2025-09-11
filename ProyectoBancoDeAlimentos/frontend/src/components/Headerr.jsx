@@ -48,7 +48,7 @@ const Headerr = ({ isAdminPage }) => {
       }
     };
 
-  if (loading) return null;
+  if (loading) return;
   console.log("Header user", user); // 🔹 aquí
 
     fetchCartCount();

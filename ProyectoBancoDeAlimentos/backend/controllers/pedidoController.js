@@ -258,6 +258,54 @@ exports.getPedidosConDetalles = async (req, res) => {
   }
 };
 
+exports.getPedidosConDetallesUsuario = async (req, res) => {
+  try {
+    const { id_usuario } = req.params;
+
+    const pedidos = await pedido.findAll({
+      where: { id_usuario },
+      include: [
+        {
+          model: estado_pedido,
+          attributes: ["nombre_pedido"], // Incluye solo el nombre del estado del pedido
+        },
+        {
+          model: factura,
+          include: [
+            {
+              model: factura_detalle,
+              include: [
+                {
+                  model: producto,
+                  attributes: ["nombre", "precio_base"], // Incluye solo el nombre y precio del producto
+                  include: [
+                    {
+                      model: subcategoria,
+                      as: "subcategoria",
+                      attributes: ["nombre"],
+                      include: [
+                        {
+                          model: categoria,
+                          as: "categoria",
+                          attributes: ["nombre"],
+                        },
+                      ],
+                    },
+                  ], // Incluye la subcategoría y categoría del producto
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    res.json(pedidos);
+  } catch (error) {
+    console.error("Error al obtener pedidos con detalles del usuario:", error);
+    res.status(500).json({ error: "Error al obtener pedidos con detalles del usuario" });
+  }
+};
+
 exports.listarPedido = async (req, res) => {
   try {
     const { id_pedido } = req.params;

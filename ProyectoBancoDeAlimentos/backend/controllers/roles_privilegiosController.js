@@ -195,3 +195,47 @@ exports.getRolesYPrivilegiosDeUsuario = async (req, res) => {
     return res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
+
+
+
+exports.manejoUsuarioPrivilegios = async (req, res) => {
+  try {
+    const { id_usuario } = req.params; // ID del usuario a gestionar
+    const { id_privilegios } = req.body; // Array de ID de privilegios a asignar
+
+    // Verificar si el usuario que hace la petición es administrador
+    const currentUser = await Usuario.findByPk(req.userId, {
+      attributes: ['id_rol'],
+    });
+
+    if (!currentUser || currentUser.id_rol !== 1) { // Suponiendo que el administrador tiene id_rol = 1
+      return res.status(403).json({ message: 'Solo los administradores pueden gestionar privilegios' });
+    }
+
+    // Encontrar el usuario a gestionar
+    const userToManage = await Usuario.findByPk(id_usuario);
+
+    if (!userToManage) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    // Asignar o quitar privilegios
+    await rol_privilegio.destroy({
+      where: {
+        id_rol: userToManage.id_rol,
+      },
+    });
+
+    const privilegesToAdd = id_privilegios.map(id => ({
+      id_privilegio: id,
+      id_rol: userToManage.id_rol,
+    }));
+
+    await rol_privilegio.bulkCreate(privilegesToAdd);
+
+    res.json({ message: 'Privilegios gestionados correctamente' });
+  } catch (error) {
+    console.error('Error al gestionar privilegios de usuario:', error);
+    res.status(500).json({ error: 'Error al gestionar privilegios de usuario' });
+  }
+};

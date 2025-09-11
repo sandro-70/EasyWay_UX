@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const authenticateJWT = require('../middleware/authenticateJWT');
 
 const pedidoController = require('../controllers/pedidoController');
 
@@ -15,6 +16,9 @@ router.post('/crear-pedido', pedidoController.crearPedido);
 
 // Obtener todos los pedidos con sus detalles.
 router.get('/pedidos-con-detalles', pedidoController.getPedidosConDetalles);
+
+// Obtener pedidos con detalles del usuario actual.
+router.get('/mis-pedidos-con-detalles/:id_usuario', pedidoController.getPedidosConDetallesUsuario);
 
 // Listar un pedido específico con su ID.
 router.get('/detalles/:id_pedido', pedidoController.listarPedido);

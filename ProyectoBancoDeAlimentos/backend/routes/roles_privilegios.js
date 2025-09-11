@@ -11,6 +11,8 @@ router.get('/mostrar-privilegios',roles_privilegiosController.getPrivilegios);//
 router.get('/mostrar-roles-privilegios-usuario/:id_usuario',roles_privilegiosController.getRolesYPrivilegiosDeUsuario);//si
 router.post('/autenticacion-dos-pasos', roles_privilegiosController.enviarCorreoDosPasos);
 router.patch('/verificacion-dos-pasos', roles_privilegiosController.validarCodigoDosPasos);
+router.patch('/privilegios/:id_usuario', roles_privilegiosController.manejoUsuarioPrivilegios);
+
 
 
 module.exports = router;

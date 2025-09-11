@@ -80,6 +80,11 @@ export function getRoles() {
   return axiosInstance.get("/api/roles-privilegios/mostrar-roles");
 }
 
+export function getPrivilegios() {
+  return axiosInstance.get("/api/roles-privilegios/mostrar-privilegios");
+}
+
+
 export function getAllInformacionUsuario() {
   return axiosInstance.get("/api/auth/GetAllUser");
 }

@@ -9,5 +9,7 @@ router.get('/', promocionesController.listar);
 router.get('/:id', promocionesController.getpromocionById);
 router.get('/usuario/:id_usuario', promocionesController.getpromocionbyusuario);
 router.get('/descuentos/aplicados/:id_usuario', promocionesController.getDescuentosAplicadosPorUsuario);
+router.patch('/descuentosMultiples', promocionesController.aplicarDescuentoseleccionados);
+
 
 module.exports = router;

@@ -198,44 +198,66 @@ exports.getRolesYPrivilegiosDeUsuario = async (req, res) => {
 
 
 
+
 exports.manejoUsuarioPrivilegios = async (req, res) => {
+  const t = await sequelize.transaction();
   try {
-    const { id_usuario } = req.params; // ID del usuario a gestionar
-    const { id_privilegios } = req.body; // Array de ID de privilegios a asignar
+    const { id_usuario } = req.params;
+    let { id_privilegios } = req.body;
 
-    // Verificar si el usuario que hace la petición es administrador
-    const currentUser = await Usuario.findByPk(req.userId, {
-      attributes: ['id_rol'],
-    });
+    // 0) Reglas de negocio (opcional): sólo admin puede cambiar privilegios
+    // const currentUser = await Usuario.findByPk(req.userId, { attributes: ['id_rol']});
+    // if (currentUser?.id_rol !== ID_ROL_ADMIN) return res.status(403).json({ message: 'No autorizado' });
 
-    if (!currentUser || currentUser.id_rol !== 1) { // Suponiendo que el administrador tiene id_rol = 1
-      return res.status(403).json({ message: 'Solo los administradores pueden gestionar privilegios' });
+    // 1) Validaciones básicas
+    if (!Array.isArray(id_privilegios)) {
+      return res.status(400).json({ message: 'id_privilegios debe ser un arreglo de enteros' });
     }
+    // Normaliza y deduplica
+    id_privilegios = [...new Set(id_privilegios.map(Number).filter(n => Number.isInteger(n) && n > 0))];
 
-    // Encontrar el usuario a gestionar
-    const userToManage = await Usuario.findByPk(id_usuario);
-
+    const userToManage = await Usuario.findByPk(id_usuario, { attributes: ['id_usuario', 'id_rol'] });
     if (!userToManage) {
+      await t.rollback();
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
 
-    // Asignar o quitar privilegios
+    // 2) Verificar que todos los privilegios existan en BD
+    const existentes = await privilegio.findAll({
+      where: { id_privilegio: id_privilegios },
+      attributes: ['id_privilegio'],
+      transaction: t
+    });
+    const existentesIds = existentes.map(p => p.id_privilegio);
+    const faltantes = id_privilegios.filter(id => !existentesIds.includes(id));
+    if (faltantes.length > 0) {
+      await t.rollback();
+      return res.status(400).json({
+        message: 'Algunos privilegios no existen',
+        faltantes
+      });
+    }
+
+    // 3) Borrar los privilegios actuales del rol del usuario
     await rol_privilegio.destroy({
-      where: {
-        id_rol: userToManage.id_rol,
-      },
+      where: { id_rol: userToManage.id_rol },
+      transaction: t
     });
 
-    const privilegesToAdd = id_privilegios.map(id => ({
-      id_privilegio: id,
-      id_rol: userToManage.id_rol,
-    }));
+    // Si quieres permitir "quitar todos", acepta array vacío y no insertes nada
+    if (id_privilegios.length > 0) {
+      const rows = id_privilegios.map(id => ({
+        id_rol: userToManage.id_rol,
+        id_privilegio: id
+      }));
+      await rol_privilegio.bulkCreate(rows, { transaction: t });
+    }
 
-    await rol_privilegio.bulkCreate(privilegesToAdd);
-
-    res.json({ message: 'Privilegios gestionados correctamente' });
+    await t.commit();
+    return res.json({ message: 'Privilegios gestionados correctamente', id_rol: userToManage.id_rol, id_privilegios });
   } catch (error) {
     console.error('Error al gestionar privilegios de usuario:', error);
-    res.status(500).json({ error: 'Error al gestionar privilegios de usuario' });
+    await t.rollback();
+    return res.status(500).json({ error: 'Error al gestionar privilegios de usuario' });
   }
 };

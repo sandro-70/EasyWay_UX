@@ -256,3 +256,59 @@ exports.getDescuentosAplicadosPorUsuario = async (req, res) => {
     res.status(500).json({ error: "Error al obtener descuentos por usuario" });
   }
 };
+
+
+exports.aplicarDescuentoseleccionados = async (req, res) => {
+  try {
+    const { selectedProductIds, discountType, discountValue } = req.body;
+    const currentUserId = req.user.id_usuario;
+
+    // Verificar si el usuario es administrador
+    const user = await Usuario.findByPk(currentUserId, {
+      attributes: ['id_rol'],
+    });
+
+    if (!user || user.id_rol !== 1) {
+      return res.status(403).json({ message: 'Solo los administradores pueden aplicar descuentos' });
+    }
+
+    // Aplicar el descuento a los productos seleccionados
+    for (const id_producto of selectedProductIds) {
+      const product = await producto.findByPk(id_producto);
+      if (!product) {
+        continue; // Si no se encuentra el producto, continuar con el siguiente
+      }
+
+      let promocionExistente = await promocion.findOne({
+        where: {
+          id_producto: id_producto,
+        },
+        include: [{
+          model: tipo_promocion,
+        }],
+      });
+
+      if (!promocionExistente) {
+        promocionExistente = await promocion.create({
+          id_producto: id_producto,
+          id_tipo_promo: 2, // Suponiendo que 2 es el ID para descuentos por producto
+        });
+      }
+
+      if (discountType === 'percent') {
+        promocionExistente.valor_porcentaje = parseFloat(discountValue);
+        promocionExistente.valor_fijo = null;
+      } else if (discountType === 'fixed') {
+        promocionExistente.valor_porcentaje = null;
+        promocionExistente.valor_fijo = parseFloat(discountValue);
+      }
+
+      await promocionExistente.save();
+    }
+
+    res.json({ message: 'Descuentos aplicados correctamente' });
+  } catch (error) {
+    console.error('Error al aplicar descuentos:', error);
+    res.status(500).json({ error: 'Error al aplicar descuentos' });
+  }
+};

@@ -51,12 +51,12 @@ export function getCuponesByUser(id_usuario){
 export function desactivarProducto(id_producto){
     return axiosInstance.patch(`/api/producto/desactivar/${id_producto}`);
 }
-export function actualizarProducto(id_producto, nombre, descripcion, precio_base, id_subcategoria, porcentaje_ganancia, id_marca, etiquetas, unidad_medida, activo){
-    return axiosInstance.put(`/api/producto/actualizar-producto/${id_producto}`, {nombre, descripcion, precio_base, id_subcategoria, porcentaje_ganancia, id_marca, etiquetas, unidad_medida, activo});
+export function actualizarProducto(id_producto, nombre, descripcion, precio_base, id_subcategoria, porcentaje_ganancia, id_marca, etiquetas, unidad_medida, activo, imagenes){
+    return axiosInstance.put(`/api/producto/actualizar-producto/${id_producto}`, {nombre, descripcion, precio_base, id_subcategoria, porcentaje_ganancia, id_marca, etiquetas, unidad_medida, activo, imagenes});
 }
 
-export function crearProducto(nombre, descripcion, precio_base, id_subcategoria, porcentaje_ganancia, id_marca, etiquetas, unidad_medida){
-    return axiosInstance.post('/api/Inventario/productos', {nombre, descripcion, precio_base, id_subcategoria, porcentaje_ganancia, id_marca, etiquetas, unidad_medida});
+export function crearProducto(nombre, descripcion, precio_base, id_subcategoria, porcentaje_ganancia, id_marca, etiquetas, unidad_medida, imagenes){
+    return axiosInstance.post('/api/Inventario/productos', {nombre, descripcion, precio_base, id_subcategoria, porcentaje_ganancia, id_marca, etiquetas, unidad_medida, imagenes});
 }
 
 export function listarProductosporsucursal(id_sucursal){

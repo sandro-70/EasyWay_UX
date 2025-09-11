@@ -49,6 +49,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import ReportesPedidos from "./pages/ReportesPedidos.jsx"; // ajusta la ruta según donde lo ubiques
 import DetallePedido from "./components/DetallePedido.js";
 import ReportesInventario from "./pages/ReportesInventario.jsx";
+import MenuPromociones from "./MenuPromociones.jsx";
 
 const HEADER_HEIGHT = 60; // px
 
@@ -92,6 +93,7 @@ function App() {
               }
             >
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/MenuPromociones" element={<MenuPromociones />} />
               <Route path="/inventario" element={<Inventario />} />
               <Route path="/gestionProductos" element={<GestionProductos />} />
               <Route path="/tablaPromociones" element={<TablaPromociones />} />
@@ -117,13 +119,15 @@ function App() {
               <Route path="/facturas" element={<Facturas />} />
               <Route path="/factura/:id" element={<DetalleFactura />} />
               <Route path="/reportesPedidos" element={<ReportesPedidos />} />
-            <Route path="/detallePedidos" element={<DetallePedido />} />
-            <Route path="/reportesInventario" element={<ReportesInventario />} />
+              <Route path="/detallePedidos" element={<DetallePedido />} />
+              <Route
+                path="/reportesInventario"
+                element={<ReportesInventario />}
+              />
               <Route
                 path="/descuentos_aplicados"
                 element={<DescuentosAplicados />}
               />
-              
             </Route>
 
             {/* ---------- CLIENTE LOGUEADO ---------- */}
@@ -136,8 +140,6 @@ function App() {
               }
             />
             <Route
-
-            
               path="/SistemaValoracion"
               element={
                 <ProtectedRoute rolesPermitidos={["cliente"]}>

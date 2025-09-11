@@ -7,21 +7,14 @@ import {
   getAllInformacionUsuario,
   RegistrarUser,
   updateUserById,
-  EditProfile,            // <-- fallback para editar sin :id
+  EditProfile,           
   getRoles,
   addPrivilegio,
   asignarPrivilegioARol,
+  getPrivilegios,
 } from "./api/Usuario.Route";
 
-/** Catálogo de privilegios por defecto (fallback visual) */
-const PRIV_LIST = [
-  { id: 1, label: "Gestionar Productos" },
-  { id: 2, label: "Gestionar Inventario" },
-  { id: 3, label: "Ver reportes" },
-  { id: 4, label: "Privilegio 4" },
-  { id: 5, label: "Privilegio 5" },
-  { id: 6, label: "Privilegio 6" },
-];
+import {manejoUsuarioPrivilegios,getRolesYPrivilegiosDeUsuario} from "./api/roles_privilegiosApi";
 
 const StatusBadge = ({ value }) => (
   <span className={"status-badge " + (value === "ACTIVO" ? "activo" : "inactivo")}>
@@ -115,7 +108,6 @@ const showPrivTab = (roleName) => {
   return r === "consultor" || r === "consultante";
 };
 const isAdminRoleName = (v) => normRole(v) === "administrador";
-const isUserRoleName  = (v) => normRole(v) === "usuario";
 
 // Detecta si el USUARIO ACTUAL es admin desde localStorage (ajusta si usas otro método)
 const detectCurrentUserIsAdmin = () => {
@@ -138,7 +130,25 @@ const detectCurrentUser = () => {
 };
 
 
-/** Normaliza privilegios desde backend a {ids:number[], names:string[]} */
+const NormprivilegiosApi = ( raw = []) => {
+if (!Array.isArray(raw)) return [];
+  return raw.map((p, i) => {
+    const id  = Number(p.id_privilegio ?? p.id ?? i + 1);
+    const lbl = String(p.nombre_privilegio ?? p.nombre ?? p.label ?? `Privilegio ${id}`).trim();
+    return { id, label: lbl };
+  });
+}
+
+const buildPrivMaps = (list = []) => {
+  const idToLabel = new Map();
+  const labelToId = new Map();
+  list.forEach(p => {
+    idToLabel.set(Number(p.id), p.label);
+    if (!labelToId.has(p.label)) labelToId.set(p.label, Number(p.id));
+  });
+  return { idToLabel, labelToId };
+};
+
 const splitPrivileges = (privs) => {
   const ids = [];
   const names = [];
@@ -158,20 +168,22 @@ const splitPrivileges = (privs) => {
   return { ids, names };
 };
 
-/** Construye lista de privilegios para UI (si hay nombres, los usa; si no, PRIV_LIST) */
-const buildPrivilegeView = (privs) => {
-  const { ids, names } = splitPrivileges(privs);
-  if (names.length > 0) {
-    const list = names.map((label, i) => ({ id: i + 1, label }));
-    const checkedIds = list.map(x => x.id);
-    return { list, checkedIds };
-  }
-  return { list: PRIV_LIST.slice(), checkedIds: ids.filter(Number.isFinite) };
+const buildPrivilegeView = (userPrivs, catalog, privMaps) => {
+  const { ids, names } = splitPrivileges(userPrivs);
+  const list = Array.isArray(catalog) ? catalog : [];
+  // Si vinieron nombres, mapéalos a IDs reales del catálogo
+  const nameIds = (names || [])
+    .map(n => privMaps.labelToId.get(n))
+    .filter((x) => Number.isFinite(x));
+  // Si vinieron IDs que no estén en catálogo, se ignoran (catálogo es la verdad)
+  const checkedIds = Array.from(new Set([...(ids || []), ...nameIds]))
+    .filter((id) => list.some(p => Number(p.id) === Number(id)));
+  return { list, checkedIds };
 };
 
 export default function UserManagementViews() {
   /** ==== Estado principal ==== */
-  const [users, setUsers] = useState([]);  // sin seed
+  const [users, setUsers] = useState([]);  
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 6;
@@ -185,6 +197,9 @@ export default function UserManagementViews() {
 
   const [infoTab, setInfoTab] = useState("resumen");
   const [editTab, setEditTab] = useState("datos");
+
+  const [privCatalog, setPrivCatalog] = useState([]);              // [{id,label}]
+  const [privMaps, setPrivMaps] = useState({ idToLabel: new Map(), labelToId: new Map() });
 
   const [roleMaps, setRoleMaps] = useState({ idToName: new Map(), nameToId: new Map() });
   const currentUser = useMemo(() => detectCurrentUser(), []);
@@ -209,7 +224,15 @@ export default function UserManagementViews() {
         const rolesRes = await getRoles();
         const maps = buildRoleMaps(rolesRes?.data || []);
         setRoleMaps(maps);
+        
 
+           // 2) Privilegios
+        const privRes = await getPrivilegios();
+        const norm = NormprivilegiosApi(privRes?.data || privRes || []);
+        setPrivCatalog(norm);
+        setPrivMaps(buildPrivMaps(norm));
+
+        //const privuser = await manejoUsuarioPrivilegios();
         const resp = await getAllInformacionUsuario();
         const arr = Array.isArray(resp?.data) ? resp.data : (resp?.data?.usuarios || []);
         const uiUsers = (arr || []).map((u, idx) => {
@@ -308,8 +331,42 @@ export default function UserManagementViews() {
   };
 
   /** ==== Info ==== */
-  const openInfo = (u) => {
-    const view = buildPrivilegeView(u.privilegeNames?.length ? u.privilegeNames : u.privileges);
+ // INFORMACIÓN (solo lectura) – cargar privilegios en vivo
+const openInfo = async (u) => {
+  try {
+    // 1) Pide al backend el rol + privilegios del usuario (por NOMBRE)
+    const r = await getRolesYPrivilegiosDeUsuario(u.dbId);
+
+    // Sequelize a veces devuelve user.rol o user.rols; ambos incluyen privilegios [{ nombre_privilegio }]
+    const privNames = Array.isArray(r?.data?.privilegios)
+      ? r.data.privilegios.map(p => String(p.nombre_privilegio || "").trim()).filter(Boolean)
+      : (
+          Array.isArray(r?.data?.[0]?.privilegios)
+            ? r.data[0].privilegios.map(p => String(p.nombre_privilegio || "").trim()).filter(Boolean)
+            : []
+        );
+
+    // 2) Convierte nombres → IDs del catálogo y marca checkboxes
+    const view = buildPrivilegeView(
+      privNames.length ? privNames : (u.privilegeNames?.length ? u.privilegeNames : u.privileges),
+      privCatalog,
+      privMaps
+    );
+
+    setInfoUser({
+      ...u,
+      _privView: view.list,        // catálogo que se dibuja
+      privileges: view.checkedIds, // IDs chequeados
+    });
+    setInfoTab("resumen");
+    setInfoOpen(true);
+  } catch (err) {
+    console.warn("No se pudo cargar privilegios live; fallback a datos locales:", err);
+    const view = buildPrivilegeView(
+      u.privilegeNames?.length ? u.privilegeNames : u.privileges,
+      privCatalog,
+      privMaps
+    );
     setInfoUser({
       ...u,
       _privView: view.list,
@@ -317,22 +374,54 @@ export default function UserManagementViews() {
     });
     setInfoTab("resumen");
     setInfoOpen(true);
-  };
+  }
+};
+
+
   const closeInfo = () => { setInfoOpen(false); setInfoUser(null); };
 
   /** ==== Editar ==== */
-const openEdit = (u) => {
-  const view = buildPrivilegeView(u.privilegeNames?.length ? u.privilegeNames : u.privileges);
-  setEditUser({
-    ...u,
-    _privView: view.list,
-    privileges: view.checkedIds,
-    _originalRole: u.role,
-    _originalCorreo: (u.correo ?? "").trim().toLowerCase(), 
-  });
-  setEditTab("datos");
-  setEditOpen(true);
+const openEdit = async (u) => {
+  try {
+    const r = await getRolesYPrivilegiosDeUsuario(u.dbId);
+    const privNames = Array.isArray(r?.data?.privilegios)
+      ? r.data.privilegios.map(p => String(p.nombre_privilegio || "").trim()).filter(Boolean)
+      : [];
+
+    const view = buildPrivilegeView(
+      privNames.length ? privNames : (u.privilegeNames?.length ? u.privilegeNames : u.privileges),
+      privCatalog,
+      privMaps
+    );
+
+    setEditUser({
+      ...u,
+      _privView: view.list,          
+      privileges: view.checkedIds,   
+      _originalRole: u.role,
+      _originalCorreo: (u.correo ?? "").trim().toLowerCase(),
+    });
+    setEditTab("datos");
+    setEditOpen(true);
+  } catch (err) {
+    console.warn("No se pudo cargar privilegios live; fallback a datos locales:", err);
+    const view = buildPrivilegeView(
+      u.privilegeNames?.length ? u.privilegeNames : u.privileges,
+      privCatalog,
+      privMaps
+    );
+    setEditUser({
+      ...u,
+      _privView: view.list,
+      privileges: view.checkedIds,
+      _originalRole: u.role,
+      _originalCorreo: (u.correo ?? "").trim().toLowerCase(),
+    });
+    setEditTab("datos");
+    setEditOpen(true);
+  }
 };
+
 
   const closeEdit = () => { setEditOpen(false); setEditUser(null); };
 
@@ -417,26 +506,17 @@ const saveEdit = async () => {
         )
       );
     }
+// === Asignación de privilegios (Consultor) ===
+if (showPrivTab(roleNameForPayload) && !isEditingSelf && currentUserIsAdmin) {
+  const selectedIds = Array.isArray(editUser.privileges) ? editUser.privileges : [];
+  try {
+    await manejoUsuarioPrivilegios(editUser.dbId, selectedIds);
+  } catch (e) {
+    console.error("No se pudo actualizar privilegios del rol:", e);
+    alert("No se pudieron guardar los privilegios. Revisa backend/logs.");
+  }
+}
 
-    // Asignación de privilegios (si aplica)
-    if (showPrivTab(roleNameForPayload) && !isEditingSelf && currentUserIsAdmin) {
-      for (const p of editUser.privileges || []) {
-        const privObj = (editUser._privView || PRIV_LIST).find((x) => x.id === p);
-        const label = privObj?.label;
-        if (label) {
-          try {
-            await addPrivilegio(editUser.dbId, label);
-            await asignarPrivilegioARol(
-              editUser.dbId,
-              roleMaps.nameToId.get(roleNameForPayload) ?? 3,
-              p
-            );
-          } catch (e) {
-            console.warn("No se pudo asignar privilegio:", label, e);
-          }
-        }
-      }
-    }
 
     closeEdit();
   } catch (err) {
@@ -591,7 +671,7 @@ const saveEdit = async () => {
                     icon: "mdi:shield-key-outline",
                     content: (
                       <div className="priv-list">
-                        {(infoUser._privView || PRIV_LIST).map((p) => {
+                        {(infoUser._privView || privCatalog).map((p) => {
                           const checked = infoUser.privileges?.includes(p.id);
                           return (
                             <label className="priv-item readonly" key={p.id}>
@@ -707,7 +787,7 @@ const saveEdit = async () => {
                     icon: "mdi:shield-key-outline",
                     content: (
                       <div className="priv-list">
-                        {(editUser._privView || PRIV_LIST).map((p) => {
+                        {(editUser._privView || privCatalog).map((p) => {
                           const checked = editUser.privileges?.includes(p.id);
                           return (
                             <label className="priv-item" key={p.id}>

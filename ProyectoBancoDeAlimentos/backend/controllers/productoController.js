@@ -22,6 +22,22 @@ exports.destacados = async (req, res) => {
           limit: 1,
           separate: true,
           order: [['orden_imagen', 'ASC']]
+        },{
+          model: subcategoria,
+          as: "subcategoria",
+          attributes: ['id_subcategoria', 'nombre', 'id_categoria_padre'], 
+          include: [
+            {
+              model: categoria,
+              as: "categoria",
+              attributes: ["id_categoria", "nombre"] 
+            },
+          ],
+        },
+        {
+          model: marca_producto,
+          as: "marca",
+          attributes: ["id_marca_producto", "nombre"]
         }
       ],
       order: [['id_producto', 'DESC']],
@@ -55,6 +71,23 @@ exports.tendencias = async (req, res) => {
           limit: 1,
           separate: true,
           order: [['orden_imagen', 'ASC']]
+        },
+        {
+          model: subcategoria,
+          as: "subcategoria",
+          attributes: ['id_subcategoria', 'nombre', 'id_categoria_padre'], 
+          include: [
+            {
+              model: categoria,
+              as: "categoria",
+              attributes: ["id_categoria", "nombre"] 
+            },
+          ],
+        },
+        {
+          model: marca_producto,
+          as: "marca",
+          attributes: ["id_marca_producto", "nombre"]
         }
       ],
       order: [['precio_base', 'DESC']],
@@ -65,6 +98,7 @@ exports.tendencias = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
 exports.listarProductos = async (req, res) => {
   try {
     const products = await producto.findAll({
@@ -184,9 +218,31 @@ exports.obtenerProductoPorId = async (req, res) => {
         [Sequelize.literal('precio_base * (1 + porcentaje_ganancia / 100)'), 'precio_venta']
       ],
       include: [
-        { model: imagen_producto, as: 'imagenes', attributes: ['url_imagen', 'orden_imagen'] }
-      ]
+        {
+          model: imagen_producto,
+          as: 'imagenes',
+          attributes: ['url_imagen', 'orden_imagen']
+        },
+        {
+          model: subcategoria,
+          as: "subcategoria",
+          attributes: ['id_subcategoria', 'nombre', 'id_categoria_padre'], 
+          include: [
+            {
+              model: categoria,
+              as: "categoria",
+              attributes: ["id_categoria", "nombre"] 
+            },
+          ],
+        },
+        {
+          model: marca_producto,
+          as: "marca",
+          attributes: ["id_marca_producto", "nombre"]
+        }
+      ],
     });
+
     if (!product) {
       return res.status(404).json({ error: 'Producto no encontrado' });
     }
@@ -309,6 +365,18 @@ exports.productosRecomendados = async (req, res) => {
           limit: 1,                       
           separate: true,                 
           order: [['orden_imagen', 'ASC']]
+        },
+        {
+          model: subcategoria,
+          as: "subcategoria",
+          attributes: ['id_subcategoria', 'nombre', 'id_categoria_padre'], 
+          include: [
+            {
+              model: categoria,
+              as: "categoria",
+              attributes: ["id_categoria", "nombre"] 
+            },
+          ],
         }
       ],
       order: [['estrellas', 'DESC'], ['id_producto', 'DESC']],

@@ -20,6 +20,7 @@ async function GetAllProductos() {
       "descripcion",
       "precio_base",
       "unidad_medida",
+      "estrellas",
       "activo",
     ],
     include: [
@@ -182,7 +183,9 @@ async function crearProductoConStockEnSucursales(payload = {}) {
     id_marca, // -> marca_producto.id_marca_producto
     unidad_medida = "unidad",
     activo = true,
+    estrellas,
     etiquetas, // ARRAY(STRING) en Postgres; si usas MySQL => usar JSON
+    imagenes, // ARRAY de objetos { url_imagen: string, orden_imagen?: number }
   } = payload;
 
   // --- Validaciones básicas ---
@@ -213,6 +216,21 @@ async function crearProductoConStockEnSucursales(payload = {}) {
     }
   }
 
+  // --- Validar imagenes ---
+  let imagenesArr = [];
+  if (imagenes !== undefined && imagenes !== null) {
+    if (Array.isArray(imagenes)) {
+      imagenesArr = imagenes.filter(img => img && typeof img.url_imagen === "string" && img.url_imagen.trim());
+      imagenesArr.forEach((img, index) => {
+        if (img.orden_imagen !== undefined && !Number.isInteger(Number(img.orden_imagen))) {
+          throw new Error(`orden_imagen en imagen ${index + 1} debe ser un entero`);
+        }
+      });
+    } else {
+      throw new Error("imagenes debe ser un array de objetos con url_imagen");
+    }
+  }
+
   // --- Transacción ---
   return await sequelize.transaction(async (t) => {
     // FK existentes
@@ -230,6 +248,7 @@ async function crearProductoConStockEnSucursales(payload = {}) {
       id_subcategoria: subId,
       id_marca: marcaId,
       unidad_medida,
+      estrellas,
       activo: !!activo,
       etiquetas: etiquetasArr?.length ? etiquetasArr : null, // requiere ARRAY(STRING) en Postgres
     }, { transaction: t });
@@ -251,7 +270,26 @@ async function crearProductoConStockEnSucursales(payload = {}) {
       await sucursal_producto.bulkCreate(filas, { transaction: t });
     }
 
-    // 4) Devolver el producto con include usando ALIAS correctos
+    // 4) Crear imagenes si se proporcionaron
+    if (imagenesArr.length) {
+      // Obtener el máximo orden_imagen actual para el producto (aunque sea nuevo, por si acaso)
+      const maxOrdenResult = await imagen_producto.findOne({
+        where: { id_producto: prod.id_producto },
+        attributes: [[sequelize.fn('MAX', sequelize.col('orden_imagen')), 'max_orden']],
+        raw: true,
+        transaction: t
+      });
+      const maxOrden = maxOrdenResult?.max_orden || -1;
+
+      const filasImagenes = imagenesArr.map((img, index) => ({
+        id_producto: prod.id_producto,
+        url_imagen: img.url_imagen.trim(),
+        orden_imagen: img.orden_imagen !== undefined ? img.orden_imagen : maxOrden + 1 + index,
+      }));
+      await imagen_producto.bulkCreate(filasImagenes, { transaction: t });
+    }
+
+    // 5) Devolver el producto con include usando ALIAS correctos
     const creado = await producto.findByPk(prod.id_producto, {
       transaction: t,
       include: [
@@ -270,6 +308,11 @@ async function crearProductoConStockEnSucursales(payload = {}) {
           as: "stock", // <-- alias definido en asociaciones
           attributes: ["id_sucursal_producto", "id_sucursal", "stock_disponible"],
         },
+        {
+          model: imagen_producto,
+          as: "imagenes",
+          attributes: ["id_imagen", "url_imagen", "orden_imagen"],
+        },
       ],
     });
 
@@ -277,6 +320,7 @@ async function crearProductoConStockEnSucursales(payload = {}) {
       ok: true,
       producto: creado,
       sucursales_asignadas: sucursales.length,
+      imagenes_creadas: imagenesArr.length,
     };
   });
 }

@@ -24,7 +24,7 @@ const MenuPromociones = () => {
           Definir cupones
         </button>
         <Link
-          to="/AsignarDescuentos"
+          to="/asignarDescuento"
           className="border border-blue-300 rounded-2xl p-5 text-left hover:shadow-lg transition duration-300 block"
         >
           Campañas programadas

@@ -1,3 +1,4 @@
+// services/usuario-info.service.js (sin alias)
 const { Op } = require('sequelize');
 const { Usuario, rol, direccion, metodo_pago, rol_privilegio, privilegio } = require('../models');
 
@@ -43,21 +44,10 @@ function toSafeUser(row) {
 async function editPerfil(id_usuario, payload = {}, options = {}) {
   const { isAdmin = false } = options;
 
-  console.log("editPerfil payload:", payload);
   const user = await Usuario.findByPk(id_usuario);
   if (!user) throw new Error('Usuario no encontrado');
 
-  const allowedSelf  = [
-    'nombre',
-    'apellido', 
-    'telefono',
-    'foto_perfil_url',
-    'tema',
-    'genero',
-    'direccion',
-    'departamento',
-    'municipio'
-  ];
+  const allowedSelf  = ['nombre', 'apellido','telefono', 'foto_perfil_url', 'tema'];
   const allowedAdmin = ['correo', 'id_rol', 'activo'];
   const allowed = new Set(isAdmin ? [...allowedSelf, ...allowedAdmin] : allowedSelf);
 
@@ -68,12 +58,10 @@ async function editPerfil(id_usuario, payload = {}, options = {}) {
     const v = String(payload.nombre || '').trim();
     if (v) updates.nombre = v;
   }
-  // ✅ El frontend envía 'apellido', pero la base de datos espera 'apellido'. Se hace el mapeo.
   if ('apellido' in payload && allowed.has('apellido')) {
-    const v = String(payload.apellido || '').trim();
-    if (v) updates.apellido = v; // Se usa 'apellido' para la actualización
-  }
-
+  const v = String(payload.apellido || '').trim();
+  if (v) updates.apellido = v;
+}
   if ('telefono' in payload && allowed.has('telefono')) {
     const v = String(payload.telefono || '').trim();
     updates.telefono = v || null;
@@ -88,22 +76,6 @@ async function editPerfil(id_usuario, payload = {}, options = {}) {
       x === true || x === 'true' || x === 1 || x === '1' ? true :
       x === false || x === 'false' || x === 0 || x === '0' ? false :
       !!x;
-  }
-  if ('genero' in payload && allowed.has('genero')) {
-    const v = String(payload.genero || '').trim();
-    updates.genero = v || null;
-  }
-  if ('direccion' in payload && allowed.has('direccion')) {
-    const v = String(payload.direccion || '').trim();
-    updates.direccion = v || null;
-  }
-  if ('departamento' in payload && allowed.has('departamento')) {
-    const v = String(payload.departamento || '').trim();
-    updates.departamento = v || null;
-  }
-  if ('municipio' in payload && allowed.has('municipio')) {
-    const v = String(payload.municipio || '').trim();
-    updates.municipio = v || null;
   }
 
   // ADMIN
@@ -131,11 +103,12 @@ async function editPerfil(id_usuario, payload = {}, options = {}) {
   }
 
   if (Object.keys(updates).length === 0) {
-    throw new Error('Nada que actualizar');
+    // en lugar de devolver lo mismo “mudo”, avisamos
+    throw new Error('Nada que actualizar: usa nombre, telefono, foto_perfil_url, tema (o correo, id_rol, activo si admin)');
   }
 
   updates.fecha_actualizacion = new Date();
-  await user.update(updates);
+  await user.update(updates); // actualiza y persiste
 
   const reloaded = await Usuario.findByPk(id_usuario, {
     attributes: { exclude: ['contraseña'] },
@@ -145,14 +118,12 @@ async function editPerfil(id_usuario, payload = {}, options = {}) {
   return toSafeUser(reloaded);
 }
 
-
 async function getAllInformacionUsuario() {
   const user = Usuario.findAll({
     attributes: { exclude: ['contraseña'] },
     include: [
       { model: rol, attributes: ['id_rol', 'nombre_rol'] },
       { model: direccion, attributes: ['id_direccion','calle','ciudad','codigo_postal','predeterminada'] },
-
     ],
     order: [[direccion, 'id_direccion', 'ASC']]
   });

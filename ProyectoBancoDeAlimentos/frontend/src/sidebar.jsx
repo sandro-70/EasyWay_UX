@@ -66,7 +66,7 @@ const Sidebar = ({ moveButton, showSidebar }) => {
             </li>
             <li>
               <button
-                onClick={() => navigate("/campanaPromocional")}
+                onClick={() => navigate("/asignarDescuento")}
                 className="sidebar_item text-left"
               >
                 <span className="material-symbols-outlined text-[42px] text-white">

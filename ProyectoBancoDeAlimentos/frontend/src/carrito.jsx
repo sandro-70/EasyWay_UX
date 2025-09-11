@@ -159,12 +159,14 @@ function Carrito() {
       try {
         const res = await ViewCar();
         const rec = await getProductosRecomendados();
-        console.log(rec);
+        console.log("productos rec", rec.data);
 
         console.log("productos carrito", res.data.carrito_detalles);
+
         const carritoDetalles = res.data.carrito_detalles ?? [];
         setDetalles(carritoDetalles);
-        if (detalles === 0) {
+        setRec(rec.data);
+        if (detalles.length === 0) {
           setShowProd(false);
         }
 
@@ -417,7 +419,7 @@ function Carrito() {
             </button>
 
             <div style={styles.divProducts} ref={prodRefRecomendados}>
-              {detalles.map((p, i) => (
+              {prodRec.map((p, i) => (
                 <div
                   key={i}
                   style={{
@@ -441,9 +443,11 @@ function Carrito() {
                     </div>
                   </div>
 
-                  {p.imagenes && p.imagenes.url_imagen ? (
+                  {p.imagenes &&
+                  p.imagenes.length > 0 &&
+                  p.imagenes[0].url_imagen ? (
                     <img
-                      src={`/images/productos/${p.imagenes.url_imagen}`}
+                      src={`/images/productos/${p.imagenes[0].url_imagen}`}
                       alt={p.nombre}
                       style={styles.productImg}
                       onError={(e) => {

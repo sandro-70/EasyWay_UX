@@ -1,6 +1,6 @@
 // src/pages/Inventario.jsx
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import Sidebar from "./sidebar";
+import { useOutletContext } from "react-router-dom";
 import frutas from "./images/frutas_asignarDescuento.png";
 import { Switch, Slider } from "@mui/material";
 /**
@@ -232,13 +232,7 @@ const Icon = {
 };
 
 export default function AsignarDescuentos() {
-  const handleClick = () => {
-    setLeft(!moveButton);
-    setShowSidebar(!showSidebar);
-  };
-
-  const [moveButton, setLeft] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(false);
+  const { moveButton } = useOutletContext();
 
   const [rows, setRows] = useState(initialData);
 
@@ -350,356 +344,334 @@ export default function AsignarDescuentos() {
 
   return (
     <div
-      className="bg-gray-100 w-screen flex flex-col px-12"
-      style={{
-        position: "absolute",
-        top: "145px",
-        left: 0,
-        right: 0,
-        width: "100%",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-      }}
+      className="bg-gray-100 w-screen flex flex-col px-16"
+      style={{ ...styles.fixedShell, backgroundColor: "#f3f4f6" }}
     >
-      <div className="flex flex-row gap-4">
-        <div className="">
-          {showSidebar && <Sidebar />}
-          <button
-            onClick={handleClick}
-            className={`btn_sidebar ${moveButton ? "left-[186px]" : "left-2"}`}
-          >
-            <span className="material-symbols-outlined text-[42px] text-white">
-              menu
-            </span>
-          </button>
-        </div>
-        <div
-          className={`flex flex-col w-full pt-4 transition-all duration-300 w-full p-6 ${
-            showSidebar ? "ml-48" : "ml-0"
-          }`}
+      <div
+        className={`flex flex-col w-full pt-4 transition-all duration-300 w-full p-6 ${
+          moveButton ? "ml-44" : "ml-0"
+        }`}
+      >
+        <h1
+          className="text-4xl font-semibold tracking-wide flex  justify-between "
+          style={{ color: "#d8572f" }}
         >
-          <h1
-            className="text-4xl font-semibold tracking-wide flex  justify-between "
-            style={{ color: "#d8572f" }}
-          >
-            Asignar Descuentos
-          </h1>
-          <hr className="h-1 mt-2 w-full rounded-md bg-[#f0833e]"></hr>
-          <div className="w-full flex flex-row gap-8  mt-4">
-            {/* ancho completo sin max-w para visualizar toda la tabla */}
+          Asignar Descuentos
+        </h1>
+        <hr className="h-1 mt-2 w-full rounded-md bg-[#f0833e]"></hr>
+        <div className="w-full flex flex-row gap-8 pl-16  mt-4">
+          {/* ancho completo sin max-w para visualizar toda la tabla */}
 
-            <div className=" ">
-              <div className=" overflow-hidden rounded-2xl shadow-sm border border-[#d8dadc] bg-white">
-                <div className="overflow-x-auto">
-                  <table className=" text-sm table-auto w-[400px]">
-                    <thead className="">
-                      <tr className="text-white">
-                        <Th
-                          label="ID de Producto"
-                          sortKey="id"
-                          sort={sort}
-                          onSort={toggleSort}
-                        />
-                        <ThFilter
-                          label="Producto"
-                          filterKey="producto"
-                          value={filters.producto}
-                          onChange={setFilters}
-                        />
-                        <ThFilter
-                          label="Marca"
-                          filterKey="marca"
-                          value={filters.marca}
-                          onChange={setFilters}
-                        />
-                        <ThFilter
-                          label="Categoría"
-                          filterKey="categoria"
-                          value={filters.categoria}
-                          onChange={setFilters}
-                        />
-                        <ThFilter
-                          label="Subcategoría"
-                          filterKey="subcategoria"
-                          value={filters.subcategoria}
-                          onChange={setFilters}
-                        />
-                        <Th
-                          label="Total en Stock"
-                          sortKey="stockKg"
-                          sort={sort}
-                          onSort={toggleSort}
-                          className="w-32"
-                        />
-                        <Th
-                          label="Precio Base"
-                          sortKey="precioBase"
-                          sort={sort}
-                          onSort={toggleSort}
-                          className="w-28"
-                        />
-                        <Th
-                          label="Precio Venta"
-                          sortKey="precioVenta"
-                          sort={sort}
-                          onSort={toggleSort}
-                          className="w-28"
-                        />
-                        <th className="px-3 py-2 text-left w-36 bg-[#2B6DAF]">
-                          Opciones
-                        </th>
+          <div className=" ">
+            <div className=" overflow-hidden rounded-2xl shadow-sm border border-[#d8dadc] bg-white">
+              <div className="overflow-x-auto">
+                <table className=" text-sm table-auto w-[400px]">
+                  <thead className="">
+                    <tr className="text-white">
+                      <Th
+                        label="ID de Producto"
+                        sortKey="id"
+                        sort={sort}
+                        onSort={toggleSort}
+                      />
+                      <ThFilter
+                        label="Producto"
+                        filterKey="producto"
+                        value={filters.producto}
+                        onChange={setFilters}
+                      />
+                      <ThFilter
+                        label="Marca"
+                        filterKey="marca"
+                        value={filters.marca}
+                        onChange={setFilters}
+                      />
+                      <ThFilter
+                        label="Categoría"
+                        filterKey="categoria"
+                        value={filters.categoria}
+                        onChange={setFilters}
+                      />
+                      <ThFilter
+                        label="Subcategoría"
+                        filterKey="subcategoria"
+                        value={filters.subcategoria}
+                        onChange={setFilters}
+                      />
+                      <Th
+                        label="Total en Stock"
+                        sortKey="stockKg"
+                        sort={sort}
+                        onSort={toggleSort}
+                        className="w-32"
+                      />
+                      <Th
+                        label="Precio Base"
+                        sortKey="precioBase"
+                        sort={sort}
+                        onSort={toggleSort}
+                        className="w-28"
+                      />
+                      <Th
+                        label="Precio Venta"
+                        sortKey="precioVenta"
+                        sort={sort}
+                        onSort={toggleSort}
+                        className="w-28"
+                      />
+                      <th className="px-3 py-2 text-left w-36 bg-[#2B6DAF]">
+                        Opciones
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pageItems.map((r, idx) => (
+                      <tr
+                        key={r.id + idx}
+                        className="border-b last:border-0 border-[#d8dadc]"
+                      >
+                        <td className="px-3 py-3">{r.id}</td>
+                        <td className="px-3 py-3">{r.producto}</td>
+                        <td className="px-3 py-3">{r.marca}</td>
+                        <td className="px-3 py-3">{r.categoria}</td>
+                        <td className="px-3 py-3">{r.subcategoria}</td>
+                        <td className="px-3 py-3">{r.stockKg} kg.</td>
+                        <td className="px-3 py-3">L. {r.precioBase}</td>
+                        <td className="px-3 py-3">L. {r.precioVenta}</td>
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={openAdd}
+                              className="p-2 rounded-xl border border-[#d8dadc] hover:bg-[#ffac77]/30"
+                              title="Agregar"
+                            >
+                              <Icon.Plus className="text-[#2b6daf]" />
+                            </button>
+                            <button
+                              onClick={() => openEdit(r)}
+                              className="p-2 rounded-xl border border-[#d8dadc] hover:bg-[#2ca9e3]/20"
+                              title="Editar"
+                            >
+                              <Icon.Edit className="text-[#2ca9e3]" />
+                            </button>
+                            <button
+                              onClick={() => removeRow(r.id)}
+                              className="p-2 rounded-xl border border-[#d8dadc] hover:bg-red-50"
+                              title="Eliminar"
+                            >
+                              <Icon.Trash className="text-red-500" />
+                            </button>
+                          </div>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {pageItems.map((r, idx) => (
-                        <tr
-                          key={r.id + idx}
-                          className="border-b last:border-0 border-[#d8dadc]"
+                    ))}
+                    {pageItems.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={9}
+                          className="px-3 py-8 text-center text-gray-500"
                         >
-                          <td className="px-3 py-3">{r.id}</td>
-                          <td className="px-3 py-3">{r.producto}</td>
-                          <td className="px-3 py-3">{r.marca}</td>
-                          <td className="px-3 py-3">{r.categoria}</td>
-                          <td className="px-3 py-3">{r.subcategoria}</td>
-                          <td className="px-3 py-3">{r.stockKg} kg.</td>
-                          <td className="px-3 py-3">L. {r.precioBase}</td>
-                          <td className="px-3 py-3">L. {r.precioVenta}</td>
-                          <td className="px-3 py-2">
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={openAdd}
-                                className="p-2 rounded-xl border border-[#d8dadc] hover:bg-[#ffac77]/30"
-                                title="Agregar"
-                              >
-                                <Icon.Plus className="text-[#2b6daf]" />
-                              </button>
-                              <button
-                                onClick={() => openEdit(r)}
-                                className="p-2 rounded-xl border border-[#d8dadc] hover:bg-[#2ca9e3]/20"
-                                title="Editar"
-                              >
-                                <Icon.Edit className="text-[#2ca9e3]" />
-                              </button>
-                              <button
-                                onClick={() => removeRow(r.id)}
-                                className="p-2 rounded-xl border border-[#d8dadc] hover:bg-red-50"
-                                title="Eliminar"
-                              >
-                                <Icon.Trash className="text-red-500" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                      {pageItems.length === 0 && (
-                        <tr>
-                          <td
-                            colSpan={9}
-                            className="px-3 py-8 text-center text-gray-500"
-                          >
-                            Sin resultados.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                          Sin resultados.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="flex items-center justify-center px-4 py-3 bg-white">
+                <Pagination
+                  page={page}
+                  pageCount={pageCount}
+                  onPage={(p) => setPage(Math.min(Math.max(1, p), pageCount))}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Modal */}
+          {modal.open && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center">
+              <div
+                className="absolute inset-0 bg-black/40"
+                onClick={closeModal}
+              />
+              <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-xl border border-[#d8dadc]">
+                <div
+                  className="px-5 py-3 rounded-t-2xl"
+                  style={{ backgroundColor: "#2b6daf" }}
+                >
+                  <h3 className="text-white font-medium">
+                    {modal.mode === "add"
+                      ? "Agregar producto"
+                      : "Editar producto"}
+                  </h3>
                 </div>
 
-                <div className="flex items-center justify-center px-4 py-3 bg-white">
-                  <Pagination
-                    page={page}
-                    pageCount={pageCount}
-                    onPage={(p) => setPage(Math.min(Math.max(1, p), pageCount))}
+                <div className="p-5 grid grid-cols-2 gap-4">
+                  <Input
+                    label="ID"
+                    value={modal.draft.id}
+                    onChange={(v) =>
+                      setModal((m) => ({
+                        ...m,
+                        draft: { ...m.draft, id: v },
+                      }))
+                    }
+                  />
+                  <Input
+                    label="Producto"
+                    value={modal.draft.producto}
+                    onChange={(v) =>
+                      setModal((m) => ({
+                        ...m,
+                        draft: { ...m.draft, producto: v },
+                      }))
+                    }
+                  />
+                  <Input
+                    label="Marca"
+                    value={modal.draft.marca}
+                    onChange={(v) =>
+                      setModal((m) => ({
+                        ...m,
+                        draft: { ...m.draft, marca: v },
+                      }))
+                    }
+                  />
+                  <Input
+                    label="Categoría"
+                    value={modal.draft.categoria}
+                    onChange={(v) =>
+                      setModal((m) => ({
+                        ...m,
+                        draft: { ...m.draft, categoria: v },
+                      }))
+                    }
+                  />
+                  <Input
+                    label="Subcategoría"
+                    value={modal.draft.subcategoria}
+                    onChange={(v) =>
+                      setModal((m) => ({
+                        ...m,
+                        draft: { ...m.draft, subcategoria: v },
+                      }))
+                    }
+                  />
+                  <Input
+                    type="number"
+                    label="Stock (kg)"
+                    value={modal.draft.stockKg}
+                    onChange={(v) =>
+                      setModal((m) => ({
+                        ...m,
+                        draft: { ...m.draft, stockKg: v },
+                      }))
+                    }
+                  />
+                  <Input
+                    type="number"
+                    label="Precio Base (L.)"
+                    value={modal.draft.precioBase}
+                    onChange={(v) =>
+                      setModal((m) => ({
+                        ...m,
+                        draft: { ...m.draft, precioBase: v },
+                      }))
+                    }
+                  />
+                  <Input
+                    type="number"
+                    label="Precio Venta (L.)"
+                    value={modal.draft.precioVenta}
+                    onChange={(v) =>
+                      setModal((m) => ({
+                        ...m,
+                        draft: { ...m.draft, precioVenta: v },
+                      }))
+                    }
                   />
                 </div>
-              </div>
-            </div>
 
-            {/* Modal */}
-            {modal.open && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center">
-                <div
-                  className="absolute inset-0 bg-black/40"
-                  onClick={closeModal}
-                />
-                <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-xl border border-[#d8dadc]">
-                  <div
-                    className="px-5 py-3 rounded-t-2xl"
-                    style={{ backgroundColor: "#2b6daf" }}
+                <div className="p-5 pt-0 flex items-center justify-end gap-2">
+                  <button
+                    onClick={closeModal}
+                    className="px-4 py-2 rounded-xl border border-[#d8dadc]"
                   >
-                    <h3 className="text-white font-medium">
-                      {modal.mode === "add"
-                        ? "Agregar producto"
-                        : "Editar producto"}
-                    </h3>
-                  </div>
-
-                  <div className="p-5 grid grid-cols-2 gap-4">
-                    <Input
-                      label="ID"
-                      value={modal.draft.id}
-                      onChange={(v) =>
-                        setModal((m) => ({
-                          ...m,
-                          draft: { ...m.draft, id: v },
-                        }))
-                      }
-                    />
-                    <Input
-                      label="Producto"
-                      value={modal.draft.producto}
-                      onChange={(v) =>
-                        setModal((m) => ({
-                          ...m,
-                          draft: { ...m.draft, producto: v },
-                        }))
-                      }
-                    />
-                    <Input
-                      label="Marca"
-                      value={modal.draft.marca}
-                      onChange={(v) =>
-                        setModal((m) => ({
-                          ...m,
-                          draft: { ...m.draft, marca: v },
-                        }))
-                      }
-                    />
-                    <Input
-                      label="Categoría"
-                      value={modal.draft.categoria}
-                      onChange={(v) =>
-                        setModal((m) => ({
-                          ...m,
-                          draft: { ...m.draft, categoria: v },
-                        }))
-                      }
-                    />
-                    <Input
-                      label="Subcategoría"
-                      value={modal.draft.subcategoria}
-                      onChange={(v) =>
-                        setModal((m) => ({
-                          ...m,
-                          draft: { ...m.draft, subcategoria: v },
-                        }))
-                      }
-                    />
-                    <Input
-                      type="number"
-                      label="Stock (kg)"
-                      value={modal.draft.stockKg}
-                      onChange={(v) =>
-                        setModal((m) => ({
-                          ...m,
-                          draft: { ...m.draft, stockKg: v },
-                        }))
-                      }
-                    />
-                    <Input
-                      type="number"
-                      label="Precio Base (L.)"
-                      value={modal.draft.precioBase}
-                      onChange={(v) =>
-                        setModal((m) => ({
-                          ...m,
-                          draft: { ...m.draft, precioBase: v },
-                        }))
-                      }
-                    />
-                    <Input
-                      type="number"
-                      label="Precio Venta (L.)"
-                      value={modal.draft.precioVenta}
-                      onChange={(v) =>
-                        setModal((m) => ({
-                          ...m,
-                          draft: { ...m.draft, precioVenta: v },
-                        }))
-                      }
-                    />
-                  </div>
-
-                  <div className="p-5 pt-0 flex items-center justify-end gap-2">
-                    <button
-                      onClick={closeModal}
-                      className="px-4 py-2 rounded-xl border border-[#d8dadc]"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={saveModal}
-                      className="px-4 py-2 rounded-xl text-white"
-                      style={{ backgroundColor: "#f0833e" }}
-                    >
-                      Guardar
-                    </button>
-                  </div>
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={saveModal}
+                    className="px-4 py-2 rounded-xl text-white"
+                    style={{ backgroundColor: "#f0833e" }}
+                  >
+                    Guardar
+                  </button>
                 </div>
               </div>
-            )}
-            <div className="flex flex-col bg-white shadow-2xl w-[300px] h-[630px] rounded-3xl px-2 py-4 text-left space-y-2">
-              <h1 className="font-bold text-2xl text-center">Vista Previa</h1>
-              <img src={frutas}></img>
-              <p className="text-[#80838A] text-xl">Nombre producto</p>
-              <p className="text-[#80838A] line-through text-xl">$35.00</p>
-              <div className="flex flex-row gap-4">
-                <p className="text-2xl text-[#009900] font-extrabold">$24.50</p>{" "}
-                <p className="bg-red-500 p-1 rounded-full text-white font-bold text-lg">
-                  30% OFF
-                </p>
-              </div>
-              <div className="flex flex-row gap-4 pt-4">
-                <p className="text-xl">Tipo de descuento</p>
-                <Switch
-                  checked={checked}
-                  onChange={() => setChecked(!checked)}
-                  sx={{
-                    "& .Mui-checked": {
-                      color: "orange", // circle color
-                    },
-                    "& .Mui-checked + .MuiSwitch-track": {
-                      backgroundColor: "orange", // track color
-                      opacity: 1,
-                    },
-                  }}
-                />
-              </div>
-              <div className="flex flex-row gap-10 pt-4 ">
-                <p className="text-xl">Porcentaje</p>{" "}
-                <p className="text-xl">Monto Fijo</p>
-              </div>
-              <div className="flex flex-row gap-8 pt-4">
-                <p className="text-md">Ajustar %</p>
-                <Slider
-                  defaultValue={50}
-                  min={10}
-                  max={100}
-                  step={5}
-                  valueLabelDisplay="auto"
-                  className=""
-                  sx={{
-                    width: 130,
-                    color: "green", // color of the active track
-                    "& .MuiSlider-thumb": {
-                      backgroundColor: "white",
-                    },
-                    "& .MuiSlider-rail": {
-                      opacity: 1,
-                      backgroundColor: "#D4D3D2",
-                    },
-                    "& .MuiSlider-track": {
-                      backgroundColor: "blue",
-                      border: "#D4D3D2",
-                    },
-                  }}
-                />
-              </div>
-              <button className="mt-auto p-2 bg-orange-500 rounded-full text-white font-bold">
-                Guardar
-              </button>
             </div>
+          )}
+          <div className="flex flex-col bg-white shadow-2xl w-[300px] h-[630px] rounded-3xl px-2 py-4 text-left space-y-2">
+            <h1 className="font-bold text-2xl text-center">Vista Previa</h1>
+            <img src={frutas}></img>
+            <p className="text-[#80838A] text-xl">Nombre producto</p>
+            <p className="text-[#80838A] line-through text-xl">$35.00</p>
+            <div className="flex flex-row gap-4">
+              <p className="text-2xl text-[#009900] font-extrabold">$24.50</p>{" "}
+              <p className="bg-red-500 p-1 rounded-full text-white font-bold text-lg">
+                30% OFF
+              </p>
+            </div>
+            <div className="flex flex-row gap-4 pt-4">
+              <p className="text-xl">Tipo de descuento</p>
+              <Switch
+                checked={checked}
+                onChange={() => setChecked(!checked)}
+                sx={{
+                  "& .Mui-checked": {
+                    color: "orange", // circle color
+                  },
+                  "& .Mui-checked + .MuiSwitch-track": {
+                    backgroundColor: "orange", // track color
+                    opacity: 1,
+                  },
+                }}
+              />
+            </div>
+            <div className="flex flex-row gap-10 pt-4 ">
+              <p className="text-xl">Porcentaje</p>{" "}
+              <p className="text-xl">Monto Fijo</p>
+            </div>
+            <div className="flex flex-row gap-8 pt-4">
+              <p className="text-md">Ajustar %</p>
+              <Slider
+                defaultValue={50}
+                min={10}
+                max={100}
+                step={5}
+                valueLabelDisplay="auto"
+                className=""
+                sx={{
+                  width: 130,
+                  color: "green", // color of the active track
+                  "& .MuiSlider-thumb": {
+                    backgroundColor: "white",
+                  },
+                  "& .MuiSlider-rail": {
+                    opacity: 1,
+                    backgroundColor: "#D4D3D2",
+                  },
+                  "& .MuiSlider-track": {
+                    backgroundColor: "blue",
+                    border: "#D4D3D2",
+                  },
+                }}
+              />
+            </div>
+            <button className="mt-auto p-2 bg-orange-500 rounded-full text-white font-bold">
+              Guardar
+            </button>
           </div>
         </div>
       </div>
@@ -862,3 +834,14 @@ function Pagination({ page, pageCount, onPage }) {
     </div>
   );
 }
+const styles = {
+  fixedShell: {
+    position: "absolute",
+    top: "90px",
+    left: 0,
+    right: 0,
+    width: "100%",
+    display: "flex",
+    flexDirection: "column",
+  },
+};

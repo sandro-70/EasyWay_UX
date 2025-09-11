@@ -20,7 +20,7 @@ import {
 import { Line, Bar, Pie } from "react-chartjs-2";
 
 function Dashboard() {
-  const { moveButton, setMoveButton } = useOutletContext();
+  const { moveButton } = useOutletContext();
 
   ChartJS.register(
     ArcElement,

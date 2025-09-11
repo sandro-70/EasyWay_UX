@@ -31,9 +31,9 @@ import banner2 from "../images/banner2.png";
 import banner3 from "../images/banner3.png";
 
 const banners = [
-  {idCategoriaEnDescuento: 1, imagen: banner1},
-  {idCategoriaEnDescuento: 2, imagen: banner2},
-  {idCategoriaEnDescuento: 3, imagen: banner3}
+  { idCategoriaEnDescuento: 1, imagen: banner1 },
+  { idCategoriaEnDescuento: 2, imagen: banner2 },
+  { idCategoriaEnDescuento: 3, imagen: banner3 },
 ];
 
 const InicioUsuario = () => {
@@ -93,62 +93,80 @@ const InicioUsuario = () => {
     try {
       console.log("Agregando producto:", id_producto);
 
-      let carritoActual = null;
-      let carritoVacio = false;
+      // Obtener carrito actual
+      const carritoActual = await ViewCar();
+      const carritoDetalles = carritoActual.data.carrito_detalles ?? [];
 
-      try {
-        carritoActual = await ViewCar();
-        console.log("Carrito actual:", carritoActual.data);
-      } catch (error) {
-        if (error?.response?.status === 404) {
-          console.log("Carrito vacío - usuario nuevo");
-          carritoVacio = true;
-        } else {
-          throw error;
-        }
-      }
+      // Buscar si el producto ya existe
+      const productoExistente = carritoDetalles.find(
+        (item) => item.producto.id_producto === id_producto
+      );
 
-      let existe = false;
-      if (!carritoVacio && carritoActual?.data) {
-        const items = carritoActual.data.carrito_detalles || carritoActual.data;
-        existe = Array.isArray(items)
-          ? items.find((item) => item.id_producto === id_producto)
-          : false;
-      }
+      if (productoExistente) {
+        const cantidadActual = productoExistente.cantidad_unidad_medida || 0;
+        const nuevaCantidad = cantidadActual + 1;
 
-      let response;
+        console.log(`Actualizando de ${cantidadActual} a ${nuevaCantidad}`);
+        alert(`Actualizando a ${nuevaCantidad}`);
 
-      if (existe) {
-        console.log("Producto existe, sumando cantidad...");
-        response = await SumarItem(id_producto, 1);
-        console.log("Sumado", response.data);
-        alert(`Se aumentó la cantidad del producto`);
+        // Actualizar en backend
+        await SumarItem(id_producto, nuevaCantidad);
+
+        // Actualizar estado local del carrito (si lo tienes)
+        setCarrito((prev) => {
+          if (Array.isArray(prev)) {
+            return prev.map((item) =>
+              item.producto.id_producto === id_producto
+                ? {
+                    ...item,
+                    cantidad_unidad_medida: nuevaCantidad,
+                    subtotal_detalle: item.producto.precio_base * nuevaCantidad,
+                  }
+                : item
+            );
+          }
+          return prev;
+        });
       } else {
-        console.log("Producto nuevo o carrito vacío, agregando...");
-        response = await AddNewCarrito(id_producto, 1);
-        console.log("Agregado", response.data);
+        console.log("Producto nuevo, agregando al carrito");
+
+        // Agregar nuevo producto
+        await AddNewCarrito(id_producto, 1);
+
+        // Recargar carrito completo para obtener el nuevo producto
+        const carritoActualizado = await ViewCar();
+        const nuevosDetalles = carritoActualizado.data.carrito_detalles ?? [];
+        setCarrito(nuevosDetalles);
+
         alert(`Producto agregado al carrito`);
       }
-
-      try {
-        const actualizado = await ViewCar();
-        setCarrito(actualizado.data);
-      } catch (error) {
-        console.log(
-          "No se pudo recargar el carrito, pero el producto se agregó"
-        );
-      }
     } catch (error) {
-      console.error("Error completo:", error);
-      console.error("Respuesta del servidor:", error?.response?.data);
+      console.error("Error:", error);
 
-      const errorMessage =
-        error?.response?.data?.msg ||
-        error?.response?.data?.message ||
-        error?.message ||
-        "No se pudo procesar el carrito";
+      // Si el carrito está vacío, intentar crear uno nuevo
+      if (error?.response?.status === 404) {
+        try {
+          await AddNewCarrito(id_producto, 1);
 
-      alert(errorMessage);
+          // Recargar carrito
+          const carritoNuevo = await ViewCar();
+          const nuevosDetalles = carritoNuevo.data.carrito_detalles ?? [];
+          setCarrito(nuevosDetalles);
+
+          alert(`Producto agregado al carrito`);
+        } catch (err) {
+          console.error("Error creando carrito:", err);
+          alert("No se pudo agregar el producto al carrito");
+        }
+      } else {
+        const errorMessage =
+          error?.response?.data?.msg ||
+          error?.response?.data?.message ||
+          error?.message ||
+          "No se pudo procesar el carrito";
+
+        alert(errorMessage);
+      }
     }
   };
 
@@ -186,43 +204,43 @@ const InicioUsuario = () => {
             style={{ width: "100%", height: "100%" }}
           />
         </button>
-<div style={styles.divCat} ref={catRef}>
-  {(categoriesData ?? []).map((cat, index) => {
-    const file = cat?.imagenes?.[0]?.url_imagen; // ✅ nunca truena
-    const src = file
-      ? `/images/categorias/${file}`
-      : "/images/PlaceHolder.png"; // tu placeholder
+        <div style={styles.divCat} ref={catRef}>
+          {(categoriesData ?? []).map((cat, index) => {
+            const file = cat?.imagenes?.[0]?.url_imagen; // ✅ nunca truena
+            const src = file
+              ? `/images/categorias/${file}`
+              : "/images/PlaceHolder.png"; // tu placeholder
 
-    return (
-      <div key={cat?.id_categoria ?? index} style={styles.catItem}>
-        <div
-          style={{
-            ...styles.CategoriesBox,
-            border:
-              hoveredIndex === index
-                ? "2px solid #2b6daf"
-                : "2px solid transparent",
-            transform:
-              hoveredIndex === index ? "scale(1.05)" : "scale(1)",
-            transition: "all 0.2s ease-in-out",
-          }}
-          onMouseEnter={() => setHoveredIndex(index)}
-          onMouseLeave={() => setHoveredIndex(null)}
-          onClick={() => handleCategoryClick(cat?.id_categoria)}
-        >
-          <img
-          src={
-            cat?.icono_categoria
-              ? `/images/categorias/${cat.icono_categoria}`
-              : "/PlaceHolder.png"
-          }
-          alt={cat?.nombre ?? "Categoría"}
-          style={{ width: 70, height: 70, objectFit: "contain" }}
-          onError={(e) => {
-            e.currentTarget.onerror = null;
-            e.currentTarget.src = "/PlaceHolder.png";
-          }}
-        />
+            return (
+              <div key={cat?.id_categoria ?? index} style={styles.catItem}>
+                <div
+                  style={{
+                    ...styles.CategoriesBox,
+                    border:
+                      hoveredIndex === index
+                        ? "2px solid #2b6daf"
+                        : "2px solid transparent",
+                    transform:
+                      hoveredIndex === index ? "scale(1.05)" : "scale(1)",
+                    transition: "all 0.2s ease-in-out",
+                  }}
+                  onMouseEnter={() => setHoveredIndex(index)}
+                  onMouseLeave={() => setHoveredIndex(null)}
+                  onClick={() => handleCategoryClick(cat?.id_categoria)}
+                >
+                  <img
+                    src={
+                      cat?.icono_categoria
+                        ? `/images/categorias/${cat.icono_categoria}`
+                        : "/PlaceHolder.png"
+                    }
+                    alt={cat?.nombre ?? "Categoría"}
+                    style={{ width: 70, height: 70, objectFit: "contain" }}
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = "/PlaceHolder.png";
+                    }}
+                  />
                 </div>
                 <span style={styles.catTitle}>{cat?.nombre ?? "-"}</span>
               </div>
@@ -242,19 +260,27 @@ const InicioUsuario = () => {
       </div>
 
       {/* Banner - Fixed Swiper */}
-      <div style={{ position: "relative", margin: "40px 0", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div
+        style={{
+          position: "relative",
+          margin: "40px 0",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
         {/* Left button */}
-        <button 
-          className="arrow-button" 
-          style={{ 
-            position: "absolute", 
-            left: 0, 
+        <button
+          className="arrow-button"
+          style={{
+            position: "absolute",
+            left: 0,
             zIndex: 10,
             background: "transparent",
             border: "none",
             cursor: "pointer",
             width: "40px",
-            height: "40px"
+            height: "40px",
           }}
           onClick={() => swiperRef.current?.slidePrev()}
         >
@@ -264,7 +290,7 @@ const InicioUsuario = () => {
             style={{ width: "100%", height: "100%" }}
           />
         </button>
-        
+
         {/* Swiper */}
         <div style={{ width: "90%", margin: "0 auto" }}>
           <Swiper
@@ -286,13 +312,25 @@ const InicioUsuario = () => {
             }}
           >
             {banners.map((banner, index) => (
-              <SwiperSlide key={index} style={{width: "33.333%", padding: "10px" }}>
-                <div onMouseEnter={() => setHoveredBanner(index)}
+              <SwiperSlide
+                key={index}
+                style={{ width: "33.333%", padding: "10px" }}
+              >
+                <div
+                  onMouseEnter={() => setHoveredBanner(index)}
                   onMouseLeave={() => setHoveredBanner(null)}
-                  style={{transform:
-                  hoveredBanner === index ? "scale(1.017)" : "scale(1)", transition: "all 0.5s ease-in-out",
-                  cursor: "pointer", display: "flex", justifyContent: "center" }}
-                  onClick={() => handleCategoryClick(banner.idCategoriaEnDescuento)}>
+                  style={{
+                    transform:
+                      hoveredBanner === index ? "scale(1.017)" : "scale(1)",
+                    transition: "all 0.5s ease-in-out",
+                    cursor: "pointer",
+                    display: "flex",
+                    justifyContent: "center",
+                  }}
+                  onClick={() =>
+                    handleCategoryClick(banner.idCategoriaEnDescuento)
+                  }
+                >
                   <img
                     src={banner.imagen}
                     alt={banner.categoriaEnDescuento}
@@ -309,19 +347,19 @@ const InicioUsuario = () => {
             ))}
           </Swiper>
         </div>
-        
+
         {/* Right button */}
-        <button 
-          className="arrow-button" 
-          style={{ 
-            position: "absolute", 
-            right: 0, 
+        <button
+          className="arrow-button"
+          style={{
+            position: "absolute",
+            right: 0,
             zIndex: 10,
             background: "transparent",
             border: "none",
             cursor: "pointer",
             width: "40px",
-            height: "40px"
+            height: "40px",
           }}
           onClick={() => swiperRef.current?.slideNext()}
         >

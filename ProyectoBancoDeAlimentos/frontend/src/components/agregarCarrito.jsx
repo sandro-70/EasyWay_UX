@@ -58,8 +58,10 @@ function AgregarCarrito() {
   }, [reviews, product?.estrellas]);
 
   // Elegimos: usar lo del backend si existe; si no, lo calculado
-  const effectiveAvg = summary.totalReviews > 0 ? summary.avgRating : computed.avgRating;
-  const effectiveTotal = summary.totalReviews > 0 ? summary.totalReviews : computed.totalReviews;
+  const effectiveAvg =
+    summary.totalReviews > 0 ? summary.avgRating : computed.avgRating;
+  const effectiveTotal =
+    summary.totalReviews > 0 ? summary.totalReviews : computed.totalReviews;
   const effectiveDist = summary.totalReviews > 0 ? summary.dist : computed.dist;
 
   // Para porcentajes y totales visuales
@@ -109,7 +111,10 @@ function AgregarCarrito() {
       const porSucursal = Array.isArray(res?.data) ? res.data : [];
       if (porSucursal.length) setProducts(porSucursal);
     } catch (e) {
-      console.warn("[RECOMENDADOS] fallback a getAllProducts:", e?.response?.data || e);
+      console.warn(
+        "[RECOMENDADOS] fallback a getAllProducts:",
+        e?.response?.data || e
+      );
     }
   }
 
@@ -117,7 +122,9 @@ function AgregarCarrito() {
   async function fetchReviews(productId) {
     try {
       // 🔧 RUTA CORRECTA (singular): /api/producto/:id/valoraciones
-      const res = await axiosInstance.get(`/api/producto/${productId}/valoraciones`);
+      const res = await axiosInstance.get(
+        `/api/producto/${productId}/valoraciones`
+      );
       const body = res?.data || {};
 
       if (Array.isArray(body.valoraciones)) {
@@ -126,7 +133,10 @@ function AgregarCarrito() {
         setSummary({
           avgRating: Number(r.avgRating || 0),
           totalReviews: Number(r.totalReviews || 0),
-          dist: Array.isArray(r.dist) && r.dist.length === 5 ? r.dist : [0, 0, 0, 0, 0],
+          dist:
+            Array.isArray(r.dist) && r.dist.length === 5
+              ? r.dist
+              : [0, 0, 0, 0, 0],
         });
       } else if (Array.isArray(body)) {
         // backend viejo: solo array de valoraciones
@@ -188,50 +198,91 @@ function AgregarCarrito() {
     }
 
     try {
+      console.log("Agregando producto:", id_producto, "cantidad:", q);
+
       let carritoActual = null;
       let carritoVacio = false;
 
+      // Obtener carrito actual
       try {
         carritoActual = await ViewCar();
       } catch (error) {
         if (error?.response?.status === 404) {
+          console.log("Carrito vacío - usuario nuevo");
           carritoVacio = true;
         } else {
           throw error;
         }
       }
 
-      let existe = false;
+      let cantidadActual = 0;
+      let productoExistente = null;
+
       if (!carritoVacio && carritoActual?.data) {
-        const items = carritoActual.data.carrito_detalles || carritoActual.data;
-        existe = Array.isArray(items)
-          ? items.some((item) => String(item.id_producto) === String(id_producto))
-          : false;
+        const carritoDetalles = carritoActual.data.carrito_detalles ?? [];
+
+        // Buscar si el producto ya existe en el carrito
+        productoExistente = carritoDetalles.find(
+          (item) => String(item.producto.id_producto) === String(id_producto)
+        );
+
+        if (productoExistente) {
+          cantidadActual = productoExistente.cantidad_unidad_medida || 0;
+        }
       }
 
-      if (existe) {
-        await SumarItem(id_producto, q);
-        alert("Se aumentó la cantidad del producto");
+      const nuevaCantidad = cantidadActual + q;
+
+      if (productoExistente) {
+        // Usar SumarItem con la cantidad TOTAL que debe quedar
+        await SumarItem(id_producto, nuevaCantidad);
+
+        alert(`Cantidad actualizada a ${nuevaCantidad} unidades`);
       } else {
+        console.log("Producto nuevo, agregando al carrito");
+
+        // Agregar nuevo producto con la cantidad especificada
         await AddNewCarrito(id_producto, q);
-        alert("Producto agregado al carrito");
       }
 
-      // refrescar carrito (si falla no bloquea UX)
+      // Recargar carrito para verificar cambios
       try {
         const actualizado = await ViewCar();
+        const carritoDetalles = actualizado.data.carrito_detalles ?? [];
         setCarrito(actualizado.data);
-      } catch {
-        /* noop */
-      }
+      } catch (error) {}
     } catch (error) {
       console.error("Error completo:", error);
-      const errorMessage =
-        error?.response?.data?.msg ||
-        error?.response?.data?.message ||
-        error?.message ||
-        "No se pudo procesar el carrito";
-      alert(errorMessage);
+      console.error("Respuesta del servidor:", error?.response?.data);
+
+      // Si el carrito está vacío, intentar crear uno nuevo
+      if (error?.response?.status === 404) {
+        try {
+          console.log("Intentando crear carrito nuevo...");
+          await AddNewCarrito(id_producto, q);
+
+          // Recargar carrito
+          const carritoNuevo = await ViewCar();
+          setCarrito(carritoNuevo.data);
+
+          alert(
+            `Producto agregado al carrito (${q} ${
+              q === 1 ? "unidad" : "unidades"
+            })`
+          );
+        } catch (err) {
+          console.error("Error creando carrito:", err);
+          alert("No se pudo agregar el producto al carrito");
+        }
+      } else {
+        const errorMessage =
+          error?.response?.data?.msg ||
+          error?.response?.data?.message ||
+          error?.message ||
+          "No se pudo procesar el carrito";
+
+        alert(errorMessage);
+      }
     }
   };
 
@@ -267,12 +318,16 @@ function AgregarCarrito() {
   const handleProductClick = (productId) => navigate(`/producto/${productId}`);
 
   const getProductImages = (p) =>
-    !p || !p.imagenes || p.imagenes.length === 0 ? [null] : p.imagenes.slice(0, 3);
+    !p || !p.imagenes || p.imagenes.length === 0
+      ? [null]
+      : p.imagenes.slice(0, 3);
 
   const handleImageSelect = (index) => setSelectedImageIndex(index);
 
   const getAvgFromProduct = (p) =>
-    Number(p?.rating_avg ?? p?.estrellas ?? p?.valoraciones_avg ?? p?.rating ?? 0);
+    Number(
+      p?.rating_avg ?? p?.estrellas ?? p?.valoraciones_avg ?? p?.rating ?? 0
+    );
 
   // helper UI estrellas
   const Star = ({ filled = false, size = 22, onClick }) => (
@@ -322,7 +377,10 @@ function AgregarCarrito() {
                       <span
                         key={i}
                         style={{
-                          color: i < Math.round(getAvgFromProduct(p)) ? "#2b6daf" : "#ddd",
+                          color:
+                            i < Math.round(getAvgFromProduct(p))
+                              ? "#2b6daf"
+                              : "#ddd",
                         }}
                       >
                         ★
@@ -332,7 +390,9 @@ function AgregarCarrito() {
                 </div>
 
                 <div style={styles.cardImageWrapper}>
-                  {p.imagenes && p.imagenes.length > 0 && p.imagenes[0].url_imagen ? (
+                  {p.imagenes &&
+                  p.imagenes.length > 0 &&
+                  p.imagenes[0].url_imagen ? (
                     <img
                       src={`/images/productos/${p.imagenes[0].url_imagen}`}
                       alt={p.nombre}
@@ -397,7 +457,9 @@ function AgregarCarrito() {
                         key={index}
                         style={{
                           ...styles.smaller,
-                          ...(selectedImageIndex === index ? styles.smallerActive : {}),
+                          ...(selectedImageIndex === index
+                            ? styles.smallerActive
+                            : {}),
                         }}
                         onClick={() => handleImageSelect(index)}
                       >
@@ -412,7 +474,9 @@ function AgregarCarrito() {
                             }}
                           />
                         ) : (
-                          <div style={styles.smallerPlaceholder}>Imagen no disponible</div>
+                          <div style={styles.smallerPlaceholder}>
+                            Imagen no disponible
+                          </div>
                         )}
                       </div>
                     ))}
@@ -427,7 +491,8 @@ function AgregarCarrito() {
 
                 <div style={styles.detailStockWrapper}>
                   <div style={styles.detailPrice}>
-                    L. {product.precio_base} <span style={styles.detailPriceUnit}>P/Kilo</span>
+                    L. {product.precio_base}{" "}
+                    <span style={styles.detailPriceUnit}>P/Kilo</span>
                   </div>
                 </div>
 
@@ -457,7 +522,9 @@ function AgregarCarrito() {
                     <Heart size={24} fill="white" />
                   </button>
                 </div>
-                <div style={styles.detailDescription}>Descripción: {product.descripcion}</div>
+                <div style={styles.detailDescription}>
+                  Descripción: {product.descripcion}
+                </div>
               </div>
             </div>
 
@@ -480,7 +547,9 @@ function AgregarCarrito() {
                         {[1, 2, 3, 4, 5].map((n) => (
                           <Star
                             key={n}
-                            filled={n <= (myRating || Math.round(effectiveAvg || 0))}
+                            filled={
+                              n <= (myRating || Math.round(effectiveAvg || 0))
+                            }
                             size={24}
                             onClick={() => setMyRating(n)}
                           />
@@ -491,7 +560,8 @@ function AgregarCarrito() {
                       </small>
 
                       <div style={styles.totalReviewsText}>
-                        {effectiveTotal} {effectiveTotal === 1 ? "opinión" : "opiniones"}
+                        {effectiveTotal}{" "}
+                        {effectiveTotal === 1 ? "opinión" : "opiniones"}
                       </div>
                     </div>
                   </div>
@@ -509,7 +579,10 @@ function AgregarCarrito() {
                           </span>
                           <div style={styles.distBar}>
                             <div
-                              style={{ ...styles.distBarFill, width: `${percent}%` }}
+                              style={{
+                                ...styles.distBarFill,
+                                width: `${percent}%`,
+                              }}
                             />
                           </div>
                           <span style={styles.distPct}>
@@ -568,19 +641,25 @@ function AgregarCarrito() {
                   </div>
                 ) : (
                   reviews.map((r) => (
-                    <div key={r.id_valoracion_producto} style={styles.reviewCard}>
+                    <div
+                      key={r.id_valoracion_producto}
+                      style={styles.reviewCard}
+                    >
                       <div style={styles.reviewMeta}>
                         <div>
                           {[1, 2, 3, 4, 5].map((n) => (
-                            <Star key={n} filled={n <= Number(r.puntuacion || 0)} />
+                            <Star
+                              key={n}
+                              filled={n <= Number(r.puntuacion || 0)}
+                            />
                           ))}
                         </div>
                         <div style={styles.reviewUserDate}>
                           {r?.usuario?.nombre
                             ? r.usuario.nombre
                             : r.id_usuario
-                              ? `Usuario #${r.id_usuario}`
-                              : "Usuario"}
+                            ? `Usuario #${r.id_usuario}`
+                            : "Usuario"}
                           {" • "}
                           {r.fecha_creacion
                             ? new Date(r.fecha_creacion).toLocaleDateString()
@@ -674,11 +753,25 @@ const styles = {
     borderRadius: "25px",
   },
   stars: { color: "#2b6daf", fontSize: "25px" },
-  cardImageWrapper: { display: "flex", justifyContent: "center", marginTop: "8px" },
+  cardImageWrapper: {
+    display: "flex",
+    justifyContent: "center",
+    marginTop: "8px",
+  },
   productImg: { width: "60px", height: "60px", objectFit: "contain" },
   cardContent: { marginTop: "12px" },
-  cardTitle: { fontSize: "15px", fontWeight: "500", marginBottom: "6px", textAlign: "left" },
-  cardPrice: { fontSize: "14px", color: "#555", marginBottom: "10px", textAlign: "left" },
+  cardTitle: {
+    fontSize: "15px",
+    fontWeight: "500",
+    marginBottom: "6px",
+    textAlign: "left",
+  },
+  cardPrice: {
+    fontSize: "14px",
+    color: "#555",
+    marginBottom: "10px",
+    textAlign: "left",
+  },
   addButton: {
     width: "100%",
     backgroundColor: "#F0833E",
@@ -727,7 +820,12 @@ const styles = {
     width: "100%",
     flexShrink: 0,
   },
-  ImageSection: { justifyContent: "center", display: "flex", flexDirection: "column", gap: "12px" },
+  ImageSection: {
+    justifyContent: "center",
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px",
+  },
   mainImageWrapper: {
     display: "flex",
     justifyContent: "center",
@@ -738,7 +836,12 @@ const styles = {
     height: "350px",
     backgroundColor: "#fafafa",
   },
-  mainImage: { width: "100%", height: "100%", objectFit: "contain", borderRadius: "8px" },
+  mainImage: {
+    width: "100%",
+    height: "100%",
+    objectFit: "contain",
+    borderRadius: "8px",
+  },
   mainImagePlaceholder: {
     width: "100%",
     height: "100%",
@@ -764,7 +867,10 @@ const styles = {
     alignItems: "center",
     backgroundColor: "#fafafa",
   },
-  smallerActive: { borderColor: "#2b6daf", boxShadow: "0 2px 8px rgba(43, 109, 175, 0.3)" },
+  smallerActive: {
+    borderColor: "#2b6daf",
+    boxShadow: "0 2px 8px rgba(43, 109, 175, 0.3)",
+  },
   smallerImage: { width: "100%", height: "100%", objectFit: "contain" },
   smallerPlaceholder: { fontSize: "10px", color: "#999", textAlign: "center" },
 
@@ -780,8 +886,19 @@ const styles = {
   detailCode: { fontSize: "14px", color: "#666", marginBottom: "20px" },
   detailPrice: { fontSize: "26px", fontWeight: "700" },
   detailPriceUnit: { fontSize: "16px", fontWeight: "400" },
-  detailDescription: { fontSize: "14px", color: "#444", marginTop: "10px", textAlign: "left" },
-  actionsRow: { display: "flex", gap: "10px", alignItems: "center", marginTop: "20px", marginBottom: "20px" },
+  detailDescription: {
+    fontSize: "14px",
+    color: "#444",
+    marginTop: "10px",
+    textAlign: "left",
+  },
+  actionsRow: {
+    display: "flex",
+    gap: "10px",
+    alignItems: "center",
+    marginTop: "20px",
+    marginBottom: "20px",
+  },
   quantityWrapper: { display: "flex", alignItems: "center", gap: "6px" },
   qtyBtn: {
     width: "36px",
@@ -795,7 +912,12 @@ const styles = {
     justifyContent: "center",
     alignItems: "center",
   },
-  qtyText: { fontSize: "18px", fontWeight: "600", width: "30px", textAlign: "center" },
+  qtyText: {
+    fontSize: "18px",
+    fontWeight: "600",
+    width: "30px",
+    textAlign: "center",
+  },
   cartBtn: {
     flex: 1,
     backgroundColor: "#F0833E",
@@ -849,7 +971,12 @@ const styles = {
     gap: "16px",
     marginBottom: "16px",
   },
-  avgNumber: { fontSize: "42px", fontWeight: 800, lineHeight: 1, color: "#16324f" },
+  avgNumber: {
+    fontSize: "42px",
+    fontWeight: 800,
+    lineHeight: 1,
+    color: "#16324f",
+  },
   totalReviewsText: { fontSize: "14px", color: "#666", marginTop: "4px" },
   distWrapper: { display: "flex", flexDirection: "column", gap: "8px" },
   distRow: {

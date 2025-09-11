@@ -7,6 +7,7 @@ import { useParams } from "react-router-dom";
 import { listarSubcategoria, listarPorCategoria } from "./api/SubcategoriaApi";
 import { AddNewCarrito, ViewCar, SumarItem } from "./api/CarritoApi";
 import { useNavigate } from "react-router-dom";
+import CompararProducto from "./components/compararProducto";
 
 function Categoria() {
   const navigate = useNavigate();
@@ -23,6 +24,9 @@ function Categoria() {
   const [carrito, setCarrito] = useState(null);
   const [selectedSubcategorias, setSelectedSubcategorias] = useState([]);
 
+  const [productosParaComparar, setProductosParaComparar] = useState([]);
+  const [mostrandoComparacion, setMostrandoComparacion] = useState(false);
+
   const [priceRange, setPriceRange] = useState([10, 100]);
   const [minPrice, setMinPrice] = useState(10);
   const [maxPrice, setMaxPrice] = useState(100);
@@ -34,6 +38,42 @@ function Categoria() {
 
   const [hoveredProductDest, setHoveredProductDest] = React.useState(null);
   const [hoveredProductTrend, setHoveredProductTrend] = React.useState(null);
+
+  const agregarAComparar = (producto) => {
+    setProductosParaComparar((prev) => {
+      // Si el producto ya está en la lista, lo removemos
+      const exists = prev.find((p) => p.id_producto === producto.id_producto);
+      if (exists) {
+        return prev.filter((p) => p.id_producto !== producto.id_producto);
+      }
+
+      // Si ya hay 2 productos, reemplazamos el primero
+      if (prev.length >= 2) {
+        return [prev[1], producto];
+      }
+
+      // Agregamos el producto
+      return [...prev, producto];
+    });
+  };
+
+  const iniciarComparacion = () => {
+    if (productosParaComparar.length >= 2) {
+      setMostrandoComparacion(true);
+    } else {
+      alert("Selecciona al menos 2 productos para comparar");
+    }
+  };
+
+  const cerrarComparacion = () => {
+    setMostrandoComparacion(false);
+  };
+
+  const cancelarComparacion = () => {
+    setProductosParaComparar([]);
+    setState("Agregar");
+    setCompare("COMPARAR");
+  };
 
   const fetchPorCategoria = async (idCategoria) => {
     try {
@@ -74,8 +114,7 @@ function Categoria() {
   const applyFilters = (productList) => {
     let filtered = [...productList];
 
-    // Filtro
-    //subcst
+    // Filtro subcategorías
     if (selectedSubcategorias.length > 0) {
       filtered = filtered.filter((product) => {
         const productSubcategoriaId =
@@ -84,13 +123,13 @@ function Categoria() {
       });
     }
 
-    //precio
+    // Filtro precio
     filtered = filtered.filter((product) => {
       const precio = parseFloat(product.precio_base) || 0;
       return precio >= priceRange[0] && precio <= priceRange[1];
     });
 
-    // Marca
+    // Filtro marca
     if (selectedMarca && selectedMarca !== "") {
       filtered = filtered.filter((product) => {
         const productMarca = product.marca?.nombre || product.marca || "";
@@ -132,8 +171,9 @@ function Categoria() {
       return;
     }
 
-    setState("Agregar");
-    setCompare("COMPARAR");
+    if (productosParaComparar.length >= 2) {
+      iniciarComparacion();
+    } else cancelarComparacion();
   }
 
   useEffect(() => {
@@ -231,58 +271,106 @@ function Categoria() {
     }
 
     try {
-      let carritoActual = null;
-      let carritoVacio = false;
+      console.log("Agregando producto:", id_producto);
 
-      try {
-        carritoActual = await ViewCar();
-      } catch (error) {
-        if (error?.response?.status === 404) {
-          carritoVacio = true;
-        } else {
-          throw error;
-        }
-      }
+      // Obtener carrito actual
+      const carritoActual = await ViewCar();
+      const carritoDetalles = carritoActual.data.carrito_detalles ?? [];
 
-      let existe = false;
-      if (!carritoVacio && carritoActual?.data) {
-        const items = carritoActual.data.carrito_detalles || carritoActual.data;
-        existe = Array.isArray(items)
-          ? items.find((item) => item.id_producto === id_producto)
-          : false;
-      }
+      // Buscar si el producto ya existe
+      const productoExistente = carritoDetalles.find(
+        (item) => item.producto.id_producto === id_producto
+      );
 
-      let response;
+      if (productoExistente) {
+        const cantidadActual = productoExistente.cantidad_unidad_medida || 0;
+        const nuevaCantidad = cantidadActual + 1;
 
-      if (existe) {
-        response = await SumarItem(id_producto, 1);
-        alert(`Se aumentó la cantidad del producto`);
+        console.log(`Actualizando de ${cantidadActual} a ${nuevaCantidad}`);
+        alert(`Actualizando a ${nuevaCantidad}`);
+
+        // Actualizar en backend
+        await SumarItem(id_producto, nuevaCantidad);
+
+        // Actualizar estado local del carrito (si lo tienes)
+        setCarrito((prev) => {
+          if (Array.isArray(prev)) {
+            return prev.map((item) =>
+              item.producto.id_producto === id_producto
+                ? {
+                    ...item,
+                    cantidad_unidad_medida: nuevaCantidad,
+                    subtotal_detalle: item.producto.precio_base * nuevaCantidad,
+                  }
+                : item
+            );
+          }
+          return prev;
+        });
       } else {
-        response = await AddNewCarrito(id_producto, 1);
+        console.log("Producto nuevo, agregando al carrito");
+
+        // Agregar nuevo producto
+        await AddNewCarrito(id_producto, 1);
+
+        // Recargar carrito completo para obtener el nuevo producto
+        const carritoActualizado = await ViewCar();
+        const nuevosDetalles = carritoActualizado.data.carrito_detalles ?? [];
+        setCarrito(nuevosDetalles);
+
         alert(`Producto agregado al carrito`);
       }
-
-      try {
-        const actualizado = await ViewCar();
-        setCarrito(actualizado.data);
-      } catch (error) {}
     } catch (error) {
-      const errorMessage =
-        error?.response?.data?.msg ||
-        error?.response?.data?.message ||
-        error?.message ||
-        "No se pudo procesar el carrito";
+      console.error("Error:", error);
 
-      alert(errorMessage);
+      // Si el carrito está vacío, intentar crear uno nuevo
+      if (error?.response?.status === 404) {
+        try {
+          await AddNewCarrito(id_producto, 1);
+
+          // Recargar carrito
+          const carritoNuevo = await ViewCar();
+          const nuevosDetalles = carritoNuevo.data.carrito_detalles ?? [];
+          setCarrito(nuevosDetalles);
+
+          alert(`Producto agregado al carrito`);
+        } catch (err) {
+          console.error("Error creando carrito:", err);
+          alert("No se pudo agregar el producto al carrito");
+        }
+      } else {
+        const errorMessage =
+          error?.response?.data?.msg ||
+          error?.response?.data?.message ||
+          error?.message ||
+          "No se pudo procesar el carrito";
+
+        alert(errorMessage);
+      }
     }
   };
 
   const handleProductClick = (productId) => {
+    if (stateProducto === "Comparar") {
+      return; // En modo comparar, no navegar al detalle
+    }
     navigate(`/producto/${productId}`);
+  };
+
+  const isProductSelected = (productId) => {
+    return productosParaComparar.some((p) => p.id_producto === productId);
   };
 
   return (
     <div className="" style={styles.fixedShell}>
+      {/* Modal de comparación */}
+      {mostrandoComparacion && (
+        <CompararProducto
+          productos={productosParaComparar}
+          onCerrar={cerrarComparacion}
+        />
+      )}
+
       <div className="flex flex-row">
         {/* Sidebar Sub-categorias */}
         <div className="flex flex-col h-[578px] fixed w-[265px] gap-1 ">
@@ -426,14 +514,33 @@ function Categoria() {
               </button>
             </div>
           </div>
-          <button
-            onClick={agregarComparar}
-            className={`btnSubCat ${
-              stateProducto === "Agregar" ? "bg-[#2B6DAF]" : "bg-[#80838A]"
-            }`}
-          >
-            {btnCompare}
-          </button>
+
+          {/* Botón de comparar */}
+          <div className="relative flex flex-col items-center gap-2">
+            <button
+              onClick={agregarComparar}
+              className={`px-4 py-2 rounded-xl text-sm font-semibold text-white shadow-md transition-colors duration-300
+              ${
+                stateProducto === "Agregar"
+                  ? "bg-[#2B6DAF] hover:bg-[#1f4e7f]"
+                  : "bg-[#80838A] "
+              }
+            `}
+            >
+              {btnCompare}
+            </button>
+
+            {/* Botón para comparar cuando hay productos seleccionados */}
+            {stateProducto === "Comparar" &&
+              productosParaComparar.length >= 2 && (
+                <button
+                  onClick={iniciarComparacion}
+                  className="px-6 py-2 rounded-xl bg-[#2B6DAF] text-white text-sm font-semibold shadow-md hover:bg-[#1f4e7f] transition-colors duration-300"
+                >
+                  COMPARAR
+                </button>
+              )}
+          </div>
         </div>
 
         {/* Display Productos */}
@@ -479,73 +586,100 @@ function Categoria() {
                 )}
               </div>
             ) : (
-              filteredProducts.map((p, i) => (
-                <div
-                  key={i}
-                  style={{
-                    ...styles.productBox,
-                    border:
-                      hoveredProductDest === i
-                        ? "2px solid #2b6daf"
-                        : "2px solid transparent",
-                    transform:
-                      hoveredProductDest === i ? "scale(1.05)" : "scale(1)",
-                    transition: "all 0.2s ease-in-out",
-                    cursor: "pointer",
-                  }}
-                  onMouseEnter={() => setHoveredProductDest(i)}
-                  onMouseLeave={() => setHoveredProductDest(null)}
-                  onClick={() => handleProductClick(p.id_producto)}
-                >
-                  <div style={styles.topRow}>
-                    <span style={styles.badge}>Oferta</span>
-                    <span style={styles.stars}>
-                      {Array.from({ length: 5 }, (_, i) => (
-                        <span
-                          key={i}
-                          style={{
-                            color: i < p.estrellas ? "#2b6daf" : "#ddd",
-                            fontSize: "25px",
-                          }}
-                        >
-                          ★
-                        </span>
-                      ))}
-                    </span>
-                  </div>
-
-                  {p.imagenes &&
-                  p.imagenes.length > 0 &&
-                  p.imagenes[0].url_imagen ? (
-                    <img
-                      src={`/images/productos/${p.imagenes[0].url_imagen}`}
-                      alt={p.nombre}
-                      style={styles.productImg}
-                      onError={(e) => {
-                        e.target.src =
-                          'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
-                      }}
-                    />
-                  ) : (
-                    <div style={styles.productImg}>Imagen no disponible</div>
-                  )}
-                  <p style={styles.productName}>{p.nombre}</p>
-                  <p style={styles.productPrice}>L.{p.precio_base}</p>
-                  <button
+              filteredProducts.map((p, i) => {
+                const isSelected = isProductSelected(p.id_producto);
+                return (
+                  <div
+                    key={i}
                     style={{
-                      ...styles.addButton,
-                      backgroundColor:
-                        hoveredProductDest === i ? "#2b6daf" : "#F0833E",
+                      ...styles.productBox,
+                      border:
+                        hoveredProductDest === i
+                          ? "2px solid #2b6daf"
+                          : isSelected
+                          ? "2px solid #ff6b35"
+                          : "2px solid transparent",
+                      transform:
+                        hoveredProductDest === i ? "scale(1.05)" : "scale(1)",
+                      transition: "all 0.2s ease-in-out",
+                      cursor: "pointer",
+                      backgroundColor: isSelected ? "#fff5f0" : "#fff",
                     }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAgregar(p.id_producto, 1);
+                    onMouseEnter={() => setHoveredProductDest(i)}
+                    onMouseLeave={() => setHoveredProductDest(null)}
+                    onClick={() => {
+                      if (stateProducto === "Comparar") {
+                        agregarAComparar(p);
+                      } else {
+                        handleProductClick(p.id_producto);
+                      }
                     }}
                   >
-                    Agregar
-                  </button>
-                </div>
-              ))
+                    <div style={styles.topRow}>
+                      <span style={styles.badge}>Oferta</span>
+                      <span style={styles.stars}>
+                        {Array.from({ length: 5 }, (_, i) => (
+                          <span
+                            key={i}
+                            style={{
+                              color: i < p.estrellas ? "#2b6daf" : "#ddd",
+                              fontSize: "25px",
+                            }}
+                          >
+                            ★
+                          </span>
+                        ))}
+                      </span>
+                    </div>
+
+                    {p.imagenes &&
+                    p.imagenes.length > 0 &&
+                    p.imagenes[0].url_imagen ? (
+                      <img
+                        src={`/images/productos/${p.imagenes[0].url_imagen}`}
+                        alt={p.nombre}
+                        style={styles.productImg}
+                        onError={(e) => {
+                          e.target.src =
+                            'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
+                        }}
+                      />
+                    ) : (
+                      <div style={styles.productImg}>Imagen no disponible</div>
+                    )}
+                    <p style={styles.productName}>{p.nombre}</p>
+                    <p style={styles.productPrice}>L.{p.precio_base}</p>
+
+                    <button
+                      style={{
+                        ...styles.addButton,
+                        backgroundColor:
+                          stateProducto === "Comparar"
+                            ? isSelected
+                              ? "#ff6b35"
+                              : "#ccc"
+                            : hoveredProductDest === i
+                            ? "#2b6daf"
+                            : "#F0833E",
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (stateProducto === "Comparar") {
+                          agregarAComparar(p);
+                        } else {
+                          handleAgregar(p.id_producto, 1);
+                        }
+                      }}
+                    >
+                      {stateProducto === "Comparar"
+                        ? isSelected
+                          ? "Quitar"
+                          : "Comparar"
+                        : "Agregar"}
+                    </button>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>

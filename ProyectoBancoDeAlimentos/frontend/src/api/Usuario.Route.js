@@ -117,11 +117,14 @@ export function getLogsUsuario(id_usuario) {
 }
 
 // api/Usuario.Route.js
-export function uploadProfilePhoto1(file, safeName) {
-  const formData = new FormData();
-  formData.append("foto", file, safeName ?? file.name); // 👈 el campo debe llamarse "foto"
-  return axiosInstance.post("/api/uploads/profile-photo", formData, {
+// Reemplazar
+export const uploadProfilePhoto1 = async (file, desiredName) => {
+  const form = new FormData();
+  // el tercer argumento fija el nombre con el que se guarda en el disco del backend
+  form.append("foto", file, desiredName || file.name);
+  return axiosInstance.post("/api/uploads/profile-photo", form, {
     headers: { "Content-Type": "multipart/form-data" },
   });
-}
+};
+
 

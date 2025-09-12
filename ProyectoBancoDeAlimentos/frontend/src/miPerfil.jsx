@@ -29,6 +29,8 @@ const BACKEND_ORIGIN = (() => {
     return window.location.origin;
   }
 })();
+
+
 // Construye la URL absoluta para una imagen en /api/images/fotoDePerfil
 const backendImageUrl = (fileName) =>
   fileName
@@ -174,6 +176,18 @@ export default function MiPerfil() {
   const [loadingHistorial, setLoadingHistorial] = useState(false);
   const [errorHistorial, setErrorHistorial] = useState("");
 
+  
+// Normaliza la foto y empuja todo al UserContext (Header)
+const pushUserToContext = (payload) => {
+  const cleanName = fileNameFromPath(
+    payload?.foto_perfil_url || payload?.foto_perfil || payload?.foto || ""
+  );
+  setUser((prev) => ({
+    ...(prev || {}),
+    ...(payload || {}),
+    foto_perfil_url: cleanName, // en contexto guardamos SOLO el nombre
+  }));
+};
   // tu estado historial (placeholder)
   const [historial, setHistorial] = useState([
     { fecha: "14 de enero", hora: "10:45" },
@@ -192,12 +206,12 @@ export default function MiPerfil() {
     setFotoUrl(URL.createObjectURL(file));
 
     // arma nombre "KennyFotoPerfil.png"
-    const safeName = buildSafeProfileFileName({ nombre, apellidos, user }, file);
+    const fileNameById = buildIdProfileFileName(user, file);
 
     try {
       // 1) Sube y guarda físico en backend (campo "foto")
-      const { data } = await uploadProfilePhoto1(file, safeName);
-      const filename = data?.filename || safeName;
+      const { data } = await uploadProfilePhoto1(file, fileNameById);
+      const filename = data?.filename || fileNameById;
 
       // 2) Relee usuario desde backend (por si actualizas BD ahí)
       const res = await InformacionUser();
@@ -208,7 +222,9 @@ export default function MiPerfil() {
       // 3) Refresca UI y contexto (con cache-buster)
       setFotoUrl(`${backendImageUrl(justName)}?t=${Date.now()}`);
       setFotoFileName(justName);
-      setUser({ ...data1, foto_perfil_url: justName });
+      // Actualiza contexto y suma un avatar_rev para romper cache en Header
+ pushUserToContext({ ...data1, foto_perfil_url: justName });
+ setUser((prev) => ({ ...(prev || {}), foto_perfil_url: justName, avatar_rev: Date.now() }));
     } catch (err) {
       console.error("Error subiendo foto:", err);
       alert("No se pudo subir la foto.");
@@ -375,11 +391,16 @@ export default function MiPerfil() {
         if (data.rol?.nombre_rol) setRol(data.rol.nombre_rol);
 
         // Normalizamos para UI y BD
-        const fromApi = data.foto_perfil_url || data.foto_perfil || data.foto || "";
-        const cleanName = fileNameFromPath(fromApi);
-        setFotoFileName(cleanName); // nombre limpio para BD
-        setFotoUrl(cleanName ? `${toPublicFotoSrc(cleanName)}?t=${Date.now()}` : "");
-        console.log(fotoUrl);
+         // Forzamos nombre por ID: user_<id>.<ext>
+const fromApi = data.foto_perfil_url || data.foto_perfil || data.foto || "";
+ const guessedExt = fileNameFromPath(fromApi).split(".").pop() || "png";
+ const idName = `user_${getUserId(data)}.${guessedExt}`;
+
+ setFotoFileName(idName);
+ setFotoUrl(`${backendImageUrl(idName)}?t=${Date.now()}`); // cache-buster
+ // opcional: empuja al contexto el nombre nuevo
+ pushUserToContext({ ...data, foto_perfil_url: idName });
+
         setCargando(false);
       } catch (err) {
         console.error("Error cargando usuario:", err?.response?.data || err.message || err);
@@ -397,6 +418,16 @@ export default function MiPerfil() {
     const timer = setTimeout(() => setPasswordError(""), 2000);
     return () => clearTimeout(timer);
   }, [passwordError]);
+
+  // === NUEVO: helpers para nombre por ID ===
+const getUserId = (u) => u?.id_usuario ?? u?.id ?? u?.usuario_id ?? u?.userId ?? 1;
+
+const buildIdProfileFileName = (user, file) => {
+  const id = getUserId(user);
+  const ext = getExt(file); // ya la tienes definida arriba
+  // Ej: user_123.png  (puedes cambiar el prefijo si quieres)
+  return `user_${id}${ext}`;
+};
 
   // FUNCIONES MODALES 2FA (sin cambios)
   const handleSendCode = async () => {
@@ -564,7 +595,7 @@ export default function MiPerfil() {
                     setFotoUrl(`${toPublicFotoSrc(freshName)}?t=${Date.now()}`); // cache-buster
 
                     // 6) Propaga al contexto
-                    setUser({ ...data, foto_perfil_url: freshName });
+                    setUser({ ...data, foto_perfil_url: freshName, avatar_rev: Date.now() });
 
                     setEditMode(false);
                   } catch (err) {

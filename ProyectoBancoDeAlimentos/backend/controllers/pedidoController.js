@@ -153,6 +153,33 @@ exports.crearPedido = async (req, res) => {
       await t.rollback();
       return res.status(400).json({ error: "El carrito está vacío" });
     }
+    
+    //validar existencia
+    for (const item of itemsCarrito) {
+      const sucProd = await sucursal_producto.findOne({
+        where: {
+          id_sucursal,
+          id_producto: item.id_producto
+        },
+        transaction: t
+      });
+
+      //existe?
+      if (!sucProd) {
+        await t.rollback();
+        return res.status(400).json({
+          error: `El producto con ID ${item.id_producto} no está disponible en la sucursal seleccionada`
+        });
+      }
+
+      //suficiente?
+      if (sucProd.stock_disponible < item.cantidad_unidad_medida) {
+        await t.rollback();
+        return res.status(400).json({
+          error: `Stock insuficiente para el producto ${item.producto.nombre}. Disponible: ${sucProd.stock_disponible}, solicitado: ${item.cantidad_unidad_medida}`
+        });
+      }
+    }
 
     //crear pedido
     const nuevoPedido = await pedido.create(

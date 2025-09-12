@@ -134,3 +134,23 @@ exports.getAllCupones = async (req, res) => {
         return res.status(500).json({ message: "Error al obtener cupones." });
     }
 };
+
+exports.desactivarCupon = async (req, res) => {
+  try {
+    const { id_cupon } = req.params;
+
+    const cup = await cupon.findOne({ where: { id_cupon } });
+
+    if (!cup) {
+      return res.status(404).json({ error: "No se pudo encontrar el cupón!" });
+    }
+
+    cup.activo = false;
+    await cup.save();
+
+    res.json({ message: "Cupón desactivado correctamente", id_cupon });
+  } catch (error) {
+    console.error("Error al desactivar cupón:", error);
+    res.status(500).json({ error: "Error interno al desactivar el cupón" });
+  }
+};

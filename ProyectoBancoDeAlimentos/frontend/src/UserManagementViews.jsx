@@ -7,14 +7,14 @@ import {
   getAllInformacionUsuario,
   RegistrarUser,
   updateUserById,
-  EditProfile,           
+  EditProfile,
   getRoles,
   addPrivilegio,
   asignarPrivilegioARol,
   getPrivilegios,
 } from "./api/Usuario.Route";
 
-import {manejoUsuarioPrivilegios,getRolesYPrivilegiosDeUsuario} from "./api/roles_privilegiosApi";
+import { manejoUsuarioPrivilegios, getRolesYPrivilegiosDeUsuario } from "./api/roles_privilegiosApi";
 
 const StatusBadge = ({ value }) => (
   <span className={"status-badge " + (value === "ACTIVO" ? "activo" : "inactivo")}>
@@ -40,7 +40,7 @@ const Modal = ({ open, title, onClose, children }) => {
   );
 };
 
-function Field({ label, value, onChange, readOnly, as = "input", children, placeholder, type="text" }) {
+function Field({ label, value, onChange, readOnly, as = "input", children, placeholder, type = "text" }) {
   return (
     <label>
       <span>{label}</span>
@@ -52,7 +52,7 @@ function Field({ label, value, onChange, readOnly, as = "input", children, place
         <input
           readOnly={readOnly}
           value={value}
-          onChange={onChange || (() => {})}
+          onChange={onChange || (() => { })}
           placeholder={placeholder}
           type={type}
         />
@@ -84,6 +84,7 @@ function Tabs({ tabs, active, onChange }) {
   );
 }
 
+
 /** ==== Helpers de roles/permiso ==== */
 const buildRoleMaps = (rolesApi = []) => {
   const idToName = new Map();
@@ -112,7 +113,7 @@ const isAdminRoleName = (v) => normRole(v) === "administrador";
 // Detecta si el USUARIO ACTUAL es admin desde localStorage (ajusta si usas otro método)
 const detectCurrentUserIsAdmin = () => {
   try {
-    const r  = (localStorage.getItem("rol") || localStorage.getItem("role") || "").toLowerCase();
+    const r = (localStorage.getItem("rol") || localStorage.getItem("role") || "").toLowerCase();
     const id = String(localStorage.getItem("id_rol") || "");
     return r === "administrador" || id === "1";
   } catch { return false; }
@@ -130,10 +131,10 @@ const detectCurrentUser = () => {
 };
 
 
-const NormprivilegiosApi = ( raw = []) => {
-if (!Array.isArray(raw)) return [];
+const NormprivilegiosApi = (raw = []) => {
+  if (!Array.isArray(raw)) return [];
   return raw.map((p, i) => {
-    const id  = Number(p.id_privilegio ?? p.id ?? i + 1);
+    const id = Number(p.id_privilegio ?? p.id ?? i + 1);
     const lbl = String(p.nombre_privilegio ?? p.nombre ?? p.label ?? `Privilegio ${id}`).trim();
     return { id, label: lbl };
   });
@@ -183,7 +184,7 @@ const buildPrivilegeView = (userPrivs, catalog, privMaps) => {
 
 export default function UserManagementViews() {
   /** ==== Estado principal ==== */
-  const [users, setUsers] = useState([]);  
+  const [users, setUsers] = useState([]);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 6;
@@ -224,9 +225,9 @@ export default function UserManagementViews() {
         const rolesRes = await getRoles();
         const maps = buildRoleMaps(rolesRes?.data || []);
         setRoleMaps(maps);
-        
 
-           // 2) Privilegios
+
+        // 2) Privilegios
         const privRes = await getPrivilegios();
         const norm = NormprivilegiosApi(privRes?.data || privRes || []);
         setPrivCatalog(norm);
@@ -331,212 +332,228 @@ export default function UserManagementViews() {
   };
 
   /** ==== Info ==== */
- // INFORMACIÓN (solo lectura) – cargar privilegios en vivo
-const openInfo = async (u) => {
-  try {
-    // 1) Pide al backend el rol + privilegios del usuario (por NOMBRE)
-    const r = await getRolesYPrivilegiosDeUsuario(u.dbId);
+  // INFORMACIÓN (solo lectura) – cargar privilegios en vivo
+  const openInfo = async (u) => {
+    try {
+      // 1) Pide al backend el rol + privilegios del usuario (por NOMBRE)
+      const r = await getRolesYPrivilegiosDeUsuario(u.dbId);
 
-    // Sequelize a veces devuelve user.rol o user.rols; ambos incluyen privilegios [{ nombre_privilegio }]
-    const privNames = Array.isArray(r?.data?.privilegios)
-      ? r.data.privilegios.map(p => String(p.nombre_privilegio || "").trim()).filter(Boolean)
-      : (
+      // Sequelize a veces devuelve user.rol o user.rols; ambos incluyen privilegios [{ nombre_privilegio }]
+      const privNames = Array.isArray(r?.data?.privilegios)
+        ? r.data.privilegios.map(p => String(p.nombre_privilegio || "").trim()).filter(Boolean)
+        : (
           Array.isArray(r?.data?.[0]?.privilegios)
             ? r.data[0].privilegios.map(p => String(p.nombre_privilegio || "").trim()).filter(Boolean)
             : []
         );
 
-    // 2) Convierte nombres → IDs del catálogo y marca checkboxes
-    const view = buildPrivilegeView(
-      privNames.length ? privNames : (u.privilegeNames?.length ? u.privilegeNames : u.privileges),
-      privCatalog,
-      privMaps
-    );
+      // 2) Convierte nombres → IDs del catálogo y marca checkboxes
+      const view = buildPrivilegeView(
+        privNames.length ? privNames : (u.privilegeNames?.length ? u.privilegeNames : u.privileges),
+        privCatalog,
+        privMaps
+      );
 
-    setInfoUser({
-      ...u,
-      _privView: view.list,        // catálogo que se dibuja
-      privileges: view.checkedIds, // IDs chequeados
-    });
-    setInfoTab("resumen");
-    setInfoOpen(true);
-  } catch (err) {
-    console.warn("No se pudo cargar privilegios live; fallback a datos locales:", err);
-    const view = buildPrivilegeView(
-      u.privilegeNames?.length ? u.privilegeNames : u.privileges,
-      privCatalog,
-      privMaps
-    );
-    setInfoUser({
-      ...u,
-      _privView: view.list,
-      privileges: view.checkedIds,
-    });
-    setInfoTab("resumen");
-    setInfoOpen(true);
-  }
-};
+      setInfoUser({
+        ...u,
+        _privView: view.list,        // catálogo que se dibuja
+        privileges: view.checkedIds, // IDs chequeados
+      });
+      setInfoTab("resumen");
+      setInfoOpen(true);
+    } catch (err) {
+      console.warn("No se pudo cargar privilegios live; fallback a datos locales:", err);
+      const view = buildPrivilegeView(
+        u.privilegeNames?.length ? u.privilegeNames : u.privileges,
+        privCatalog,
+        privMaps
+      );
+      setInfoUser({
+        ...u,
+        _privView: view.list,
+        privileges: view.checkedIds,
+      });
+      setInfoTab("resumen");
+      setInfoOpen(true);
+    }
+  };
 
 
   const closeInfo = () => { setInfoOpen(false); setInfoUser(null); };
 
   /** ==== Editar ==== */
-const openEdit = async (u) => {
-  try {
-    const r = await getRolesYPrivilegiosDeUsuario(u.dbId);
-    const privNames = Array.isArray(r?.data?.privilegios)
-      ? r.data.privilegios.map(p => String(p.nombre_privilegio || "").trim()).filter(Boolean)
-      : [];
+  const openEdit = async (u) => {
+    try {
+      const r = await getRolesYPrivilegiosDeUsuario(u.dbId);
+      const privNames = Array.isArray(r?.data?.privilegios)
+        ? r.data.privilegios.map(p => String(p.nombre_privilegio || "").trim()).filter(Boolean)
+        : [];
 
-    const view = buildPrivilegeView(
-      privNames.length ? privNames : (u.privilegeNames?.length ? u.privilegeNames : u.privileges),
-      privCatalog,
-      privMaps
-    );
+      const view = buildPrivilegeView(
+        privNames.length ? privNames : (u.privilegeNames?.length ? u.privilegeNames : u.privileges),
+        privCatalog,
+        privMaps
+      );
 
-    setEditUser({
-      ...u,
-      _privView: view.list,          
-      privileges: view.checkedIds,   
-      _originalRole: u.role,
-      _originalCorreo: (u.correo ?? "").trim().toLowerCase(),
-    });
-    setEditTab("datos");
-    setEditOpen(true);
-  } catch (err) {
-    console.warn("No se pudo cargar privilegios live; fallback a datos locales:", err);
-    const view = buildPrivilegeView(
-      u.privilegeNames?.length ? u.privilegeNames : u.privileges,
-      privCatalog,
-      privMaps
-    );
-    setEditUser({
-      ...u,
-      _privView: view.list,
-      privileges: view.checkedIds,
-      _originalRole: u.role,
-      _originalCorreo: (u.correo ?? "").trim().toLowerCase(),
-    });
-    setEditTab("datos");
-    setEditOpen(true);
-  }
-};
+      setEditUser({
+        ...u,
+        _privView: view.list,
+        privileges: view.checkedIds,
+        _originalRole: u.role,
+        _originalCorreo: (u.correo ?? "").trim().toLowerCase(),
+      });
+      setEditTab("datos");
+      setEditOpen(true);
+    } catch (err) {
+      console.warn("No se pudo cargar privilegios live; fallback a datos locales:", err);
+      const view = buildPrivilegeView(
+        u.privilegeNames?.length ? u.privilegeNames : u.privileges,
+        privCatalog,
+        privMaps
+      );
+      setEditUser({
+        ...u,
+        _privView: view.list,
+        privileges: view.checkedIds,
+        _originalRole: u.role,
+        _originalCorreo: (u.correo ?? "").trim().toLowerCase(),
+      });
+      setEditTab("datos");
+      setEditOpen(true);
+    }
+  };
 
 
   const closeEdit = () => { setEditOpen(false); setEditUser(null); };
 
-const saveEdit = async () => {
-  if (!editUser) return;
+  const saveEdit = async () => {
+    if (!editUser) return;
 
-  try {
-    const isEditingSelf =
-      Number(editUser.dbId) === Number(currentUser.id) && currentUser.id !== 0;
-
-    // Resuelve el rol destino SOLO si es admin y está permitido
-    let roleNameForPayload = editUser._originalRole;
-    if (currentUserIsAdmin && isAdminRoleName(editUser._originalRole)) {
-      roleNameForPayload =
-        editUser.role === "Consultor" ? "Consultor" : "Administrador";
-    }
-
-    // Construye payload de forma segura (solo campos válidos)
-    const payload = {};
-    if ((editUser.firstName ?? "").trim()) payload.nombre = editUser.firstName.trim();
-    if ((editUser.lastName ?? "").trim())  payload.apellido = editUser.lastName.trim();
-    if ((editUser.telefono ?? "").trim())  payload.telefono = String(editUser.telefono).trim();
-    if (typeof editUser.tema !== "undefined") payload.tema = !!editUser.tema;
-    if ((editUser.genero ?? "").trim())    payload.genero = editUser.genero.trim(); // opcional si lo activaste
-
-    // Solo admin editando a OTROS puede tocar correo/id_rol/activo
-    if (!isEditingSelf && currentUserIsAdmin) {
-      if ((editUser.correo ?? "").trim()) {
-        payload.correo = String(editUser.correo).trim().toLowerCase();
-      }
-      // id_rol desde el nombre calculado arriba
-      const maybeRolId =
-        roleMaps.nameToId.get(roleNameForPayload) ??
-        roleMaps.nameToId.get(editUser._originalRole);
-      if (Number.isInteger(maybeRolId)) payload.id_rol = Number(maybeRolId);
-
-      // estado -> activo
-      if (typeof editUser.status !== "undefined") {
-        payload.activo = String(editUser.status).toUpperCase() === "ACTIVO";
-      }
-    }
-
-    // Evita mandar payload vacío (dispararía "Nada que actualizar")
-    if (Object.keys(payload).length === 0) {
-      alert("No hay cambios válidos para enviar.");
-      return;
-    }
-
-    if (isEditingSelf) {
-      // /perfil (PUT/PATCH) – tu helper ya lo envía así
-      await EditProfile({ id: editUser.dbId, ...payload });
-    } else {
-      // /usuarios/:id – ADMIN
-      await updateUserById(editUser.dbId, payload);
-    }
-
-    // Refrescar tabla...
     try {
-      const r = await getAllInformacionUsuario();
-      const arr = Array.isArray(r?.data) ? r.data : (r?.data?.usuarios || []);
-      const uiUsers = (arr || []).map((u, idx) => {
-        const { ids, names } = splitPrivileges(u.privilegios ?? u.privileges);
-        return {
-          dbId: u.id_usuario ?? u.id ?? idx + 1,
-          id: String(u.id_usuario ?? u.id ?? idx + 1).padStart(3, "0"),
-          firstName: u.nombre ?? "",
-          lastName: u.apellido ?? "",
-          role: roleMaps.idToName.get(String(u.id_rol)) || u.rol || "Usuario",
-          status: (u.activo ? "ACTIVO" : "INACTIVO"),
-          correo: u.correo ?? u.email ?? "-",
-          genero: u.genero ?? "otro",
-          privileges: ids,
-          privilegeNames: names,
-        };
-      });
-      setUsers(uiUsers);
-    } catch (errRefresh) {
-      // fallback local
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === editUser.id ? { ...u, ...editUser, role: roleNameForPayload } : u
-        )
-      );
+      const isEditingSelf =
+        Number(editUser.dbId) === Number(currentUser.id) && currentUser.id !== 0;
+
+      // Resuelve el rol destino SOLO si es admin y está permitido
+      let roleNameForPayload = editUser._originalRole;
+      if (currentUserIsAdmin && isAdminRoleName(editUser._originalRole)) {
+        roleNameForPayload =
+          editUser.role === "Consultor" ? "Consultor" : "Administrador";
+      }
+
+      // Construye payload de forma segura (solo campos válidos)
+      const payload = {};
+      if ((editUser.firstName ?? "").trim()) payload.nombre = editUser.firstName.trim();
+      if ((editUser.lastName ?? "").trim()) payload.apellido = editUser.lastName.trim();
+      if ((editUser.telefono ?? "").trim()) payload.telefono = String(editUser.telefono).trim();
+      if (typeof editUser.tema !== "undefined") payload.tema = !!editUser.tema;
+      if ((editUser.genero ?? "").trim()) payload.genero = editUser.genero.trim(); // opcional si lo activaste
+
+      // Solo admin editando a OTROS puede tocar correo/id_rol/activo
+      if (!isEditingSelf && currentUserIsAdmin) {
+        if ((editUser.correo ?? "").trim()) {
+          payload.correo = String(editUser.correo).trim().toLowerCase();
+        }
+        // id_rol desde el nombre calculado arriba
+        const maybeRolId =
+          roleMaps.nameToId.get(roleNameForPayload) ??
+          roleMaps.nameToId.get(editUser._originalRole);
+        if (Number.isInteger(maybeRolId)) payload.id_rol = Number(maybeRolId);
+
+        // estado -> activo
+        if (typeof editUser.status !== "undefined") {
+          payload.activo = String(editUser.status).toUpperCase() === "ACTIVO";
+        }
+      }
+
+      // Evita mandar payload vacío (dispararía "Nada que actualizar")
+      if (Object.keys(payload).length === 0) {
+        alert("No hay cambios válidos para enviar.");
+        return;
+      }
+
+      if (isEditingSelf) {
+        // /perfil (PUT/PATCH) – tu helper ya lo envía así
+        await EditProfile({ id: editUser.dbId, ...payload });
+      } else {
+        // /usuarios/:id – ADMIN
+        await updateUserById(editUser.dbId, payload);
+      }
+
+      // Refrescar tabla...
+      try {
+        const r = await getAllInformacionUsuario();
+        const arr = Array.isArray(r?.data) ? r.data : (r?.data?.usuarios || []);
+        const uiUsers = (arr || []).map((u, idx) => {
+          const { ids, names } = splitPrivileges(u.privilegios ?? u.privileges);
+          return {
+            dbId: u.id_usuario ?? u.id ?? idx + 1,
+            id: String(u.id_usuario ?? u.id ?? idx + 1).padStart(3, "0"),
+            firstName: u.nombre ?? "",
+            lastName: u.apellido ?? "",
+            role: roleMaps.idToName.get(String(u.id_rol)) || u.rol || "Usuario",
+            status: (u.activo ? "ACTIVO" : "INACTIVO"),
+            correo: u.correo ?? u.email ?? "-",
+            genero: u.genero ?? "otro",
+            privileges: ids,
+            privilegeNames: names,
+          };
+        });
+        setUsers(uiUsers);
+      } catch (errRefresh) {
+        // fallback local
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.id === editUser.id ? { ...u, ...editUser, role: roleNameForPayload } : u
+          )
+        );
+      }
+      // === Asignación de privilegios (Consultor) ===
+      if (showPrivTab(roleNameForPayload) && !isEditingSelf && currentUserIsAdmin) {
+        const selectedIds = Array.isArray(editUser.privileges) ? editUser.privileges : [];
+        try {
+          await manejoUsuarioPrivilegios(editUser.dbId, selectedIds);
+        } catch (e) {
+          console.error("No se pudo actualizar privilegios del rol:", e);
+          alert("No se pudieron guardar los privilegios. Revisa backend/logs.");
+        }
+      }
+
+
+      closeEdit();
+    } catch (err) {
+      console.error("Error guardando edición:", err);
+      alert("No se pudo guardar. Revisa permisos y datos válidos.");
     }
-// === Asignación de privilegios (Consultor) ===
-if (showPrivTab(roleNameForPayload) && !isEditingSelf && currentUserIsAdmin) {
-  const selectedIds = Array.isArray(editUser.privileges) ? editUser.privileges : [];
-  try {
-    await manejoUsuarioPrivilegios(editUser.dbId, selectedIds);
-  } catch (e) {
-    console.error("No se pudo actualizar privilegios del rol:", e);
-    alert("No se pudieron guardar los privilegios. Revisa backend/logs.");
-  }
-}
+  };
+  // === Iconos SVG locales (idéntico al de inventario) ===
+  const SvgIcon = {
+    Edit: (props) => (
+      <svg viewBox="0 0 24 24" className={"svg-20 " + (props.className || "")}>
+        <path
+          d="M4 20h4l10-10-4-4L4 16v4zM14 6l4 4"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          fill="none"
+        />
+      </svg>
+    ),
+  };
 
-
-    closeEdit();
-  } catch (err) {
-    console.error("Error guardando edición:", err);
-    alert("No se pudo guardar. Revisa permisos y datos válidos.");
-  }
-};
 
   return (
     <div className="page-container">
       <main className="main-content">
         <header className="page-header">
-          <h1><span className="accent">Gestión Perfil De Usuarios</span></h1>
+          <h1><span className="accent">Gestión De Usuarios</span></h1>
 
           <button className="btn-primary" onClick={() => setCreateOpen(true)}>
             <Icon icon="mdi:account-plus" />
             <span>Crear Usuario</span>
           </button>
+
         </header>
-      
+        <div className="divider" />
         <div className="search-bar">
           <div className="search-input">
             <Icon icon="mdi:magnify" className="search-icon" />
@@ -555,6 +572,7 @@ if (showPrivTab(roleNameForPayload) && !isEditingSelf && currentUserIsAdmin) {
 
         {/* Tabla */}
         <div className="table-container">
+          <div className="table-scroll">
           <table className="users-table">
             <colgroup>
               <col className="col-id" />
@@ -586,25 +604,25 @@ if (showPrivTab(roleNameForPayload) && !isEditingSelf && currentUserIsAdmin) {
                   <td className="cell-center"><RolePill role={u.role} /></td>
                   <td className="cell-center">
                     <div className="action-buttons">
-                      <button onClick={() => openInfo(u)} aria-label="Información"><Icon icon="mdi:eye-outline" /></button>
-                      <button onClick={() => openEdit(u)} aria-label="Editar"><Icon icon="mdi:pencil-outline" /></button>
-                    </div>
+                      <button onClick={() => openInfo(u)} aria-label="Información" className="icon-btn icon-btn--view">
+                       <Icon icon="mdi:eye-outline" className="icon--view" />  </button>
+                      <button onClick={() => openEdit(u)} aria-label="Editar" className="icon-btn icon-btn--edit">
+                        <SvgIcon.Edit className="icon--edit" />
+                      </button> </div>
                   </td>
                 </tr>
               ))}
 
               {visible.length === 0 && (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center", padding: 20 }}>
+                  <td colSpan={10} style={{ textAlign: "center", padding: 20 }}>
                     No hay resultados para “{query}”.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
-        </div>
-
-        {/* Paginación */}
+            {/* Paginación */}
         <div className="pagination">
           <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={pageSafe === 1} aria-label="Página anterior">
             <Icon icon="mdi:chevron-left" />
@@ -618,6 +636,10 @@ if (showPrivTab(roleNameForPayload) && !isEditingSelf && currentUserIsAdmin) {
             <Icon icon="mdi:chevron-right" />
           </button>
         </div>
+          </div>
+        </div>
+
+      
       </main>
 
       {/* CREAR */}
@@ -664,26 +686,26 @@ if (showPrivTab(roleNameForPayload) && !isEditingSelf && currentUserIsAdmin) {
                   </div>
                 ),
               },
-              ...( showPrivTab(infoUser.role)
+              ...(showPrivTab(infoUser.role)
                 ? [{
-                    key: "priv",
-                    label: "Privilegios",
-                    icon: "mdi:shield-key-outline",
-                    content: (
-                      <div className="priv-list">
-                        {(infoUser._privView || privCatalog).map((p) => {
-                          const checked = infoUser.privileges?.includes(p.id);
-                          return (
-                            <label className="priv-item readonly" key={p.id}>
-                              <input type="checkbox" checked={!!checked} disabled />
-                              <span className="edit-checkmark"></span>
-                              <span className="priv-label">{p.label}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    ),
-                  }]
+                  key: "priv",
+                  label: "Privilegios",
+                  icon: "mdi:shield-key-outline",
+                  content: (
+                    <div className="priv-list">
+                      {(infoUser._privView || privCatalog).map((p) => {
+                        const checked = infoUser.privileges?.includes(p.id);
+                        return (
+                          <label className="priv-item readonly" key={p.id}>
+                            <input type="checkbox" checked={!!checked} disabled />
+                            <span className="edit-checkmark"></span>
+                            <span className="priv-label">{p.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  ),
+                }]
                 : []
               ),
             ]}
@@ -780,36 +802,36 @@ if (showPrivTab(roleNameForPayload) && !isEditingSelf && currentUserIsAdmin) {
                   </div>
                 ),
               },
-              ...( showPrivTab(editUser.role)
+              ...(showPrivTab(editUser.role)
                 ? [{
-                    key: "priv",
-                    label: "Privilegios",
-                    icon: "mdi:shield-key-outline",
-                    content: (
-                      <div className="priv-list">
-                        {(editUser._privView || privCatalog).map((p) => {
-                          const checked = editUser.privileges?.includes(p.id);
-                          return (
-                            <label className="priv-item" key={p.id}>
-                              <input
-                                type="checkbox"
-                                checked={!!checked}
-                                onChange={() => {
-                                  const has = editUser.privileges?.includes(p.id);
-                                  const next = has
-                                    ? editUser.privileges.filter((x) => x !== p.id)
-                                    : [...(editUser.privileges || []), p.id];
-                                  setEditUser({ ...editUser, privileges: next });
-                                }}
-                              />
-                              <span className="edit-checkmark"></span>
-                              <span className="priv-label">{p.label}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    ),
-                  }]
+                  key: "priv",
+                  label: "Privilegios",
+                  icon: "mdi:shield-key-outline",
+                  content: (
+                    <div className="priv-list">
+                      {(editUser._privView || privCatalog).map((p) => {
+                        const checked = editUser.privileges?.includes(p.id);
+                        return (
+                          <label className="priv-item" key={p.id}>
+                            <input
+                              type="checkbox"
+                              checked={!!checked}
+                              onChange={() => {
+                                const has = editUser.privileges?.includes(p.id);
+                                const next = has
+                                  ? editUser.privileges.filter((x) => x !== p.id)
+                                  : [...(editUser.privileges || []), p.id];
+                                setEditUser({ ...editUser, privileges: next });
+                              }}
+                            />
+                            <span className="edit-checkmark"></span>
+                            <span className="priv-label">{p.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  ),
+                }]
                 : []
               )
             ]}

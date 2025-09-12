@@ -70,6 +70,7 @@ const Headerr = () => {
     logout();
     localStorage.removeItem("token");
     localStorage.removeItem("rol");
+
     navigate("/login");
   };
 
@@ -167,19 +168,25 @@ const Headerr = () => {
           </button>
           <span>
             {isAuthenticated
-              ? isAdmin
-                ? "Bienvenido, Administrador"
-                : `Bienvenido, ${userRole}`
+              ? `${user?.nombre || "Usuario"}`
               : "Invitado"}
           </span>
 
           {logMenu && (
             <div style={styles.dropdown}>
+              <div style={styles.dropdownCaret} /> 
               {isAuthenticated ? (
                 <>
+                  <div style={styles.userHeader}>
+          <span style={styles.hello}>Hola,</span>
+          <span style={styles.fullName}>{user?.nombre} {user?.apellido}</span>
+        </div>
+
+          <div style={styles.headerDivider} />
+
                   <Link
                     to={isAdmin ? "/EditarPerfilAdmin" : "/miPerfil"}
-                    style={styles.dropdownLink}
+                    style={styles.actionItem}
                     onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#D8572F")}
                     onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                   >
@@ -189,7 +196,7 @@ const Headerr = () => {
                   {isAdmin && (
                     <Link
                       to="/gestionProductos"
-                      style={styles.dropdownLink}
+                      style={styles.actionItem}
                       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#D8572F")}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                     >
@@ -199,7 +206,7 @@ const Headerr = () => {
 
                   <button
                     type="button"
-                    style={{ ...styles.dropdownLink, textAlign: "left" }}
+                    style={{ ...styles.actionItem, textAlign: "left" }}
                     onClick={handleLogout}
                     onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#D8572F")}
                     onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
@@ -210,7 +217,7 @@ const Headerr = () => {
               ) : (
                 <Link
                   to="/login"
-                  style={styles.dropdownLink}
+                  style={styles.actionItem}
                   onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#D8572F")}
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                 >
@@ -359,40 +366,54 @@ const styles = {
     borderRadius: "50%",
     objectFit: "cover",
   },
-  SmallWrapperUser: {
-    backgroundColor: "transparent",
-    width: "50px",
-    height: "40px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: "pointer",
-  },
-  user: {
-    display: "flex",
-    alignItems: "center",
-    gap: "5px",
-    color: "white",
-    cursor: "pointer",
-    height: "20px",
-    width: "250px",
-  },
-  dropdown: {
-    position: "absolute",
-    top: "75px",
-    right: "135px",
-    width: "170px",
-    backgroundColor: "white",
-    color: "black",
-    borderRadius: "25px",
-    boxShadow: "10px 10px 10px rgba(0,0,0,0.15)",
-    padding: "10px",
-    display: "flex",
-    flexDirection: "column",
-    gap: "10px",
-    zIndex: 1000,
-    border: "2px solid #2b6daf",
-  },
+SmallWrapperUser: {
+  backgroundColor: "transparent",
+  width: 44,
+  height: 44,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  borderRadius: "50%",
+},
+user: {
+  position: "relative",          // << ancla del dropdown
+  display: "flex",
+  alignItems: "center",
+  gap: "6px",
+  color: "white",
+  cursor: "pointer",
+  height: "20px",
+  width: "300px",
+},
+dropdown: {
+  position: "absolute",
+  top: "calc(100% + 15px)",       // debajo del avatar
+  right: 78,                      // alineado al borde del avatar
+  width: 220,                    // más pequeño
+  backgroundColor: "#fff",
+  color: "#0f172a",
+  borderRadius: 12,
+  boxShadow: "0 14px 28px rgba(15, 23, 42, .18)",
+  padding: 10,
+  display: "flex",
+  flexDirection: "column",
+  gap: 6,
+  zIndex: 1000,
+  border: "1px solid #e5e7eb",
+},
+
+dropdownCaret: {
+  position: "absolute",
+  top: -6,
+  left: 14,                  
+  width: 12,
+  height: 12,
+  background: "#fff",
+  borderLeft: "1px solid #e5e7eb",
+  borderTop: "1px solid #e5e7eb",
+  transform: "rotate(45deg)",
+},
   dropdownLink: {
     padding: "8px 12px",
     borderRadius: "8px",
@@ -448,6 +469,66 @@ const styles = {
     height: "40px",
     objectFit: "contain",
   },
+  userInfo: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    marginBottom: "8px",
+  },
+  userName: {
+    fontWeight: "600",
+    fontSize: "14px",
+    color: "#0f172a",
+  },
+  logoutLink: {
+    fontSize: "13px",
+    color: "#64748b",
+    cursor: "pointer",
+    
+  },
+userHeader: {
+  display: "flex",
+  flexDirection: "column",   // ⬅️ ahora en columna
+  alignItems: "flex-start",  // ⬅️ alineado a la izquierda
+  padding: "6px 8px",
+  gap: 6,
+},
+
+hello: {
+  color: "#64748b",
+  fontWeight: 600,
+},
+fullName: {
+  fontSize: 16,
+  fontWeight: 800,
+  color: "#0f172a",
+  lineHeight: 1.2,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+},
+headerDivider: {
+  height: 1,
+  background: "linear-gradient(to right, transparent, #e5e7eb 15%, #e5e7eb 85%, transparent)",
+  margin: "4px 0 6px",
+},
+
+// items del menú, alineados a la izquierda
+actionItem: {
+  width: "100%",
+  textAlign: "left",
+  padding: "9px 10px",
+  borderRadius: 8,
+  textDecoration: "none",
+  color: "#0f172a",
+  fontSize: 16,
+  cursor: "pointer",
+  background: "transparent",
+  border: "none",
+  display: "block",
+  transition: "background .15s ease",
+},
+actionItemHover: { background: "#f8fafc" }
 };
 
 export default Headerr;

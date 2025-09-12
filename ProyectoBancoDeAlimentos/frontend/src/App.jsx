@@ -124,10 +124,7 @@ function App() {
                 path="/reportesInventario"
                 element={<ReportesInventario />}
               />
-              <Route
-                path="/descuentos_aplicados"
-                element={<DescuentosAplicados />}
-              />
+              
             </Route>
 
             {/* ---------- CLIENTE LOGUEADO ---------- */}
@@ -155,6 +152,12 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
+            <Route
+                path="/descuentos_aplicados"
+                element={<DescuentosAplicados />}
+              />
+              
             <Route
               path="/misDirecciones"
               element={

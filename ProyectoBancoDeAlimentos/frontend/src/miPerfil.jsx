@@ -9,22 +9,46 @@ import {
   InformacionUser,
   EditProfile,
   changePassword,
-  uploadProfilePhoto1, // fallback si el POST directo no existe
+  uploadProfilePhoto1,
   enviarCorreoDosPasos,
   validarCodigoDosPasos,
 } from "./api/Usuario.Route";
 import axiosInstance from "./api/axiosInstance";
+
+/* ===================== ORIGIN backend + helper URL imagen ===================== */
+// Soporta baseURL absoluta (http://host:puerto/api) y relativa (/api)
+const BACKEND_ORIGIN = (() => {
+  const base = axiosInstance?.defaults?.baseURL;
+  try {
+    const u = base
+      ? (base.startsWith("http")
+          ? new URL(base)                          // p.ej. http://localhost:3000/api
+          : new URL(base, window.location.origin)) // p.ej. /api -> añade origin del front
+      : new URL(window.location.origin);
+    return `${u.protocol}//${u.host}`;             // http(s)://host:puerto
+  } catch {
+    return window.location.origin;
+  }
+})();
+
+// Construye la URL absoluta para una imagen en /images/fotoDePerfil
+const backendImageUrl = (fileName) =>
+  fileName
+    ? `${BACKEND_ORIGIN}/images/fotoDePerfil/${encodeURIComponent(fileName)}`
+    : "";
 
 /* ====================== UTILIDADES NUEVAS (para foto) ====================== */
 
 // Normaliza un posible valor devuelto por la BD (nombre o ruta) a una URL pública
 const toPublicFotoSrc = (nameOrPath) => {
   if (!nameOrPath) return "";
-  // Si ya es absoluta (http/https) o empieza con "/", úsala tal cual
-  if (/^https?:\/\//i.test(nameOrPath) || nameOrPath.startsWith("/"))
-    return nameOrPath;
-  // Si parece solo nombre de archivo, mápalo a la carpeta pública
-  return `/images/fotoDePerfil/${nameOrPath}`;
+  // Absoluta → úsala tal cual
+  if (/^https?:\/\//i.test(nameOrPath)) return nameOrPath;
+  // Viene con /images/... → pega al backend
+  if (nameOrPath.startsWith("/images/"))
+    return `${BACKEND_ORIGIN}${encodeURI(nameOrPath)}`;
+  // Solo nombre → mapea a /images/fotoDePerfil en backend
+  return backendImageUrl(nameOrPath);
 };
 
 // Extrae solo el nombre de archivo (para guardar en BD)
@@ -76,38 +100,31 @@ function Icon({ name, className = "icon" }) {
   switch (name) {
     case "user":
       return (
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          className={className}
-        >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
           <circle cx="12" cy="8" r="4" strokeWidth="1.8" />
           <path d="M4 20c2-4 14-4 16 0" strokeWidth="1.8" />
         </svg>
       );
     case "mail":
       return (
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          className={className}
-        >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
           <rect x="3" y="5" width="18" height="14" rx="2" strokeWidth="1.8" />
           <path d="M3 7l9 6 9-6" strokeWidth="1.8" />
         </svg>
       );
     case "camera":
       return (
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          className={className}
-        >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
           <path d="M4 8h4l2-2h4l2 2h4v12H4z" strokeWidth="1.8" />
           <circle cx="12" cy="14" r="3.5" strokeWidth="1.8" />
+        </svg>
+      );
+    // Opcional: ícono para "number" (teléfono) si lo quieres mostrar
+    case "number":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+          <path d="M6 2h12v20H6z" strokeWidth="1.8" />
+          <circle cx="12" cy="18" r="1.5" strokeWidth="1.8" />
         </svg>
       );
     default:
@@ -155,7 +172,8 @@ export default function MiPerfil() {
   const [twoFactorCode, setTwoFactorCode] = useState("");
   const [loadingHistorial, setLoadingHistorial] = useState(false);
   const [errorHistorial, setErrorHistorial] = useState("");
-  // tu estado historial puede quedarse (si quieres ver placeholders) — lo dejé tal cual:
+
+  // tu estado historial (placeholder)
   const [historial, setHistorial] = useState([
     { fecha: "14 de enero", hora: "10:45" },
     { fecha: "12 de enero", hora: "14:08" },
@@ -169,39 +187,27 @@ export default function MiPerfil() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // preview
+    // preview rápida
     setFotoUrl(URL.createObjectURL(file));
 
     // arma nombre "KennyFotoPerfil.png"
-    const safeName = buildSafeProfileFileName(
-      { nombre, apellidos, user },
-      file
-    );
+    const safeName = buildSafeProfileFileName({ nombre, apellidos, user }, file);
 
     try {
-      const fd = new FormData();
-      fd.append("foto", file, safeName);
-
-      // 1) Sube y guarda físico + UPDATE BD (si lo implementaste en el backend)
-      const { data } = await axiosInstance.post(
-        "/api/uploads/profile-photo",
-        fd,
-        {
-          headers: { "Content-Type": "multipart/form-data" },
-        }
-      );
-
+      // 1) Sube y guarda físico en backend (campo "foto")
+      const { data } = await uploadProfilePhoto1(file, safeName);
       const filename = data?.filename || safeName;
 
-      // 2) Si NO hiciste el UPDATE en el backend, hazlo aquí:
-
-      // 3) Refresca UI y contexto
-      setFotoUrl(`/images/fotoDePerfil/${filename}`);
-      setFotoFileName(filename);
-
-      // refrescar usuario
+      // 2) Relee usuario desde backend (por si actualizas BD ahí)
       const res = await InformacionUser();
-      setUser(res.data);
+      const data1 = res.data || {};
+      const fromApi = data1.foto_perfil_url || data1.foto_perfil || data1.foto || filename;
+      const justName = fileNameFromPath(fromApi);
+
+      // 3) Refresca UI y contexto (con cache-buster)
+      setFotoUrl(`${backendImageUrl(justName)}?t=${Date.now()}`);
+      setFotoFileName(justName);
+      setUser({ ...data1, foto_perfil_url: justName });
     } catch (err) {
       console.error("Error subiendo foto:", err);
       alert("No se pudo subir la foto.");
@@ -211,61 +217,43 @@ export default function MiPerfil() {
   // Helper: intenta parsear muchos formatos comunes y devuelve un Date o null
   const tryParseDate = (value) => {
     if (!value && value !== 0) return null;
-
-    // Si ya es Date
     if (value instanceof Date && !isNaN(value)) return value;
 
-    // Números => epoch (segundos o ms)
     if (typeof value === "number") {
       const s = String(value);
-      // 10 dígitos -> segundos
-      if (s.length === 10) return new Date(value * 1000);
-      // 13 dígitos -> ms
-      if (s.length === 13) return new Date(value);
-      // fallback
+      if (s.length === 10) return new Date(value * 1000); // segundos
+      if (s.length === 13) return new Date(value);        // ms
       const byNum = new Date(value);
       return isNaN(byNum) ? null : byNum;
     }
 
-    // Cadenas
     if (typeof value === "string") {
       let s = value.trim();
 
-      // /Date(1600000000000)/  -> extraer número
       const m = s.match(/\/Date\((\d+)\)\//);
       if (m) {
         const ms = Number(m[1]);
         if (!isNaN(ms)) return new Date(ms);
       }
 
-      // Si parece un número en string
       if (/^\d{10,13}$/.test(s)) {
         const n = Number(s);
         return tryParseDate(n);
       }
 
-      // Reemplazar espacio ' ' entre fecha y hora por 'T' (u otras transformaciones)
       const withT = s.replace(" ", "T");
-
-      // Intento 1: Date con posible T (ISO)
       const d1 = new Date(withT);
       if (!isNaN(d1)) return d1;
 
-      // Intento 2: añadir Z (UTC)
       const d2 = new Date(withT + "Z");
       if (!isNaN(d2)) return d2;
 
-      // Intento 3: Date.parse directo
       const p = Date.parse(s);
       if (!isNaN(p)) return new Date(p);
 
-      // Intento 4: regex formato "YYYY-MM-DD HH:mm:ss" u "YYYY/MM/DD HH:mm"
-      const reg = s.match(
-        /(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?/
-      );
+      const reg = s.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?/);
       if (reg) {
         const [_, Y, M, D, hh, mm, ss] = reg;
-        // Usamos Date UTC para evitar problemas con interpretación local; si quieres local quita Date.UTC
         return new Date(
           Number(Y),
           Number(M) - 1,
@@ -276,11 +264,9 @@ export default function MiPerfil() {
         );
       }
 
-      // Si llega hasta aquí no se pudo parsear
       return null;
     }
 
-    // no soportado
     return null;
   };
 
@@ -288,27 +274,14 @@ export default function MiPerfil() {
   const formatToFechaHora = (dateObj) => {
     if (!dateObj || !(dateObj instanceof Date) || isNaN(dateObj)) return null;
     const months = [
-      "enero",
-      "febrero",
-      "marzo",
-      "abril",
-      "mayo",
-      "junio",
-      "julio",
-      "agosto",
-      "septiembre",
-      "octubre",
-      "noviembre",
-      "diciembre",
+      "enero","febrero","marzo","abril","mayo","junio",
+      "julio","agosto","septiembre","octubre","noviembre","diciembre",
     ];
     const day = String(dateObj.getDate()).padStart(2, "0");
     const month = months[dateObj.getMonth()];
     const hh = String(dateObj.getHours()).padStart(2, "0");
     const mm = String(dateObj.getMinutes()).padStart(2, "0");
-    return {
-      fecha: `${day} de ${month}`,
-      hora: `${hh}:${mm}`,
-    };
+    return { fecha: `${day} de ${month}`, hora: `${hh}:${mm}` };
   };
 
   // fetchHistorial robusto
@@ -324,60 +297,28 @@ export default function MiPerfil() {
     setErrorHistorial("");
     try {
       const res = await getLogsUsuario(userId);
-      // Ver qué devuelve el backend (muy importante la primera vez)
-      console.log("getLogsUsuario raw:", res?.data);
-
       const rawList = Array.isArray(res.data)
         ? res.data
         : res.data?.rows ?? res.data?.data ?? [];
-      // Si rawList sigue vacío y res.data no es array, intenta forzar un array con res.data
-      const items = Array.isArray(rawList)
-        ? rawList
-        : res.data
-        ? [res.data]
-        : [];
+      const items = Array.isArray(rawList) ? rawList : res.data ? [res.data] : [];
 
       const logs = items.map((item) => {
-        // intenta varios campos habituales
         const candidates = [
-          item.fecha_conexion,
-          item.created_at,
-          item.fecha_hora,
-          item.timestamp,
-          item.date,
-          item.datetime,
-          item.createdAt,
-          item.fecha,
-          item.log_date,
-          item.time,
-          item.hora,
-          item.created_at_iso,
+          item.fecha_conexion, item.created_at, item.fecha_hora, item.timestamp,
+          item.date, item.datetime, item.createdAt, item.fecha, item.log_date,
+          item.time, item.hora, item.created_at_iso,
         ];
 
-        // buscar primer candidato que no sea null/undefined
         let parsedDate = null;
         for (const cand of candidates) {
-          if (
-            cand !== undefined &&
-            cand !== null &&
-            String(cand).trim() !== ""
-          ) {
+          if (cand !== undefined && cand !== null && String(cand).trim() !== "") {
             parsedDate = tryParseDate(cand);
             if (parsedDate) break;
           }
         }
+        if (!parsedDate && typeof item === "string") parsedDate = tryParseDate(item);
 
-        // Si no se pudo parsear con candidatos, intenta parsear todo el objeto (por si el backend devolvió solo un string)
-        if (!parsedDate) {
-          // hay casos donde la API devuelve solo un string (res.data = "2025-09-10T03:45:12")
-          if (typeof item === "string") parsedDate = tryParseDate(item);
-        }
-
-        if (!parsedDate) {
-          console.warn("No se pudo parsear fecha del log:", item);
-          return { fecha: "Fecha desconocida", hora: "", raw: item };
-        }
-
+        if (!parsedDate) return { fecha: "Fecha desconocida", hora: "", raw: item };
         const fh = formatToFechaHora(parsedDate);
         return { ...fh, raw: item };
       });
@@ -399,7 +340,6 @@ export default function MiPerfil() {
       try {
         const res = await InformacionUser(1);
         const data = res.data || {};
-        console.log("Datos usuario:", data);
         if (!mounted) return;
 
         if (!data || Object.keys(data).length === 0) {
@@ -411,11 +351,7 @@ export default function MiPerfil() {
         // Intentamos registrar log de acceso si hay un id
         try {
           const userId =
-            data.id_usuario ??
-            data.id ??
-            data.usuario_id ??
-            data.userId ??
-            null;
+            data.id_usuario ?? data.id ?? data.usuario_id ?? data.userId ?? null;
           if (userId) {
             createLog(userId).catch((e) =>
               console.warn("No se pudo crear log de acceso:", e)
@@ -438,17 +374,14 @@ export default function MiPerfil() {
         if (data.rol?.nombre_rol) setRol(data.rol.nombre_rol);
 
         // Normalizamos para UI y BD
-        const fromApi =
-          data.foto_perfil_url || data.foto_perfil || data.foto || "";
-        setFotoFileName(fileNameFromPath(fromApi)); // nombre limpio para BD
-        setFotoUrl(toPublicFotoSrc(fromApi)); // URL pública para mostrar
-
+        const fromApi = data.foto_perfil_url || data.foto_perfil || data.foto || "";
+        const cleanName = fileNameFromPath(fromApi);
+        setFotoFileName(cleanName); // nombre limpio para BD
+        setFotoUrl(cleanName ? `${toPublicFotoSrc(cleanName)}?t=${Date.now()}` : "");
+        console.log(fotoUrl);
         setCargando(false);
       } catch (err) {
-        console.error(
-          "Error cargando usuario:",
-          err?.response?.data || err.message || err
-        );
+        console.error("Error cargando usuario:", err?.response?.data || err.message || err);
       }
     };
 
@@ -482,7 +415,6 @@ export default function MiPerfil() {
     if (!twoFactorCode) return alert("Ingresa el código recibido");
     try {
       const res = await validarCodigoDosPasos(correo, twoFactorCode);
-      console.log("Código verificado:", res.data);
       alert("Autenticación de dos pasos activada correctamente");
       setShowTwoFactorCodeModal(false);
       setTwoFactorCode("");
@@ -603,46 +535,39 @@ export default function MiPerfil() {
                 className="boton-guardar"
                 onClick={async () => {
                   try {
-                    // Asegurar que a la BD se envíe SOLO el nombre del archivo
-                    const nombreParaBD =
-                      fotoFileName || fileNameFromPath(fotoUrl) || "";
-
+                    // 1) Prepara payload
+                    const nombreParaBD = fotoFileName || fileNameFromPath(fotoUrl) || "";
                     const payload = {
                       telefono,
                       nombre,
                       apellido: apellidos,
                       correo,
                       genero,
-                      // En la BD guarda solo: "KennyFotoPerfil.png"
-                      foto_perfil_url: nombreParaBD,
+                      foto_perfil_url: nombreParaBD, // en BD solo el nombre
                     };
 
+                    // 2) Guarda en backend
                     await axiosInstance.put("/api/MiPerfil/perfil", payload);
 
-                    // Refrescar todo el usuario desde el backend
+                    // 3) Relee usuario desde backend
                     const fullRes = await InformacionUser();
                     const data = fullRes.data || {};
 
-                    // Normalizar inmediatamente para que el resto de la app muestre bien
+                    // 4) Normaliza NOMBRE DE ARCHIVO
                     const freshName = fileNameFromPath(
-                      data.foto_perfil_url || data.foto || ""
+                      data.foto_perfil_url || data.foto_perfil || data.foto || nombreParaBD || ""
                     );
-                    setFotoFileName(freshName);
-                    setFotoUrl(toPublicFotoSrc(freshName));
 
-                    // Propagar al contexto global
-                    setUser({
-                      ...data,
-                      // nos aseguramos que el contexto tenga el nombre, no ruta absoluta
-                      foto_perfil_url: freshName,
-                    });
+                    // 5) Actualiza UI
+                    setFotoFileName(freshName);
+                    setFotoUrl(`${toPublicFotoSrc(freshName)}?t=${Date.now()}`); // cache-buster
+
+                    // 6) Propaga al contexto
+                    setUser({ ...data, foto_perfil_url: freshName });
 
                     setEditMode(false);
                   } catch (err) {
-                    console.error(
-                      "Error guardando perfil:",
-                      err?.response?.data || err.message || err
-                    );
+                    console.error("Error guardando perfil:", err?.response?.data || err.message || err);
                     alert("No se pudo guardar el perfil.");
                   }
                 }}
@@ -694,11 +619,7 @@ export default function MiPerfil() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                   />
                   {passwordError && (
-                    <p
-                      className="password-error"
-                      role="alert"
-                      aria-live="assertive"
-                    >
+                    <p className="password-error" role="alert" aria-live="assertive">
                       {passwordError}
                     </p>
                   )}
@@ -719,15 +640,11 @@ export default function MiPerfil() {
                         return;
                       }
                       if (newPassword !== confirmPassword) {
-                        setPasswordError(
-                          "La nueva contraseña y la confirmación no coinciden"
-                        );
+                        setPasswordError("La nueva contraseña y la confirmación no coinciden");
                         return;
                       }
                       if (newPassword.length < 6) {
-                        setPasswordError(
-                          "La contraseña debe tener al menos 6 caracteres"
-                        );
+                        setPasswordError("La contraseña debe tener al menos 6 caracteres");
                         return;
                       }
 
@@ -771,9 +688,7 @@ export default function MiPerfil() {
             <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
               <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-0 relative">
                 <div className="bg-[#2b6daf] text-white text-center py-2">
-                  <h2 className="font-semibold text-lg">
-                    Activar autenticación en dos pasos
-                  </h2>
+                  <h2 className="font-semibold text-lg">Activar autenticación en dos pasos</h2>
                 </div>
                 <button
                   className="absolute top-3 right-3 text-white hover:text-gray-200"
@@ -787,14 +702,8 @@ export default function MiPerfil() {
                   </div>
                   <div className="flex flex-col gap-3 mb-4">
                     <label className="flex items-center gap-2 border border-[#2b6daf] p-2 rounded">
-                      <input
-                        type="radio"
-                        name="twofactor"
-                        className="accent-[#2b6daf] align-middle m-0"
-                      />
-                      <span className="align-middle">
-                        Enviar correo al ***@gmail.com
-                      </span>
+                      <input type="radio" name="twofactor" className="accent-[#2b6daf] align-middle m-0" />
+                      <span className="align-middle">Enviar correo al ***@gmail.com</span>
                     </label>
                   </div>
                   <button
@@ -812,9 +721,7 @@ export default function MiPerfil() {
             <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
               <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-0 relative">
                 <div className="bg-[#2b6daf] text-white text-center py-2">
-                  <h2 className="font-semibold text-lg">
-                    Activar autenticación en dos pasos
-                  </h2>
+                  <h2 className="font-semibold text-lg">Activar autenticación en dos pasos</h2>
                 </div>
                 <button
                   className="absolute top-3 right-3 text-white hover:text-gray-200"
@@ -824,11 +731,7 @@ export default function MiPerfil() {
                 </button>
                 <div className="p-6">
                   <div className="flex flex-col items-center mb-4">
-                    <img
-                      src="two-factor.png"
-                      alt="2FA"
-                      className="w-24 h-24 mb-2"
-                    />
+                    <img src="two-factor.png" alt="2FA" className="w-24 h-24 mb-2" />
                     <p className="text-center text-gray-700 text-sm">
                       Por tu seguridad, ingresa el código que te hemos enviado
                     </p>
@@ -864,14 +767,9 @@ export default function MiPerfil() {
           {/* ---------------- MODAL HISTORIAL DE ACCESOS ---------------- */}
           {showHistorial && (
             <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-              <div
-                className="bg-white rounded-lg shadow-lg w-full max-w-xl p-0 relative "
-                style={{ marginTop: "80px" }}
-              >
+              <div className="bg-white rounded-lg shadow-lg w-full max-w-xl p-0 relative " style={{ marginTop: "80px" }}>
                 <div className="bg-[#2b6daf] text-white text-center py-3 rounded-t-lg">
-                  <h2 className="font-semibold text-lg">
-                    Historial de accesos
-                  </h2>
+                  <h2 className="font-semibold text-lg">Historial de accesos</h2>
                 </div>
                 <button
                   className="absolute top-3 right-3 text-white hover:text-gray-200"
@@ -881,43 +779,21 @@ export default function MiPerfil() {
                 </button>
 
                 <div className="p-6">
-                  {/* Card estilo similar a la imagen */}
                   <div
                     className="historial-card mx-auto"
-                    style={{
-                      maxWidth: "520px",
-                      borderRadius: 8,
-                      border: "1px solid rgba(0,0,0,0.06)",
-                    }}
+                    style={{ maxWidth: "520px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.06)" }}
                   >
-                    {/* header ya mostrado arriba — mantenemos espacio si quieres */}
                     <div style={{ padding: "8px 16px" }}>
                       {loadingHistorial ? (
-                        <p className="text-center text-gray-500">
-                          Cargando historial...
-                        </p>
+                        <p className="text-center text-gray-500">Cargando historial...</p>
                       ) : errorHistorial ? (
-                        <p className="text-center text-red-500">
-                          {errorHistorial}
-                        </p>
+                        <p className="text-center text-red-500">{errorHistorial}</p>
                       ) : (
-                        <div
-                          className="historial-list"
-                          style={{
-                            maxHeight: 260,
-                            overflowY: "auto",
-                            paddingRight: 8,
-                          }}
-                        >
-                          <ul
-                            style={{ listStyle: "none", margin: 0, padding: 0 }}
-                          >
+                        <div className="historial-list" style={{ maxHeight: 260, overflowY: "auto", paddingRight: 8 }}>
+                          <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
                             {historial.length > 0 ? (
                               historial.map((item, idx) => (
-                                <li
-                                  key={idx}
-                                  className="flex justify-between items-center py-2"
-                                >
+                                <li key={idx} className="flex justify-between items-center py-2">
                                   <span className="text-gray-700">
                                     {item.fecha}
                                     {item.hora ? `, ${item.hora}` : ""}
@@ -947,11 +823,7 @@ export default function MiPerfil() {
         <h1 className="Config">Configuracion</h1>
         <div className="candado-link">
           <img src="/Vector.png" alt="imagen" className="candado" />
-          <Link
-            to="#"
-            className="new-link"
-            onClick={() => setShowPasswordModal(true)}
-          >
+          <Link to="#" className="new-link" onClick={() => setShowPasswordModal(true)}>
             Cambiar contraseña
           </Link>
         </div>
@@ -969,11 +841,7 @@ export default function MiPerfil() {
           </Link>
         </div>
         <div className="historial">
-          <img
-            src="/historial-perfil.png"
-            alt="imagen"
-            className="historial-icono"
-          />
+          <img src="/historial-perfil.png" alt="imagen" className="historial-icono" />
           <Link
             to="#"
             className="new-link"

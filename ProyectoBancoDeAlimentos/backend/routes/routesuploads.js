@@ -5,7 +5,8 @@ const multer = require("multer");
 
 const router = express.Router();
 
-const FOTO_DIR = path.join(process.cwd(), "public", "images", "fotoDePerfil");
+const FOTO_DIR = path.join(__dirname, "..", "public", "images", "fotoDePerfil");
+
 fs.mkdirSync(FOTO_DIR, { recursive: true });
 
 const storage = multer.diskStorage({

@@ -22,7 +22,7 @@ import { useCart } from "../src/utils/CartContext";
 function Carrito() {
   //Objeto de producto
 
-  const { incrementCart, decrementCart } = useCart();
+  const { setCount, incrementCart, decrementCart } = useCart();
 
   //Productos de pagina de inicio //necesita cantidad, imagen
   const [detalles, setDetalles] = useState([]);
@@ -140,6 +140,7 @@ function Carrito() {
         desc // descuento
       );
 
+      setCount(0);
       console.log("Pedido creado:", response.data);
       alert("Pedido creado correctamente!");
       setShowProd(false);

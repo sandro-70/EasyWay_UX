@@ -246,7 +246,7 @@ const Headerr = () => {
               {reportesMenu && (
                 <div style={styles.dropdownReportes}>
                   <Link
-                    to="/reportes/compras"
+                    to="/HistorialCompras"
                     style={styles.dropdownLink}
                     onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#D8572F")}
                     onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
@@ -254,7 +254,7 @@ const Headerr = () => {
                     Historial de Compras
                   </Link>
                   <Link
-                    to="/reportes/ventas"
+                    to="/descuentos_aplicados"
                     style={styles.dropdownLink}
                     onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#D8572F")}
                     onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}

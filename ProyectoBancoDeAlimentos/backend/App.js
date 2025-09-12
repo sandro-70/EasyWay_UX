@@ -2,7 +2,10 @@ require('dotenv').config();
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const { sequelize } = require('./models');
-const routes = require('./routes/routes'); // <- ./routes/index.js
+const routes = require('./routes/routes'); // ./routes/index.js
+const uploadRoutes = require('./routes/uploads'); // 👈 añade esto
+const path = require("path");
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -19,13 +22,20 @@ app.use((req, res, next) => {
 app.use(cookieParser());
 app.use(express.json());
 
-// ✅ Monta TODO lo de routes/index.js en /api
+// ✅ Estáticos ANTES del 404
+app.use("/images", express.static(path.join(__dirname, "public", "images")));
+app.use(express.static(path.join(__dirname, "public")));
+
+// ✅ Subidas
+app.use("/api/uploads", uploadRoutes);
+
+// ✅ Rutas de API
 app.use('/api', routes);
 
 // Healthcheck
 app.get('/', (req, res) => res.send('API funcionando correctamente'));
 
-// 404 y errores (opcional)
+// 404 y errores SIEMPRE al final
 app.use((req, res) => res.status(404).json({ message: 'No encontrado' }));
 app.use((err, req, res, next) => {
   console.error(err);

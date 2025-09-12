@@ -14,27 +14,25 @@ import {
   getDirecciones,
 } from "../api/DireccionesApi";
 import { UserContext } from "../components/userContext";
-import { Link } from "react-router-dom";
-
-// Importa axiosInstance desde tu configuración
 import axiosInstance from "../api/axiosInstance";
 
-// Función para cambio de contraseña - agregar a Usuario.Route.js
-const changePasswordByUser = async (id_usuario, contraseña_actual, nueva_contraseña) => {
-  const response = await fetch(`/api/MiPerfil/cambiar-password/${id_usuario}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      contraseña_actual,
-      nueva_contraseña,
-    }),
-  });
-  return response.json();
+/* ====================== UTILIDADES (mismas ideas que el perfil cliente) ====================== */
+// Nombre/ruta → URL pública
+const toPublicFotoSrc = (nameOrPath) => {
+  if (!nameOrPath) return "";
+  const s = String(nameOrPath);
+  if (/^https?:\/\//i.test(s) || s.startsWith("/")) return s;
+  return `/images/fotoDePerfil/${s}`;
 };
 
-// Icon component...
+// Extrae solo el nombre del archivo
+const fileNameFromPath = (p) => {
+  if (!p) return "";
+  const parts = String(p).split("/");
+  return parts[parts.length - 1] || "";
+};
+
+/* ====================== UI helpers ====================== */
 function Icon({ name, className = "h-4 w-4" }) {
   switch (name) {
     case "user":
@@ -49,18 +47,6 @@ function Icon({ name, className = "h-4 w-4" }) {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
           <path d="M4 8h4l2-2h4l2 2h4v12H4z" strokeWidth="1.8" />
           <circle cx="12" cy="14" r="3.5" strokeWidth="1.8" />
-        </svg>
-      );
-    case "check":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
-          <path d="M5 13l4 4 10-10" strokeWidth="2" />
-        </svg>
-      );
-    case "x":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
-          <path d="M6 6l12 12M6 18L18 6" strokeWidth="2" />
         </svg>
       );
     case "lock":
@@ -204,25 +190,28 @@ function CambioContrasenaModal({
 export default function EditarPerfilAdmin() {
   const { user, setUser } = useContext(UserContext);
 
-  // States de datos del perfil
+  // Datos del perfil
   const [genero, setGenero] = useState("masculino");
   const [rol, setRol] = useState("");
   const [roles, setRoles] = useState([]);
   const [privilegios, setPrivilegios] = useState([]);
   const [showPrivilegios, setShowPrivilegios] = useState(false);
+
   const [nombre, setNombre] = useState("");
   const [apellidos, setApellidos] = useState("");
   const [correo, setCorreo] = useState("");
   const [telefono, setTelefono] = useState("");
+
+  // Dirección única (admin solo 1)
   const [direccion, setDireccion] = useState("");
-  const [departamento, setDepartamento] = useState("");
-  const [municipio, setMunicipio] = useState("");
-  //const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [departamento, setDepartamento] = useState(""); // nombre_depto
+  const [municipio, setMunicipio] = useState(""); // nombre_municipio
+  const [idMunicipio, setIdMunicipio] = useState(""); // id_municipio
   const [departamentos, setDepartamentos] = useState([]);
   const [municipios, setMunicipios] = useState([]);
-  const [idMunicipio, setIdMunicipio] = useState("");
+  const [tieneDireccion, setTieneDireccion] = useState(false); // ← clave
 
-  // Estados del modal de contraseña
+  // Modal contraseña
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -230,68 +219,90 @@ export default function EditarPerfilAdmin() {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState("");
 
-  // FOTO DE PERFIL
+  // Foto
   const [fotoUrl, setFotoUrl] = useState("");
-  const [fotoBase64, setFotoBase64] = useState(null);
   const [editMode, setEditMode] = useState(true);
 
-  const id_usuario = localStorage.getItem("id_usuario") || user?.id;
+  const id_usuario = localStorage.getItem("id_usuario") || user?.id || user?.id_usuario;
 
-  // EFECTO PARA LIMPIAR EL ERROR DE CONTRASEÑA
+  // Limpieza de errores password
   useEffect(() => {
     if (!passwordError) return;
-    const timer = setTimeout(() => setPasswordError(""), 2000);
-    return () => clearTimeout(timer);
+    const t = setTimeout(() => setPasswordError(""), 2000);
+    return () => clearTimeout(t);
   }, [passwordError]);
 
+  // Carga inicial
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Usuario
         const resUser = await InformacionUser(id_usuario);
         const data = resUser.data || {};
+
         setNombre(data.nombre || "");
-        setApellidos(data.apellidos || data.apellido);
+        setApellidos(data.apellidos || data.apellido || "");
         setCorreo(data.correo || "");
         setTelefono(data.telefono || "");
         setGenero(data.genero || "masculino");
         if (data.rol?.nombre_rol) setRol(data.rol.nombre_rol);
-        if (data.foto_perfil_url) setFotoUrl(data.foto_perfil_url);
 
+        // Foto normalizada
+        const fromApiFoto = data.foto_perfil_url || data.foto_perfil || data.foto || "";
+        setFotoUrl(toPublicFotoSrc(fromApiFoto));
+
+        // Dirección única (si hay)
         const resDirecciones = await getDirecciones(id_usuario);
-        if (resDirecciones.data?.length > 0) {
-          const direccionPred = resDirecciones.data.find((d) => d.predeterminada) || resDirecciones.data[0];
+        const lista = resDirecciones.data || [];
+        if (lista.length > 0) {
+          setTieneDireccion(true);
+          const direccionPred = lista.find((d) => d.predeterminada) || lista[0];
           setDireccion(direccionPred.calle || "");
           setMunicipio(direccionPred.ciudad || direccionPred.municipio || "");
           setIdMunicipio(direccionPred.id_municipio || "");
-          const resDeptos = await getAllDepartamentos();
-          setDepartamentos(resDeptos.data || []);
+
+          // Para deducir el departamento desde el municipio
           const resMunis = await getAllMunicipios();
-          setMunicipios(resMunis.data || []);
-          const municipioEncontrado = resMunis.data.find((m) => m.id_municipio === direccionPred.id_municipio);
-          if (municipioEncontrado) {
-            setDepartamento(municipioEncontrado.id_departamento);
+          const todosMunis = resMunis.data || [];
+          setMunicipios(todosMunis);
+
+          const resDeptos = await getAllDepartamentos();
+          const todosDeptos = resDeptos.data || [];
+          setDepartamentos(todosDeptos);
+
+          const muniEncontrado = todosMunis.find((m) => m.id_municipio === direccionPred.id_municipio);
+          if (muniEncontrado) {
+            const deptoEncontrado = todosDeptos.find((d) => d.id_departamento === muniEncontrado.id_departamento);
+            if (deptoEncontrado) setDepartamento(deptoEncontrado.nombre_departamento);
           }
         } else {
+          // No hay dirección: cargar catálogos para seleccionar
           const resDeptos = await getAllDepartamentos();
           setDepartamentos(resDeptos.data || []);
           const resMunis = await getAllMunicipios();
           setMunicipios(resMunis.data || []);
+          setTieneDireccion(false);
         }
       } catch (err) {
         console.error("Error cargando perfil:", err);
       }
     };
 
-    const fetchAuxData = async () => {
+    const fetchAux = async () => {
       try {
         const resRoles = await getRoles();
         setRoles(resRoles.data || []);
         const resPriv = await getPrivilegios();
-        setPrivilegios(resPriv.data.map((p) => p.nombre_privilegio));
-        const resDeptos = await getAllDepartamentos();
-        setDepartamentos(resDeptos.data || []);
-        const resMunis = await getAllMunicipios();
-        setMunicipios(resMunis.data || []);
+        setPrivilegios((resPriv.data || []).map((p) => p.nombre_privilegio));
+        // Asegura catálogos por si fetchData no los trajo
+        if (!departamentos.length) {
+          const resDeptos = await getAllDepartamentos();
+          setDepartamentos(resDeptos.data || []);
+        }
+        if (!municipios.length) {
+          const resMunis = await getAllMunicipios();
+          setMunicipios(resMunis.data || []);
+        }
       } catch (err) {
         console.error("Error cargando roles/privilegios/departamentos/municipios:", err);
       }
@@ -299,12 +310,12 @@ export default function EditarPerfilAdmin() {
 
     if (id_usuario) {
       fetchData();
-      fetchAuxData();
+      fetchAux();
     }
   }, [id_usuario]);
 
   const handleDepartamentoChange = (e) => {
-    const nuevoDepartamento = e.target.value;
+    const nuevoDepartamento = e.target.value; // nombre_departamento
     setDepartamento(nuevoDepartamento);
     setMunicipio("");
     setIdMunicipio("");
@@ -319,99 +330,117 @@ export default function EditarPerfilAdmin() {
     }
   };
 
-  // Manejar subida de foto de perfil
+  // Subida de foto (mismo patrón que cliente: previsualiza, sube, refresca user, normaliza URL y filename)
   const handleFotoChange = async (e) => {
     if (!editMode) return;
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Preview local
+    // preview local
     setFotoUrl(URL.createObjectURL(file));
 
     try {
-      await uploadProfilePhoto(file);
-      const res = await InformacionUser(); // obtiene info actualizada
-      setFotoUrl(res.data.foto_perfil || "");
-      setUser(res.data); // 🔹 actualiza contexto global
+      await uploadProfilePhoto(file); // ⚠️ misma ruta/función que ya usabas
+      const res = await InformacionUser(id_usuario);
+      const data = res.data || {};
+      const fromApi = data.foto_perfil_url || data.foto_perfil || data.foto || "";
+
+      // URL pública para mostrar
+      setFotoUrl(toPublicFotoSrc(fromApi));
+
+      // Actualiza contexto con SOLO filename (para que header funcione igual que cliente)
+      const justName = fileNameFromPath(fromApi);
+      setUser({ ...data, foto_perfil_url: justName });
     } catch (err) {
       console.error("Error subiendo foto:", err);
+      alert("No se pudo subir la foto.");
     }
   };
 
-
+  // Guardar (admin con UNA dirección)
   const handleSave = async () => {
     try {
-        const rolSeleccionado = roles.find((r) => r.nombre_rol === rol);
-        if (!rolSeleccionado) {
-            alert("⚠ Rol no válido. Por favor selecciona un rol válido.");
-            return;
-        }
-        const idToUpdate = parseInt(id_usuario);
-        if (!idToUpdate) {
-            alert("❌ No se pudo determinar el ID del usuario.");
-            return;
-        }
-        const payload = {
-            nombre: nombre.trim(),
-            apellido: apellidos.trim(),
-            correo: correo.trim(),
-            telefono: telefono.trim(),
-            genero: genero,
-            direccion: direccion.trim(),
-            departamento: departamento,
-            municipio: municipio,
-            ciudad: municipio,
-            id_rol: rolSeleccionado.id,
-        };
-        console.log("Payload a enviar:", payload);
-        if (!payload.apellido) {
-            alert("⚠ El apellido es obligatorio.");
-            return;
-        }
-        const updateResponse = await updateUserById(idToUpdate, payload);
-        
-        try {
-            if (direccion && departamento && municipio && idMunicipio) {
-                const direccionPayload = {
-                    id_usuario: idToUpdate,
-                    calle: direccion,
-                    ciudad: municipio,
-                    municipio: municipio,
-                    departamento: departamento,
-                    id_municipio: idMunicipio,
-                    predeterminada: true,
-                };
-                
-                const direccionResponse = await addDireccion(direccionPayload);
-            }
-        } catch (direccionError) {
-            console.error("Error al guardar dirección (continuando):", direccionError);
-        }
-        
-        // ✨ ELIMINA el siguiente bloque de código
-        /*
-        if (selectedPhoto) {
-            try {
-                const fotoResponse = await uploadProfilePhoto(selectedPhoto);
-            } catch (fotoError) {
-                console.error("Error al subir foto (continuando):", fotoError);
-            }
-        }
-        */
+      const rolSeleccionado = roles.find((r) => r.nombre_rol === rol);
+      if (!rolSeleccionado) {
+        alert("⚠ Rol no válido. Por favor selecciona un rol válido.");
+        return;
+      }
 
-        alert("✅ Perfil actualizado correctamente");
-        window.location.reload();
-    } catch (error) {
-        console.error("Error completo:", error);
-        if (error.response) {
-            alert(`Error: ${error.response.data.message || JSON.stringify(error.response.data)}`);
-        } else if (error.request) {
-            alert("Error de conexión. Verifica tu conexión a internet.");
-        } else {
-            alert(`Error inesperado: ${error.message}`);
+      const idToUpdate = parseInt(id_usuario);
+      if (!idToUpdate) {
+        alert("❌ No se pudo determinar el ID del usuario.");
+        return;
+      }
+
+      const payload = {
+        nombre: (nombre || "").trim(),
+        apellido: (apellidos || "").trim(),
+        correo: (correo || "").trim(),
+        telefono: (telefono || "").trim(),
+        genero: genero,
+        // Campos de dirección también via updateUserById (para 'editar' la existente)
+        direccion: (direccion || "").trim(),
+        departamento: departamento || "",
+        municipio: municipio || "",
+        ciudad: municipio || "",
+        id_rol: rolSeleccionado.id,
+      };
+
+      if (!payload.apellido) {
+        alert("⚠ El apellido es obligatorio.");
+        return;
+      }
+
+      // 1) Actualiza datos de usuario (incluye dirección en el payload)
+      await updateUserById(idToUpdate, payload);
+
+      // 2) Dirección única: crea SOLO si no existe todavía
+      try {
+        const resDir = await getDirecciones(idToUpdate);
+        const yaTiene = (resDir.data || []).length > 0;
+
+        if (!yaTiene && direccion && departamento && municipio && idMunicipio) {
+          // Crear la PRIMERA (y única) dirección
+          const direccionPayload = {
+            id_usuario: idToUpdate,
+            calle: direccion,
+            ciudad: municipio,
+            municipio: municipio,
+            departamento: departamento,
+            id_municipio: idMunicipio,
+            predeterminada: true,
+          };
+          await addDireccion(direccionPayload);
         }
+        // Si ya tenía una, NO creamos otra (evita duplicados). La edición viajó en updateUserById.
+      } catch (direccionError) {
+        // No aborta si falla la parte "extra" de dirección
+        console.error("Error al guardar/crear dirección (continuando):", direccionError);
+      }
+
+      // Refrescar contexto de usuario (útil si backend recalcula cosas)
+      try {
+        const fullRes = await InformacionUser(idToUpdate);
+        const fresh = fullRes.data || {};
+        const fotoName = fileNameFromPath(fresh.foto_perfil_url || fresh.foto || "");
+        setUser({ ...fresh, foto_perfil_url: fotoName });
+        setFotoUrl(toPublicFotoSrc(fotoName));
+      } catch {}
+
+      alert("✅ Perfil actualizado correctamente");
+      // Si quieres evitar recargar la página, no hagas reload; ya refrescamos estado
+      // window.location.reload();
+    } catch (error) {
+      console.error("Error completo:", error);
+      if (error?.response) {
+        alert(`Error: ${error.response.data?.message || JSON.stringify(error.response.data)}`);
+      } else if (error?.request) {
+        alert("Error de conexión. Verifica tu conexión a internet.");
+      } else {
+        alert(`Error inesperado: ${error?.message}`);
+      }
     }
-};
+  };
 
   const handlePasswordChange = async () => {
     setPasswordError("");
@@ -429,12 +458,10 @@ export default function EditarPerfilAdmin() {
     }
     try {
       setPasswordLoading(true);
-      // Verificar contraseña anterior usando la ruta de login
       await axiosInstance.post("/api/auth/login", {
         correo,
         ["contraseña"]: oldPassword,
       });
-      // Cambiar contraseña
       await changePassword(correo, newPassword);
       setOldPassword("");
       setNewPassword("");
@@ -442,9 +469,7 @@ export default function EditarPerfilAdmin() {
       setShowPasswordModal(false);
     } catch (err) {
       const msg = err?.response?.data?.message || err?.response?.data || err.message || String(err);
-      setPasswordError(
-        msg.includes("Contraseña incorrecta") ? "Contraseña anterior incorrecta" : msg
-      );
+      setPasswordError(msg.includes("Contraseña incorrecta") ? "Contraseña anterior incorrecta" : msg);
       console.error("Error cambiando contraseña:", err);
     } finally {
       setPasswordLoading(false);
@@ -453,7 +478,6 @@ export default function EditarPerfilAdmin() {
 
   const handleClosePasswordModal = () => {
     setShowPasswordModal(false);
-    // Limpiar estados del modal al cerrarlo
     setOldPassword("");
     setNewPassword("");
     setConfirmPassword("");
@@ -461,27 +485,38 @@ export default function EditarPerfilAdmin() {
   };
 
   return (
-    <div className="w-[90vw]">
+   <div
+      className="w-screen px-4 bg-[#f9fafb]"
+      style={{
+        position: "absolute",
+        top: "165px",
+        left: 0,
+        right: 0,
+        width: "100%",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+      }}
+    >
       <div className="w-full max-w-6xl px-4">
-        <div className="rounded-2xl bg-white shadow ring-1 ring-[#d8dadc]">
+        <div className="mb-6">
           <h1 className="pt-4 text-center text-3xl font-semibold text-[#f0833e]">
             Editar Perfil Administrador
           </h1>
+          
           <div className="h-1 w-full bg-[#f0833e]" />
         </div>
-      </div>
+      </div>
 
       <div className="w-full max-w-6xl px-4 mt-6 grid grid-cols-2 gap-6 items-start">
         {/* Sidebar */}
-        <aside className="rounded-2xl bg-white p-6 shadow ring-1 ring-[#d8dadc] flex flex-col items-center" style={{ width: 550, height: 553 }}>
-
+        <aside
+          className="rounded-2xl bg-white p-6 shadow ring-1 ring-[#d8dadc] flex flex-col items-center"
+          style={{ width: 550, height: 553 }}
+        >
           <div className="perfil-avatar">
             {fotoUrl ? (
-              <img
-                src={fotoUrl}
-                alt="Foto de perfil"
-                className="perfil-avatar-image"
-              />
+              <img src={fotoUrl} alt="Foto de perfil" className="perfil-avatar-image" />
             ) : (
               <div className="perfil-avatar-placeholder">
                 <Icon name="user" className="icon-large" />
@@ -508,8 +543,14 @@ export default function EditarPerfilAdmin() {
             <span>Editar foto</span>
           </button>
 
-          <label className="mb-2 w-full text-center text-sm font-semibold text-slate-700">Rol</label>
-          <select value={rol} onChange={(e) => setRol(e.target.value)} className="w-56 rounded-xl border border-[#d8dadc] bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#2ca9e3]">
+          <label className="mb-2 w-full text-center text-sm font-semibold text-slate-700">
+            Rol
+          </label>
+          <select
+            value={rol}
+            onChange={(e) => setRol(e.target.value)}
+            className="w-56 rounded-xl border border-[#d8dadc] bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#2ca9e3]"
+          >
             <option value="">Selecciona un rol</option>
             {roles.map((r) => (
               <option key={r.id} value={r.nombre_rol}>
@@ -518,7 +559,11 @@ export default function EditarPerfilAdmin() {
             ))}
           </select>
 
-          <button type="button" onClick={() => setShowPrivilegios(true)} className="mt-2 text-xs font-semibold text-[#2b6daf] underline underline-offset-2 hover:opacity-90">
+          <button
+            type="button"
+            onClick={() => setShowPrivilegios(true)}
+            className="mt-2 text-xs font-semibold text-[#2b6daf] underline underline-offset-2 hover:opacity-90"
+          >
             Ver Privilegios
           </button>
         </aside>
@@ -526,23 +571,45 @@ export default function EditarPerfilAdmin() {
         {/* Main Form */}
         <section className="rounded-2xl bg-white p-6 shadow ring-1 ring-[#d8dadc] flex flex-col justify-between">
           <div>
-            <h2 className="mb-4 text-center text-lg font-semibold text-slate-700">Datos generales</h2>
+            <h2 className="mb-4 text-center text-lg font-semibold text-slate-700">
+              Datos generales
+            </h2>
             <div className="grid grid-cols-2 gap-4">
               <Field label="Nombre">
-                <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Juan Javier" className="w-full rounded-xl border border-[#d8dadc] px-3 py-2 text-sm" />
+                <input
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  placeholder="Juan Javier"
+                  className="w-full rounded-xl border border-[#d8dadc] px-3 py-2 text-sm"
+                />
               </Field>
               <Field label="Género">
-                <select value={genero} onChange={(e) => setGenero(e.target.value)} className="w-full rounded-xl border border-[#d8dadc] px-3 py-2 text-sm">
+                <select
+                  value={genero}
+                  onChange={(e) => setGenero(e.target.value)}
+                  className="w-full rounded-xl border border-[#d8dadc] px-3 py-2 text-sm"
+                >
                   <option value="masculino">masculino</option>
                   <option value="femenino">femenino</option>
                   <option value="otro">otro</option>
                 </select>
               </Field>
               <Field label="Correo">
-                <input type="email" value={correo} onChange={(e) => setCorreo(e.target.value)} placeholder="ejemplo@gmail.com" className="w-full rounded-xl border border-[#d8dadc] px-3 py-2 text-sm" />
+                <input
+                  type="email"
+                  value={correo}
+                  onChange={(e) => setCorreo(e.target.value)}
+                  placeholder="ejemplo@gmail.com"
+                  className="w-full rounded-xl border border-[#d8dadc] px-3 py-2 text-sm"
+                />
               </Field>
               <Field label="Apellidos">
-                <input value={apellidos} onChange={(e) => setApellidos(e.target.value)} placeholder="Perez Maldonado" className="w-full rounded-xl border border-[#d8dadc] px-3 py-2 text-sm" />
+                <input
+                  value={apellidos}
+                  onChange={(e) => setApellidos(e.target.value)}
+                  placeholder="Perez Maldonado"
+                  className="w-full rounded-xl border border-[#d8dadc] px-3 py-2 text-sm"
+                />
               </Field>
             </div>
             <div className="mt-4 flex justify-center">
@@ -557,14 +624,27 @@ export default function EditarPerfilAdmin() {
           </div>
 
           <div className="mt-6">
-            <h3 className="mb-4 text-center text-lg font-semibold text-slate-700">Contacto y ubicación</h3>
+            <h3 className="mb-4 text-center text-lg font-semibold text-slate-700">
+              Contacto y ubicación
+            </h3>
             <div className="grid grid-cols-2 gap-4">
               <Field label="Dirección">
-                <input value={direccion} onChange={(e) => setDireccion(e.target.value)} placeholder="Bo. El carmen 3 calle 6 ave" className="w-full rounded-xl border border-[#d8dadc] px-3 py-2 text-sm" />
+                <input
+                  value={direccion}
+                  onChange={(e) => setDireccion(e.target.value)}
+                  placeholder="Bo. El carmen 3 calle 6 ave"
+                  className="w-full rounded-xl border border-[#d8dadc] px-3 py-2 text-sm"
+                />
               </Field>
               <Field label="Teléfono">
-                <input value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="8789-9099" className="w-full rounded-xl border border-[#d8dadc] px-3 py-2 text-sm" />
+                <input
+                  value={telefono}
+                  onChange={(e) => setTelefono(e.target.value)}
+                  placeholder="8789-9099"
+                  className="w-full rounded-xl border border-[#d8dadc] px-3 py-2 text-sm"
+                />
               </Field>
+
               <Field label="Departamento">
                 <select
                   value={departamento}
@@ -590,8 +670,10 @@ export default function EditarPerfilAdmin() {
                   <option value="">Seleccione un municipio</option>
                   {municipios
                     .filter((m) => {
-                      const deptoSeleccionado = departamentos.find((d) => d.nombre_departamento === departamento);
-                      return deptoSeleccionado && m.id_departamento === deptoSeleccionado.id_departamento;
+                      const deptoSel = departamentos.find(
+                        (d) => d.nombre_departamento === departamento
+                      );
+                      return deptoSel && m.id_departamento === deptoSel.id_departamento;
                     })
                     .map((m) => (
                       <option key={m.id_municipio} value={m.id_municipio}>
@@ -614,7 +696,11 @@ export default function EditarPerfilAdmin() {
         </section>
       </div>
 
-      <PrivilegiosModal open={showPrivilegios} onClose={() => setShowPrivilegios(false)} items={privilegios} />
+      <PrivilegiosModal
+        open={showPrivilegios}
+        onClose={() => setShowPrivilegios(false)}
+        items={privilegios}
+      />
 
       <CambioContrasenaModal
         open={showPasswordModal}
@@ -631,5 +717,4 @@ export default function EditarPerfilAdmin() {
       />
     </div>
   );
-  
 }

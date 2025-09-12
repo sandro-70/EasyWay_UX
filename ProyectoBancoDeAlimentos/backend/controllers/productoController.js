@@ -5,7 +5,7 @@ exports.destacados = async (req, res) => {
   try {
     const products = await producto.findAll({
       where: { activo: true },
-      attributes: [
+      attributes: [ 
         'id_producto',
         'nombre',
         'descripcion',

@@ -1,10 +1,11 @@
+// app.js
 require('dotenv').config();
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const { sequelize } = require('./models');
-const routes = require('./routes/routes'); // ./routes/index.js
-const uploadRoutes = require('./routes/uploads'); // 👈 añade esto
-const path = require("path");
+const routes = require('./routes/routes');
+const uploadRoutes = require('./routes/uploads'); // 👈 importa tus rutas de subida
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -21,35 +22,25 @@ app.use((req, res, next) => {
 
 app.use(cookieParser());
 app.use(express.json());
+app.use(cookieParser());
+app.use(express.json());
 
-// ✅ Estáticos ANTES del 404
-app.use("/images", express.static(path.join(__dirname, "public", "images")));
-app.use(express.static(path.join(__dirname, "public")));
+/* === Archivos estáticos (antes de 404) === */
+const path = require("path");
+app.use("/api/images", express.static(path.resolve(__dirname, "public", "images"))); // ✅ /api/images/...
+// (opcional mantener ambas)
+app.use("/images",     express.static(path.resolve(__dirname, "public", "images")));
+app.use(express.static(path.resolve(__dirname, "public")));
 
-// ✅ Subidas
-app.use("/api/uploads", uploadRoutes);
-
-// ✅ Rutas de API
+/* === Rutas de API === */
 app.use('/api', routes);
 
 // Healthcheck
 app.get('/', (req, res) => res.send('API funcionando correctamente'));
 
-// 404 y errores SIEMPRE al final
+// 404 y errores
 app.use((req, res) => res.status(404).json({ message: 'No encontrado' }));
 app.use((err, req, res, next) => {
   console.error(err);
   res.status(500).json({ message: 'Error interno' });
 });
-
-async function startServer() {
-  try {
-    await sequelize.authenticate();
-    console.log('✅ Conexión a PostgreSQL OK');
-    await sequelize.sync({ alter: true });
-    app.listen(PORT, () => console.log(`🚀 http://localhost:${PORT}`));
-  } catch (error) {
-    console.error('❌ No se pudo conectar a la base de datos:', error);
-  }
-}
-startServer();

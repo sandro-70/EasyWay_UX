@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 import PerfilSidebar from "./components/perfilSidebar";
 import { UserContext } from "./components/userContext";
 import { createLog, getLogsUsuario } from "./api/Usuario.Route";
-
 import {
   InformacionUser,
   EditProfile,
@@ -30,24 +29,26 @@ const BACKEND_ORIGIN = (() => {
     return window.location.origin;
   }
 })();
-
-// Construye la URL absoluta para una imagen en /images/fotoDePerfil
+// Construye la URL absoluta para una imagen en /api/images/fotoDePerfil
 const backendImageUrl = (fileName) =>
   fileName
-    ? `${BACKEND_ORIGIN}/images/fotoDePerfil/${encodeURIComponent(fileName)}`
+    ? `${BACKEND_ORIGIN}/api/images/fotoDePerfil/${encodeURIComponent(fileName)}`
     : "";
 
-/* ====================== UTILIDADES NUEVAS (para foto) ====================== */
-
-// Normaliza un posible valor devuelto por la BD (nombre o ruta) a una URL pública
+// Normaliza valor devuelto por la BD a URL pública
 const toPublicFotoSrc = (nameOrPath) => {
   if (!nameOrPath) return "";
-  // Absoluta → úsala tal cual
-  if (/^https?:\/\//i.test(nameOrPath)) return nameOrPath;
-  // Viene con /images/... → pega al backend
-  if (nameOrPath.startsWith("/images/"))
+  if (/^https?:\/\//i.test(nameOrPath)) return nameOrPath; // ya absoluta
+
+  // Si ya viene con /api/images/... úsala contra el backend
+  if (nameOrPath.startsWith("/api/images/"))
     return `${BACKEND_ORIGIN}${encodeURI(nameOrPath)}`;
-  // Solo nombre → mapea a /images/fotoDePerfil en backend
+
+  // Si viene con /images/... prefija /api
+  if (nameOrPath.startsWith("/images/"))
+    return `${BACKEND_ORIGIN}/api${encodeURI(nameOrPath)}`;
+
+  // Si es solo el nombre de archivo -> /api/images/fotoDePerfil/<file>
   return backendImageUrl(nameOrPath);
 };
 

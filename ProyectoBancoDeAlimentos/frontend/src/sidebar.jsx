@@ -76,7 +76,7 @@ const Sidebar = ({ moveButton, showSidebar }) => {
               </button>
             </li>
             <li>
-              <a href="/mensajeria" className="sidebar_item">
+              <a href="/userManagementViews" className="sidebar_item">
                 <span className="material-symbols-outlined text-[42px] text-white">
                   groups
                 </span>

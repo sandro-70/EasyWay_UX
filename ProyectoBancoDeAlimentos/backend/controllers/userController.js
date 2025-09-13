@@ -1,4 +1,4 @@
-const { Usuario, pedido, factura} = require('../models');
+const { Usuario, pedido, factura, direccion} = require('../models');
 const { fn, col } = require('sequelize');
 
 exports.estadosUsuarios = async (req, res) => {
@@ -90,28 +90,67 @@ exports.contarPedidosUsuario = async (req, res) => {
   }
 };
 
-exports.editarPerfil = async (req,res) => {
-  try{
-    const {id_usuario} = req.params;
+exports.editarPerfil = async (req, res) => {
+  try {
+    const { id_usuario } = req.params;
+    const {
+      nombre,
+      apellido,
+      telefono,
+      genero,
+      foto_perfil_url,
+      id_direccion,
+      calle,
+      ciudad,
+      codigo_postal,
+      predeterminada,
+      id_municipio
+    } = req.body;
 
-    const {nombre, apellido, telefono, genero, foto_perfil_url} = req.body;
-
-    const user = Usuario.findOne({where : {id_usuario}});
-
-    if(!user){
-      return res.status(404).json({message : "No se pudo encontrar el usuario!"});
+    // Buscar usuario
+    const user = await Usuario.findOne({ where: { id_usuario } });
+    if (!user) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
     }
 
-    user.nombre = nombre;
-    user.apellido = apellido;
-    user.telefono = telefono;
-    user.genero = genero;
-    user.foto_perfil_url = foto_perfil_url;
+    // Actualizar campos del usuario
+    if (nombre !== undefined) user.nombre = nombre;
+    if (apellido !== undefined) user.apellido = apellido;
+    if (telefono !== undefined) user.telefono = telefono;
+    if (genero !== undefined) user.genero = genero;
+    if (foto_perfil_url !== undefined) user.foto_perfil_url = foto_perfil_url;
+
+    // Actualizar dirección si se envía id_direccion
+    if (id_direccion !== undefined) {
+      const direccio = await direccion.findOne({ where: { id_direccion, id_usuario } });
+      if (!direccio) {
+        return res.status(404).json({ message: "Dirección no encontrada para este usuario" });
+      }
+
+      if (calle !== undefined) direccio.calle = calle;
+      if (ciudad !== undefined) direccio.ciudad = ciudad;
+      if (codigo_postal !== undefined) direccio.codigo_postal = codigo_postal;
+      if (predeterminada !== undefined) direccio.predeterminada = predeterminada;
+      if (id_municipio !== undefined) direccio.id_municipio = id_municipio;
+
+      await direccio.save();
+
+      // Opcional: actualizar la dirección actual del usuario
+      user.id_direccion_actual = id_direccion;
+    }
+
+    // Actualizar fecha de actualización
+    user.fecha_actualizacion = new Date();
 
     await user.save();
 
-  }catch(error){
-    return res.status(500).json({message : "No se pudo"});
+    return res.json({
+      message: "Perfil y dirección actualizados correctamente",
+      usuario: user
+    });
+
+  } catch (error) {
+    console.error("Error al editar perfil:", error);
+    return res.status(500).json({ message: "No se pudo actualizar el perfil", error: error.message });
   }
- 
-}
+};

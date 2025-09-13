@@ -139,5 +139,32 @@ export function contarPedidosUsuario(id_usuario) {
   return axiosInstance.get(`/api/usuarios/contar-pedidos/${id_usuario}`);
 }
 
-
+export function editarPerfil(
+  id_usuario,         // ID del usuario a actualizar
+  nombre,             // nuevo nombre
+  apellido,           // nuevo apellido
+  telefono,           // nuevo teléfono
+  genero,             // nuevo género
+  foto_perfil_url,    // nueva foto de perfil
+  id_direccion,       // ID de la dirección a actualizar
+  calle,              // nueva calle
+  ciudad,             // nueva ciudad
+  codigo_postal,      // nuevo código postal
+  predeterminada,     // booleano si es dirección predeterminada
+  id_municipio        // nuevo ID de municipio
+) {
+  return axiosInstance.put(`/api/usuarios/actualizar-usuario/${id_usuario}`, {
+    nombre,
+    apellido,
+    telefono,
+    genero,
+    foto_perfil_url,
+    id_direccion,
+    calle,
+    ciudad,
+    codigo_postal,
+    predeterminada,
+    id_municipio
+  });
+}
 

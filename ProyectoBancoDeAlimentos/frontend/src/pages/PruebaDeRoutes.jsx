@@ -23,6 +23,22 @@ export default function TestAuth() {
     try {
       setLoading(true);
       const res = await GetALLCupones(1); // axios response
+
+      /*
+      4,
+      "Andres",
+      "Martinez",
+      "99999999",
+      "masculino",
+      "/fotos/perfil.png",
+      2,                  // id de la dirección
+      "Calle Nueva 123",
+      "Tegucigalpa",
+      "11101",
+      true,
+      5
+      preguntar como saca ese campo de la direccion
+      */
       setRawResponse(res?.data ?? null);
       const arr = extractArray(res?.data);
       setProducts(arr);

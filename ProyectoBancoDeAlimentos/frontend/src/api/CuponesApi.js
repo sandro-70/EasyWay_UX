@@ -5,7 +5,7 @@ export function GetALLCupones(id_usuario) {
 }
 
 export function GetCupones() {
-    return axiosInstance.get('/api/cupones');
+    return axiosInstance.get('/api/cupones/cupones');
 }
 
 export function desactivarCupon(id_cupon){

@@ -127,4 +127,17 @@ export const uploadProfilePhoto1 = async (file, desiredName) => {
   });
 };
 
+export function estadosUsuarios() {
+  return axiosInstance.get("api/usuarios/estado-usuarios");
+}
+
+export function promedioGastoUsuario(id_usuario) {
+  return axiosInstance.get(`/api/usuarios/promedio-gasto/${id_usuario}`);
+}
+
+export function contarPedidosUsuario(id_usuario) {
+  return axiosInstance.get(`/api/usuarios/contar-pedidos/${id_usuario}`);
+}
+
+
 

@@ -38,6 +38,8 @@ router.use('/pedidos',require('./pedidoRoute'));
 router.use('/reportes-usuario', require('./reportesUsuarioRoute'));
 router.use('/uploads', require('./routesuploads'));
 
+router.use('/usuarios', require('./userRoute'));
+
 // 1) Estáticos públicos (para ver /images/fotoDePerfil/...)
 router.use("/images", express.static(path.join(process.cwd(), "public", "images")));
 

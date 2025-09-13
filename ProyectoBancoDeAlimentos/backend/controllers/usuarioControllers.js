@@ -2,7 +2,6 @@ const { Usuario , usuario_log} = require('../models');
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcrypt');
 
-
 const codes = {};
 
 exports.forgetPassword = async (req, res) => {
@@ -120,9 +119,8 @@ exports.createLog = async (req, res) => {
 
 exports.getLogsUsuario = async (req, res) => {
   try {
-    console.log("pene 1");
     const { id_usuario } = req.params;
-    console.log("pene 2");
+
     const logs = await usuario_log.findAll({
       where: { id_usuario },
       attributes: ['id_usuario', ['fecha_actualizacion', 'fecha_conexion']],
@@ -135,11 +133,9 @@ exports.getLogsUsuario = async (req, res) => {
       order: [['fecha_actualizacion', 'DESC']]
     });
 
-    console.log("pene 3");
     return res.status(200).json(logs);
 
   } catch (error) {
-    console.log("pene 4");
     console.error(error);
     return res.status(500).json({ message: "Error al obtener logs del usuario!" });
   }

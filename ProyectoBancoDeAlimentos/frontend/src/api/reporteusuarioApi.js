@@ -16,9 +16,8 @@ export function getTotalAhorrado(id_usuario){
 export function getUsuariosReporte(){
     return axiosInstance.get('/api/reportes-usuario/reporte');
 }
-export function getUsuariosTabla(id){
-    return axiosInstance.get(`/api/reportes-usuario/reporte/${id}`);
-}
+export function getUsuariosTabla(){
+    return axiosInstance.get('/api/reportes-usuario/reporte-filtrado');}
 export function getClientesNuevos(){
     return axiosInstance.get('/api/reportes-usuario/clientes-nuevos');
 }

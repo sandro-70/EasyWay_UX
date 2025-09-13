@@ -244,9 +244,24 @@ export default function UserManagementViews() {
             firstName: u.nombre ?? u.firstName ?? "",
             lastName: u.apellido ?? u.lastName ?? "",
             role: maps.idToName.get(String(u.id_rol)) || u.rol || "Usuario",
-            status: (u.estado || "ACTIVO").toUpperCase(),
+            status:
+              u.activo !== undefined
+                ? ((String(u.activo).toLowerCase() === "true" || Number(u.activo) === 1) ? "ACTIVO" : "INACTIVO")
+                : (u.estado !== undefined
+                  ? (
+                    String(u.estado).toLowerCase() === "inactivo" ||
+                    String(u.estado).toLowerCase() === "false" ||
+                    Number(u.estado) === 0
+                  ) ? "INACTIVO" : "ACTIVO"
+                  : "ACTIVO"),
+
             correo: u.correo ?? u.email ?? "-",
-            genero: u.genero ?? u.gender ?? "Otro",
+            genero: (() => {
+              const g = String(u.genero ?? u.gender ?? "Otro").trim().toLowerCase();
+              if (g === "m" || g === "masculino") return "Masculino";
+              if (g === "f" || g === "femenino") return "Femenino";
+              return "Otro";
+            })(),
             privileges: ids,
             privilegeNames: names,
           };
@@ -306,9 +321,14 @@ export default function UserManagementViews() {
           firstName: u.nombre ?? "",
           lastName: u.apellido ?? "",
           role: roleMaps.idToName.get(String(u.id_rol)) || u.rol || "Usuario",
-          status: (u.estado || "ACTIVO").toUpperCase(),
+          status: (u.activo ? "ACTIVO" : "INACTIVO"),
           correo: u.correo ?? u.email ?? "-",
-          genero: u.genero ?? u.gender ?? "Otro",
+           genero: (() => {
+              const g = String(u.genero ?? u.gender ?? "Otro").trim().toLowerCase();
+              if (g === "m" || g === "masculino") return "Masculino";
+              if (g === "f" || g === "femenino") return "Femenino";
+              return "Otro";
+            })(),
           privileges: ids,
           privilegeNames: names,
         };
@@ -573,73 +593,73 @@ export default function UserManagementViews() {
         {/* Tabla */}
         <div className="table-container">
           <div className="table-scroll">
-          <table className="users-table">
-            <colgroup>
-              <col className="col-id" />
-              <col className="col-name" />
-              <col className="col-last" />
-              <col className="col-status" />
-              <col className="col-role" />
-              <col className="col-actions" />
-            </colgroup>
+            <table className="users-table">
+              <colgroup>
+                <col className="col-id" />
+                <col className="col-name" />
+                <col className="col-last" />
+                <col className="col-status" />
+                <col className="col-role" />
+                <col className="col-actions" />
+              </colgroup>
 
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Nombre</th>
-                <th>Apellido</th>
-                <th>Estado</th>
-                <th>Rol</th>
-                <th>Opciones</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {visible.map((u) => (
-                <tr key={u.id}>
-                  <td className="cell-center">{u.id}</td>
-                  <td className="cell-left"><span className="truncate">{u.firstName}</span></td>
-                  <td className="cell-left"><span className="truncate">{u.lastName}</span></td>
-                  <td className="cell-center"><StatusBadge value={u.status} /></td>
-                  <td className="cell-center"><RolePill role={u.role} /></td>
-                  <td className="cell-center">
-                    <div className="action-buttons">
-                      <button onClick={() => openInfo(u)} aria-label="Información" className="icon-btn icon-btn--view">
-                       <Icon icon="mdi:eye-outline" className="icon--view" />  </button>
-                      <button onClick={() => openEdit(u)} aria-label="Editar" className="icon-btn icon-btn--edit">
-                        <SvgIcon.Edit className="icon--edit" />
-                      </button> </div>
-                  </td>
-                </tr>
-              ))}
-
-              {visible.length === 0 && (
+              <thead>
                 <tr>
-                  <td colSpan={10} style={{ textAlign: "center", padding: 20 }}>
-                    No hay resultados para “{query}”.
-                  </td>
+                  <th>ID</th>
+                  <th>Nombre</th>
+                  <th>Apellido</th>
+                  <th>Estado</th>
+                  <th>Rol</th>
+                  <th>Opciones</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+
+              <tbody>
+                {visible.map((u) => (
+                  <tr key={u.id}>
+                    <td className="cell-center">{u.id}</td>
+                    <td className="cell-left"><span className="truncate">{u.firstName}</span></td>
+                    <td className="cell-left"><span className="truncate">{u.lastName}</span></td>
+                    <td className="cell-center"><StatusBadge value={u.status} /></td>
+                    <td className="cell-center"><RolePill role={u.role} /></td>
+                    <td className="cell-center">
+                      <div className="action-buttons">
+                        <button onClick={() => openInfo(u)} aria-label="Información" className="icon-btn icon-btn--view">
+                          <Icon icon="mdi:eye-outline" className="icon--view" />  </button>
+                        <button onClick={() => openEdit(u)} aria-label="Editar" className="icon-btn icon-btn--edit">
+                          <SvgIcon.Edit className="icon--edit" />
+                        </button> </div>
+                    </td>
+                  </tr>
+                ))}
+
+                {visible.length === 0 && (
+                  <tr>
+                    <td colSpan={10} style={{ textAlign: "center", padding: 20 }}>
+                      No hay resultados para “{query}”.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
             {/* Paginación */}
-        <div className="pagination">
-          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={pageSafe === 1} aria-label="Página anterior">
-            <Icon icon="mdi:chevron-left" />
-          </button>
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
-            <button key={n} onClick={() => setPage(n)} className={n === pageSafe ? "active" : ""} aria-label={`Ir a página ${n}`}>
-              {n}
-            </button>
-          ))}
-          <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={pageSafe === totalPages} aria-label="Página siguiente">
-            <Icon icon="mdi:chevron-right" />
-          </button>
-        </div>
+            <div className="pagination">
+              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={pageSafe === 1} aria-label="Página anterior">
+                <Icon icon="mdi:chevron-left" />
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+                <button key={n} onClick={() => setPage(n)} className={n === pageSafe ? "active" : ""} aria-label={`Ir a página ${n}`}>
+                  {n}
+                </button>
+              ))}
+              <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={pageSafe === totalPages} aria-label="Página siguiente">
+                <Icon icon="mdi:chevron-right" />
+              </button>
+            </div>
           </div>
         </div>
 
-      
+
       </main>
 
       {/* CREAR */}
@@ -651,10 +671,6 @@ export default function UserManagementViews() {
           <Field label="Contraseña" value={newUser.contraseña} onChange={(e) => setNewUser({ ...newUser, contraseña: e.target.value })} placeholder="********" type="password" />
           {/* Rol fijo en "Consultor" y no editable */}
           <Field label="Rol" value="Consultor" readOnly />
-          <Field label="Estado" as="select" value={newUser.status} onChange={(e) => setNewUser({ ...newUser, status: e.target.value })}>
-            <option value="ACTIVO">ACTIVO</option>
-            <option value="INACTIVO">INACTIVO</option>
-          </Field>
         </div>
         <div className="modal-actions">
           <button className="btn-secondary" onClick={() => setCreateOpen(false)}>Cancelar</button>
@@ -733,10 +749,7 @@ export default function UserManagementViews() {
                   <div className="modal-body modal-grid-2">
                     <Field label="ID" value={editUser.id} readOnly />
 
-                    {/* ===== Rol (reglas) =====
-                       Select solo si el editor es Admin y el usuario ORIGINAL es Administrador.
-                       En caso contrario (Usuario/Consultor), solo lectura.
-                    */}
+
                     {currentUserIsAdmin && isAdminRoleName(editUser._originalRole) ? (
                       <Field
                         label="Rol"
@@ -782,7 +795,7 @@ export default function UserManagementViews() {
                     <Field
                       label="Género"
                       as="select"
-                      value={editUser.genero ?? "Otro"}
+                      value={editUser.genero ?? "otro"}
                       onChange={(e) => setEditUser({ ...editUser, genero: e.target.value })}
                     >
                       <option>Masculino</option>

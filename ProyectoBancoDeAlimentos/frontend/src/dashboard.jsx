@@ -108,7 +108,7 @@ function Dashboard() {
       >
         <div className="">
           <div className="text-left">
-            <h1 className="font-roboto font-medium text-[#204778] text-6xl justify-center pb-1 pl-6">
+            <h1 className="font-roboto font-medium text-[#204778] text-6xl  pb-1 pl-6">
               Dashboard
             </h1>
             <hr className="bg-[#204778] h-[2px]"></hr>

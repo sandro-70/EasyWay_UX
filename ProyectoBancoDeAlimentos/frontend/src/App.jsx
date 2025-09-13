@@ -50,6 +50,7 @@ import ReportesPedidos from "./pages/ReportesPedidos.jsx";
 import DetallePedido from "./components/DetallePedido.js";
 import ReportesInventario from "./pages/ReportesInventario.jsx";
 import MenuPromociones from "./MenuPromociones.jsx";
+import ReporteUsuarioAdmin from "./reporteUsuariosAdmin.jsx";
 
 const HEADER_HEIGHT = 60; // px
 
@@ -121,10 +122,13 @@ function App() {
               <Route path="/reportesPedidos" element={<ReportesPedidos />} />
               <Route path="/detallePedidos" element={<DetallePedido />} />
               <Route
+                path="/reporteUsuariosAdmin"
+                element={<ReporteUsuarioAdmin />}
+              />
+              <Route
                 path="/reportesInventario"
                 element={<ReportesInventario />}
               />
-              
             </Route>
 
             {/* ---------- CLIENTE LOGUEADO ---------- */}
@@ -154,10 +158,10 @@ function App() {
             />
 
             <Route
-                path="/descuentos_aplicados"
-                element={<DescuentosAplicados />}
-              />
-              
+              path="/descuentos_aplicados"
+              element={<DescuentosAplicados />}
+            />
+
             <Route
               path="/misDirecciones"
               element={

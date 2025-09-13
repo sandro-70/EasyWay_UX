@@ -183,6 +183,7 @@ async function crearProductoConStockEnSucursales(payload = {}) {
     id_marca, // -> marca_producto.id_marca_producto
     unidad_medida = "unidad",
     activo = true,
+    peso,
     estrellas,
     etiquetas, // ARRAY(STRING) en Postgres; si usas MySQL => usar JSON
     imagenes, // ARRAY de objetos { url_imagen: string, orden_imagen?: number }
@@ -249,6 +250,8 @@ async function crearProductoConStockEnSucursales(payload = {}) {
       id_marca: marcaId,
       unidad_medida,
       estrellas,
+      porcentaje_ganancia: 20, // valor por defecto
+      peso: peso !== undefined ? parseFloat(peso) : null,
       activo: !!activo,
       etiquetas: etiquetasArr?.length ? etiquetasArr : null, // requiere ARRAY(STRING) en Postgres
     }, { transaction: t });

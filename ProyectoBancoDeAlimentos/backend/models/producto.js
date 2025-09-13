@@ -33,6 +33,11 @@ module.exports = (sequelize, DataTypes) => {
 
       unidad_medida: DataTypes.ENUM("unidad", "libra", "litro"),
 
+      peso: {
+        type: DataTypes.DOUBLE,
+        allowNull: true,
+      },
+
       id_marca: {
         type: DataTypes.INTEGER,
         allowNull: false,

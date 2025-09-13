@@ -1,5 +1,5 @@
 const { producto, imagen_producto, categoria, subcategoria, marca_producto, sucursal_producto, Sequelize } = require('../models');
-
+const { Op } = Sequelize;
 // Productos destacados (últimos creados) con 1 imagen
 exports.destacados = async (req, res) => {
   try {
@@ -102,46 +102,47 @@ exports.tendencias = async (req, res) => {
 exports.listarProductos = async (req, res) => {
   try {
     const products = await producto.findAll({
-      where: { activo: true },
+      where: { activo: { [Op.ne]: null } },
       attributes: [
         'id_producto', 'nombre', 'descripcion', 'precio_base',
-        'unidad_medida', 'estrellas', 'etiquetas', 'porcentaje_ganancia',
-        [Sequelize.literal('precio_base * (1 + porcentaje_ganancia / 100)'), 'precio_venta'],
+        'unidad_medida', 'estrellas', 'etiquetas', 'activo', 'peso',
         [Sequelize.literal('(SELECT SUM(stock_disponible) FROM sucursal_producto WHERE sucursal_producto.id_producto = producto.id_producto)'), 'stock_total']
       ],
       include: [
-        { 
-          model: imagen_producto, 
-          as: 'imagenes', 
-          attributes: ['url_imagen', 'orden_imagen'] 
+        {
+          model: imagen_producto,
+          as: 'imagenes',
+          attributes: ['url_imagen', 'orden_imagen']
         },
         {
-          model: subcategoria, 
+          model: subcategoria,
           as: 'subcategoria',
           attributes: ['id_subcategoria', 'nombre', 'id_categoria_padre'],
-          include: [{ 
-            model: categoria, 
-            as: 'categoria', 
-            attributes: ['id_categoria', 'nombre', 'icono_categoria'] 
+          include: [{
+            model: categoria,
+            as: 'categoria',
+            attributes: ['id_categoria', 'nombre', 'icono_categoria', 'PorcentajeDeGananciaMinimo']
           }]
         },
-        { 
-          model: marca_producto, 
-          as: 'marca', 
-          attributes: ['id_marca_producto', 'nombre'] 
+        {
+          model: marca_producto,
+          as: 'marca',
+          attributes: ['id_marca_producto', 'nombre']
         }
       ],
       order: [['id_producto', 'DESC']]
     });
 
-    // Calcular stock total sumando stock_disponible de todas las sucursales
+    // Calcular porcentaje_ganancia y precio_venta usando la categoría asociada
     const productsWithCalculations = products.map(product => {
       const productJSON = product.toJSON();
-
+      const porcentaje_ganancia = productJSON.subcategoria?.categoria?.PorcentajeDeGananciaMinimo ?? 0;
+      const precio_venta = parseFloat(productJSON.precio_base) * (1 + porcentaje_ganancia / 100);
       return {
         ...productJSON,
+        porcentaje_ganancia,
         stock_total: productJSON.stock_total || 0,
-        precio_venta: parseFloat(productJSON.precio_venta || 0).toFixed(2),
+        precio_venta: precio_venta.toFixed(2),
         categoria: productJSON.subcategoria?.categoria || null
       };
     });
@@ -156,11 +157,10 @@ exports.listarProductosporsucursal = async (req, res) => {
   try {
     const { id_sucursal } = req.params;
     const products = await producto.findAll({
-      where: { activo: true },
+      where: { activo: { [Op.ne]: null } },
       attributes: [
         'id_producto', 'nombre', 'descripcion', 'precio_base',
-        'unidad_medida', 'estrellas', 'etiquetas', 'porcentaje_ganancia',
-        [Sequelize.literal('precio_base * (1 + porcentaje_ganancia / 100)'), 'precio_venta'],
+        'unidad_medida', 'estrellas', 'etiquetas', 'activo', 'peso',
         [Sequelize.literal(`(SELECT stock_disponible FROM sucursal_producto WHERE sucursal_producto.id_producto = producto.id_producto AND sucursal_producto.id_sucursal = ${id_sucursal})`), 'stock_en_sucursal']
       ],
       include: [
@@ -168,25 +168,29 @@ exports.listarProductosporsucursal = async (req, res) => {
         {
           model: subcategoria, as: 'subcategoria',
           attributes: ['id_subcategoria', 'nombre', 'id_categoria_padre'],
-          include: [{ model: categoria, as: 'categoria', attributes: ['id_categoria', 'nombre', 'icono_categoria'] }]
+          include: [{ model: categoria, as: 'categoria', attributes: ['id_categoria', 'nombre', 'icono_categoria', 'PorcentajeDeGananciaMinimo'] }]
         },
         { model: marca_producto, as: 'marca', attributes: ['id_marca_producto', 'nombre'] }
       ],
       order: [['id_producto', 'DESC']]
     });
+    // Calcular porcentaje_ganancia y precio_venta usando la categoría asociada
     const productsWithCalculations = products.map(product => {
       const productJSON = product.toJSON();
+      const porcentaje_ganancia = productJSON.subcategoria?.categoria?.PorcentajeDeGananciaMinimo ?? 0;
+      const precio_venta = parseFloat(productJSON.precio_base) * (1 + porcentaje_ganancia / 100);
       return {
         ...productJSON,
+        porcentaje_ganancia,
         stock_en_sucursal: productJSON.stock_en_sucursal || 0,
-        precio_venta: parseFloat(productJSON.precio_venta || 0).toFixed(2),
+        precio_venta: precio_venta.toFixed(2),
         categoria: productJSON.subcategoria?.categoria || null
       };
     });
     return res.status(200).json(productsWithCalculations);
   } catch (err) {
     return res.status(500).json({ error: err.message });
-  }   
+  }
 };
 
 exports.listarMarcas = async (req, res) => {
@@ -452,7 +456,8 @@ exports.actualizarProducto = async (req, res) => {
       id_marca,
       etiquetas,
       unidad_medida,
-      activo
+      activo,
+      peso
     } = req.body;
     
     // Validar que el ID del producto sea numérico
@@ -511,7 +516,8 @@ exports.actualizarProducto = async (req, res) => {
       id_marca: parseInt(id_marca),
       etiquetas: etiquetasArray,
       unidad_medida,
-      activo: activo !== undefined ? Boolean(activo) : true
+      activo: activo !== undefined ? Boolean(activo) : true,
+      peso: peso !== undefined ? parseFloat(peso) : null
     });
 
     // Obtener el producto actualizado con detalles

@@ -251,16 +251,7 @@ const Headerr = () => {
                     Ver mi Perfil
                   </Link>
 
-                  {isAdmin && (
-                    <Link
-                      to="/gestionProductos"
-                      style={styles.actionItem}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8fafc")}
-                      onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-                    >
-                      Gestión de Productos
-                    </Link>
-                  )}
+                  
 
                   <button
                     type="button"

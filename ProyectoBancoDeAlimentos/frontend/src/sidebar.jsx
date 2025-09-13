@@ -44,6 +44,17 @@ const Sidebar = ({ moveButton, showSidebar }) => {
                 Dashboard
               </a>
             </li>
+
+            <li>
+              <a href="/gestionProductos" className="sidebar_item">
+                <span className="material-symbols-outlined text-[42px] text-white">
+                  inventory_2
+                </span>
+                Gestión de Productos
+              </a>
+           </li>
+
+
             <li>
               <a href="/Inventario" className="sidebar_item">
                 <span className="material-symbols-outlined text-[42px] text-white">

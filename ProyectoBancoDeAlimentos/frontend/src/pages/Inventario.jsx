@@ -1,7 +1,6 @@
 // src/pages/Inventario.jsx
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import Sidebar from "../sidebar";
 import axiosInstance from "../api/axiosInstance";
 
 import {
@@ -219,8 +218,23 @@ export default function Inventario() {
   const [sucursalMenuOpen, setSucursalMenuOpen] = useState(false);
   const sucursalMenuRef = useRef(null);
   const [selectedSucursalName, setSelectedSucursalName] = useState("");
-  //const sucMenuRef = useRef(null);
   const [showSucursalPicker, setShowSucursalPicker] = useState(false);
+
+  // ref para detectar clic fuera del popover
+  const stockHeadRef = useRef(null);
+  useEffect(() => {
+    const onDown = (e) => {
+      if (
+        showSucursalPicker &&
+        stockHeadRef.current &&
+        !stockHeadRef.current.contains(e.target)
+      ) {
+        setShowSucursalPicker(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [showSucursalPicker]);
   const [sucursalFiltro, setSucursalFiltro] = useState("");
 
   // Abastecer
@@ -1139,6 +1153,37 @@ export default function Inventario() {
       setDeletingId(null);
     }
   }
+  async function inactivarRow(id) {
+    if (!window.confirm("¿Marcar este producto como INACTIVO?")) return;
+
+    const prodId = Number(String(id).trim());
+    if (!Number.isFinite(prodId) || prodId <= 0) {
+      alert("ID de producto inválido.");
+      return;
+    }
+
+    try {
+      setDeletingId(prodId);
+      await desactivarProducto(prodId); // 👈 esto NO borra, solo desactiva en BD
+
+      // ✅ Mantiene el registro en la tabla
+      setRows((prev) =>
+        prev.map((x) =>
+          String(x.id) === String(prodId) ? { ...x, activo: false } : x
+        )
+      );
+    } catch (err) {
+      const s = err?.response?.status;
+      const d = err?.response?.data;
+      alert(
+        "No se pudo desactivar. " +
+          (s ? `HTTP ${s}. ` : "") +
+          (typeof d === "string" ? d : d?.message || d?.detail || "Error")
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   // Abastecer
   async function openSupply(row) {
@@ -1261,51 +1306,11 @@ export default function Inventario() {
         </div>
         <div className="h-1 w-full rounded-md bg-[#f0833e] mt-2" />
 
-        {/* Barra de acciones encima de la tabla */}
-        <div className="mt-3 flex items-center justify-end">
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowSucursalPicker((s) => !s)}
-              className="px-3 py-2 rounded-xl border border-[#d8dadc] bg-gray-100 hover:bg-gray-200 text-gray-700"
-              title="Filtrar stock por sucursal"
-            >
-              Stock por sucursal
-            </button>
-
-            {showSucursalPicker && (
-              <div className="absolute right-0 mt-2 w-64 rounded-xl border border-[#d8dadc] bg-white shadow-lg p-3 z-20">
-                <label className="text-sm text-gray-700 block mb-1">
-                  Sucursal
-                </label>
-                <select
-                  className="w-full px-3 py-2 rounded-xl border border-[#d8dadc] focus:outline-none focus:ring-2"
-                  style={{ outlineColor: "#2ca9e3" }}
-                  value={selectedSucursalId}
-                  onChange={async (e) => {
-                    const id = e.target.value;
-                    setSelectedSucursalId(id);
-                    await loadProductsBySucursal(id); // 🔥 carga según selección
-                    setShowSucursalPicker(false);
-                  }}
-                >
-                  <option value="">Todas las sucursales</option>
-                  {sucursales.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
-        </div>
-
         <div className="mt-4 overflow-hidden rounded-2xl shadow-sm border border-[#d8dadc] bg-white">
           <div className="overflow-x-auto">
             <table className="w-full text-sm table-auto min-w-[900px]">
               <thead>
-                <tr className="text-white">
+                <tr className="text-black">
                   <Th
                     label="ID de Producto"
                     sortKey="id"
@@ -1342,12 +1347,63 @@ export default function Inventario() {
                     value={filters.subcategoria}
                     onChange={setFilters}
                   />
-                  <Th
-                    label="Total en Stock"
-                    sortKey="stockKg"
-                    sort={sort}
-                    onSort={toggleSort}
-                  />
+                  <th
+                    ref={stockHeadRef}
+                    className="px-2 py-2 text-left bg-[#2B6DAF] relative"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      {/* Ordenar por stock */}
+                      <button
+                        onClick={() => toggleSort("stockKg")}
+                        className="inline-flex items-center gap-2 text-white"
+                        title="Ordenar por stock"
+                      >
+                        <Icon.Sort
+                          active={sort.key === "stockKg"}
+                          dir={sort.key === "stockKg" ? sort.dir : "asc"}
+                        />
+                      </button>
+
+                      {/* Selector de sucursal */}
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setShowSucursalPicker((s) => !s)}
+                          className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs border border-white/10"
+                          title="Filtrar stock por sucursal"
+                        >
+                          Stock
+                        </button>
+
+                        {showSucursalPicker && (
+                          <div className="absolute right-0 top-full mt-2 w-64 rounded-xl border border-[#d8dadc] bg-white shadow-lg p-3 z-20">
+                            <label className="text-sm text-gray-700 block mb-1">
+                              Sucursal
+                            </label>
+                            <select
+                              className="w-full px-3 py-2 rounded-xl border border-[#d8dadc] focus:outline-none focus:ring-2"
+                              style={{ outlineColor: "#2ca9e3" }}
+                              value={selectedSucursalId}
+                              onChange={async (e) => {
+                                const id = e.target.value;
+                                setSelectedSucursalId(id);
+                                await loadProductsBySucursal(id); // ← tu función: "" => todas, id => por sucursal
+                                setShowSucursalPicker(false);
+                              }}
+                            >
+                              <option value="">Todas las sucursales</option>
+                              {sucursales.map((s) => (
+                                <option key={s.id} value={s.id}>
+                                  {s.nombre}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </th>
+
                   <Th
                     label="Precio Base"
                     sortKey="precioBase"
@@ -1360,7 +1416,10 @@ export default function Inventario() {
                     sort={sort}
                     onSort={toggleSort}
                   />
-                  <th className="px-3 py-2 text-left bg-[#2B6DAF]">Opciones</th>
+
+                  <th className="px-3 py-2 text-left bg-[#2B6DAF]">
+                    <span className="text-white">Opciones</span>
+                  </th>
                 </tr>
               </thead>
 
@@ -1380,7 +1439,10 @@ export default function Inventario() {
                   pageItems.map((r, idx) => (
                     <tr
                       key={r.id + idx}
-                      className="border-b last:border-0 border-[#d8dadc]"
+                      className={
+                        "border-b last:border-0 border-[#d8dadc] " +
+                        (!r.activo ? "opacity-70" : "")
+                      }
                     >
                       <td className="px-3 py-3">{r.id}</td>
                       <td className="px-3 py-3">{r.producto}</td>
@@ -1412,18 +1474,29 @@ export default function Inventario() {
                             <Icon.Edit className="text-[#2ca9e3]" />
                           </button>
 
-                          <button
-                            onClick={() => removeRow(r.id)}
-                            disabled={deletingId === Number(r.id)}
-                            className="p-2 rounded-xl border border-[#d8dadc] hover:bg-red-50 disabled:opacity-60"
-                            title={
-                              deletingId === Number(r.id)
-                                ? "Desactivando..."
-                                : "Desactivar"
-                            }
-                          >
-                            <Icon.Trash className="text-red-500" />
-                          </button>
+                          {r.activo ? (
+                            <button
+                              onClick={() => inactivarRow(r.id)}
+                              disabled={deletingId === Number(r.id)}
+                              className="p-2 rounded-xl border border-[#d8dadc] hover:bg-red-50 disabled:opacity-60"
+                              title={
+                                deletingId === Number(r.id)
+                                  ? "Desactivando..."
+                                  : "Marcar inactivo"
+                              }
+                            >
+                              <Icon.Trash className="text-red-500" />
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled
+                              className="p-2 rounded-xl border border-[#d8dadc] text-gray-400 cursor-not-allowed"
+                              title="Producto inactivo"
+                            >
+                              Inactivo
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

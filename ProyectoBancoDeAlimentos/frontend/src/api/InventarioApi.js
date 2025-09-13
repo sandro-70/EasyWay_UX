@@ -23,6 +23,10 @@ export function getProductosTendencias(){
     return axiosInstance.get('/api/producto/tendencias');
 }
 
+export function crearMarca(nombre_marca){
+    return axiosInstance.post('/api/reportes-usuario/marcas', {nombre_marca});
+}
+
 export function getProductoById(id){   
     return axiosInstance.get(`/api/producto/${id}`);
 }
@@ -76,3 +80,4 @@ export function addOrUpdateValoracion(id_producto, { puntuacion, comentario }) {
 export function AddProductoFav(id_producto) {
   return axiosInstance.post(`/api/producto/${id_producto}/favoritos`);
 }
+

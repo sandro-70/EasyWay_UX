@@ -13,3 +13,12 @@ export function getTotalAhorrado(id_usuario){
     return axiosInstance.post('/api/reportes-usuario/total-ahorrado', {id_usuario});
 }
 
+export function getUsuariosReporte(){
+    return axiosInstance.get('/api/reportes-usuario/reporte');
+}
+export function getUsuariosTabla(id){
+    return axiosInstance.get(`/api/reportes-usuario/reporte/${id}`);
+}
+export function getClientesNuevos(){
+    return axiosInstance.get('/api/reportes-usuario/clientes-nuevos');
+}

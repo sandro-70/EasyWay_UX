@@ -415,6 +415,31 @@ exports.desactivarProducto = async (req, res) => {
 };
 
 
+
+exports.crearMarca = async (req, res) => {
+  try {
+    const { nombre } = req.body;
+    
+    if (!nombre || typeof nombre !== 'string' || nombre.trim() === '') {
+      return res.status(400).json({ message: 'El nombre de la marca es requerido y debe ser válido' });
+    }
+
+    // Verificar si la marca ya existe
+    const existingMarca = await marca_producto.findOne({ where: { nombre } });
+    if (existingMarca) {
+      return res.status(409).json({ message: 'La marca ya existe' });
+    }
+
+    // Crear la marca
+    const newMarca = await marca_producto.create({ nombre });
+    res.json({ message: 'Marca creada correctamente', marca: newMarca.toJSON() });
+  } catch (error) {
+    console.error('Error al crear marca:', error);
+    res.status(500).json({ error: 'Error al crear marca' });
+  }
+};
+
+
 exports.actualizarProducto = async (req, res) => {
   try {
     const { id_producto } = req.params;

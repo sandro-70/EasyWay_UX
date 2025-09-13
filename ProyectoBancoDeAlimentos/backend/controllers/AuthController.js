@@ -14,10 +14,15 @@ const login = async (req, res) => {
       return res.status(400).json({ message: 'Correo y contraseña son requeridos' });
     }
 
-    //  Buscar usuario 
+    //  Buscar usuario
     const usuario = await Usuario.findOne({ where: { correo } });
     if (!usuario) {
       return res.status(401).json({ message: 'Usuario no encontrado' });
+    }
+
+    // Verificar si el usuario está activo
+    if (!usuario.activo) {
+      return res.status(401).json({ message: 'Usuario inactivo' });
     }
 
     //  Verificar contraseña

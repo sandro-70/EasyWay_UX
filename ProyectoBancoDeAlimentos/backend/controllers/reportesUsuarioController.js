@@ -132,7 +132,7 @@ exports.getTotalAhorrado = async (req, res) => {
 };
 
 
-exports.getUsuarioReport = async (req, res) => {
+exports.getUsuariosReporte = async (req, res) => {
   try {
     // Obtener el total de usuarios registrados
     const totalUsers = await Usuario.count();
@@ -170,5 +170,207 @@ exports.getUsuarioReport = async (req, res) => {
   } catch (error) {
     console.error('Error al obtener reporte de usuarios:', error);
     res.status(500).json({ error: 'Error al obtener reporte de usuarios' });
+  }
+};
+
+// GET /api/reportes-usuario/reporte/tabla?rango=semana&estado=todos&limit=50&offset=0
+exports.getUsuariosTabla = async (req, res) => {
+  try {
+    const { Usuario } = require("../models");
+    const { Op } = require("sequelize");
+
+    // Parámetros de filtro (opcionales)
+    const rango  = String(req.query.rango || "semana").toLowerCase(); // 'hoy' | 'semana' | 'mes' | 'anio' | 'todos'
+    const estado = String(req.query.estado || "todos").toLowerCase(); // 'todos' | 'activos' | 'inactivos'
+    const limit  = Number(req.query.limit || 50);
+    const offset = Number(req.query.offset || 0);
+
+    // Calcular fecha inicial según el rango
+    const ahora = new Date();
+    const inicio = new Date(ahora); // clonar
+    if (rango === "hoy") {
+      inicio.setHours(0, 0, 0, 0);
+    } else if (rango === "semana") {
+      // últimos 7 días
+      inicio.setDate(ahora.getDate() - 7);
+    } else if (rango === "mes") {
+      inicio.setMonth(ahora.getMonth() - 1);
+    } else if (rango === "anio" || rango === "año") {
+      inicio.setFullYear(ahora.getFullYear() - 1);
+    } // 'todos' => sin filtro de fecha
+
+    // WHERE dinámico
+    const where = {};
+    if (estado === "activos") where.activo = true;
+    if (estado === "inactivos") where.activo = false;
+    if (rango !== "todos") where.fecha_creacion = { [Op.gte]: inicio, [Op.lte]: ahora };
+
+    // Consulta principal
+    const { rows, count } = await Usuario.findAndCountAll({
+      where,
+      attributes: ["id_usuario", "nombre", "apellido", "correo", "fecha_creacion", "activo"],
+      order: [["fecha_creacion", "DESC"]],
+      limit,
+      offset,
+    });
+
+    // Formateador de fecha dd/mm/yyyy
+    const fmt = (d) => {
+      const x = new Date(d);
+      const dd = String(x.getDate()).padStart(2, "0");
+      const mm = String(x.getMonth() + 1).padStart(2, "0");
+      const yy = x.getFullYear();
+      return `${dd}/${mm}/${yy}`;
+    };
+
+    // Transformar a filas de la UI
+    const tabla = rows.map(u => {
+      // “Usuario” como nombre+apellido (fallback al local-part del correo)
+      const userNice =
+        (u.nombre && u.apellido)
+          ? `${u.nombre}${u.apellido}`.replace(/\s+/g, "").toLowerCase()
+          : (u.correo ? String(u.correo).split("@")[0].toLowerCase() : "");
+
+      return {
+        id_usuario: u.id_usuario,
+        usuario: userNice,                       // p.ej.: "mariarivera"
+        fecha: fmt(u.fecha_creacion),            // dd/mm/yyyy
+        estado: u.activo ? "Activo" : "Inactivo"
+      };
+    });
+
+    // Métricas para el header (Total Usuarios / Activos / Inactivos)
+    const totalUsuarios = await Usuario.count();
+    const activos = await Usuario.count({ where: { activo: true } });
+    const inactivos = totalUsuarios - activos;
+
+    res.json({
+      meta: {
+        rango, estado, limit, offset,
+        totalFiltrado: count,
+        totalUsuarios, activos, inactivos,
+      },
+      rows: tabla
+    });
+  } catch (err) {
+    console.error("Error en getUsuariosTabla:", err);
+    res.status(500).json({ error: "Error al obtener el reporte de usuarios" });
+  }
+};
+
+
+// GET /api/reportes-usuario/clientes-nuevos-rango?rango=mes
+exports.getClientesNuevos = async (req, res) => {
+  try {
+    const { Usuario, Sequelize } = require("../models");
+    const { Op } = Sequelize;
+
+    const rango = String(req.query.rango || "semana").toLowerCase(); // hoy|semana|mes|anio|todos
+    const valid = new Set(["hoy", "semana", "mes", "anio", "todos"]);
+    if (!valid.has(rango)) {
+      return res.status(400).json({ message: "rango debe ser hoy|semana|mes|anio|todos" });
+    }
+
+    // 1) Fechas de inicio/fin
+    const now = new Date();
+    let start = null;
+    let bucketExpr = null;      // DATE_TRUNC(...)
+    let labelFmt = null;        // cómo formatear la etiqueta del bucket
+
+    if (rango === "hoy") {
+      // desde 00:00 del día → agrupado por hora
+      start = new Date(now); start.setHours(0,0,0,0);
+      bucketExpr = Sequelize.literal(`DATE_TRUNC('hour', "fecha_creacion")`);
+      labelFmt = (d) => new Date(d).toLocaleTimeString("es-HN", { hour: "2-digit", minute: "2-digit" });
+    } else if (rango === "semana") {
+      // últimos 7 días → agrupado por día
+      start = new Date(now); start.setDate(start.getDate() - 6); start.setHours(0,0,0,0);
+      bucketExpr = Sequelize.literal(`DATE_TRUNC('day', "fecha_creacion")`);
+      labelFmt = (d) => new Date(d).toLocaleDateString("es-HN", { weekday: "short", day: "2-digit", month: "2-digit" });
+    } else if (rango === "mes") {
+      // desde el 1er día del mes actual → agrupado por día
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      bucketExpr = Sequelize.literal(`DATE_TRUNC('day', "fecha_creacion")`);
+      labelFmt = (d) => new Date(d).toLocaleDateString("es-HN", { day: "2-digit", month: "short" });
+    } else if (rango === "anio" || rango === "año") {
+      // desde el 1er día del año → agrupado por mes
+      start = new Date(now.getFullYear(), 0, 1);
+      bucketExpr = Sequelize.literal(`DATE_TRUNC('month', "fecha_creacion")`);
+      labelFmt = (d) => new Date(d).toLocaleDateString("es-HN", { month: "long", year: "numeric" });
+    } else { // 'todos'
+      // sin filtro de fecha → agrupado por mes completo
+      bucketExpr = Sequelize.literal(`DATE_TRUNC('month', "fecha_creacion")`);
+      labelFmt = (d) => new Date(d).toLocaleDateString("es-HN", { month: "long", year: "numeric" });
+    }
+
+    // 2) WHERE (si aplica)
+    const where = {};
+    if (rango !== "todos") where.fecha_creacion = { [Op.gte]: start, [Op.lte]: now };
+
+    // 3) Consulta agrupada
+    const rows = await Usuario.findAll({
+      where,
+      attributes: [
+        [bucketExpr, "bucket"],
+        [Sequelize.fn("COUNT", Sequelize.col("id_usuario")), "total"]
+      ],
+      group: [bucketExpr],
+      order: [[Sequelize.literal("bucket"), "ASC"]],
+      raw: true
+    });
+
+    // 4) Opcional: rellenar buckets faltantes (para hoy/semana/mes/anio)
+    // Genera una secuencia desde start→now con el paso correcto
+    const out = [];
+    const stepMs = (() => {
+      if (rango === "hoy")    return 60 * 60 * 1000;                // 1 hora
+      if (rango === "semana") return 24 * 60 * 60 * 1000;           // 1 día
+      if (rango === "mes")    return 24 * 60 * 60 * 1000;           // 1 día
+      // anio/todos → delegamos a lo retornado (mes a mes); no rellenamos todos para 'todos' por tamaño
+      return null;
+    })();
+
+    // indexar resultados
+    const keyOf = (d) => {
+      const dt = new Date(d);
+      if (rango === "hoy")    return dt.toISOString().slice(0,13);          // YYYY-MM-DDTHH
+      if (rango === "semana") return dt.toISOString().slice(0,10);          // YYYY-MM-DD
+      if (rango === "mes")    return dt.toISOString().slice(0,10);          // YYYY-MM-DD
+      return dt.toISOString().slice(0,7);                                   // YYYY-MM
+    };
+    const map = new Map(rows.map(r => [keyOf(r.bucket), Number(r.total)]));
+
+    if (rango === "todos" || rango === "anio") {
+      // Devolvemos tal cual lo agrupado (mes a mes)
+      rows.forEach(r => out.push({
+        bucket: r.bucket,
+        label: labelFmt(r.bucket),
+        total: Number(r.total)
+      }));
+    } else {
+      // Relleno continuo
+      for (let t = start.getTime(); t <= now.getTime(); t += stepMs) {
+        const cur = new Date(t);
+        const key = keyOf(cur);
+        out.push({
+          bucket: cur.toISOString(),
+          label : labelFmt(cur.toISOString()),
+          total : map.get(key) || 0
+        });
+      }
+    }
+
+    // 5) Totales útiles para otros widgets
+    const totalUsuarios = await Usuario.count();
+    const activos       = await Usuario.count({ where: { activo: true } });
+    const inactivos     = totalUsuarios - activos;
+
+    res.json({
+      meta: { rango, totalUsuarios, activos, inactivos },
+      series: out
+    });
+  } catch (err) {
+    console.error("getClientesNuevosRango error:", err);
+    res.status(500).json({ error: "No se pudo generar la serie de clientes nuevos" });
   }
 };

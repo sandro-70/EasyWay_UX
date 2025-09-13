@@ -60,14 +60,14 @@ function Dashboard() {
       {
         label: "Ingresos",
         data: [3200, 8900, 5000, 4700],
-        borderColor: "#4CAF50",
-        backgroundColor: "#4CAF50",
+        borderColor: "#f0833e",
+        backgroundColor: "#ffac77",
       },
       {
         label: "Gastos",
         data: [2200, 2500, 2400, 2600],
-        borderColor: "#FF5722",
-        backgroundColor: "#FF5722",
+        borderColor: "#2b6daf",
+        backgroundColor: "#2ca9e3",
       },
     ],
   };
@@ -96,13 +96,28 @@ function Dashboard() {
     { year: "2026", BlackFriday: 120 },
     { year: "2027", PromoVerano: 75 },
   ];
+
+  // Datos para el gráfico de pastel bien definido
+  const pieData = {
+    labels: ["Ene", "Feb", "Mar", "Abr"],
+    datasets: [
+      {
+        label: "Ingresos Totales",
+        data: data.datasets[0].data,
+        backgroundColor: ["#f0833e", "#ffac77", "#2b6daf", "#2ca9e3"],
+        borderColor: ["#f0833e", "#ffac77", "#2b6daf", "#2ca9e3"],
+        borderWidth: 1,
+      },
+    ],
+  };
+
   return (
     <div
       className=" px-12 "
       style={{ ...styles.fixedShell, backgroundColor: "#f3f4f6" }}
     >
       <div
-        className={`flex flex-col w-full  pt-2 px-8 transition-all duration-300   ${
+        className={`flex flex-col w-full  pt-2 px-8 transition-all duration-300  ${
           moveButton ? "ml-44" : "ml-0"
         }`}
       >
@@ -142,16 +157,13 @@ function Dashboard() {
               </div>
               <div className="sm_grid px-16">
                 <p className="pl-4">Total de Pedidos</p>
-                {
-                  //<MyPie data={data} />
-                }
                 <div className="flex w-full h-[232px] px-2 items-center justify-center ">
                   <Pie
-                    data={data}
-                    width={300} // internal resolution
-                    height={300} // internal resolution
+                    data={pieData}
+                    width={300}
+                    height={300}
                     options={{ maintainAspectRatio: false }}
-                    style={{ width: "300px", height: "300px" }} // visual size
+                    style={{ width: "300px", height: "300px" }}
                   />
                 </div>
               </div>

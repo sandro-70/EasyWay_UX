@@ -1,5 +1,5 @@
 // src/components/Headerr.jsx
-import React, { useState, useEffect, useContext, useMemo } from "react";
+import React, { useState, useEffect, useContext, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import CartIcon from "../images/CartIcon.png";
 import FilterIcon from "../images/FilterIcon.png";
@@ -40,11 +40,11 @@ const backendImageUrl = (fileName) =>
 const toPublicFotoSrc = (nameOrPath) => {
   if (!nameOrPath) return "";
   const s = String(nameOrPath);
-  if (/^https?:\/\//i.test(s)) return s;                   // absoluta
+  if (/^https?:\/\//i.test(s)) return s;
   if (s.startsWith("/api/images/")) return `${BACKEND_ORIGIN}${encodeURI(s)}`;
   if (s.startsWith("/images/")) return `${BACKEND_ORIGIN}/api${encodeURI(s)}`;
-  if (s.startsWith("/")) return `${BACKEND_ORIGIN}${encodeURI(s)}`; // absoluta relativa
-  return backendImageUrl(s);                                // solo nombre
+  if (s.startsWith("/")) return `${BACKEND_ORIGIN}${encodeURI(s)}`;
+  return backendImageUrl(s);
 };
 
 const withBuster = (url, rev) =>
@@ -53,15 +53,12 @@ const withBuster = (url, rev) =>
 const fileNameFromPath = (p) => (!p ? "" : String(p).split("/").pop());
 const getUserId = (u) => u?.id_usuario ?? u?.id ?? u?.usuario_id ?? u?.userId ?? null;
 
-/** Avatar robusto: prueba varias rutas y rompe caché con avatar_rev */
 function AvatarImg({ user, size = 40 }) {
   const [idx, setIdx] = useState(0);
-
   const candidates = useMemo(() => {
     const list = [];
     const raw = user?.foto_perfil_url || user?.foto_perfil || user?.foto || "";
     if (raw) list.push(toPublicFotoSrc(fileNameFromPath(raw)));
-
     const id = getUserId(user);
     if (id) {
       ["png", "jpg", "jpeg", "webp"].forEach((ext) =>
@@ -101,6 +98,7 @@ function AvatarImg({ user, size = 40 }) {
     />
   );
 }
+
 /* ========================================================================================== */
 
 const Headerr = () => {
@@ -114,7 +112,20 @@ const Headerr = () => {
 
   const isCliente = isAuthenticated && !isAdmin;
 
-  // Badge del carrito
+  const userMenuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (logMenu && userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setLogOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [logMenu]);
+
   useEffect(() => {
     const fetchCartCount = async () => {
       if (!isAuthenticated || isAdmin) return setCount(0);
@@ -146,7 +157,6 @@ const Headerr = () => {
 
   return (
     <div style={{ ...styles.fixedShell, boxShadow: "none" }}>
-      {/* Barra superior */}
       <div style={styles.topBar}>
         <img
           src={logo}
@@ -163,17 +173,19 @@ const Headerr = () => {
         />
 
         <div style={styles.divBar}>
-          <div style={styles.searchWrapper}>
-            <button style={styles.iconBtn}>
-              <img src={FilterIcon} alt="Filter" style={styles.icon} />
-            </button>
-            <input type="text" placeholder="Buscar..." style={styles.searchInput} />
-            <button style={styles.iconBtn}>
-              <img src={SearchIcon} alt="Search" style={styles.icon} />
-            </button>
-          </div>
+          {/* La barra de búsqueda solo se muestra si NO es un administrador */}
+          {!isAdmin && (
+            <div style={styles.searchWrapper}>
+              <button style={styles.iconBtn}>
+                <img src={FilterIcon} alt="Filter" style={styles.icon} />
+              </button>
+              <input type="text" placeholder="Buscar..." style={styles.searchInput} />
+              <button style={styles.iconBtn}>
+                <img src={SearchIcon} alt="Search" style={styles.icon} />
+              </button>
+            </div>
+          )}
 
-          {/* 🛒 Carrito: solo clientes autenticados */}
           {isCliente && (
             <button
               style={{
@@ -218,22 +230,18 @@ const Headerr = () => {
           )}
         </div>
 
-        {/* Usuario */}
-        <div style={styles.user}>
+        <div style={styles.user} ref={userMenuRef}>
           <button style={styles.SmallWrapperUser} onClick={() => setLogOpen((prev) => !prev)}>
             <AvatarImg user={user} size={40} />
           </button>
-
           <span>
             {isAuthenticated ? `${user?.nombre || "Usuario"}` : "Invitado"}
           </span>
-
           {logMenu && (
             <div style={styles.dropdown}>
               <div style={styles.dropdownCaret} />
               {isAuthenticated ? (
                 <>
-                  {/* Cabecera del menú (versión GitHub) */}
                   <div style={styles.userHeader}>
                     <span style={styles.hello}>Hola,</span>
                     <span style={styles.fullName}>
@@ -241,22 +249,22 @@ const Headerr = () => {
                     </span>
                   </div>
                   <div style={styles.headerDivider} />
-
                   <Link
                     to={isAdmin ? "/EditarPerfilAdmin" : "/miPerfil"}
                     style={styles.actionItem}
+                    onClick={() => setLogOpen(false)} // Nuevo: Cierra el menú al hacer clic en este enlace
                     onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8fafc")}
                     onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                   >
                     Ver mi Perfil
                   </Link>
-
-                  
-
                   <button
                     type="button"
                     style={{ ...styles.actionItem, textAlign: "left" }}
-                    onClick={handleLogout}
+                    onClick={() => {
+                      handleLogout();
+                      setLogOpen(false); // Asegura que el menú se cierra
+                    }}
                     onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8fafc")}
                     onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                   >
@@ -267,6 +275,7 @@ const Headerr = () => {
                 <Link
                   to="/login"
                   style={styles.actionItem}
+                  onClick={() => setLogOpen(false)} // Nuevo: Cierra el menú al hacer clic en este enlace
                   onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8fafc")}
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                 >
@@ -278,7 +287,6 @@ const Headerr = () => {
         </div>
       </div>
 
-      {/* 📌 BottomBar: solo clientes */}
       {isCliente && (
         <div style={styles.bottomBar}>
           <nav style={styles.nav} aria-label="Categorías">

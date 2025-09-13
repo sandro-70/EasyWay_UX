@@ -8,5 +8,6 @@ router.post('/top-3-productos', reportesUsuarioController.getTopProductosUsuario
 router.post('/top-3-recomendados', reportesUsuarioController.getProductosRecomendados);
 router.post('/top-dias-pedidos',reportesUsuarioController.getDiasCompra);
 router.post('/total-ahorrado',reportesUsuarioController.getTotalAhorrado);
+router.get('/reporte', reportesUsuarioController.getUsuarioReport);
 
 module.exports = router;

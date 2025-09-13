@@ -412,24 +412,26 @@ exports.desactivarProducto = async (req, res) => {
     console.error(error);
     res.status(500).json({ message: "Error al borrar producto!" });
   }
-};exports.actualizarProducto = async (req, res) => {
+};
+
+
+exports.actualizarProducto = async (req, res) => {
   try {
-    const { 
-      nombre, 
-      descripcion, 
-      precio_base, 
-      id_subcategoria, 
-      porcentaje_ganancia, 
-      id_marca, 
-      etiquetas, 
-      unidad_medida, 
-      activo 
+    const { id_producto } = req.params;
+    const {
+      nombre,
+      descripcion,
+      precio_base,
+      id_subcategoria,
+      porcentaje_ganancia,
+      id_marca,
+      etiquetas,
+      unidad_medida,
+      activo
     } = req.body;
     
-    const { id_producto } = req.params;
-
     // Validar que el ID del producto sea numérico
-    if (!id_producto || isNaN(id_producto)) {
+    if (!id_producto || isNaN(parseInt(id_producto))) {
       return res.status(400).json({ message: "ID de producto inválido" });
     }
 
@@ -470,6 +472,10 @@ exports.desactivarProducto = async (req, res) => {
       }
     }
 
+    if (["unidad", "libra", "litro"].indexOf(unidad_medida) === -1) {
+      return res.status(400).json({ message: "Unidad de medida inválida" });
+    }
+
     // Actualizar el producto
     await product.update({
       nombre: nombre.trim(),
@@ -479,31 +485,26 @@ exports.desactivarProducto = async (req, res) => {
       porcentaje_ganancia: porcentaje_ganancia ? parseFloat(porcentaje_ganancia) : null,
       id_marca: parseInt(id_marca),
       etiquetas: etiquetasArray,
-      unidad_medida: unidad_medida || 'unidad',
+      unidad_medida,
       activo: activo !== undefined ? Boolean(activo) : true
     });
 
-    return res.json({
+    // Obtener el producto actualizado con detalles
+    const updatedProduct = await producto.findByPk(id_producto, {
+      include: [
+        { model: subcategoria, as: 'subcategoria', attributes: ['id_subcategoria', 'nombre']},
+        { model: marca_producto, as: 'marca', attributes: ['id_marca_producto', 'nombre']},
+        { model: imagen_producto, as: 'imagenes', attributes: ['url_imagen', 'orden_imagen']}
+      ]
+    });
+
+    res.json({
       message: "Producto actualizado correctamente",
-      product: await producto.findByPk(id_producto, {
-        include: [
-          {
-            model: subcategoria,
-            as: 'subcategoria',
-            attributes: ['id_subcategoria', 'nombre']
-          },
-          {
-            model: marca_producto,
-            as: 'marca',
-            attributes: ['id_marca_producto', 'nombre']
-          }
-        ]
-      })
+      product: updatedProduct
     });
 
   } catch (error) {
     console.error("Error al actualizar producto:", error);
-    
     // Manejar errores específicos de Sequelize
     if (error.name === 'SequelizeValidationError') {
       const errors = error.errors.map(err => err.message);
@@ -525,3 +526,4 @@ exports.desactivarProducto = async (req, res) => {
     });
   }
 };
+

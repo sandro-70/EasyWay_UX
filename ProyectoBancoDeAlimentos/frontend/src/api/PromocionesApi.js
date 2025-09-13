@@ -19,3 +19,8 @@ export function getDescuentosAplicadosPorUsuario(id_usuario){
 export function getPromocionesConDetallesURL(){
     return axiosInstance.get('/api/promociones/detalles');
 }
+
+
+export function aplicarDescuentoseleccionados(data) {
+  return axiosInstance.patch('/api/promociones/descuentosMultiples', data);
+}

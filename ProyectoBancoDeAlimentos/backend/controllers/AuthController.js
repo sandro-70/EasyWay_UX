@@ -2,6 +2,7 @@
 const sequelize = require('../config/db');
 const { DataTypes } = require('sequelize');
 const Usuario = require('../models/Usuario')(sequelize, DataTypes);
+const carrito = require('../models/carrito')(sequelize, DataTypes);
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../config/config');
@@ -62,7 +63,7 @@ const registrarse = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(contraseña, 10);
 
-    await Usuario.create({
+    const nuevoUsuario = await Usuario.create({
       nombre,
       apellido,
       correo,
@@ -71,6 +72,12 @@ const registrarse = async (req, res) => {
       telefono,
       foto_perfil_url,
       genero
+    });
+
+    // Crear carrito para el nuevo usuario
+    await carrito.create({
+      id_usuario: nuevoUsuario.id_usuario,
+      fecha_creacion: new Date()
     });
 
     return res.status(201).json({

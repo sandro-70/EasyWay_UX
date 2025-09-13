@@ -1,4 +1,4 @@
-const { promocion, Usuario, pedido, promocion_pedido, producto, estado_pedido, factura, promocion_producto } = require("../models");
+const { promocion, Usuario, pedido, promocion_pedido, producto, estado_pedido, factura, promocion_producto, sequelize } = require("../models");
 
 const { Op } = require('sequelize');
 
@@ -261,6 +261,9 @@ exports.getDescuentosAplicadosPorUsuario = async (req, res) => {
 exports.aplicarDescuentoseleccionados = async (req, res) => {
   try {
     const { selectedProductIds, discountType, discountValue } = req.body;
+    if (!req.user || !req.user.id_usuario) {
+      return res.status(401).json({ message: 'Usuario no autenticado' });
+    }
     const currentUserId = req.user.id_usuario;
 
     // Verificar si el usuario es administrador
@@ -272,6 +275,9 @@ exports.aplicarDescuentoseleccionados = async (req, res) => {
       return res.status(403).json({ message: 'Solo los administradores pueden aplicar descuentos' });
     }
 
+    // Resetear la secuencia de id_promocion para evitar conflictos
+    await sequelize.query('SELECT setval(\'promocion_id_promocion_seq\', (SELECT COALESCE(MAX(id_promocion), 0) + 1 FROM promocion), false);');
+
     // Aplicar el descuento a los productos seleccionados
     for (const id_producto of selectedProductIds) {
       const product = await producto.findByPk(id_producto);
@@ -280,18 +286,22 @@ exports.aplicarDescuentoseleccionados = async (req, res) => {
       }
 
       let promocionExistente = await promocion.findOne({
-        where: {
-          id_producto: id_producto,
-        },
         include: [{
-          model: tipo_promocion,
-        }],
+          model: producto,
+          where: { id_producto: id_producto },
+          through: { attributes: [] },
+          required: true
+        }]
       });
 
       if (!promocionExistente) {
         promocionExistente = await promocion.create({
-          id_producto: id_producto,
           id_tipo_promo: 2, // Suponiendo que 2 es el ID para descuentos por producto
+        });
+        // Crear la asociación en la tabla promocion_producto
+        await promocion_producto.create({
+          id_promocion: promocionExistente.id_promocion,
+          id_producto: id_producto
         });
       }
 

@@ -130,3 +130,45 @@ exports.getTotalAhorrado = async (req, res) => {
     res.status(500).json({ error: "Error al calcular el ahorro del usuario!" });
   }
 };
+
+
+exports.getUsuarioReport = async (req, res) => {
+  try {
+    // Obtener el total de usuarios registrados
+    const totalUsers = await Usuario.count();
+    
+    res.header("Content-Type", "application/json");
+
+    // Obtener la lista de usuarios con detalles
+    const users = await Usuario.findAll({
+      attributes: ['id_usuario', 'nombre', 'fecha_creacion', 'activo'],
+      order: [['fecha_creacion', 'DESC']]
+    });
+
+    // Calcular estadísticas
+    const activeUsers = users.filter(user => user.activo);
+    const inactiveUsers = users.filter(user => !user.activo);
+    const activePercentage = (activeUsers.length / totalUsers) * 100;
+    const inactivePercentage = 100 - activePercentage;
+
+    // Prepar la información para el reporte
+    const reportData = {
+      totalUsers: totalUsers,
+      activeUsers: activeUsers.length,
+      inactiveUsers: inactiveUsers.length,
+      activePercentage: activePercentage.toFixed(2),
+      inactivePercentage: inactivePercentage.toFixed(2),
+      usersList: users.map(user => ({
+        id: user.id_usuario,
+        username: user.nombre,
+        fecha: user.fecha_creacion,
+        estado: user.activo ? 'Activo' : 'Inactivo',
+      }))
+    };
+
+    res.json(reportData);
+  } catch (error) {
+    console.error('Error al obtener reporte de usuarios:', error);
+    res.status(500).json({ error: 'Error al obtener reporte de usuarios' });
+  }
+};

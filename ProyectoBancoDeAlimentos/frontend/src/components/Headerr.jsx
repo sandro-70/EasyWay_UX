@@ -1,5 +1,5 @@
 // src/components/Headerr.jsx
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import CartIcon from "../images/CartIcon.png";
 import FilterIcon from "../images/FilterIcon.png";
@@ -15,24 +15,93 @@ import idioma from "../images/idioma.png";
 import { ViewCar } from "../api/CarritoApi";
 import { UserContext } from "./userContext";
 import { useCart } from "../utils/CartContext";
+import axiosInstance from "../api/axiosInstance";
 
-/* ====================== UTILIDAD: nombre/ruta → URL pública ====================== */
-// Si sirve desde el mismo host:
+/* =================== Helpers de URL para foto (alineados con MiPerfil) =================== */
+const BACKEND_ORIGIN = (() => {
+  const base = axiosInstance?.defaults?.baseURL;
+  try {
+    const u = base
+      ? base.startsWith("http")
+        ? new URL(base)
+        : new URL(base, window.location.origin)
+      : new URL(window.location.origin);
+    return `${u.protocol}//${u.host}`;
+  } catch {
+    return window.location.origin;
+  }
+})();
+
+const backendImageUrl = (fileName) =>
+  fileName
+    ? `${BACKEND_ORIGIN}/api/images/fotoDePerfil/${encodeURIComponent(fileName)}`
+    : "";
+
 const toPublicFotoSrc = (nameOrPath) => {
   if (!nameOrPath) return "";
   const s = String(nameOrPath);
-  if (/^https?:\/\//i.test(s) || s.startsWith("/")) return s;
-  return `/images/fotoDePerfil/${s}`;
+  if (/^https?:\/\//i.test(s)) return s;                   // absoluta
+  if (s.startsWith("/api/images/")) return `${BACKEND_ORIGIN}${encodeURI(s)}`;
+  if (s.startsWith("/images/")) return `${BACKEND_ORIGIN}/api${encodeURI(s)}`;
+  if (s.startsWith("/")) return `${BACKEND_ORIGIN}${encodeURI(s)}`; // absoluta relativa
+  return backendImageUrl(s);                                // solo nombre
 };
 
-// // Si las imágenes viven en un backend distinto, usa esto:
-// // const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
-// // const toPublicFotoSrc = (nameOrPath) => {
-// //   if (!nameOrPath) return "";
-// //   const s = String(nameOrPath);
-// //   if (/^https?:\/\//i.test(s) || s.startsWith("/")) return s;
-// //   return `${API_BASE}/images/fotoDePerfil/${s}`;
-// // };
+const withBuster = (url, rev) =>
+  !url || !rev ? url || "" : url.includes("?") ? `${url}&t=${rev}` : `${url}?t=${rev}`;
+
+const fileNameFromPath = (p) => (!p ? "" : String(p).split("/").pop());
+const getUserId = (u) => u?.id_usuario ?? u?.id ?? u?.usuario_id ?? u?.userId ?? null;
+
+/** Avatar robusto: prueba varias rutas y rompe caché con avatar_rev */
+function AvatarImg({ user, size = 40 }) {
+  const [idx, setIdx] = useState(0);
+
+  const candidates = useMemo(() => {
+    const list = [];
+    const raw = user?.foto_perfil_url || user?.foto_perfil || user?.foto || "";
+    if (raw) list.push(toPublicFotoSrc(fileNameFromPath(raw)));
+
+    const id = getUserId(user);
+    if (id) {
+      ["png", "jpg", "jpeg", "webp"].forEach((ext) =>
+        list.push(backendImageUrl(`user_${id}.${ext}`))
+      );
+    }
+    return [...new Set(list.filter(Boolean))];
+  }, [user]);
+
+  const src = useMemo(() => {
+    const rev = user?.avatar_rev || user?.updated_at || user?.updatedAt || 0;
+    return withBuster(candidates[idx] || "", rev);
+  }, [candidates, idx, user?.avatar_rev, user?.updated_at, user?.updatedAt]);
+
+  useEffect(() => {
+    setIdx(0);
+  }, [user?.foto_perfil_url, user?.avatar_rev, user?.updated_at, user?.updatedAt]);
+
+  if (!candidates.length) {
+    return (
+      <img
+        src={UserIcon}
+        alt="User"
+        style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover" }}
+      />
+    );
+  }
+
+  return (
+    <img
+      src={src || UserIcon}
+      alt="User"
+      style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover" }}
+      onError={() => {
+        setIdx((i) => (i + 1 < candidates.length ? i + 1 : i));
+      }}
+    />
+  );
+}
+/* ========================================================================================== */
 
 const Headerr = () => {
   const [reportesMenu, setReportesMenu] = useState(false);
@@ -70,13 +139,8 @@ const Headerr = () => {
     logout();
     localStorage.removeItem("token");
     localStorage.removeItem("rol");
-
     navigate("/login");
   };
-
-  // Normaliza la foto (si solo viene "KennyFotoPerfil.png" → /images/fotoDePerfil/KennyFotoPerfil.png)
-  const computedFoto = toPublicFotoSrc(user?.foto_perfil_url);
-  const fotoUrl = computedFoto || UserIcon;
 
   if (loading) return null;
 
@@ -157,37 +221,31 @@ const Headerr = () => {
         {/* Usuario */}
         <div style={styles.user}>
           <button style={styles.SmallWrapperUser} onClick={() => setLogOpen((prev) => !prev)}>
-            <img
-              src={fotoUrl}
-              alt="User"
-              style={styles.iconUser}
-              onError={(e) => {
-                e.currentTarget.src = UserIcon; // Fallback si la URL no carga
-              }}
-            />
+            <AvatarImg user={user} size={40} />
           </button>
+
           <span>
-            {isAuthenticated
-              ? `${user?.nombre || "Usuario"}`
-              : "Invitado"}
+            {isAuthenticated ? `${user?.nombre || "Usuario"}` : "Invitado"}
           </span>
 
           {logMenu && (
             <div style={styles.dropdown}>
-              <div style={styles.dropdownCaret} /> 
+              <div style={styles.dropdownCaret} />
               {isAuthenticated ? (
                 <>
+                  {/* Cabecera del menú (versión GitHub) */}
                   <div style={styles.userHeader}>
-          <span style={styles.hello}>Hola,</span>
-          <span style={styles.fullName}>{user?.nombre} {user?.apellido}</span>
-        </div>
-
-          <div style={styles.headerDivider} />
+                    <span style={styles.hello}>Hola,</span>
+                    <span style={styles.fullName}>
+                      {(user?.nombre || "")} {(user?.apellido || "")}
+                    </span>
+                  </div>
+                  <div style={styles.headerDivider} />
 
                   <Link
                     to={isAdmin ? "/EditarPerfilAdmin" : "/miPerfil"}
                     style={styles.actionItem}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#D8572F")}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8fafc")}
                     onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                   >
                     Ver mi Perfil
@@ -197,7 +255,7 @@ const Headerr = () => {
                     <Link
                       to="/gestionProductos"
                       style={styles.actionItem}
-                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#D8572F")}
+                      onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8fafc")}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                     >
                       Gestión de Productos
@@ -208,7 +266,7 @@ const Headerr = () => {
                     type="button"
                     style={{ ...styles.actionItem, textAlign: "left" }}
                     onClick={handleLogout}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#D8572F")}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8fafc")}
                     onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                   >
                     Cerrar Sesión
@@ -218,7 +276,7 @@ const Headerr = () => {
                 <Link
                   to="/login"
                   style={styles.actionItem}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#D8572F")}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8fafc")}
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                 >
                   Iniciar Sesión
@@ -252,28 +310,13 @@ const Headerr = () => {
 
               {reportesMenu && (
                 <div style={styles.dropdownReportes}>
-                  <Link
-                    to="/HistorialCompras"
-                    style={styles.dropdownLink}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#D8572F")}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-                  >
+                  <Link to="/HistorialCompras" style={styles.dropdownLink}>
                     Historial de Compras
                   </Link>
-                  <Link
-                    to="/descuentos_aplicados"
-                    style={styles.dropdownLink}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#D8572F")}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-                  >
+                  <Link to="/descuentos_aplicados" style={styles.dropdownLink}>
                     Descuentos aplicados
                   </Link>
-                  <Link
-                    to="/SistemaValoracion"
-                    style={styles.dropdownLink}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#D8572F")}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-                  >
+                  <Link to="/SistemaValoracion" style={styles.dropdownLink}>
                     Resumen de Actividad
                   </Link>
                 </div>
@@ -360,60 +403,53 @@ const styles = {
     height: "20px",
     width: "20px",
   },
-  iconUser: {
-    height: "40px",
-    width: "40px",
+  SmallWrapperUser: {
+    backgroundColor: "transparent",
+    width: 44,
+    height: 44,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: "pointer",
     borderRadius: "50%",
-    objectFit: "cover",
   },
-SmallWrapperUser: {
-  backgroundColor: "transparent",
-  width: 44,
-  height: 44,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  cursor: "pointer",
-  borderRadius: "50%",
-},
-user: {
-  position: "relative",          // << ancla del dropdown
-  display: "flex",
-  alignItems: "center",
-  gap: "6px",
-  color: "white",
-  cursor: "pointer",
-  height: "20px",
-  width: "300px",
-},
-dropdown: {
-  position: "absolute",
-  top: "calc(100% + 15px)",       // debajo del avatar
-  right: 78,                      // alineado al borde del avatar
-  width: 220,                    // más pequeño
-  backgroundColor: "#fff",
-  color: "#0f172a",
-  borderRadius: 12,
-  boxShadow: "0 14px 28px rgba(15, 23, 42, .18)",
-  padding: 10,
-  display: "flex",
-  flexDirection: "column",
-  gap: 6,
-  zIndex: 1000,
-  border: "1px solid #e5e7eb",
-},
-
-dropdownCaret: {
-  position: "absolute",
-  top: -6,
-  left: 14,                  
-  width: 12,
-  height: 12,
-  background: "#fff",
-  borderLeft: "1px solid #e5e7eb",
-  borderTop: "1px solid #e5e7eb",
-  transform: "rotate(45deg)",
-},
+  user: {
+    position: "relative",
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    color: "white",
+    cursor: "pointer",
+    height: "20px",
+    width: "300px",
+  },
+  dropdown: {
+    position: "absolute",
+    top: "calc(100% + 15px)",
+    right: 78,
+    width: 220,
+    backgroundColor: "#fff",
+    color: "#0f172a",
+    borderRadius: 12,
+    boxShadow: "0 14px 28px rgba(15, 23, 42, .18)",
+    padding: 10,
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+    zIndex: 1000,
+    border: "1px solid #e5e7eb",
+  },
+  dropdownCaret: {
+    position: "absolute",
+    top: -6,
+    left: 14,
+    width: 12,
+    height: 12,
+    background: "#fff",
+    borderLeft: "1px solid #e5e7eb",
+    borderTop: "1px solid #e5e7eb",
+    transform: "rotate(45deg)",
+  },
   dropdownLink: {
     padding: "8px 12px",
     borderRadius: "8px",
@@ -469,66 +505,46 @@ dropdownCaret: {
     height: "40px",
     objectFit: "contain",
   },
-  userInfo: {
+  userHeader: {
     display: "flex",
     flexDirection: "column",
     alignItems: "flex-start",
-    marginBottom: "8px",
+    padding: "6px 8px",
+    gap: 6,
   },
-  userName: {
-    fontWeight: "600",
-    fontSize: "14px",
-    color: "#0f172a",
-  },
-  logoutLink: {
-    fontSize: "13px",
+  hello: {
     color: "#64748b",
-    cursor: "pointer",
-    
+    fontWeight: 600,
   },
-userHeader: {
-  display: "flex",
-  flexDirection: "column",   // ⬅️ ahora en columna
-  alignItems: "flex-start",  // ⬅️ alineado a la izquierda
-  padding: "6px 8px",
-  gap: 6,
-},
-
-hello: {
-  color: "#64748b",
-  fontWeight: 600,
-},
-fullName: {
-  fontSize: 16,
-  fontWeight: 800,
-  color: "#0f172a",
-  lineHeight: 1.2,
-  whiteSpace: "nowrap",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-},
-headerDivider: {
-  height: 1,
-  background: "linear-gradient(to right, transparent, #e5e7eb 15%, #e5e7eb 85%, transparent)",
-  margin: "4px 0 6px",
-},
-
-// items del menú, alineados a la izquierda
-actionItem: {
-  width: "100%",
-  textAlign: "left",
-  padding: "9px 10px",
-  borderRadius: 8,
-  textDecoration: "none",
-  color: "#0f172a",
-  fontSize: 16,
-  cursor: "pointer",
-  background: "transparent",
-  border: "none",
-  display: "block",
-  transition: "background .15s ease",
-},
-actionItemHover: { background: "#f8fafc" }
+  fullName: {
+    fontSize: 16,
+    fontWeight: 800,
+    color: "#0f172a",
+    lineHeight: 1.2,
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  headerDivider: {
+    height: 1,
+    background: "linear-gradient(to right, transparent, #e5e7eb 15%, #e5e7eb 85%, transparent)",
+    margin: "4px 0 6px",
+  },
+  actionItem: {
+    width: "100%",
+    textAlign: "left",
+    padding: "9px 10px",
+    borderRadius: 8,
+    textDecoration: "none",
+    color: "#0f172a",
+    fontSize: 16,
+    cursor: "pointer",
+    background: "transparent",
+    border: "none",
+    display: "block",
+    transition: "background .15s ease",
+  },
+  dropdownLinkHover: { background: "#f8fafc" },
 };
 
 export default Headerr;

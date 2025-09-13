@@ -1,7 +1,7 @@
 // src/TestAuth.jsx
 import React, { useEffect, useState } from "react";
 import { getAllProducts } from "../api/InventarioApi";
-
+import {GetCupones, GetALLCupones} from "../api/CuponesApi";
 
 export default function TestAuth() {
   const [products, setProducts] = useState([]);
@@ -22,7 +22,7 @@ export default function TestAuth() {
   const fetchProductos = async () => {
     try {
       setLoading(true);
-      const res = await getAllProducts(); // axios response
+      const res = await GetALLCupones(1); // axios response
       setRawResponse(res?.data ?? null);
       const arr = extractArray(res?.data);
       setProducts(arr);

@@ -89,3 +89,29 @@ exports.contarPedidosUsuario = async (req, res) => {
     res.status(500).json({ error: "Error interno al contar pedidos" });
   }
 };
+
+exports.editarPerfil = async (req,res) => {
+  try{
+    const {id_usuario} = req.params;
+
+    const {nombre, apellido, telefono, genero, foto_perfil_url} = req.body;
+
+    const user = Usuario.findOne({where : {id_usuario}});
+
+    if(!user){
+      return res.status(404).json({message : "No se pudo encontrar el usuario!"});
+    }
+
+    user.nombre = nombre;
+    user.apellido = apellido;
+    user.telefono = telefono;
+    user.genero = genero;
+    user.foto_perfil_url = foto_perfil_url;
+
+    await user.save();
+
+  }catch(error){
+    return res.status(500).json({message : "No se pudo"});
+  }
+ 
+}

@@ -9,6 +9,7 @@ const {
   Usuario,
   carrito,
   carrito_detalle,
+  sucursal_producto
 } = require("../models");
 const { Op } = require("sequelize");
 
@@ -129,14 +130,14 @@ exports.crearPedido = async (req, res) => {
 
   const t = await pedido.sequelize.transaction(); //iniciar transaccion
   try {
-    const { id_usuario, direccion_envio, id_sucursal, id_cupon, descuento } =
-      req.body;
+    const { id_usuario, direccion_envio, id_sucursal, id_cupon, descuento } = req.body;
 
     //obtener carrito
     const cart = await carrito.findOne({
       where: { id_usuario },
       transaction: t,
     });
+
     if (!cart) {
       await t.rollback();
       return res.status(400).json({ error: "El usuario no tiene carrito" });
@@ -193,6 +194,15 @@ exports.crearPedido = async (req, res) => {
       },
       { transaction: t }
     );
+
+    for (const item of itemsCarrito) {
+      const sucProd = await sucursal_producto.findOne({
+        where: { id_sucursal, id_producto: item.id_producto },
+        transaction: t
+      });
+      sucProd.stock_disponible -= item.cantidad_unidad_medida;
+      await sucProd.save({ transaction: t });
+    }
 
     //crear detalles
     const detalles = itemsCarrito.map((item) => ({

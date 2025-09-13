@@ -598,7 +598,18 @@ function AgregarCarrito() {
 
                 {/* Formulario para dejar comentario */}
                 <div style={styles.formCol}>
-                  <form onSubmit={submitReview}>
+                  <form onSubmit={(e) => {
+                      e.preventDefault(); 
+                      if (myRating < 1) {
+                        alert("Debes seleccionar al menos 1 estrella para tu calificación.");
+                        return; 
+                      }
+                      if (!myComment.trim()) {
+                        alert("Escribe tu comentario.");
+                        return; 
+                      }
+                      submitReview(e); 
+                    }}>
                     <div style={styles.formGroup}>
                       <label style={styles.formLabel}>Tu calificación</label>
                       <div>
@@ -627,26 +638,28 @@ function AgregarCarrito() {
                     <button
                       type="submit"
                       style={styles.submitBtn}
-                      disabled={submitting || myRating < 1}
                     >
                       {submitting ? "Enviando…" : "Enviar opinión"}
                     </button>
                   </form>
                 </div>
               </div>
-
+              
               {/* Lista de comentarios */}
               <div style={styles.reviewList}>
-                {effectiveTotal === 0 ? (
-                  <div style={styles.noReviews}>
-                    Aún no hay opiniones. ¡Sé el primero!
-                  </div>
-                ) : (
-                  reviews.map((r) => (
-                    <div
-                      key={r.id_valoracion_producto}
-                      style={styles.reviewCard}
-                    >
+              {effectiveTotal === 0 ? (
+                <div style={styles.noReviews}>
+                  Aún no hay opiniones. ¡Sé el primero!
+                </div>
+              ) : (
+                reviews
+                  .slice() 
+                  .sort(
+                    (a, b) =>
+                      new Date(b.fecha_creacion) - new Date(a.fecha_creacion) 
+                  )
+                  .map((r) => (
+                    <div key={r.id_valoracion_producto} style={styles.reviewCard}>
                       <div style={styles.reviewMeta}>
                         <div>
                           {[1, 2, 3, 4, 5].map((n) => (
@@ -673,8 +686,8 @@ function AgregarCarrito() {
                       )}
                     </div>
                   ))
-                )}
-              </div>
+              )}
+            </div>
             </div>
             {/* FIN valoraciones dentro del card */}
           </div>
@@ -1061,6 +1074,7 @@ const styles = {
     border: "1px solid #eee",
     borderRadius: "12px",
     padding: "14px",
+    textAlign: "left",
   },
   reviewMeta: {
     display: "flex",

@@ -135,10 +135,7 @@ const Login = () => {
           />
         </div>
 
-        <Link
-          to="/forgot_password"
-          className="forgot-pass-link"
-          rel="noopener noreferrer"
+        <Link to="/forgot_password" className="forgot-pass-link" rel="noopener noreferrer"
         >
           ¿Olvidaste tu contraseña?
         </Link>

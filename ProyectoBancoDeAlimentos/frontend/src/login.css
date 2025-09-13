@@ -93,6 +93,9 @@
   font-weight: bold;
   text-align: right;
 }
+.login-form .forgot-pass-link:hover {
+  text-decoration: underline;
+}
 
 .login-form .new-link {
   margin-top: 1rem;

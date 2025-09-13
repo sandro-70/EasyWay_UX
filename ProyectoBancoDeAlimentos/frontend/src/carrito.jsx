@@ -12,7 +12,7 @@ import {
   eliminarItem,
   AddNewCarrito,
 } from "./api/CarritoApi";
-import { GetCupones } from "./api/CuponesApi";
+import { GetCupones, desactivarCupon } from "./api/CuponesApi";
 import { getProductosRecomendados } from "./api/InventarioApi";
 import { crearPedido } from "./api/PedidoApi";
 import { UserContext } from "./components/userContext";
@@ -48,15 +48,28 @@ function Carrito() {
   const productosCarrito = useState(0);
   const [discount, setVisible] = useState(false);
   const [cupon, setCupon] = useState("EMPTY");
-  const [descCupon, setDesc] = useState(1);
+  const [idCuponDesactivar, setIDCuponDesactivar] = useState(0);
+  const [descCupon, setDesc] = useState(0);
   const [showProducts, setShowProd] = useState(true);
   const [total, setTotal] = useState(0);
   const { user } = useContext(UserContext);
   const navigate = useNavigate();
   console.log("Header user carrito", user);
   const obtenerTotal = () => {
-    return (total * 1.15 * descCupon).toFixed(2);
+    return (total * (1-descCupon/100) * 1.15).toFixed(2);
   };
+
+  const obtenerImpuesto = () => {
+    return (total * 0.15).toFixed(2);
+  };
+
+  const obtenerDescuento = () => {
+    if (!(descCupon === 0)) {
+      return (total * (descCupon / 100)).toFixed(2);
+    }
+    return 0;
+  };
+
   const sumaCarrito = () => {
     const subtotal = detalles.reduce(
       (acc, item) => acc + (item.subtotal_detalle || 0),
@@ -69,10 +82,8 @@ function Carrito() {
     await SumarItem(id, n);
   };
   const updateQuantity = async (idDetalle, id, n) => {
-    if (n < 1) {
-      incrementCart();
-      return;
-    }
+    if (n < 1) return;
+    
     try {
       await SumarBackend(id, n);
       setDetalles((prev) =>
@@ -92,36 +103,41 @@ function Carrito() {
     }
   };
   //Verifica si el cupon es valido
-  const checkCupon = async () => {
+  const checkCupon = async (e) => {
+    e.preventDefault();
     try {
-      const res = await GetCupones(); // assume this returns an array of coupons
-      const allCoupons = res.data ?? []; // adapt if needed
+      console.log("Intentando obtener cupones...");
+      const res=await GetCupones();
+      console.log(res.data);
+      const allCoupons = res.data ?? [];
 
-      // Check if any coupon already exists in storedCoupons
-      const exists = allCoupons.some(
-        (c) => c.tipo === cupon // or compare by code: c.code === storedCoupon?.code
+      const cuponValido = allCoupons.find(
+        (c) =>
+          c.codigo.toLowerCase() === cupon.toLowerCase() &&
+          c.activo === true
       );
-      //Muestra el apartado del descuento
-      if (exists) {
-        setVisible(exists);
-        //Poner el descuento del cupon
-        setDesc(15);
-        alert(`Cupon agregado a la compra`);
+
+      if (cuponValido) {
+        setVisible(true);
+        setDesc(cuponValido.valor); // usar el valor real del cupón
+        alert(`Cupón agregado: ${cuponValido.codigo}, ${cuponValido.valor}% de descuento`);
+        setIDCuponDesactivar(cuponValido.id_cupon);
       } else {
-        setVisible(exists);
-        //Poner el descuento del cupon
-        setDesc(15);
-        alert(`Cupon invalido`);
+        setVisible(false);
+        setDesc(0);
+        alert("Cupón inválido o expirado");
       }
     } catch (err) {
       console.error("Error fetching coupons:", err);
+      alert("Error al verificar el cupón");
     }
   };
+
   const realizarCompra = async () => {
     try {
       const total_factura = obtenerTotal();
       let desc = 0;
-      if (!(descCupon === 1)) {
+      if (!(descCupon === 0)) {
         desc = parseFloat(((descCupon / 100) * total).toFixed(2));
       }
 
@@ -141,6 +157,7 @@ function Carrito() {
       );
 
       setCount(0);
+      if(idCuponDesactivar!==0) desactivarCupon(idCuponDesactivar);
       console.log("Pedido creado:", response.data);
       alert("Pedido creado correctamente!");
       setShowProd(false);
@@ -211,7 +228,6 @@ function Carrito() {
           }
           return prev;
         });
-        incrementCart(1);
       } else {
         console.log("Producto nuevo, agregando al carrito");
 
@@ -223,7 +239,6 @@ function Carrito() {
         const nuevosDetalles = carritoActualizado.data.carrito_detalles ?? [];
         setDetalles(nuevosDetalles);
 
-        incrementCart(1);
         alert("Producto agregado al carrito");
       }
     } catch (error) {
@@ -289,6 +304,31 @@ function Carrito() {
 
     return () => {};
   }, []);
+
+  const handleIncrement = async (p) => {
+    const nuevaCantidad = p.cantidad_unidad_medida + 1;
+    try {
+      await updateQuantity(p.id_carrito_detalle, p.producto.id_producto, nuevaCantidad);
+      incrementCart(1); 
+    } catch (err) {
+      console.error("Error incrementando producto:", err);
+      alert("No se pudo aumentar la cantidad");
+    }
+  };
+
+
+  const handleDecrement = async (p) => {
+    if (p.cantidad_unidad_medida <= 1) return; 
+    const nuevaCantidad = p.cantidad_unidad_medida - 1;
+    try {
+      await updateQuantity(p.id_carrito_detalle, p.producto.id_producto, nuevaCantidad);
+      decrementCart(1); 
+    } catch (err) {
+      console.error("Error disminuyendo producto:", err);
+      alert("No se pudo disminuir la cantidad");
+    }
+  };
+
   return (
     <div
       className="bg-gray-100 w-screen min-h-screen py-4 overflow-x-hidden items-center"
@@ -353,14 +393,7 @@ function Carrito() {
                             <p className="py-2 text-xl">{p.producto.nombre}</p>
                             <div className="flex flex-row gap-1">
                               <button
-                                onClick={() => {
-                                  updateQuantity(
-                                    p.id_carrito_detalle,
-                                    p.producto.id_producto,
-                                    p.cantidad_unidad_medida - 1
-                                  );
-                                  decrementCart();
-                                }}
+                                onClick={() => handleDecrement(p)}
                                 className=" bg-[#114C87] text-white rounded-md h-9 px-1"
                               >
                                 <span class="material-symbols-outlined text-3xl">
@@ -372,14 +405,7 @@ function Carrito() {
                                 value={p.cantidad_unidad_medida}
                               ></input>
                               <button
-                                onClick={() => {
-                                  updateQuantity(
-                                    p.id_carrito_detalle,
-                                    p.producto.id_producto,
-                                    p.cantidad_unidad_medida + 1
-                                  );
-                                  incrementCart();
-                                }}
+                                onClick={() => handleIncrement(p)}
                                 className="bg-[#114C87] text-white rounded-md h-9 px-1"
                               >
                                 <span class="material-symbols-outlined text-3xl">
@@ -427,9 +453,10 @@ function Carrito() {
                     <input
                       type="text"
                       placeholder="Codigo"
-                      className="input-field rounded-xl bg-gray-100 border-black border-2 pl-2"
+                      value={cupon === "EMPTY" ? "" : cupon}
                       onChange={(e) => setCupon(e.target.value)}
-                    ></input>
+                      className="input-field rounded-xl bg-gray-100 border-black border-2 pl-2"
+                    />
                     <button
                       type="submit"
                       className="bg-[#114C87] rounded-md py-1 text-white px-12 text-xl"
@@ -461,27 +488,23 @@ function Carrito() {
                   <ul className="text-left space-y-3 font-medium text-md">
                     <li className="flex justify-between">
                       <span>Subtotal</span>
-                      <span>
-                        L.
-                        {total}
-                      </span>
-                    </li>
-
-                    <li className="flex justify-between">
-                      <span>Impuesto</span>
-                      <span>15%</span>
+                      <span>L. {total}</span>
                     </li>
                     {discount && (
                       <li className="flex justify-between">
-                        <span>Descuento</span>
-                        <span>{descCupon}%</span>
+                        <span>Descuento {descCupon}%</span>
+                        <span>L. {obtenerDescuento()}</span>
                       </li>
                     )}
+                    <li className="flex justify-between">
+                      <span>Impuesto 15%</span>
+                      <span>L. {obtenerImpuesto()}</span>
+                    </li>
 
                     <hr className="bg-black h-[3px] w-full" />
                     <li className="text-lg font-bold flex justify-between">
                       <span>Total</span>
-                      <span>{obtenerTotal()}</span>
+                      <span>L. {obtenerTotal()}</span>
                     </li>
                     <button
                       onClick={realizarCompra}
@@ -587,7 +610,7 @@ function Carrito() {
                         hoveredProductDest === i ? "#2b6daf" : "#F0833E",
                     }}
                     onClick={() => {
-                      incrementCart();
+                      incrementCart(1);
                       handleAgregar(p.id_producto, 1);
                     }}
                   >

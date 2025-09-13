@@ -24,3 +24,16 @@ export function getPromocionesConDetallesURL(){
 export function aplicarDescuentoseleccionados(data) {
   return axiosInstance.patch('/api/promociones/descuentosMultiples', data);
 }
+
+export function crearPromocion(data) {
+  return axiosInstance.post('/api/promociones', data);
+}
+export function desactivarPromocion(id) {
+  return axiosInstance.put(`/api/promociones/desactivar/${id}`);
+}
+export function activarPromocion(id) {
+  return axiosInstance.put(`/api/promociones/activar/${id}`);
+}
+export function actualizarPromocion(id, data) {
+  return axiosInstance.put(`/api/promociones/actualizar/${id}`, data);
+}

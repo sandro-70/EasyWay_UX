@@ -322,3 +322,161 @@ exports.aplicarDescuentoseleccionados = async (req, res) => {
     res.status(500).json({ error: 'Error al aplicar descuentos' });
   }
 };
+
+exports.crearPromocion = async (req, res) => {
+  try {
+    const { nombre_promocion, descripcion, valor_fijo, valor_porcentaje, fecha_inicio, fecha_termina, id_tipo_promo, banner_url, productos } = req.body;
+    if (!req.user || !req.user.id_usuario) {
+      return res.status(401).json({ message: 'Usuario no autenticado' });
+    }
+    const currentUserId = req.user.id_usuario;
+
+    // Verificar si el usuario es administrador
+    const user = await Usuario.findByPk(currentUserId, {
+      attributes: ['id_rol'],
+    });
+    if (!user || user.id_rol !== 1) {
+      return res.status(403).json({ message: 'Solo los administradores pueden crear promociones' });
+    }
+    const newPromocion = await promocion.create({
+      nombre_promocion,
+      descripcion,
+      valor_fijo: valor_fijo || null,
+      valor_porcentaje: valor_porcentaje || null,
+      fecha_inicio,
+      fecha_termina,
+      id_tipo_promo,
+      banner_url,
+      activa: true
+    });
+    if (productos && Array.isArray(productos)) {
+      for (const id_producto of productos) {
+        const product = await producto.findByPk(id_producto);
+        if (product) {
+          await promocion_producto.create({
+            id_promocion: newPromocion.id_promocion,
+            id_producto: id_producto
+          });
+        }
+      }
+    }
+    res.status(201).json({ message: 'Promoción creada correctamente', promocion: newPromocion });
+  } catch (error) {
+    console.error('Error al crear la promoción:', error);
+    res.status(500).json({ error: 'Error al crear la promoción' });
+  }
+};
+
+
+exports.desactivarPromocion = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!req.user || !req.user.id_usuario) {
+      return res.status(401).json({ message: 'Usuario no autenticado' });
+    }
+    const currentUserId = req.user.id_usuario;
+
+    // Verificar si el usuario es administrador
+    const user = await Usuario.findByPk(currentUserId, {
+      attributes: ['id_rol'],
+    });
+    if (!user || user.id_rol !== 1) {
+      return res.status(403).json({ message: 'Solo los administradores pueden desactivar promociones' });
+    }
+
+    const promocionToDeactivate = await promocion.findByPk(id);
+    if (!promocionToDeactivate) {
+      return res.status(404).json({ message: 'Promoción no encontrada' });
+    }
+
+    promocionToDeactivate.activa = false;
+    await promocionToDeactivate.save();
+    res.json({ message: 'Promoción desactivada correctamente' });
+  } catch (error) {
+    console.error('Error al desactivar la promoción:', error);
+    res.status(500).json({ error: 'Error al desactivar la promoción' });
+  }
+};
+
+exports.activarPromocion = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!req.user || !req.user.id_usuario) {
+      return res.status(401).json({ message: 'Usuario no autenticado' });
+    }
+    const currentUserId = req.user.id_usuario;
+    // Verificar si el usuario es administrador
+    const user = await Usuario.findByPk(currentUserId, {
+      attributes: ['id_rol'],
+    });
+    if (!user || user.id_rol !== 1) {
+      return res.status(403).json({ message: 'Solo los administradores pueden activar promociones' });
+    }
+
+    const promocionToActivate = await promocion.findByPk(id);
+    if (!promocionToActivate) {
+      return res.status(404).json({ message: 'Promoción no encontrada' });
+    }
+    promocionToActivate.activa = true;
+    await promocionToActivate.save();
+    res.json({ message: 'Promoción activada correctamente' });
+  } catch (error) {
+    console.error('Error al activar la promoción:', error);
+    res.status(500).json({ error: 'Error al activar la promoción' });
+  }
+};
+
+exports.actualizarPromocion = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nombre_promocion, descripcion, valor_fijo, valor_porcentaje, fecha_inicio, fecha_termina, id_tipo_promo, banner_url, productos } = req.body;
+    if (!req.user || !req.user.id_usuario) {
+      return res.status(401).json({ message: 'Usuario no autenticado' });
+    }
+    const currentUserId = req.user.id_usuario;
+
+    // Verificar si el usuario es administrador 
+    const user = await Usuario.findByPk(currentUserId, {
+      attributes: ['id_rol'],
+    });
+    if (!user || user.id_rol !== 1) {
+      return res.status(403).json({ message: 'Solo los administradores pueden actualizar promociones' });
+    }
+
+    const promocionToUpdate = await promocion.findByPk(id);
+    if (!promocionToUpdate) {
+      return res.status(404).json({ message: 'Promoción no encontrada' });
+    }
+    promocionToUpdate.nombre_promocion = nombre_promocion || promocionToUpdate.nombre_promocion;
+    promocionToUpdate.descripcion = descripcion || promocionToUpdate.descripcion;
+    promocionToUpdate.valor_fijo = valor_fijo !== undefined ? valor_fijo : promocionToUpdate.valor_fijo;
+    promocionToUpdate.valor_porcentaje = valor_porcentaje !== undefined ? valor_porcentaje : promocionToUpdate.valor_porcentaje;
+    promocionToUpdate.fecha_inicio = fecha_inicio || promocionToUpdate.fecha_inicio;
+    promocionToUpdate.fecha_termina = fecha_termina || promocionToUpdate.fecha_termina;
+    promocionToUpdate.id_tipo_promo = id_tipo_promo || promocionToUpdate.id_tipo_promo;
+    promocionToUpdate.banner_url = banner_url || promocionToUpdate.banner_url;
+    await promocionToUpdate.save();
+
+    if (productos && Array.isArray(productos)) {
+      // Eliminar asociaciones existentes
+      await promocion_producto.destroy({ where: { id_promocion: id } });
+      // Crear nuevas asociaciones
+      for (const id_producto of productos) {
+        const product = await producto.findByPk(id_producto);
+        if (product) {
+          await promocion_producto.create({
+            id_promocion: id,
+            id_producto: id_producto
+          });
+        }
+      }
+    }
+
+    res.json({ message: 'Promoción actualizada correctamente', promocion: promocionToUpdate });
+  } catch (error) {
+    console.error('Error al actualizar la promoción:', error);
+    res.status(500).json({ error: 'Error al actualizar la promoción' });
+  }
+};
+
+

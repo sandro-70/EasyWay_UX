@@ -12,5 +12,11 @@ router.get('/usuario/:id_usuario', promocionesController.getpromocionbyusuario);
 router.get('/descuentos/aplicados/:id_usuario', promocionesController.getDescuentosAplicadosPorUsuario);
 router.patch('/descuentosMultiples', verificarToken, promocionesController.aplicarDescuentoseleccionados);
 
+router.post('/', verificarToken, promocionesController.crearPromocion);
+router.put('/desactivar/:id', verificarToken, promocionesController.desactivarPromocion);
+router.put('/activar/:id', verificarToken, promocionesController.activarPromocion);
+router.put('/actualizar/:id', verificarToken, promocionesController.actualizarPromocion);
+
+
 
 module.exports = router;

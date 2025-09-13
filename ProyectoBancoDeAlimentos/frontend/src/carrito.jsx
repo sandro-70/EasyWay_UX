@@ -151,7 +151,7 @@ function Carrito() {
       const response = await crearPedido(
         user.id_usuario, // int
         id_direccion, // string (o int si cambias el modelo)
-        1, // id_sucursal
+        2, // id_sucursal
         null, // id_cupon
         desc // descuento
       );

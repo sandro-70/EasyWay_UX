@@ -1,3 +1,4 @@
+// src/miPerfil.jsx
 import { useState, useEffect, useContext, useRef } from "react";
 import "./miPerfil.css";
 import { Link } from "react-router-dom";
@@ -13,14 +14,12 @@ import {
 } from "./api/Usuario.Route";
 import axiosInstance from "./api/axiosInstance";
 
-/* ===================== ORIGIN backend + helper URL imagen ===================== */
+/* ===================== ORIGIN backend + helpers ===================== */
 const BACKEND_ORIGIN = (() => {
   const base = axiosInstance?.defaults?.baseURL;
   try {
     const u = base
-      ? (base.startsWith("http")
-          ? new URL(base)
-          : new URL(base, window.location.origin))
+      ? (base.startsWith("http") ? new URL(base) : new URL(base, window.location.origin))
       : new URL(window.location.origin);
     return `${u.protocol}//${u.host}`;
   } catch {
@@ -29,32 +28,17 @@ const BACKEND_ORIGIN = (() => {
 })();
 
 const backendImageUrl = (fileName) =>
-  fileName
-    ? `${BACKEND_ORIGIN}/api/images/fotoDePerfil/${encodeURIComponent(fileName)}`
-    : "";
+  fileName ? `${BACKEND_ORIGIN}/api/images/fotoDePerfil/${encodeURIComponent(fileName)}` : "";
 
 const toPublicFotoSrc = (nameOrPath) => {
   if (!nameOrPath) return "";
   if (/^https?:\/\//i.test(nameOrPath)) return nameOrPath;
-  if (nameOrPath.startsWith("/api/images/"))
-    return `${BACKEND_ORIGIN}${encodeURI(nameOrPath)}`;
-  if (nameOrPath.startsWith("/images/"))
-    return `${BACKEND_ORIGIN}/api${encodeURI(nameOrPath)}`;
+  if (nameOrPath.startsWith("/api/images/")) return `${BACKEND_ORIGIN}${encodeURI(nameOrPath)}`;
+  if (nameOrPath.startsWith("/images/")) return `${BACKEND_ORIGIN}/api${encodeURI(nameOrPath)}`;
   return backendImageUrl(nameOrPath);
 };
 
-const fileNameFromPath = (p) => {
-  if (!p) return "";
-  const parts = String(p).split("/");
-  return parts[parts.length - 1] || "";
-};
-
-const sanitizeBaseName = (s) => {
-  if (!s) return "User";
-  const noAccents = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  return noAccents.replace(/[^a-zA-Z0-9_-]/g, "");
-};
-const firstName = (s) => (s ? s.trim().split(/\s+/)[0] : "User");
+const fileNameFromPath = (p) => (!p ? "" : String(p).split("/").pop() || "");
 
 const getExt = (file) => {
   const byName = file?.name?.match(/\.(\w{1,8})$/i)?.[1];
@@ -70,13 +54,10 @@ const getExt = (file) => {
   return map[file?.type] || ".png";
 };
 
-const buildSafeProfileFileName = ({ nombre, apellidos, user }, file) => {
-  const base = sanitizeBaseName(firstName(user?.nombre || user?.nombre_usuario || nombre)) || "User";
-  const ext = getExt(file);
-  return `${base}FotoPerfil${ext}`;
-};
+const getUserId = (u) => u?.id_usuario ?? u?.id ?? u?.usuario_id ?? u?.userId ?? 1;
+const buildIdProfileFileName = (userObj, file) => `user_${getUserId(userObj)}${getExt(file)}`;
 
-/* ========================================================================== */
+/* ===================== UI helpers ===================== */
 function Icon({ name, className = "icon" }) {
   switch (name) {
     case "user":
@@ -131,8 +112,8 @@ export default function MiPerfil() {
   const [nombre, setNombre] = useState("");
   const [apellidos, setApellidos] = useState("");
   const [correo, setCorreo] = useState("");
-  const [genero, setGenero] = useState("Masculino");
-  const [rol, setRol] = useState("Administrador");
+  const [genero, setGenero] = useState("masculino");
+  const [rol, setRol] = useState("");
 
   // UI
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -145,12 +126,13 @@ export default function MiPerfil() {
   // foto
   const [fotoUrl, setFotoUrl] = useState("");
   const [fotoFileName, setFotoFileName] = useState("");
+  const [fotoCandidates, setFotoCandidates] = useState([]);
+  const [fotoIdx, setFotoIdx] = useState(0);
 
   // estados auxiliares
   const [cargando, setCargando] = useState(true);
-  const [datosValidos, setDatosValidos] = useState(true);
 
-  // 🔴 ahora empieza en SOLO LECTURA
+  // solo lectura por defecto
   const [editMode, setEditMode] = useState(false);
 
   const { user, setUser } = useContext(UserContext);
@@ -164,10 +146,10 @@ export default function MiPerfil() {
   const [errorHistorial, setErrorHistorial] = useState("");
   const [historial, setHistorial] = useState([]);
 
-  // ▶ para poder limpiar el input file al cancelar
+  // file input ref
   const fileInputRef = useRef(null);
 
-  // ▶ snapshot con los últimos datos guardados (para Cancelar sin recargar)
+  // snapshot para cancelar
   const [snapshot, setSnapshot] = useState(null);
 
   // Context helper
@@ -182,43 +164,70 @@ export default function MiPerfil() {
     }));
   };
 
-  /* =================== SUBIR FOTO (solo en modo edición) =================== */
-  const getUserId = (u) => u?.id_usuario ?? u?.id ?? u?.usuario_id ?? u?.userId ?? 1;
-  const buildIdProfileFileName = (userObj, file) => {
-    const id = getUserId(userObj);
-    const ext = getExt(file);
-    return `user_${id}${ext}`;
+  /* ---------- helpers foto ---------- */
+  const buildFotoCandidates = (dataObj, ctx) => {
+    const uid = getUserId(dataObj || ctx || {});
+    const list = [];
+    const push = (v) => {
+      const n = fileNameFromPath(v);
+      if (n && !list.includes(n)) list.push(n);
+    };
+
+    // 1) Preferir lo que venga de la API
+    push(dataObj?.foto_perfil_url);
+    push(dataObj?.foto_perfil);
+    push(dataObj?.foto);
+
+    // 2) Luego lo que haya en el contexto (el header suele tenerlo)
+    push(ctx?.foto_perfil_url);
+    push(ctx?.foto);
+
+    // 3) Por si no viene nada, probar convenciones por id
+    if (uid) {
+      ["jpg", "png", "webp"].forEach((ext) => list.push(`user_${uid}.${ext}`));
+    }
+    return list;
   };
 
+  const advanceCandidate = () => {
+    setFotoIdx((i) => (i + 1 < fotoCandidates.length ? i + 1 : i));
+  };
+
+  /* =================== SUBIR FOTO (solo en modo edición) =================== */
   const handleFotoChange = async (e) => {
     if (!editMode) return;
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // previsualización
+    // preview inmediata
     setFotoUrl(URL.createObjectURL(file));
 
-    // nombre normalizado por id
     const fileNameById = buildIdProfileFileName(user, file);
-
     try {
       const { data } = await uploadProfilePhoto1(file, fileNameById);
       const filename = data?.filename || fileNameById;
 
       // releer usuario
       const res = await InformacionUser();
-      const data1 = res.data || {};
-      const fromApi = data1.foto_perfil_url || data1.foto_perfil || data1.foto || filename;
-      const justName = fileNameFromPath(fromApi);
+      const data1 = res?.data?.user ?? res?.data ?? {};
+      const justName = fileNameFromPath(
+        data1.foto_perfil_url || data1.foto_perfil || data1.foto || filename
+      );
 
-      setFotoUrl(`${backendImageUrl(justName)}?t=${Date.now()}`);
+      // actualiza candidatos y selección
+      const cands = buildFotoCandidates(data1, user);
+      setFotoCandidates(cands);
+      setFotoIdx(0);
+
       setFotoFileName(justName);
+      setFotoUrl(`${toPublicFotoSrc(justName)}?t=${Date.now()}`);
 
       pushUserToContext({ ...data1, foto_perfil_url: justName });
       setUser((prev) => ({ ...(prev || {}), foto_perfil_url: justName, avatar_rev: Date.now() }));
     } catch (err) {
       console.error("Error subiendo foto:", err);
       alert("No se pudo subir la foto.");
+      setFotoUrl(""); // vuelve al placeholder
     }
   };
 
@@ -226,7 +235,6 @@ export default function MiPerfil() {
   const tryParseDate = (value) => {
     if (!value && value !== 0) return null;
     if (value instanceof Date && !isNaN(value)) return value;
-
     if (typeof value === "number") {
       const s = String(value);
       if (s.length === 10) return new Date(value * 1000);
@@ -234,7 +242,6 @@ export default function MiPerfil() {
       const byNum = new Date(value);
       return isNaN(byNum) ? null : byNum;
     }
-
     if (typeof value === "string") {
       let s = value.trim();
       const m = s.match(/\/Date\((\d+)\)\//);
@@ -242,10 +249,7 @@ export default function MiPerfil() {
         const ms = Number(m[1]);
         if (!isNaN(ms)) return new Date(ms);
       }
-      if (/^\d{10,13}$/.test(s)) {
-        const n = Number(s);
-        return tryParseDate(n);
-      }
+      if (/^\d{10,13}$/.test(s)) return tryParseDate(Number(s));
       const withT = s.replace(" ", "T");
       const d1 = new Date(withT);
       if (!isNaN(d1)) return d1;
@@ -265,28 +269,24 @@ export default function MiPerfil() {
 
   const formatToFechaHora = (dateObj) => {
     if (!dateObj || !(dateObj instanceof Date) || isNaN(dateObj)) return null;
-    const months = [
-      "enero","febrero","marzo","abril","mayo","junio",
-      "julio","agosto","septiembre","octubre","noviembre","diciembre",
-    ];
-    const day = String(dateObj.getDate()).padStart(2, "0");
+    const months = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+    const dd = String(dateObj.getDate()).padStart(2, "0");
     const month = months[dateObj.getMonth()];
     const hh = String(dateObj.getHours()).padStart(2, "0");
     const mm = String(dateObj.getMinutes()).padStart(2, "0");
-    return { fecha: `${day} de ${month}`, hora: `${hh}:${mm}` };
+    return { fecha: `${dd} de ${month}`, hora: `${hh}:${mm}` };
   };
 
   const fetchHistorial = async () => {
-    const userId = getUserId(user);
-    if (!userId) {
+    const uid = getUserId(user);
+    if (!uid) {
       setErrorHistorial("Usuario no disponible para cargar historial");
       return;
     }
-
     setLoadingHistorial(true);
     setErrorHistorial("");
     try {
-      const res = await getLogsUsuario(userId);
+      const res = await getLogsUsuario(uid);
       const rawList = Array.isArray(res.data) ? res.data : res.data?.rows ?? res.data?.data ?? [];
       const items = Array.isArray(rawList) ? rawList : res.data ? [res.data] : [];
       const logs = items.map((item) => {
@@ -322,56 +322,54 @@ export default function MiPerfil() {
 
     const fetchUser = async () => {
       try {
-        const res = await InformacionUser(1);
-        const data = res.data || {};
+        const res = await InformacionUser(); // igual que Admin
+        const data = res?.data?.user ?? res?.data ?? {};
         if (!mounted) return;
 
-        if (!data || Object.keys(data).length === 0) {
-          setDatosValidos(false);
-          setCargando(false);
-          return;
-        }
-
         // log acceso (best effort)
-        try {
-          const userId = getUserId(data);
-          if (userId) {
-            createLog(userId).catch(() => {});
-          }
-        } catch {}
+        const uid = getUserId(data);
+        if (uid) createLog(uid).catch(() => {});
 
-        // set form
+        // form
         setTelefono(data.telefono || data.numero_telefono || data.telefono_usuario || "");
         setNombre(data.nombre || data.nombre_usuario || data.nombres || "");
         setApellidos(data.apellido || data.apellidos || data.apellido_usuario || "");
         setCorreo(data.correo || data.email || "");
-        if (data.genero) setGenero(data.genero);
+        if (data.genero) setGenero(String(data.genero).toLowerCase());
         if (data.rol?.nombre_rol) setRol(data.rol.nombre_rol);
 
-        // foto normalizada (forzando user_<id>.<ext> si aplica)
-        const fromApi = data.foto_perfil_url || data.foto_perfil || data.foto || "";
-        const guessedExt = fileNameFromPath(fromApi).split(".").pop() || "png";
-        const idName = `user_${getUserId(data)}.${guessedExt}`;
-        const url = `${backendImageUrl(idName)}?t=${Date.now()}`;
+        // candidatos de foto (API → Context → convenciones)
+        const cands = buildFotoCandidates(data, user);
+        setFotoCandidates(cands);
+        setFotoIdx(0);
 
-        setFotoFileName(idName);
-        setFotoUrl(url);
-        pushUserToContext({ ...data, foto_perfil_url: idName });
+        const first = cands[0] || "";
+        if (first) {
+          setFotoFileName(first);
+          setFotoUrl(`${toPublicFotoSrc(first)}?t=${Date.now()}`);
+        } else {
+          setFotoFileName("");
+          setFotoUrl("");
+        }
 
-        // crea snapshot inicial (para cancelar)
+        // snapshot
         setSnapshot({
           telefono: data.telefono || data.numero_telefono || data.telefono_usuario || "",
           nombre: data.nombre || data.nombre_usuario || data.nombres || "",
           apellidos: data.apellido || data.apellidos || data.apellido_usuario || "",
           correo: data.correo || data.email || "",
-          genero: data.genero || "Masculino",
-          fotoFileName: idName,
-          fotoUrl: url,
+          genero: String(data.genero || "masculino").toLowerCase(),
+          fotoFileName: first || "",
+          fotoUrl: first ? `${toPublicFotoSrc(first)}?t=${Date.now()}` : "",
         });
+
+        // empuja al contexto lo que tengamos (útil para el Header)
+        if (first) pushUserToContext({ ...data, foto_perfil_url: first });
 
         setCargando(false);
       } catch (err) {
         console.error("Error cargando usuario:", err?.response?.data || err.message || err);
+        setCargando(false);
       }
     };
 
@@ -379,7 +377,16 @@ export default function MiPerfil() {
     return () => {
       mounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // si una imagen falla, probar la siguiente extensión/candidato
+  useEffect(() => {
+    const next = fotoCandidates[fotoIdx];
+    if (!next) return;
+    setFotoUrl(`${toPublicFotoSrc(next)}?t=${Date.now()}`);
+    setFotoFileName(next);
+  }, [fotoIdx, fotoCandidates]);
 
   useEffect(() => {
     if (!passwordError) return;
@@ -387,18 +394,9 @@ export default function MiPerfil() {
     return () => clearTimeout(timer);
   }, [passwordError]);
 
-  /* ==================== ACCIONES EDITAR / GUARDAR / CANCELAR ==================== */
+  /* ==================== EDITAR / GUARDAR / CANCELAR ==================== */
   const enterEdit = () => {
-    // Antes de entrar a editar, toma snapshot del estado ACTUAL mostrado.
-    setSnapshot({
-      telefono,
-      nombre,
-      apellidos,
-      correo,
-      genero,
-      fotoFileName,
-      fotoUrl,
-    });
+    setSnapshot({ telefono, nombre, apellidos, correo, genero, fotoFileName, fotoUrl });
     setEditMode(true);
   };
 
@@ -418,27 +416,16 @@ export default function MiPerfil() {
 
       // releer usuario
       const fullRes = await InformacionUser();
-      const data = fullRes.data || {};
-      const freshName = fileNameFromPath(
-        data.foto_perfil_url || data.foto_perfil || data.foto || nombreParaBD || ""
-      );
+      const data = fullRes?.data?.user ?? fullRes?.data ?? {};
+      const fromApi = data.foto_perfil_url || data.foto_perfil || data.foto || nombreParaBD || "";
+      const freshName = fileNameFromPath(fromApi) || "";
 
-      // Actualiza UI
+      const freshUrl = freshName ? `${toPublicFotoSrc(freshName)}?t=${Date.now()}` : "";
       setFotoFileName(freshName);
-      setFotoUrl(`${toPublicFotoSrc(freshName)}?t=${Date.now()}`);
+      setFotoUrl(freshUrl);
       setUser({ ...data, foto_perfil_url: freshName, avatar_rev: Date.now() });
 
-      // 🔁 snapshot pasa a ser el estado guardado
-      setSnapshot({
-        telefono,
-        nombre,
-        apellidos,
-        correo,
-        genero,
-        fotoFileName: freshName,
-        fotoUrl: `${toPublicFotoSrc(freshName)}?t=${Date.now()}`,
-      });
-
+      setSnapshot({ telefono, nombre, apellidos, correo, genero, fotoFileName: freshName, fotoUrl: freshUrl });
       setEditMode(false);
     } catch (err) {
       console.error("Error guardando perfil:", err?.response?.data || err.message || err);
@@ -447,17 +434,15 @@ export default function MiPerfil() {
   };
 
   const handleCancel = () => {
-    // revierte al snapshot sin refrescar
     if (snapshot) {
       setTelefono(snapshot.telefono || "");
       setNombre(snapshot.nombre || "");
       setApellidos(snapshot.apellidos || "");
       setCorreo(snapshot.correo || "");
-      setGenero(snapshot.genero || "Masculino");
+      setGenero(snapshot.genero || "masculino");
       setFotoFileName(snapshot.fotoFileName || "");
       setFotoUrl(snapshot.fotoUrl || "");
     }
-    // limpia selección de archivo si había
     if (fileInputRef.current) fileInputRef.current.value = "";
     setEditMode(false);
   };
@@ -500,6 +485,8 @@ export default function MiPerfil() {
   };
 
   /* ==================== RENDER ==================== */
+  if (cargando) return null;
+
   return (
     <div className="perfil-container">
       <section className="sidebar">
@@ -513,7 +500,12 @@ export default function MiPerfil() {
         <aside className="perfil-sidebar">
           <div className="perfil-avatar">
             {fotoUrl ? (
-              <img src={fotoUrl} alt="Foto de perfil" className="perfil-avatar-image" />
+              <img
+                src={fotoUrl}
+                alt="Foto de perfil"
+                className="perfil-avatar-image"
+                onError={advanceCandidate} // si falla, probar el siguiente candidato
+              />
             ) : (
               <div className="perfil-avatar-placeholder">
                 <Icon name="user" className="icon-large" />
@@ -532,9 +524,7 @@ export default function MiPerfil() {
 
           <button
             className="editar-boton"
-            onClick={() => {
-              if (editMode) document.getElementById("foto-input").click();
-            }}
+            onClick={() => editMode && document.getElementById("foto-input").click()}
             disabled={!editMode}
             title={editMode ? "Cambiar foto" : "Pulsa Editar para cambiar la foto"}
           >
@@ -545,145 +535,75 @@ export default function MiPerfil() {
 
         <section className="perfil-card">
           <div className="fields-grid">
-            <Field label="Telefono" icon={<Icon name="number" />}>
-              <input
-                placeholder="Telefono"
-                value={telefono}
-                onChange={(e) => setTelefono(e.target.value)}
-                disabled={!editMode}
-              />
-            </Field>
-
             <Field label="Nombre" icon={<Icon name="user" />}>
-              <input
-                placeholder="Juan Javier"
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                disabled={!editMode}
-              />
+              <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Juan Javier" disabled={!editMode} />
             </Field>
 
             <Field label="Correo" icon={<Icon name="mail" />}>
-              <input
-                placeholder="ejemplo@gmail.com"
-                value={correo}
-                onChange={(e) => setCorreo(e.target.value)}
-                disabled={!editMode}
-              />
+              <input value={correo} onChange={(e) => setCorreo(e.target.value)} placeholder="ejemplo@gmail.com" disabled={!editMode} />
+            </Field>
+
+            <Field label="Telefono" icon={<Icon name="number" />}>
+              <input value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="Telefono" disabled={!editMode} />
             </Field>
 
             <Field label="Apellidos" icon={<Icon name="user" />}>
-              <input
-                placeholder="Perez Maldonado"
-                value={apellidos}
-                onChange={(e) => setApellidos(e.target.value)}
-                disabled={!editMode}
-              />
+              <input value={apellidos} onChange={(e) => setApellidos(e.target.value)} placeholder="Perez Maldonado" disabled={!editMode} />
             </Field>
 
             <Field label="Género">
               <select value={genero} onChange={(e) => setGenero(e.target.value)} disabled={!editMode}>
-                <option>Masculino</option>
-                <option>Femenino</option>
-                <option>Otro</option>
+                <option>masculino</option>
+                <option>femenino</option>
+                <option>otro</option>
               </select>
             </Field>
           </div>
 
-          {/* Botones */}
           {!editMode ? (
-            <button className="boton-editar" onClick={enterEdit}>
-              Editar
-            </button>
+            <button className="boton-editar" onClick={enterEdit}>Editar</button>
           ) : (
             <div className="botones-accion">
-              <button className="boton-guardar" onClick={handleSave}>
-                Guardar
-              </button>
-              <button className="boton-cancelar" onClick={handleCancel}>
-                Cancelar
-              </button>
+              <button className="boton-guardar" onClick={handleSave}>Guardar</button>
+              <button className="boton-cancelar" onClick={handleCancel}>Cancelar</button>
             </div>
           )}
 
-          {/* ---------------- MODAL CAMBIO DE PASSWORD ---------------- */}
+          {/* --------- MODAL CAMBIO DE PASSWORD --------- */}
           {showPasswordModal && (
             <div className="modal-overlay">
               <div className="mPerfil-modal">
                 <div className="modal-headerr">
                   <h3 className="label-modal-confirm">Cambio de contraseña</h3>
-                  <button className="mPerfil-cancel-button" onClick={() => setShowPasswordModal(false)}>
-                    ✕
-                  </button>
+                  <button className="mPerfil-cancel-button" onClick={() => setShowPasswordModal(false)}>✕</button>
                 </div>
                 <div className="modal-body">
                   <label>Contraseña anterior</label>
-                  <input
-                    type="password"
-                    value={oldPassword}
-                    onChange={(e) => setOldPassword(e.target.value)}
-                  />
+                  <input type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} />
                   <label>Nueva contraseña</label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                  />
+                  <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
                   <label>Confirmación de nueva contraseña</label>
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                  />
-                  {passwordError && (
-                    <p className="password-error" role="alert" aria-live="assertive">
-                      {passwordError}
-                    </p>
-                  )}
+                  <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                  {passwordError && <p className="password-error" role="alert" aria-live="assertive">{passwordError}</p>}
                 </div>
                 <div className="modal-footer">
-                  <button onClick={() => setShowPasswordModal(false)} className="btn-danger">
-                    Cancelar
-                  </button>
+                  <button onClick={() => setShowPasswordModal(false)} className="btn-danger">Cancelar</button>
                   <button
                     className="MPbtn-secondary"
                     onClick={async () => {
                       setPasswordError("");
-                      if (!oldPassword || !newPassword || !confirmPassword) {
-                        setPasswordError("Completa todos los campos");
-                        return;
-                      }
-                      if (newPassword !== confirmPassword) {
-                        setPasswordError("La nueva contraseña y la confirmación no coinciden");
-                        return;
-                      }
-                      if (newPassword.length < 6) {
-                        setPasswordError("La contraseña debe tener al menos 6 caracteres");
-                        return;
-                      }
-
+                      if (!oldPassword || !newPassword || !confirmPassword) return setPasswordError("Completa todos los campos");
+                      if (newPassword !== confirmPassword) return setPasswordError("La nueva contraseña y la confirmación no coinciden");
+                      if (newPassword.length < 6) return setPasswordError("La contraseña debe tener al menos 6 caracteres");
                       try {
                         setPasswordLoading(true);
-                        await axiosInstance.post("/api/auth/login", {
-                          correo,
-                          ["contraseña"]: oldPassword,
-                        });
+                        await axiosInstance.post("/api/auth/login", { correo, ["contraseña"]: oldPassword });
                         await changePassword(correo, newPassword);
-                        setOldPassword("");
-                        setNewPassword("");
-                        setConfirmPassword("");
+                        setOldPassword(""); setNewPassword(""); setConfirmPassword("");
                         setShowPasswordModal(false);
                       } catch (err) {
-                        const msg =
-                          err?.response?.data?.message ||
-                          err?.response?.data ||
-                          err.message ||
-                          String(err);
-                        setPasswordError(
-                          msg.includes("Contraseña incorrecta")
-                            ? "Contraseña anterior incorrecta"
-                            : msg
-                        );
+                        const msg = err?.response?.data?.message || err?.response?.data || err.message || String(err);
+                        setPasswordError(msg.includes("Contraseña incorrecta") ? "Contraseña anterior incorrecta" : msg);
                         console.error("Error cambiando contraseña:", err);
                       } finally {
                         setPasswordLoading(false);
@@ -697,32 +617,21 @@ export default function MiPerfil() {
             </div>
           )}
 
-          {/* ---------------- MODALES 2FA ---------------- */}
+          {/* --------- MODALES 2FA --------- */}
           {showTwoFactorModal && (
             <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
               <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-0 relative">
-                <div className="bg-[#2b6daf] text-white text-center py-2">
-                  <h2 className="font-semibold text-lg">Activar autenticación en dos pasos</h2>
-                </div>
-                <button
-                  className="absolute top-3 right-3 text-white hover:text-gray-200"
-                  onClick={() => setShowTwoFactorModal(false)}
-                >
-                  ✕
-                </button>
+                <div className="bg-[#2b6daf] text-white text-center py-2"><h2 className="font-semibold text-lg">Activar autenticación en dos pasos</h2></div>
+                <button className="absolute top-3 right-3 text-white hover:text-gray-200" onClick={() => setShowTwoFactorModal(false)}>✕</button>
                 <div className="p-6">
-                  <div className="flex justify-center mb-4">
-                    <img src="two-factor.png" alt="2FA" className="w-24 h-24" />
-                  </div>
+                  <div className="flex justify-center mb-4"><img src="two-factor.png" alt="2FA" className="w-24 h-24" /></div>
                   <div className="flex flex-col gap-3 mb-4">
                     <label className="flex items-center gap-2 border border-[#2b6daf] p-2 rounded">
                       <input type="radio" name="twofactor" className="accent-[#2b6daf] align-middle m-0" />
                       <span className="align-middle">Enviar correo al ***@gmail.com</span>
                     </label>
                   </div>
-                  <button className="w-full bg-[#2b6daf] hover:bg-blue-700 text-white py-2 rounded-md" onClick={handleSendCode}>
-                    Enviar código
-                  </button>
+                  <button className="w-full bg-[#2b6daf] hover:bg-blue-700 text-white py-2 rounded-md" onClick={handleSendCode}>Enviar código</button>
                 </div>
               </div>
             </div>
@@ -731,57 +640,33 @@ export default function MiPerfil() {
           {showTwoFactorCodeModal && (
             <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
               <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-0 relative">
-                <div className="bg-[#2b6daf] text-white text-center py-2">
-                  <h2 className="font-semibold text-lg">Activar autenticación en dos pasos</h2>
-                </div>
-                <button
-                  className="absolute top-3 right-3 text-white hover:text-gray-200"
-                  onClick={() => setShowTwoFactorCodeModal(false)}
-                >
-                  ✕
-                </button>
+                <div className="bg-[#2b6daf] text-white text-center py-2"><h2 className="font-semibold text-lg">Activar autenticación en dos pasos</h2></div>
+                <button className="absolute top-3 right-3 text-white hover:text-gray-200" onClick={() => setShowTwoFactorCodeModal(false)}>✕</button>
                 <div className="p-6">
                   <div className="flex flex-col items-center mb-4">
                     <img src="two-factor.png" alt="2FA" className="w-24 h-24 mb-2" />
-                    <p className="text-center text-gray-700 text-sm">
-                      Por tu seguridad, ingresa el código que te hemos enviado
-                    </p>
+                    <p className="text-center text-gray-700 text-sm">Por tu seguridad, ingresa el código que te hemos enviado</p>
                   </div>
                   <div className="mb-4">
-                    <input
-                      type="text"
-                      value={twoFactorCode}
-                      onChange={(e) => setTwoFactorCode(e.target.value)}
-                      placeholder="Ingresa el código"
-                      className="w-full border border-[#2b6daf] rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-[#2b6daf]"
-                    />
+                    <input type="text" value={twoFactorCode} onChange={(e) => setTwoFactorCode(e.target.value)} placeholder="Ingresa el código" className="w-full border border-[#2b6daf] rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-[#2b6daf]" />
                   </div>
-                  <button
-                    className="w-full bg-[#2b6daf] hover:bg-blue-700 text-white py-2 rounded-md mb-2"
-                    onClick={handleVerifyCode}
-                  >
-                    Verificar
-                  </button>
+                  <button className="w-full bg-[#2b6daf] hover:bg-blue-700 text-white py-2 rounded-md mb-2" onClick={handleVerifyCode}>Verificar</button>
                   <div className="text-center">
-                    <button className="text-[#2b6daf] text-sm hover:underline" onClick={handleResendCode}>
-                      Reenviar código
-                    </button>
+                    <button className="text-[#2b6daf] text-sm hover:underline" onClick={handleResendCode}>Reenviar código</button>
                   </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* ---------------- MODAL HISTORIAL ---------------- */}
+          {/* --------- MODAL HISTORIAL --------- */}
           {showHistorial && (
             <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
               <div className="bg-white rounded-lg shadow-lg w-full max-w-xl p-0 relative " style={{ marginTop: "80px" }}>
                 <div className="bg-[#2b6daf] text-white text-center py-3 rounded-t-lg">
                   <h2 className="font-semibold text-lg">Historial de accesos</h2>
                 </div>
-                <button className="absolute top-3 right-3 text-white hover:text-gray-200" onClick={() => setShowHistorial(false)}>
-                  ✕
-                </button>
+                <button className="absolute top-3 right-3 text-white hover:text-gray-200" onClick={() => setShowHistorial(false)}>✕</button>
 
                 <div className="p-6">
                   <div className="historial-card mx-auto" style={{ maxWidth: "520px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.06)" }}>
@@ -797,8 +682,7 @@ export default function MiPerfil() {
                               historial.map((item, idx) => (
                                 <li key={idx} className="flex justify-between items-center py-2">
                                   <span className="text-gray-700">
-                                    {item.fecha}
-                                    {item.hora ? `, ${item.hora}` : ""}
+                                    {item.fecha}{item.hora ? `, ${item.hora}` : ""}
                                   </span>
                                 </li>
                               ))
@@ -822,34 +706,17 @@ export default function MiPerfil() {
         <h1 className="Config">Configuracion</h1>
         <div className="candado-link">
           <img src="/Vector.png" alt="imagen" className="candado" />
-          <Link to="#" className="new-link" onClick={() => setShowPasswordModal(true)}>
-            Cambiar contraseña
-          </Link>
+          <Link to="#" className="new-link" onClick={() => setShowPasswordModal(true)}>Cambiar contraseña</Link>
         </div>
         <div className="f2-autenticacion">
           <img src="/f2.png" alt="imagen" className="f2" />
-          <Link
-            to="#"
-            className="new-link"
-            onClick={(e) => {
-              e.preventDefault();
-              setShowTwoFactorModal(true);
-            }}
-          >
+        <Link to="#" className="new-link" onClick={(e) => { e.preventDefault(); setShowTwoFactorModal(true); }}>
             Autenticación en dos pasos
           </Link>
         </div>
         <div className="historial">
           <img src="/historial-perfil.png" alt="imagen" className="historial-icono" />
-          <Link
-            to="#"
-            className="new-link"
-            onClick={(e) => {
-              e.preventDefault();
-              fetchHistorial();
-              setShowHistorial(true);
-            }}
-          >
+          <Link to="#" className="new-link" onClick={(e) => { e.preventDefault(); fetchHistorial(); setShowHistorial(true); }}>
             Historial de Acceso
           </Link>
         </div>

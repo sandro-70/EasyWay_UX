@@ -1,0 +1,410 @@
+/* Reset básico */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.perfil-container {
+  width: 700px;
+  margin: 40px auto;
+  padding: 20px;
+}
+
+.editar-boton {
+  margin-left: 10px;
+}
+.perfil-container .editar-boton {
+  height: 30px;
+  align-items: center;
+  width: 105px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px; /* Espacio entre icono y texto */
+  border-radius: 3rem;
+  font-weight: bold;
+  color: white;
+  font-size: 15px;
+  cursor: pointer;
+  border: none;
+}
+.perfil-container .editar-boton {
+  height: 35px;
+  align-items: center;
+  width: 120px;
+  display: flex;
+  background-color: #f0833e;
+}
+
+.perfil-title {
+  font-size: 1.8rem;
+  color: #f0833e;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.perfil-separator {
+  border: none;
+  border-top: 2px solid #f0833e;
+  margin: 0 auto 30px;
+  width: 60%;
+}
+
+.perfil-container .Datos-text {
+  text-align: left;
+  font-size: 1.2rem;
+  margin-bottom: 2rem;
+  margin-left: 15px;
+}
+
+.perfil-content {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+/* Sidebar */
+.perfil-sidebar {
+  flex: 1;
+  max-width: 250px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+}
+
+.perfil-avatar {
+  width: 120px;
+  height: 120px;
+  background: #ebeaea;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.icon-large {
+  width: 60px;
+  height: 60px;
+  color: #93979c;
+}
+
+.icon-small {
+  width: 20px;
+  height: 20px;
+  margin-right: 5px;
+}
+
+.perfil-select {
+  margin-top: 20px;
+  width: 100%;
+}
+
+.perfil-select select {
+  width: 100%;
+  padding: 8px;
+  border-radius: 0.5rem;
+  border: 2px solid #2b6daf;
+}
+
+/* Card principal */
+.perfil-container {
+  flex: 0;
+  background: white;
+  padding: 20px;
+  border-radius: 1rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.perfil-card {
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: auto;
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  padding: 20px;
+}
+
+.perfil-container .boton-guardar {
+  background-color: #f0833e;
+  padding: 7px 20px;
+  border-radius: 1rem;
+  font-weight: bold;
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.configuracion-container {
+  height: 200px;
+  background: white;
+  padding: 20px;
+  border-radius: 1rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  margin-top: 1rem;
+}
+
+.fields-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.field-label {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.field-icon {
+  background-color: white;
+}
+
+.field-input {
+  display: flex;
+  background-color: white;
+  align-items: center;
+  border: 2px solid #a9acaf;
+  border-radius: 0.5rem;
+  padding: 5px 10px;
+}
+
+.field-container {
+  display: flex;
+  flex-direction: column; /* etiqueta arriba del input */
+}
+
+.field-input input {
+  border: none; /* quita el borde del input */
+  outline: none; /* quita el resaltado azul feo */
+  background: transparent; /* quita el fondo blanco extra */
+  flex: 1; /* ocupa todo el ancho disponible */
+  font-size: 1rem; /* texto limpio */
+  padding: 6px 8px; /* espacio interno para que no quede pegado */
+  width: 100px;
+  height: 25px;
+}
+
+.field-input select {
+  width: 100%;
+  border: none; /* quita el borde */
+  outline: none; /* evita el resaltado azul al hacer focus */
+  background: transparent; /* hereda el fondo de la cajita */
+  text-align: start;
+}
+
+/* Botones */
+.btn-primary {
+  background: #2b6daf;
+  color: white;
+  font-weight: bold;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 10px 15px;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background: #3d7fc4;
+}
+
+.btn-danger {
+  background: #e74c3c;
+  padding: 7px 20px;
+  border-radius: 1rem;
+  font-weight: bold;
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.btn-secondary {
+  background: #3d7fc4;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 10px 15px;
+  cursor: pointer;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mPerfil-modal {
+  margin-top: 80px;
+  background: white;
+  padding: 20px;
+  border-radius: 1rem;
+  width: 400px;
+}
+
+.modal-headerr {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  border-bottom: 2px solid #f0833e;
+  padding-bottom: 15px;
+}
+
+.modal-body {
+  padding-top: 35px;
+  flex-direction: column;
+  gap: 10px;
+  margin: 15px 0;
+}
+
+.modal-body input {
+  padding: 8px;
+  border: 2px solid #a9acaf;
+  border-radius: 0.5rem;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 15px;
+}
+
+.btn-danger {
+  border-radius: 1.3rem;
+}
+
+.MPbtn-secondary {
+  background-color: #f0833e;
+  padding: 7px 20px;
+  border-radius: 1rem;
+  font-weight: bold;
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.configuracion-container .Config {
+  font-size: 1.4rem;
+  text-align: left;
+  margin-bottom: 1.2rem;
+}
+
+.configuracion-container .new-link {
+  color: #3d7fc4;
+}
+
+.configuracion-container .candado-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+  padding-left: 0.5rem;
+}
+
+.configuracion-container .f2-autenticacion {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+  padding-left: 0.5rem;
+  color: #3d7fc4;
+}
+
+.configuracion-container .historial {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+  padding-left: 0.5rem;
+}
+
+.label-modal-confirm {
+  font-weight: bold;
+  color: #f0833e;
+  font-size: 1.3rem;
+  display: block;
+}
+.mPerfil-cancel-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  position: static; /* Elimina position: absolute */
+  margin-left: 16px;
+}
+
+.botones-accion {
+  display: flex;
+  justify-content: flex-end;
+  gap: 50px;
+  margin-top: 40px;
+}
+
+.boton-editar {
+  background-color: #f0833e;
+  padding: 7px 20px;
+  border-radius: 1rem;
+  font-weight: bold;
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-top: 40px;
+}
+
+.botones-accion .boton-cancelar {
+  background-color: #3d7fc4;
+  padding: 7px 20px;
+  border-radius: 1rem;
+  font-weight: bold;
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.password-error {
+  color: #d93025;
+  font-size: 0.95rem;
+  margin: 8px 0 0 0;
+  line-height: 1.2;
+  text-align: center; /* centra el texto dentro del contenedor */
+  align-self: center; /* centra el elemento en el eje transversal del flex container */
+  max-width: 100%;
+  word-break: break-word;
+}
+
+.botones-accion .boton-cancelar:hover {
+  background-color: #2b6daf;
+}
+.botones-accion .boton-guardar:hover {
+  background-color: #d96a1c;
+}
+.boton-editar:hover {
+  background-color: #d96a1c;
+}
+.editar-boton:disabled {
+  background-color: #d96a1c;
+  cursor: not-allowed;
+}
+
+.perfil-avatar img.perfil-avatar-image {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%; /* redondea */
+  object-fit: cover; /* recorta sin deformar */
+  border: 2px solid #2b6daf; /* opcional, como en el header */
+}
+
+.historial-icono {
+  width: 24px;
+}

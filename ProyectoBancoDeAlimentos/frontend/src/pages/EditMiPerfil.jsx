@@ -1,6 +1,6 @@
 // src/EditarPerfilAdmin.jsx
 import { useState, useEffect, useContext, useRef } from "react";
-import "../miPerfil.css";
+import "./EditMiPerfil.css";
 import { Link } from "react-router-dom";
 import { UserContext } from "../components/userContext";
 import {
@@ -11,13 +11,12 @@ import {
   uploadProfilePhoto1,
   enviarCorreoDosPasos,
   validarCodigoDosPasos,
-  updateUserById,
+  editarPerfil, // ← usamos esta API para guardar
 } from "../api/Usuario.Route";
 import {
   getAllDepartamentos,
   getAllMunicipios,
-  addDireccion,
-  getDirecciones,
+  getDirecciones, // ← para obtener id_direccion
 } from "../api/DireccionesApi";
 import axiosInstance from "../api/axiosInstance";
 
@@ -134,7 +133,12 @@ export default function EditarPerfilAdmin() {
   const [rol, setRol] = useState("Administrador");
 
   // Dirección
-  const [direccion, setDireccion] = useState("");
+  const [calle, setCalle] = useState("");
+  const [ciudad, setCiudad] = useState("");
+  const [codigoPostal, setCodigoPostal] = useState(""); // opcional (no UI)
+  const [predeterminada, setPredeterminada] = useState(true); // opcional (no UI)
+  const [idDireccion, setIdDireccion] = useState(null);
+
   const [departamento, setDepartamento] = useState("");
   const [municipio, setMunicipio] = useState("");
   const [idMunicipio, setIdMunicipio] = useState("");
@@ -240,24 +244,39 @@ export default function EditarPerfilAdmin() {
         // Dirección
         const resDir = await getDirecciones(uid);
         const lista = resDir?.data || [];
-        let _direccion = "", _departamento = "", _municipio = "", _idMunicipio = "";
+        let _calle = "", _ciudad = "", _codigoPostal = "", _pred = true, _idDir = null;
+        let _departamento = "", _municipio = "", _idMunicipio = "";
+
         if (Array.isArray(lista) && lista.length > 0) {
           const dir = lista.find((d) => d.predeterminada) || lista[0];
-          _direccion = dir.calle || "";
+          _calle = dir.calle || "";
+          _ciudad = dir.ciudad || "";
+          _codigoPostal = dir.codigo_postal || "";
+          _pred = !!dir.predeterminada;
+          _idDir = dir.id_direccion ?? dir.id ?? null;
+
           const muni = mns.find((m) => m.id_municipio === (dir.id_municipio || dir.municipio_id));
           if (muni) {
             _municipio = muni.nombre_municipio;
             _idMunicipio = String(muni.id_municipio);
             const dept = dpt.find((d) => d.id_departamento === muni.id_departamento);
             if (dept) _departamento = dept.nombre_departamento;
+            // si ciudad viene vacío, default al nombre del municipio
+            if (!_ciudad) _ciudad = muni.nombre_municipio;
           }
         }
-        setDireccion(_direccion);
+
+        setCalle(_calle);
+        setCiudad(_ciudad);
+        setCodigoPostal(_codigoPostal);
+        setPredeterminada(_pred);
+        setIdDireccion(_idDir);
+
         setDepartamento(_departamento);
         setMunicipio(_municipio);
         setIdMunicipio(_idMunicipio);
 
-        // ↓ snapshot inicial para Cancelar
+        // snapshot inicial
         setSnapshot({
           telefono: _telefono,
           nombre: _nombre,
@@ -267,7 +286,11 @@ export default function EditarPerfilAdmin() {
           rol: _rol,
           fotoUrl: url,
           fotoFileName: idName,
-          direccion: _direccion,
+          calle: _calle,
+          ciudad: _ciudad,
+          codigoPostal: _codigoPostal,
+          predeterminada: _pred,
+          idDireccion: _idDir,
           departamento: _departamento,
           municipio: _municipio,
           idMunicipio: _idMunicipio,
@@ -410,7 +433,11 @@ export default function EditarPerfilAdmin() {
     const nuevoIdMunicipio = e.target.value;
     setIdMunicipio(nuevoIdMunicipio);
     const muni = municipios.find((m) => String(m.id_municipio) === String(nuevoIdMunicipio));
-    if (muni) setMunicipio(muni.nombre_municipio);
+    if (muni) {
+      setMunicipio(muni.nombre_municipio);
+      // si el usuario no escribió ciudad, por defecto igualar a municipio
+      if (!ciudad) setCiudad(muni.nombre_municipio);
+    }
   };
 
   /* =================== Editar / Guardar / Cancelar =================== */
@@ -418,7 +445,8 @@ export default function EditarPerfilAdmin() {
     setSnapshot({
       telefono, nombre, apellidos, correo, genero, rol,
       fotoUrl, fotoFileName,
-      direccion, departamento, municipio, idMunicipio,
+      calle, ciudad, codigoPostal, predeterminada, idDireccion,
+      departamento, municipio, idMunicipio,
     });
     setEditMode(true);
   };
@@ -428,53 +456,48 @@ export default function EditarPerfilAdmin() {
       const uid = getUserId(user);
       if (!uid) return alert("No se pudo determinar el usuario.");
 
-      const payload = {
-        nombre: (nombre || "").trim(),
-        apellido: (apellidos || "").trim(),
-        correo: (correo || "").trim(),
-        telefono: (telefono || "").trim(),
-        genero,
-        direccion: (direccion || "").trim(),
-        departamento: departamento || "",
-        municipio: municipio || "",
-        ciudad: municipio || "",
-      };
-
-      await updateUserById(uid, payload);
-
-      // Dirección única: crear solo si no existe
-      try {
-        const resDir = await getDirecciones(uid);
-        const yaTiene = Array.isArray(resDir?.data) && resDir.data.length > 0;
-        if (!yaTiene && direccion && departamento && municipio && idMunicipio) {
-          await addDireccion({
-            id_usuario: uid,
-            calle: direccion,
-            ciudad: municipio,
-            municipio: municipio,
-            departamento: departamento,
-            id_municipio: Number(idMunicipio),
-            predeterminada: true,
-          });
-        }
-      } catch (e) {
-        console.warn("No se pudo crear/actualizar dirección (continuando):", e);
-      }
+      await editarPerfil(
+        uid,                          // id_usuario
+        (nombre || "").trim(),        // nombre
+        (apellidos || "").trim(),     // apellido
+        (telefono || "").trim(),      // telefono
+        genero,                       // genero
+        fotoFileName || "",           // foto_perfil_url (nombre archivo)
+        idDireccion ?? null,          // id_direccion (si hay)
+        (calle || "").trim(),         // calle
+        (ciudad || "").trim(),        // ciudad
+        (codigoPostal || "").trim(),  // codigo_postal
+        !!predeterminada,             // predeterminada
+        idMunicipio ? Number(idMunicipio) : null // id_municipio
+      );
 
       // refresca usuario + foto
       const fullRes = await InformacionUser();
       const data = fullRes?.data?.user ?? fullRes?.data ?? {};
-      const freshName = fileNameFromPath(data.foto_perfil_url || data.foto_perfil || data.foto || fotoFileName || "");
+      const freshName = fileNameFromPath(
+        data.foto_perfil_url || data.foto_perfil || data.foto || fotoFileName || ""
+      );
       const freshUrl = `${toPublicFotoSrc(freshName)}?t=${Date.now()}`;
       setFotoFileName(freshName);
       setFotoUrl(freshUrl);
       setUser({ ...data, foto_perfil_url: freshName, avatar_rev: Date.now() });
 
+      // refresca dirección para capturar id_direccion si cambió/creó
+      try {
+        const resDir = await getDirecciones(uid);
+        const lista = resDir?.data || [];
+        if (Array.isArray(lista) && lista.length > 0) {
+          const dir = lista.find((d) => d.predeterminada) || lista[0];
+          setIdDireccion(dir.id_direccion ?? dir.id ?? null);
+        }
+      } catch {}
+
       // Actualiza snapshot a lo guardado
       setSnapshot({
         telefono, nombre, apellidos, correo, genero, rol,
         fotoUrl: freshUrl, fotoFileName: freshName,
-        direccion, departamento, municipio, idMunicipio,
+        calle, ciudad, codigoPostal, predeterminada, idDireccion,
+        departamento, municipio, idMunicipio,
       });
 
       alert("✅ Perfil actualizado correctamente");
@@ -495,7 +518,11 @@ export default function EditarPerfilAdmin() {
       setRol(snapshot.rol || "Administrador");
       setFotoUrl(snapshot.fotoUrl || "");
       setFotoFileName(snapshot.fotoFileName || "");
-      setDireccion(snapshot.direccion || "");
+      setCalle(snapshot.calle || "");
+      setCiudad(snapshot.ciudad || "");
+      setCodigoPostal(snapshot.codigoPostal || "");
+      setPredeterminada(!!snapshot.predeterminada);
+      setIdDireccion(snapshot.idDireccion ?? null);
       setDepartamento(snapshot.departamento || "");
       setMunicipio(snapshot.municipio || "");
       setIdMunicipio(snapshot.idMunicipio || "");
@@ -600,7 +627,7 @@ export default function EditarPerfilAdmin() {
           </button>
         </aside>
 
-        {/* Form principal – ORDEN: Nombre/Apellido · Correo/Teléfono · Género/Rol · Depto/Muni · Dirección */}
+        {/* Form principal – Nombre/Apellido · Correo/Teléfono · Género/Rol · Depto/Muni · Calle/Ciudad */}
         <section className="perfil-card">
           <div className="fields-grid">
             <Field label="Nombre" icon={<Icon name="user" />}>
@@ -619,9 +646,9 @@ export default function EditarPerfilAdmin() {
 
             <Field label="Género">
               <select value={genero} onChange={(e) => setGenero(e.target.value)} disabled={!editMode}>
-                <option>Masculino</option>
-                <option>Femenino</option>
-                <option>Otro</option>
+                <option>masculino</option>
+                <option>femenino</option>
+                <option>otro</option>
               </select>
             </Field>
             <Field label="Rol">
@@ -638,6 +665,7 @@ export default function EditarPerfilAdmin() {
                 ))}
               </select>
             </Field>
+
             <Field label="Municipio">
               <select value={idMunicipio} onChange={handleMunicipioChange} disabled={!editMode || !departamento}>
                 <option value="">Seleccione un municipio</option>
@@ -654,11 +682,20 @@ export default function EditarPerfilAdmin() {
               </select>
             </Field>
 
-            <Field label="Dirección">
+            <Field label="Calle">
               <input
-                value={direccion}
-                onChange={(e) => setDireccion(e.target.value)}
+                value={calle}
+                onChange={(e) => setCalle(e.target.value)}
                 placeholder="Bo. El Carmen 3 calle 6 ave"
+                disabled={!editMode}
+              />
+            </Field>
+
+            <Field label="Ciudad">
+              <input
+                value={ciudad}
+                onChange={(e) => setCiudad(e.target.value)}
+                placeholder="San Pedro Sula"
                 disabled={!editMode}
               />
             </Field>
@@ -764,11 +801,12 @@ export default function EditarPerfilAdmin() {
           {/* ---------------- MODAL HISTORIAL DE ACCESOS ---------------- */}
           {showHistorial && (
             <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg shadow-lg w/full max-w-xl p-0 relative" style={{ marginTop: "80px" }}>
+              <div className="bg-white rounded-lg shadow-lg w-full max-w-xl p-0 relative" style={{ marginTop: "80px" }}>
                 <div className="bg-[#2b6daf] text-white text-center py-3 rounded-t-lg">
                   <h2 className="font-semibold text-lg">Historial de accesos</h2>
                 </div>
                 <button className="absolute top-3 right-3 text-white hover:text-gray-200" onClick={() => setShowHistorial(false)}>✕</button>
+
                 <div className="p-6">
                   <div className="historial-card mx-auto" style={{ maxWidth: "520px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.06)" }}>
                     <div style={{ padding: "8px 16px" }}>
@@ -794,7 +832,8 @@ export default function EditarPerfilAdmin() {
                         </div>
                       )}
                     </div>
-                    <div style={{ padding: "16px", textAlign: "center" }} />
+
+                    <div style={{ padding: "16px", textAlign: "center" }}></div>
                   </div>
                 </div>
               </div>

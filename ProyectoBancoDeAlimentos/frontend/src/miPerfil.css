@@ -408,3 +408,23 @@
 .historial-icono {
   width: 24px;
 }
+
+/* Alturas de tus barras */
+:root {
+  --topbar-h: 10px;     /* barra superior */
+  --bottombar-h: 55px;  /* barra inferior (clientes). Si no aplica, pon 0 */
+  --perfil-gap: 40px;   /* respirito extra */
+}
+
+/* Empuja el contenido de Mi Perfil hacia abajo */
+.perfil-container {
+  margin-top: calc(var(--topbar-h) + var(--bottombar-h) + var(--perfil-gap));
+}
+
+/* Si en móviles no tienes bottom bar, puedes reducir el offset */
+@media (max-width: 1024px) {
+  :root { --bottombar-h: 0px; }
+  .perfil-container {
+    margin-top: calc(var(--topbar-h) + 24px);
+  }
+}

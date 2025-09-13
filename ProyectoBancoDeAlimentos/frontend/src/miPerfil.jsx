@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
 import "./miPerfil.css";
 import { Link } from "react-router-dom";
 import PerfilSidebar from "./components/perfilSidebar";
@@ -6,7 +6,6 @@ import { UserContext } from "./components/userContext";
 import { createLog, getLogsUsuario } from "./api/Usuario.Route";
 import {
   InformacionUser,
-  EditProfile,
   changePassword,
   uploadProfilePhoto1,
   enviarCorreoDosPasos,
@@ -15,67 +14,51 @@ import {
 import axiosInstance from "./api/axiosInstance";
 
 /* ===================== ORIGIN backend + helper URL imagen ===================== */
-// Soporta baseURL absoluta (http://host:puerto/api) y relativa (/api)
 const BACKEND_ORIGIN = (() => {
   const base = axiosInstance?.defaults?.baseURL;
   try {
     const u = base
       ? (base.startsWith("http")
-          ? new URL(base)                          // p.ej. http://localhost:3000/api
-          : new URL(base, window.location.origin)) // p.ej. /api -> añade origin del front
+          ? new URL(base)
+          : new URL(base, window.location.origin))
       : new URL(window.location.origin);
-    return `${u.protocol}//${u.host}`;             // http(s)://host:puerto
+    return `${u.protocol}//${u.host}`;
   } catch {
     return window.location.origin;
   }
 })();
 
-
-// Construye la URL absoluta para una imagen en /api/images/fotoDePerfil
 const backendImageUrl = (fileName) =>
   fileName
     ? `${BACKEND_ORIGIN}/api/images/fotoDePerfil/${encodeURIComponent(fileName)}`
     : "";
 
-// Normaliza valor devuelto por la BD a URL pública
 const toPublicFotoSrc = (nameOrPath) => {
   if (!nameOrPath) return "";
-  if (/^https?:\/\//i.test(nameOrPath)) return nameOrPath; // ya absoluta
-
-  // Si ya viene con /api/images/... úsala contra el backend
+  if (/^https?:\/\//i.test(nameOrPath)) return nameOrPath;
   if (nameOrPath.startsWith("/api/images/"))
     return `${BACKEND_ORIGIN}${encodeURI(nameOrPath)}`;
-
-  // Si viene con /images/... prefija /api
   if (nameOrPath.startsWith("/images/"))
     return `${BACKEND_ORIGIN}/api${encodeURI(nameOrPath)}`;
-
-  // Si es solo el nombre de archivo -> /api/images/fotoDePerfil/<file>
   return backendImageUrl(nameOrPath);
 };
 
-// Extrae solo el nombre de archivo (para guardar en BD)
 const fileNameFromPath = (p) => {
   if (!p) return "";
   const parts = String(p).split("/");
   return parts[parts.length - 1] || "";
 };
 
-// Quita acentos, espacios y caracteres no válidos para nombre de archivo
 const sanitizeBaseName = (s) => {
   if (!s) return "User";
   const noAccents = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   return noAccents.replace(/[^a-zA-Z0-9_-]/g, "");
 };
-
-// Toma primer nombre (si viene nombre completo)
 const firstName = (s) => (s ? s.trim().split(/\s+/)[0] : "User");
 
-// Busca extensión a partir del nombre original
 const getExt = (file) => {
   const byName = file?.name?.match(/\.(\w{1,8})$/i)?.[1];
   if (byName) return `.${byName}`;
-  // último recurso por MIME
   const map = {
     "image/jpeg": ".jpg",
     "image/png": ".png",
@@ -87,18 +70,13 @@ const getExt = (file) => {
   return map[file?.type] || ".png";
 };
 
-// Construye "KennyFotoPerfil.png" con datos del usuario
 const buildSafeProfileFileName = ({ nombre, apellidos, user }, file) => {
-  const base =
-    sanitizeBaseName(
-      firstName(user?.nombre || user?.nombre_usuario || nombre)
-    ) || "User";
+  const base = sanitizeBaseName(firstName(user?.nombre || user?.nombre_usuario || nombre)) || "User";
   const ext = getExt(file);
   return `${base}FotoPerfil${ext}`;
 };
 
 /* ========================================================================== */
-
 function Icon({ name, className = "icon" }) {
   switch (name) {
     case "user":
@@ -122,7 +100,6 @@ function Icon({ name, className = "icon" }) {
           <circle cx="12" cy="14" r="3.5" strokeWidth="1.8" />
         </svg>
       );
-    // Opcional: ícono para "number" (teléfono) si lo quieres mostrar
     case "number":
       return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
@@ -147,147 +124,145 @@ function Field({ label, icon, children }) {
   );
 }
 
+/* =============================== COMPONENTE =============================== */
 export default function MiPerfil() {
+  // form
   const [telefono, setTelefono] = useState("");
   const [nombre, setNombre] = useState("");
   const [apellidos, setApellidos] = useState("");
   const [correo, setCorreo] = useState("");
   const [genero, setGenero] = useState("Masculino");
   const [rol, setRol] = useState("Administrador");
+
+  // UI
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState("");
-  const [fotoUrl, setFotoUrl] = useState(""); // URL pública para mostrar
-  const [fotoFileName, setFotoFileName] = useState(""); // SOLO nombre para BD
+
+  // foto
+  const [fotoUrl, setFotoUrl] = useState("");
+  const [fotoFileName, setFotoFileName] = useState("");
+
+  // estados auxiliares
   const [cargando, setCargando] = useState(true);
   const [datosValidos, setDatosValidos] = useState(true);
-  const [editMode, setEditMode] = useState(true);
-  const [fotoBase64, setFotoBase64] = useState(null); // (no usado ahora, lo dejo por compat.)
+
+  // 🔴 ahora empieza en SOLO LECTURA
+  const [editMode, setEditMode] = useState(false);
+
   const { user, setUser } = useContext(UserContext);
 
-  // NUEVOS STATES PARA MODALES 2FA
+  // 2FA + historial
   const [showHistorial, setShowHistorial] = useState(false);
   const [showTwoFactorModal, setShowTwoFactorModal] = useState(false);
   const [showTwoFactorCodeModal, setShowTwoFactorCodeModal] = useState(false);
   const [twoFactorCode, setTwoFactorCode] = useState("");
   const [loadingHistorial, setLoadingHistorial] = useState(false);
   const [errorHistorial, setErrorHistorial] = useState("");
+  const [historial, setHistorial] = useState([]);
 
-  
-// Normaliza la foto y empuja todo al UserContext (Header)
-const pushUserToContext = (payload) => {
-  const cleanName = fileNameFromPath(
-    payload?.foto_perfil_url || payload?.foto_perfil || payload?.foto || ""
-  );
-  setUser((prev) => ({
-    ...(prev || {}),
-    ...(payload || {}),
-    foto_perfil_url: cleanName, // en contexto guardamos SOLO el nombre
-  }));
-};
-  // tu estado historial (placeholder)
-  const [historial, setHistorial] = useState([
-    { fecha: "14 de enero", hora: "10:45" },
-    { fecha: "12 de enero", hora: "14:08" },
-    { fecha: "05 de enero", hora: "16:31" },
-    { fecha: "03 de enero", hora: "09:45" },
-  ]);
+  // ▶ para poder limpiar el input file al cancelar
+  const fileInputRef = useRef(null);
 
-  /* =================== SUBIR FOTO (con nombre fijo y guardado) =================== */
+  // ▶ snapshot con los últimos datos guardados (para Cancelar sin recargar)
+  const [snapshot, setSnapshot] = useState(null);
+
+  // Context helper
+  const pushUserToContext = (payload) => {
+    const cleanName = fileNameFromPath(
+      payload?.foto_perfil_url || payload?.foto_perfil || payload?.foto || ""
+    );
+    setUser((prev) => ({
+      ...(prev || {}),
+      ...(payload || {}),
+      foto_perfil_url: cleanName,
+    }));
+  };
+
+  /* =================== SUBIR FOTO (solo en modo edición) =================== */
+  const getUserId = (u) => u?.id_usuario ?? u?.id ?? u?.usuario_id ?? u?.userId ?? 1;
+  const buildIdProfileFileName = (userObj, file) => {
+    const id = getUserId(userObj);
+    const ext = getExt(file);
+    return `user_${id}${ext}`;
+  };
+
   const handleFotoChange = async (e) => {
     if (!editMode) return;
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // preview rápida
+    // previsualización
     setFotoUrl(URL.createObjectURL(file));
 
-    // arma nombre "KennyFotoPerfil.png"
+    // nombre normalizado por id
     const fileNameById = buildIdProfileFileName(user, file);
 
     try {
-      // 1) Sube y guarda físico en backend (campo "foto")
       const { data } = await uploadProfilePhoto1(file, fileNameById);
       const filename = data?.filename || fileNameById;
 
-      // 2) Relee usuario desde backend (por si actualizas BD ahí)
+      // releer usuario
       const res = await InformacionUser();
       const data1 = res.data || {};
       const fromApi = data1.foto_perfil_url || data1.foto_perfil || data1.foto || filename;
       const justName = fileNameFromPath(fromApi);
 
-      // 3) Refresca UI y contexto (con cache-buster)
       setFotoUrl(`${backendImageUrl(justName)}?t=${Date.now()}`);
       setFotoFileName(justName);
-      // Actualiza contexto y suma un avatar_rev para romper cache en Header
- pushUserToContext({ ...data1, foto_perfil_url: justName });
- setUser((prev) => ({ ...(prev || {}), foto_perfil_url: justName, avatar_rev: Date.now() }));
+
+      pushUserToContext({ ...data1, foto_perfil_url: justName });
+      setUser((prev) => ({ ...(prev || {}), foto_perfil_url: justName, avatar_rev: Date.now() }));
     } catch (err) {
       console.error("Error subiendo foto:", err);
       alert("No se pudo subir la foto.");
     }
   };
 
-  // Helper: intenta parsear muchos formatos comunes y devuelve un Date o null
+  /* =================== HISTORIAL =================== */
   const tryParseDate = (value) => {
     if (!value && value !== 0) return null;
     if (value instanceof Date && !isNaN(value)) return value;
 
     if (typeof value === "number") {
       const s = String(value);
-      if (s.length === 10) return new Date(value * 1000); // segundos
-      if (s.length === 13) return new Date(value);        // ms
+      if (s.length === 10) return new Date(value * 1000);
+      if (s.length === 13) return new Date(value);
       const byNum = new Date(value);
       return isNaN(byNum) ? null : byNum;
     }
 
     if (typeof value === "string") {
       let s = value.trim();
-
       const m = s.match(/\/Date\((\d+)\)\//);
       if (m) {
         const ms = Number(m[1]);
         if (!isNaN(ms)) return new Date(ms);
       }
-
       if (/^\d{10,13}$/.test(s)) {
         const n = Number(s);
         return tryParseDate(n);
       }
-
       const withT = s.replace(" ", "T");
       const d1 = new Date(withT);
       if (!isNaN(d1)) return d1;
-
       const d2 = new Date(withT + "Z");
       if (!isNaN(d2)) return d2;
-
       const p = Date.parse(s);
       if (!isNaN(p)) return new Date(p);
-
       const reg = s.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?/);
       if (reg) {
         const [_, Y, M, D, hh, mm, ss] = reg;
-        return new Date(
-          Number(Y),
-          Number(M) - 1,
-          Number(D),
-          Number(hh || 0),
-          Number(mm || 0),
-          Number(ss || 0)
-        );
+        return new Date(Number(Y), Number(M) - 1, Number(D), Number(hh || 0), Number(mm || 0), Number(ss || 0));
       }
-
       return null;
     }
-
     return null;
   };
 
-  // Formatea la fecha a "14 de enero" y hora "10:45"
   const formatToFechaHora = (dateObj) => {
     if (!dateObj || !(dateObj instanceof Date) || isNaN(dateObj)) return null;
     const months = [
@@ -301,10 +276,8 @@ const pushUserToContext = (payload) => {
     return { fecha: `${day} de ${month}`, hora: `${hh}:${mm}` };
   };
 
-  // fetchHistorial robusto
   const fetchHistorial = async () => {
-    const userId =
-      user?.id_usuario ?? user?.id ?? user?.usuario_id ?? user?.userId ?? null;
+    const userId = getUserId(user);
     if (!userId) {
       setErrorHistorial("Usuario no disponible para cargar historial");
       return;
@@ -314,18 +287,14 @@ const pushUserToContext = (payload) => {
     setErrorHistorial("");
     try {
       const res = await getLogsUsuario(userId);
-      const rawList = Array.isArray(res.data)
-        ? res.data
-        : res.data?.rows ?? res.data?.data ?? [];
+      const rawList = Array.isArray(res.data) ? res.data : res.data?.rows ?? res.data?.data ?? [];
       const items = Array.isArray(rawList) ? rawList : res.data ? [res.data] : [];
-
       const logs = items.map((item) => {
         const candidates = [
           item.fecha_conexion, item.created_at, item.fecha_hora, item.timestamp,
           item.date, item.datetime, item.createdAt, item.fecha, item.log_date,
           item.time, item.hora, item.created_at_iso,
         ];
-
         let parsedDate = null;
         for (const cand of candidates) {
           if (cand !== undefined && cand !== null && String(cand).trim() !== "") {
@@ -334,12 +303,10 @@ const pushUserToContext = (payload) => {
           }
         }
         if (!parsedDate && typeof item === "string") parsedDate = tryParseDate(item);
-
         if (!parsedDate) return { fecha: "Fecha desconocida", hora: "", raw: item };
         const fh = formatToFechaHora(parsedDate);
         return { ...fh, raw: item };
       });
-
       setHistorial(logs);
     } catch (err) {
       console.error("Error cargando historial:", err);
@@ -349,7 +316,7 @@ const pushUserToContext = (payload) => {
     }
   };
 
-  // ==================== CARGA INICIAL DE INFORMACIÓN ====================
+  /* ==================== CARGA INICIAL ==================== */
   useEffect(() => {
     let mounted = true;
 
@@ -365,41 +332,42 @@ const pushUserToContext = (payload) => {
           return;
         }
 
-        // Intentamos registrar log de acceso si hay un id
+        // log acceso (best effort)
         try {
-          const userId =
-            data.id_usuario ?? data.id ?? data.usuario_id ?? data.userId ?? null;
+          const userId = getUserId(data);
           if (userId) {
-            createLog(userId).catch((e) =>
-              console.warn("No se pudo crear log de acceso:", e)
-            );
+            createLog(userId).catch(() => {});
           }
-        } catch (e) {
-          console.warn("Error intentando crear log:", e);
-        }
+        } catch {}
 
-        // Asignaciones de datos generales
-        setTelefono(
-          data.telefono || data.numero_telefono || data.telefono_usuario || ""
-        );
+        // set form
+        setTelefono(data.telefono || data.numero_telefono || data.telefono_usuario || "");
         setNombre(data.nombre || data.nombre_usuario || data.nombres || "");
-        setApellidos(
-          data.apellido || data.apellidos || data.apellido_usuario || ""
-        );
+        setApellidos(data.apellido || data.apellidos || data.apellido_usuario || "");
         setCorreo(data.correo || data.email || "");
         if (data.genero) setGenero(data.genero);
         if (data.rol?.nombre_rol) setRol(data.rol.nombre_rol);
 
-        // Normalizamos para UI y BD
-         // Forzamos nombre por ID: user_<id>.<ext>
-const fromApi = data.foto_perfil_url || data.foto_perfil || data.foto || "";
- const guessedExt = fileNameFromPath(fromApi).split(".").pop() || "png";
- const idName = `user_${getUserId(data)}.${guessedExt}`;
+        // foto normalizada (forzando user_<id>.<ext> si aplica)
+        const fromApi = data.foto_perfil_url || data.foto_perfil || data.foto || "";
+        const guessedExt = fileNameFromPath(fromApi).split(".").pop() || "png";
+        const idName = `user_${getUserId(data)}.${guessedExt}`;
+        const url = `${backendImageUrl(idName)}?t=${Date.now()}`;
 
- setFotoFileName(idName);
- setFotoUrl(`${backendImageUrl(idName)}?t=${Date.now()}`); // cache-buster
- // opcional: empuja al contexto el nombre nuevo
- pushUserToContext({ ...data, foto_perfil_url: idName });
+        setFotoFileName(idName);
+        setFotoUrl(url);
+        pushUserToContext({ ...data, foto_perfil_url: idName });
+
+        // crea snapshot inicial (para cancelar)
+        setSnapshot({
+          telefono: data.telefono || data.numero_telefono || data.telefono_usuario || "",
+          nombre: data.nombre || data.nombre_usuario || data.nombres || "",
+          apellidos: data.apellido || data.apellidos || data.apellido_usuario || "",
+          correo: data.correo || data.email || "",
+          genero: data.genero || "Masculino",
+          fotoFileName: idName,
+          fotoUrl: url,
+        });
 
         setCargando(false);
       } catch (err) {
@@ -419,17 +387,82 @@ const fromApi = data.foto_perfil_url || data.foto_perfil || data.foto || "";
     return () => clearTimeout(timer);
   }, [passwordError]);
 
-  // === NUEVO: helpers para nombre por ID ===
-const getUserId = (u) => u?.id_usuario ?? u?.id ?? u?.usuario_id ?? u?.userId ?? 1;
+  /* ==================== ACCIONES EDITAR / GUARDAR / CANCELAR ==================== */
+  const enterEdit = () => {
+    // Antes de entrar a editar, toma snapshot del estado ACTUAL mostrado.
+    setSnapshot({
+      telefono,
+      nombre,
+      apellidos,
+      correo,
+      genero,
+      fotoFileName,
+      fotoUrl,
+    });
+    setEditMode(true);
+  };
 
-const buildIdProfileFileName = (user, file) => {
-  const id = getUserId(user);
-  const ext = getExt(file); // ya la tienes definida arriba
-  // Ej: user_123.png  (puedes cambiar el prefijo si quieres)
-  return `user_${id}${ext}`;
-};
+  const handleSave = async () => {
+    try {
+      const nombreParaBD = fotoFileName || fileNameFromPath(fotoUrl) || "";
+      const payload = {
+        telefono,
+        nombre,
+        apellido: apellidos,
+        correo,
+        genero,
+        foto_perfil_url: nombreParaBD,
+      };
 
-  // FUNCIONES MODALES 2FA (sin cambios)
+      await axiosInstance.put("/api/MiPerfil/perfil", payload);
+
+      // releer usuario
+      const fullRes = await InformacionUser();
+      const data = fullRes.data || {};
+      const freshName = fileNameFromPath(
+        data.foto_perfil_url || data.foto_perfil || data.foto || nombreParaBD || ""
+      );
+
+      // Actualiza UI
+      setFotoFileName(freshName);
+      setFotoUrl(`${toPublicFotoSrc(freshName)}?t=${Date.now()}`);
+      setUser({ ...data, foto_perfil_url: freshName, avatar_rev: Date.now() });
+
+      // 🔁 snapshot pasa a ser el estado guardado
+      setSnapshot({
+        telefono,
+        nombre,
+        apellidos,
+        correo,
+        genero,
+        fotoFileName: freshName,
+        fotoUrl: `${toPublicFotoSrc(freshName)}?t=${Date.now()}`,
+      });
+
+      setEditMode(false);
+    } catch (err) {
+      console.error("Error guardando perfil:", err?.response?.data || err.message || err);
+      alert("No se pudo guardar el perfil.");
+    }
+  };
+
+  const handleCancel = () => {
+    // revierte al snapshot sin refrescar
+    if (snapshot) {
+      setTelefono(snapshot.telefono || "");
+      setNombre(snapshot.nombre || "");
+      setApellidos(snapshot.apellidos || "");
+      setCorreo(snapshot.correo || "");
+      setGenero(snapshot.genero || "Masculino");
+      setFotoFileName(snapshot.fotoFileName || "");
+      setFotoUrl(snapshot.fotoUrl || "");
+    }
+    // limpia selección de archivo si había
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setEditMode(false);
+  };
+
+  /* ==================== 2FA ==================== */
   const handleSendCode = async () => {
     if (!correo) return;
     try {
@@ -446,7 +479,7 @@ const buildIdProfileFileName = (user, file) => {
   const handleVerifyCode = async () => {
     if (!twoFactorCode) return alert("Ingresa el código recibido");
     try {
-      const res = await validarCodigoDosPasos(correo, twoFactorCode);
+      await validarCodigoDosPasos(correo, twoFactorCode);
       alert("Autenticación de dos pasos activada correctamente");
       setShowTwoFactorCodeModal(false);
       setTwoFactorCode("");
@@ -466,6 +499,7 @@ const buildIdProfileFileName = (user, file) => {
     }
   };
 
+  /* ==================== RENDER ==================== */
   return (
     <div className="perfil-container">
       <section className="sidebar">
@@ -479,30 +513,30 @@ const buildIdProfileFileName = (user, file) => {
         <aside className="perfil-sidebar">
           <div className="perfil-avatar">
             {fotoUrl ? (
-              <img
-                src={fotoUrl}
-                alt="Foto de perfil"
-                className="perfil-avatar-image"
-              />
+              <img src={fotoUrl} alt="Foto de perfil" className="perfil-avatar-image" />
             ) : (
               <div className="perfil-avatar-placeholder">
                 <Icon name="user" className="icon-large" />
               </div>
             )}
           </div>
+
           <input
+            ref={fileInputRef}
             type="file"
             accept="image/*"
             style={{ display: "none" }}
             id="foto-input"
             onChange={handleFotoChange}
           />
+
           <button
             className="editar-boton"
             onClick={() => {
               if (editMode) document.getElementById("foto-input").click();
             }}
             disabled={!editMode}
+            title={editMode ? "Cambiar foto" : "Pulsa Editar para cambiar la foto"}
           >
             <Icon name="camera" className="icon-small" />
             <span>Editar foto</span>
@@ -528,6 +562,7 @@ const buildIdProfileFileName = (user, file) => {
                 disabled={!editMode}
               />
             </Field>
+
             <Field label="Correo" icon={<Icon name="mail" />}>
               <input
                 placeholder="ejemplo@gmail.com"
@@ -536,6 +571,7 @@ const buildIdProfileFileName = (user, file) => {
                 disabled={!editMode}
               />
             </Field>
+
             <Field label="Apellidos" icon={<Icon name="user" />}>
               <input
                 placeholder="Perez Maldonado"
@@ -544,12 +580,9 @@ const buildIdProfileFileName = (user, file) => {
                 disabled={!editMode}
               />
             </Field>
+
             <Field label="Género">
-              <select
-                value={genero}
-                onChange={(e) => setGenero(e.target.value)}
-                disabled={!editMode}
-              >
+              <select value={genero} onChange={(e) => setGenero(e.target.value)} disabled={!editMode}>
                 <option>Masculino</option>
                 <option>Femenino</option>
                 <option>Otro</option>
@@ -557,62 +590,17 @@ const buildIdProfileFileName = (user, file) => {
             </Field>
           </div>
 
+          {/* Botones */}
           {!editMode ? (
-            <button className="boton-editar" onClick={() => setEditMode(true)}>
+            <button className="boton-editar" onClick={enterEdit}>
               Editar
             </button>
           ) : (
             <div className="botones-accion">
-              <button
-                className="boton-guardar"
-                onClick={async () => {
-                  try {
-                    // 1) Prepara payload
-                    const nombreParaBD = fotoFileName || fileNameFromPath(fotoUrl) || "";
-                    const payload = {
-                      telefono,
-                      nombre,
-                      apellido: apellidos,
-                      correo,
-                      genero,
-                      foto_perfil_url: nombreParaBD, // en BD solo el nombre
-                    };
-
-                    // 2) Guarda en backend
-                    await axiosInstance.put("/api/MiPerfil/perfil", payload);
-
-                    // 3) Relee usuario desde backend
-                    const fullRes = await InformacionUser();
-                    const data = fullRes.data || {};
-
-                    // 4) Normaliza NOMBRE DE ARCHIVO
-                    const freshName = fileNameFromPath(
-                      data.foto_perfil_url || data.foto_perfil || data.foto || nombreParaBD || ""
-                    );
-
-                    // 5) Actualiza UI
-                    setFotoFileName(freshName);
-                    setFotoUrl(`${toPublicFotoSrc(freshName)}?t=${Date.now()}`); // cache-buster
-
-                    // 6) Propaga al contexto
-                    setUser({ ...data, foto_perfil_url: freshName, avatar_rev: Date.now() });
-
-                    setEditMode(false);
-                  } catch (err) {
-                    console.error("Error guardando perfil:", err?.response?.data || err.message || err);
-                    alert("No se pudo guardar el perfil.");
-                  }
-                }}
-              >
+              <button className="boton-guardar" onClick={handleSave}>
                 Guardar
               </button>
-              <button
-                className="boton-cancelar"
-                onClick={() => {
-                  setEditMode(false);
-                  window.location.reload();
-                }}
-              >
+              <button className="boton-cancelar" onClick={handleCancel}>
                 Cancelar
               </button>
             </div>
@@ -624,10 +612,7 @@ const buildIdProfileFileName = (user, file) => {
               <div className="mPerfil-modal">
                 <div className="modal-headerr">
                   <h3 className="label-modal-confirm">Cambio de contraseña</h3>
-                  <button
-                    className="mPerfil-cancel-button"
-                    onClick={() => setShowPasswordModal(false)}
-                  >
+                  <button className="mPerfil-cancel-button" onClick={() => setShowPasswordModal(false)}>
                     ✕
                   </button>
                 </div>
@@ -657,10 +642,7 @@ const buildIdProfileFileName = (user, file) => {
                   )}
                 </div>
                 <div className="modal-footer">
-                  <button
-                    onClick={() => setShowPasswordModal(false)}
-                    className="btn-danger"
-                  >
+                  <button onClick={() => setShowPasswordModal(false)} className="btn-danger">
                     Cancelar
                   </button>
                   <button
@@ -715,7 +697,7 @@ const buildIdProfileFileName = (user, file) => {
             </div>
           )}
 
-          {/* ---------------- MODALES 2FA INTEGRADOS ---------------- */}
+          {/* ---------------- MODALES 2FA ---------------- */}
           {showTwoFactorModal && (
             <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
               <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-0 relative">
@@ -738,10 +720,7 @@ const buildIdProfileFileName = (user, file) => {
                       <span className="align-middle">Enviar correo al ***@gmail.com</span>
                     </label>
                   </div>
-                  <button
-                    className="w-full bg-[#2b6daf] hover:bg-blue-700 text-white py-2 rounded-md"
-                    onClick={handleSendCode}
-                  >
+                  <button className="w-full bg-[#2b6daf] hover:bg-blue-700 text-white py-2 rounded-md" onClick={handleSendCode}>
                     Enviar código
                   </button>
                 </div>
@@ -784,10 +763,7 @@ const buildIdProfileFileName = (user, file) => {
                     Verificar
                   </button>
                   <div className="text-center">
-                    <button
-                      className="text-[#2b6daf] text-sm hover:underline"
-                      onClick={handleResendCode}
-                    >
+                    <button className="text-[#2b6daf] text-sm hover:underline" onClick={handleResendCode}>
                       Reenviar código
                     </button>
                   </div>
@@ -796,25 +772,19 @@ const buildIdProfileFileName = (user, file) => {
             </div>
           )}
 
-          {/* ---------------- MODAL HISTORIAL DE ACCESOS ---------------- */}
+          {/* ---------------- MODAL HISTORIAL ---------------- */}
           {showHistorial && (
             <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
               <div className="bg-white rounded-lg shadow-lg w-full max-w-xl p-0 relative " style={{ marginTop: "80px" }}>
                 <div className="bg-[#2b6daf] text-white text-center py-3 rounded-t-lg">
                   <h2 className="font-semibold text-lg">Historial de accesos</h2>
                 </div>
-                <button
-                  className="absolute top-3 right-3 text-white hover:text-gray-200"
-                  onClick={() => setShowHistorial(false)}
-                >
+                <button className="absolute top-3 right-3 text-white hover:text-gray-200" onClick={() => setShowHistorial(false)}>
                   ✕
                 </button>
 
                 <div className="p-6">
-                  <div
-                    className="historial-card mx-auto"
-                    style={{ maxWidth: "520px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.06)" }}
-                  >
+                  <div className="historial-card mx-auto" style={{ maxWidth: "520px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.06)" }}>
                     <div style={{ padding: "8px 16px" }}>
                       {loadingHistorial ? (
                         <p className="text-center text-gray-500">Cargando historial...</p>
@@ -833,16 +803,13 @@ const buildIdProfileFileName = (user, file) => {
                                 </li>
                               ))
                             ) : (
-                              <li className="flex justify-center text-gray-500 py-2">
-                                No hay registros de acceso.
-                              </li>
+                              <li className="flex justify-center text-gray-500 py-2">No hay registros de acceso.</li>
                             )}
                           </ul>
                         </div>
                       )}
                     </div>
-
-                    <div style={{ padding: "16px", textAlign: "center" }}></div>
+                    <div style={{ padding: "16px", textAlign: "center" }} />
                   </div>
                 </div>
               </div>

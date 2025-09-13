@@ -1,5 +1,5 @@
 // src/EditarPerfilAdmin.jsx
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
 import "../miPerfil.css";
 import { Link } from "react-router-dom";
 import { UserContext } from "../components/userContext";
@@ -26,9 +26,7 @@ const BACKEND_ORIGIN = (() => {
   const base = axiosInstance?.defaults?.baseURL;
   try {
     const u = base
-      ? (base.startsWith("http")
-          ? new URL(base)
-          : new URL(base, window.location.origin))
+      ? (base.startsWith("http") ? new URL(base) : new URL(base, window.location.origin))
       : new URL(window.location.origin);
     return `${u.protocol}//${u.host}`;
   } catch {
@@ -36,31 +34,20 @@ const BACKEND_ORIGIN = (() => {
   }
 })();
 
-// Construye la URL absoluta para una imagen en /api/images/fotoDePerfil
 const backendImageUrl = (fileName) =>
-  fileName
-    ? `${BACKEND_ORIGIN}/api/images/fotoDePerfil/${encodeURIComponent(fileName)}`
-    : "";
+  fileName ? `${BACKEND_ORIGIN}/api/images/fotoDePerfil/${encodeURIComponent(fileName)}` : "";
 
-// Normaliza valor devuelto por la BD a URL pública
 const toPublicFotoSrc = (nameOrPath) => {
   if (!nameOrPath) return "";
-  if (/^https?:\/\//i.test(nameOrPath)) return nameOrPath; // ya absoluta
-  if (nameOrPath.startsWith("/api/images/"))
-    return `${BACKEND_ORIGIN}${encodeURI(nameOrPath)}`;
-  if (nameOrPath.startsWith("/images/"))
-    return `${BACKEND_ORIGIN}/api${encodeURI(nameOrPath)}`;
+  if (/^https?:\/\//i.test(nameOrPath)) return nameOrPath;
+  if (nameOrPath.startsWith("/api/images/")) return `${BACKEND_ORIGIN}${encodeURI(nameOrPath)}`;
+  if (nameOrPath.startsWith("/images/")) return `${BACKEND_ORIGIN}/api${encodeURI(nameOrPath)}`;
   return backendImageUrl(nameOrPath);
 };
 
-// Extrae solo el nombre de archivo (para guardar en BD / contexto)
-const fileNameFromPath = (p) => {
-  if (!p) return "";
-  const parts = String(p).split("/");
-  return parts[parts.length - 1] || "";
-};
+const fileNameFromPath = (p) => (!p ? "" : String(p).split("/").pop() || "");
 
-// Extensión a partir del archivo
+// Extensión desde archivo
 const getExt = (file) => {
   const byName = file?.name?.match(/\.(\w{1,8})$/i)?.[1];
   if (byName) return `.${byName}`;
@@ -76,14 +63,8 @@ const getExt = (file) => {
 };
 
 // Helpers de ID
-const getUserId = (u) =>
-  u?.id_usuario ?? u?.id ?? u?.usuario_id ?? u?.userId ?? 1;
-
-const buildIdProfileFileName = (user, file) => {
-  const id = getUserId(user);
-  const ext = getExt(file);
-  return `user_${id}${ext}`;
-};
+const getUserId = (u) => u?.id_usuario ?? u?.id ?? u?.usuario_id ?? u?.userId ?? 1;
+const buildIdProfileFileName = (user, file) => `user_${getUserId(user)}${getExt(file)}`;
 
 /* ===================== UI helpers ===================== */
 function Icon({ name, className = "icon" }) {
@@ -152,23 +133,32 @@ export default function EditarPerfilAdmin() {
   const [genero, setGenero] = useState("Masculino");
   const [rol, setRol] = useState("Administrador");
 
+  // Dirección
+  const [direccion, setDireccion] = useState("");
+  const [departamento, setDepartamento] = useState("");
+  const [municipio, setMunicipio] = useState("");
+  const [idMunicipio, setIdMunicipio] = useState("");
+  const [departamentos, setDepartamentos] = useState([]);
+  const [municipios, setMunicipios] = useState([]);
+
   // Foto
   const [fotoUrl, setFotoUrl] = useState("");
   const [fotoFileName, setFotoFileName] = useState("");
-  const [editMode, setEditMode] = useState(true);
 
-  // Estados UI
+  // UI
   const [cargando, setCargando] = useState(true);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState("");
 
-  // Password modal
+  // 🔴 arranca en SOLO LECTURA
+  const [editMode, setEditMode] = useState(false);
+
+  // modales
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  // 2FA + Historial
   const [showHistorial, setShowHistorial] = useState(false);
   const [showTwoFactorModal, setShowTwoFactorModal] = useState(false);
   const [showTwoFactorCodeModal, setShowTwoFactorCodeModal] = useState(false);
@@ -177,16 +167,12 @@ export default function EditarPerfilAdmin() {
   const [errorHistorial, setErrorHistorial] = useState("");
   const [historial, setHistorial] = useState([]);
 
-  // Dirección (Admin solo 1)
-  const [direccion, setDireccion] = useState("");
-  const [departamento, setDepartamento] = useState("");
-  const [municipio, setMunicipio] = useState("");
-  const [idMunicipio, setIdMunicipio] = useState("");
-  const [departamentos, setDepartamentos] = useState([]);
-  const [municipios, setMunicipios] = useState([]);
-  const [tieneDireccion, setTieneDireccion] = useState(false);
+  // para limpiar el input file en cancelar
+  const fileInputRef = useRef(null);
 
-  // Normaliza la foto y empuja al contexto (Header)
+  // snapshot para Cancelar sin recargar
+  const [snapshot, setSnapshot] = useState(null);
+
   const pushUserToContext = (payload) => {
     const cleanName = fileNameFromPath(
       payload?.foto_perfil_url || payload?.foto_perfil || payload?.foto || ""
@@ -214,30 +200,31 @@ export default function EditarPerfilAdmin() {
         const data = res?.data?.user ?? res?.data ?? {};
         if (!mounted) return;
 
-        // Log de acceso
         const uid = getUserId(data);
-        if (uid) {
-          createLog(uid).catch(() => {});
-        }
+        if (uid) createLog(uid).catch(() => {});
 
         // Datos generales
-        setTelefono(
-          data.telefono || data.numero_telefono || data.telefono_usuario || ""
-        );
-        setNombre(data.nombre || data.nombre_usuario || data.nombres || "");
-        setApellidos(
-          data.apellido || data.apellidos || data.apellido_usuario || ""
-        );
-        setCorreo(data.correo || data.email || "");
-        if (data.genero) setGenero(data.genero);
-        if (data.rol?.nombre_rol) setRol(data.rol.nombre_rol);
+        const _telefono = data.telefono || data.numero_telefono || data.telefono_usuario || "";
+        const _nombre = data.nombre || data.nombre_usuario || data.nombres || "";
+        const _apellidos = data.apellido || data.apellidos || data.apellido_usuario || "";
+        const _correo = data.correo || data.email || "";
+        const _genero = data.genero || "Masculino";
+        const _rol = data.rol?.nombre_rol || "Administrador";
 
-        // Foto -> forzamos filename por ID
+        setTelefono(_telefono);
+        setNombre(_nombre);
+        setApellidos(_apellidos);
+        setCorreo(_correo);
+        setGenero(_genero);
+        setRol(_rol);
+
+        // Foto (normalizada a user_<id>.<ext>)
         const fromApi = data.foto_perfil_url || data.foto_perfil || data.foto || "";
         const guessedExt = fileNameFromPath(fromApi).split(".").pop() || "png";
         const idName = `user_${uid}.${guessedExt}`;
+        const url = `${backendImageUrl(idName)}?t=${Date.now()}`;
         setFotoFileName(idName);
-        setFotoUrl(`${backendImageUrl(idName)}?t=${Date.now()}`);
+        setFotoUrl(url);
         pushUserToContext({ ...data, foto_perfil_url: idName });
 
         // Catálogos
@@ -250,23 +237,41 @@ export default function EditarPerfilAdmin() {
         setDepartamentos(dpt);
         setMunicipios(mns);
 
-        // Dirección única
+        // Dirección
         const resDir = await getDirecciones(uid);
         const lista = resDir?.data || [];
+        let _direccion = "", _departamento = "", _municipio = "", _idMunicipio = "";
         if (Array.isArray(lista) && lista.length > 0) {
-          setTieneDireccion(true);
           const dir = lista.find((d) => d.predeterminada) || lista[0];
-          setDireccion(dir.calle || "");
+          _direccion = dir.calle || "";
           const muni = mns.find((m) => m.id_municipio === (dir.id_municipio || dir.municipio_id));
           if (muni) {
-            setMunicipio(muni.nombre_municipio);
-            setIdMunicipio(String(muni.id_municipio));
+            _municipio = muni.nombre_municipio;
+            _idMunicipio = String(muni.id_municipio);
             const dept = dpt.find((d) => d.id_departamento === muni.id_departamento);
-            if (dept) setDepartamento(dept.nombre_departamento);
+            if (dept) _departamento = dept.nombre_departamento;
           }
-        } else {
-          setTieneDireccion(false);
         }
+        setDireccion(_direccion);
+        setDepartamento(_departamento);
+        setMunicipio(_municipio);
+        setIdMunicipio(_idMunicipio);
+
+        // ↓ snapshot inicial para Cancelar
+        setSnapshot({
+          telefono: _telefono,
+          nombre: _nombre,
+          apellidos: _apellidos,
+          correo: _correo,
+          genero: _genero,
+          rol: _rol,
+          fotoUrl: url,
+          fotoFileName: idName,
+          direccion: _direccion,
+          departamento: _departamento,
+          municipio: _municipio,
+          idMunicipio: _idMunicipio,
+        });
 
         setCargando(false);
       } catch (err) {
@@ -281,35 +286,27 @@ export default function EditarPerfilAdmin() {
     };
   }, []);
 
-  /* =================== SUBIR FOTO (mismo flujo que MiPerfil) =================== */
+  /* =================== SUBIR FOTO (solo en modo edición) =================== */
   const handleFotoChange = async (e) => {
     if (!editMode) return;
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // preview
-    setFotoUrl(URL.createObjectURL(file));
+    setFotoUrl(URL.createObjectURL(file)); // preview
 
     try {
       const fileNameById = buildIdProfileFileName(user, file);
       const { data } = await uploadProfilePhoto1(file, fileNameById);
       const filename = data?.filename || fileNameById;
 
-      // Relee usuario
       const res = await InformacionUser();
       const data1 = res?.data?.user ?? res?.data ?? {};
       const fromApi = data1.foto_perfil_url || data1.foto_perfil || data1.foto || filename;
       const justName = fileNameFromPath(fromApi);
 
-      // UI + contexto (cache-buster + avatar_rev para Header)
       setFotoUrl(`${backendImageUrl(justName)}?t=${Date.now()}`);
       setFotoFileName(justName);
-      setUser((prev) => ({
-        ...(prev || {}),
-        ...data1,
-        foto_perfil_url: justName,
-        avatar_rev: Date.now(),
-      }));
+      setUser((prev) => ({ ...(prev || {}), ...data1, foto_perfil_url: justName, avatar_rev: Date.now() }));
     } catch (err) {
       console.error("Error subiendo foto:", err);
       alert("No se pudo subir la foto.");
@@ -334,10 +331,7 @@ export default function EditarPerfilAdmin() {
         const ms = Number(m[1]);
         if (!isNaN(ms)) return new Date(ms);
       }
-      if (/^\d{10,13}$/.test(s)) {
-        const n = Number(s);
-        return tryParseDate(n);
-      }
+      if (/^\d{10,13}$/.test(s)) return tryParseDate(Number(s));
       const withT = s.replace(" ", "T");
       const d1 = new Date(withT);
       if (!isNaN(d1)) return d1;
@@ -345,19 +339,10 @@ export default function EditarPerfilAdmin() {
       if (!isNaN(d2)) return d2;
       const p = Date.parse(s);
       if (!isNaN(p)) return new Date(p);
-      const reg = s.match(
-        /(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?/
-      );
+      const reg = s.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?/);
       if (reg) {
         const [_, Y, M, D, hh, mm, ss] = reg;
-        return new Date(
-          Number(Y),
-          Number(M) - 1,
-          Number(D),
-          Number(hh || 0),
-          Number(mm || 0),
-          Number(ss || 0)
-        );
+        return new Date(Number(Y), Number(M) - 1, Number(D), Number(hh || 0), Number(mm || 0), Number(ss || 0));
       }
       return null;
     }
@@ -366,15 +351,12 @@ export default function EditarPerfilAdmin() {
 
   const formatToFechaHora = (dateObj) => {
     if (!dateObj || !(dateObj instanceof Date) || isNaN(dateObj)) return null;
-    const months = [
-      "enero","febrero","marzo","abril","mayo","junio",
-      "julio","agosto","septiembre","octubre","noviembre","diciembre",
-    ];
-    const day = String(dateObj.getDate()).padStart(2, "0");
+    const months = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+    const dd = String(dateObj.getDate()).padStart(2, "0");
     const month = months[dateObj.getMonth()];
     const hh = String(dateObj.getHours()).padStart(2, "0");
     const mm = String(dateObj.getMinutes()).padStart(2, "0");
-    return { fecha: `${day} de ${month}`, hora: `${hh}:${mm}` };
+    return { fecha: `${dd} de ${month}`, hora: `${hh}:${mm}` };
   };
 
   const fetchHistorial = async () => {
@@ -387,9 +369,7 @@ export default function EditarPerfilAdmin() {
     setErrorHistorial("");
     try {
       const res = await getLogsUsuario(uid);
-      const rawList = Array.isArray(res.data)
-        ? res.data
-        : res.data?.rows ?? res.data?.data ?? [];
+      const rawList = Array.isArray(res.data) ? res.data : res.data?.rows ?? res.data?.data ?? [];
       const items = Array.isArray(rawList) ? rawList : res.data ? [res.data] : [];
       const logs = items.map((item) => {
         const candidates = [
@@ -433,23 +413,27 @@ export default function EditarPerfilAdmin() {
     if (muni) setMunicipio(muni.nombre_municipio);
   };
 
-  /* =================== Guardar =================== */
+  /* =================== Editar / Guardar / Cancelar =================== */
+  const enterEdit = () => {
+    setSnapshot({
+      telefono, nombre, apellidos, correo, genero, rol,
+      fotoUrl, fotoFileName,
+      direccion, departamento, municipio, idMunicipio,
+    });
+    setEditMode(true);
+  };
+
   const handleSave = async () => {
     try {
       const uid = getUserId(user);
-      if (!uid) {
-        alert("No se pudo determinar el usuario.");
-        return;
-      }
+      if (!uid) return alert("No se pudo determinar el usuario.");
 
-      // 1) Actualiza datos del usuario
       const payload = {
         nombre: (nombre || "").trim(),
         apellido: (apellidos || "").trim(),
         correo: (correo || "").trim(),
         telefono: (telefono || "").trim(),
         genero,
-        // (opcional) replica dirección en el payload si tu backend lo usa
         direccion: (direccion || "").trim(),
         departamento: departamento || "",
         municipio: municipio || "",
@@ -458,7 +442,7 @@ export default function EditarPerfilAdmin() {
 
       await updateUserById(uid, payload);
 
-      // 2) Dirección única: crea SOLO si no existe (admin solo 1)
+      // Dirección única: crear solo si no existe
       try {
         const resDir = await getDirecciones(uid);
         const yaTiene = Array.isArray(resDir?.data) && resDir.data.length > 0;
@@ -477,15 +461,21 @@ export default function EditarPerfilAdmin() {
         console.warn("No se pudo crear/actualizar dirección (continuando):", e);
       }
 
-      // 3) Refresca usuario + foto en contexto
+      // refresca usuario + foto
       const fullRes = await InformacionUser();
       const data = fullRes?.data?.user ?? fullRes?.data ?? {};
-      const freshName = fileNameFromPath(
-        data.foto_perfil_url || data.foto_perfil || data.foto || fotoFileName || ""
-      );
+      const freshName = fileNameFromPath(data.foto_perfil_url || data.foto_perfil || data.foto || fotoFileName || "");
+      const freshUrl = `${toPublicFotoSrc(freshName)}?t=${Date.now()}`;
       setFotoFileName(freshName);
-      setFotoUrl(`${toPublicFotoSrc(freshName)}?t=${Date.now()}`);
+      setFotoUrl(freshUrl);
       setUser({ ...data, foto_perfil_url: freshName, avatar_rev: Date.now() });
+
+      // Actualiza snapshot a lo guardado
+      setSnapshot({
+        telefono, nombre, apellidos, correo, genero, rol,
+        fotoUrl: freshUrl, fotoFileName: freshName,
+        direccion, departamento, municipio, idMunicipio,
+      });
 
       alert("✅ Perfil actualizado correctamente");
       setEditMode(false);
@@ -495,50 +485,47 @@ export default function EditarPerfilAdmin() {
     }
   };
 
-  /* =================== Password =================== */
+  const handleCancel = () => {
+    if (snapshot) {
+      setTelefono(snapshot.telefono || "");
+      setNombre(snapshot.nombre || "");
+      setApellidos(snapshot.apellidos || "");
+      setCorreo(snapshot.correo || "");
+      setGenero(snapshot.genero || "Masculino");
+      setRol(snapshot.rol || "Administrador");
+      setFotoUrl(snapshot.fotoUrl || "");
+      setFotoFileName(snapshot.fotoFileName || "");
+      setDireccion(snapshot.direccion || "");
+      setDepartamento(snapshot.departamento || "");
+      setMunicipio(snapshot.municipio || "");
+      setIdMunicipio(snapshot.idMunicipio || "");
+    }
+    // limpia selección del file input si había
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    setEditMode(false);
+  };
+
+  /* =================== Password & 2FA =================== */
   const handlePasswordSubmit = async () => {
     setPasswordError("");
-    if (!oldPassword || !newPassword || !confirmPassword) {
-      setPasswordError("Completa todos los campos");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setPasswordError("La nueva contraseña y la confirmación no coinciden");
-      return;
-    }
-    if (newPassword.length < 6) {
-      setPasswordError("La contraseña debe tener al menos 6 caracteres");
-      return;
-    }
+    if (!oldPassword || !newPassword || !confirmPassword) return setPasswordError("Completa todos los campos");
+    if (newPassword !== confirmPassword) return setPasswordError("La nueva contraseña y la confirmación no coinciden");
+    if (newPassword.length < 6) return setPasswordError("La contraseña debe tener al menos 6 caracteres");
     try {
       setPasswordLoading(true);
-      await axiosInstance.post("/api/auth/login", {
-        correo,
-        ["contraseña"]: oldPassword,
-      });
+      await axiosInstance.post("/api/auth/login", { correo, ["contraseña"]: oldPassword });
       await changePassword(correo, newPassword);
-      setOldPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
+      setOldPassword(""); setNewPassword(""); setConfirmPassword("");
       setShowPasswordModal(false);
     } catch (err) {
-      const msg =
-        err?.response?.data?.message ||
-        err?.response?.data ||
-        err.message ||
-        String(err);
-      setPasswordError(
-        msg.includes("Contraseña incorrecta")
-          ? "Contraseña anterior incorrecta"
-          : msg
-      );
+      const msg = err?.response?.data?.message || err?.response?.data || err.message || String(err);
+      setPasswordError(msg.includes("Contraseña incorrecta") ? "Contraseña anterior incorrecta" : msg);
       console.error("Error cambiando contraseña:", err);
     } finally {
       setPasswordLoading(false);
     }
   };
 
-  /* =================== 2FA =================== */
   const handleSendCode = async () => {
     if (!correo) return;
     try {
@@ -551,7 +538,6 @@ export default function EditarPerfilAdmin() {
       alert("No se pudo enviar el código. Intenta nuevamente.");
     }
   };
-
   const handleVerifyCode = async () => {
     if (!twoFactorCode) return alert("Ingresa el código recibido");
     try {
@@ -564,7 +550,6 @@ export default function EditarPerfilAdmin() {
       alert("Código inválido o expirado. Intenta de nuevo.");
     }
   };
-
   const handleResendCode = async () => {
     try {
       await enviarCorreoDosPasos(correo);
@@ -588,11 +573,7 @@ export default function EditarPerfilAdmin() {
         <aside className="perfil-sidebar">
           <div className="perfil-avatar">
             {fotoUrl ? (
-              <img
-                src={fotoUrl}
-                alt="Foto de perfil"
-                className="perfil-avatar-image"
-              />
+              <img src={fotoUrl} alt="Foto de perfil" className="perfil-avatar-image" />
             ) : (
               <div className="perfil-avatar-placeholder">
                 <Icon name="user" className="icon-large" />
@@ -601,6 +582,7 @@ export default function EditarPerfilAdmin() {
           </div>
 
           <input
+            ref={fileInputRef}
             type="file"
             accept="image/*"
             style={{ display: "none" }}
@@ -611,58 +593,32 @@ export default function EditarPerfilAdmin() {
             className="editar-boton"
             onClick={() => editMode && document.getElementById("foto-input").click()}
             disabled={!editMode}
+            title={editMode ? "Cambiar foto" : "Pulsa Editar para cambiar la foto"}
           >
             <Icon name="camera" className="icon-small" />
             <span>Editar foto</span>
           </button>
         </aside>
 
-        {/* Form principal – ORDEN NUEVO */}
+        {/* Form principal – ORDEN: Nombre/Apellido · Correo/Teléfono · Género/Rol · Depto/Muni · Dirección */}
         <section className="perfil-card">
           <div className="fields-grid">
-            {/* 1) Nombre — Apellido */}
             <Field label="Nombre" icon={<Icon name="user" />}>
-              <input
-                placeholder="Juan Javier"
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                disabled={!editMode}
-              />
+              <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Juan" disabled={!editMode} />
             </Field>
             <Field label="Apellidos" icon={<Icon name="user" />}>
-              <input
-                placeholder="Perez Maldonado"
-                value={apellidos}
-                onChange={(e) => setApellidos(e.target.value)}
-                disabled={!editMode}
-              />
+              <input value={apellidos} onChange={(e) => setApellidos(e.target.value)} placeholder="Pérez" disabled={!editMode} />
             </Field>
 
-            {/* 2) Correo — Teléfono */}
             <Field label="Correo" icon={<Icon name="mail" />}>
-              <input
-                placeholder="ejemplo@gmail.com"
-                value={correo}
-                onChange={(e) => setCorreo(e.target.value)}
-                disabled={!editMode}
-              />
+              <input value={correo} onChange={(e) => setCorreo(e.target.value)} placeholder="ejemplo@gmail.com" disabled={!editMode} />
             </Field>
             <Field label="Teléfono" icon={<Icon name="number" />}>
-              <input
-                placeholder="8789-9099"
-                value={telefono}
-                onChange={(e) => setTelefono(e.target.value)}
-                disabled={!editMode}
-              />
+              <input value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="9999-9999" disabled={!editMode} />
             </Field>
 
-            {/* 3) Género — Rol */}
             <Field label="Género">
-              <select
-                value={genero}
-                onChange={(e) => setGenero(e.target.value)}
-                disabled={!editMode}
-              >
+              <select value={genero} onChange={(e) => setGenero(e.target.value)} disabled={!editMode}>
                 <option>Masculino</option>
                 <option>Femenino</option>
                 <option>Otro</option>
@@ -672,13 +628,8 @@ export default function EditarPerfilAdmin() {
               <input value={rol} disabled />
             </Field>
 
-            {/* 4) Departamento — Municipio */}
             <Field label="Departamento">
-              <select
-                value={departamento}
-                onChange={handleDepartamentoChange}
-                disabled={!editMode}
-              >
+              <select value={departamento} onChange={handleDepartamentoChange} disabled={!editMode}>
                 <option value="">Seleccione un departamento</option>
                 {departamentos.map((d) => (
                   <option key={d.id_departamento} value={d.nombre_departamento}>
@@ -687,19 +638,12 @@ export default function EditarPerfilAdmin() {
                 ))}
               </select>
             </Field>
-
             <Field label="Municipio">
-              <select
-                value={idMunicipio}
-                onChange={handleMunicipioChange}
-                disabled={!editMode || !departamento}
-              >
+              <select value={idMunicipio} onChange={handleMunicipioChange} disabled={!editMode || !departamento}>
                 <option value="">Seleccione un municipio</option>
                 {municipios
                   .filter((m) => {
-                    const deptoSel = departamentos.find(
-                      (d) => d.nombre_departamento === departamento
-                    );
+                    const deptoSel = departamentos.find((d) => d.nombre_departamento === departamento);
                     return deptoSel && m.id_departamento === deptoSel.id_departamento;
                   })
                   .map((m) => (
@@ -710,35 +654,23 @@ export default function EditarPerfilAdmin() {
               </select>
             </Field>
 
-            {/* 5) Dirección */}
             <Field label="Dirección">
               <input
-                placeholder="Bo. El carmen 3 calle 6 ave"
                 value={direccion}
                 onChange={(e) => setDireccion(e.target.value)}
+                placeholder="Bo. El Carmen 3 calle 6 ave"
                 disabled={!editMode}
               />
             </Field>
           </div>
 
+          {/* Botones */}
           {!editMode ? (
-            <button className="boton-editar" onClick={() => setEditMode(true)}>
-              Editar
-            </button>
+            <button className="boton-editar" onClick={enterEdit}>Editar</button>
           ) : (
             <div className="botones-accion">
-              <button className="boton-guardar" onClick={handleSave}>
-                Guardar
-              </button>
-              <button
-                className="boton-cancelar"
-                onClick={() => {
-                  setEditMode(false);
-                  window.location.reload();
-                }}
-              >
-                Cancelar
-              </button>
+              <button className="boton-guardar" onClick={handleSave}>Guardar</button>
+              <button className="boton-cancelar" onClick={handleCancel}>Cancelar</button>
             </div>
           )}
 
@@ -748,50 +680,20 @@ export default function EditarPerfilAdmin() {
               <div className="mPerfil-modal">
                 <div className="modal-headerr">
                   <h3 className="label-modal-confirm">Cambio de contraseña</h3>
-                  <button
-                    className="mPerfil-cancel-button"
-                    onClick={() => setShowPasswordModal(false)}
-                  >
-                    ✕
-                  </button>
+                  <button className="mPerfil-cancel-button" onClick={() => setShowPasswordModal(false)}>✕</button>
                 </div>
                 <div className="modal-body">
                   <label>Contraseña anterior</label>
-                  <input
-                    type="password"
-                    value={oldPassword}
-                    onChange={(e) => setOldPassword(e.target.value)}
-                  />
+                  <input type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} />
                   <label>Nueva contraseña</label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                  />
+                  <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
                   <label>Confirmación de nueva contraseña</label>
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                  />
-                  {passwordError && (
-                    <p className="password-error" role="alert" aria-live="assertive">
-                      {passwordError}
-                    </p>
-                  )}
+                  <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+                  {passwordError && <p className="password-error" role="alert" aria-live="assertive">{passwordError}</p>}
                 </div>
                 <div className="modal-footer">
-                  <button
-                    onClick={() => setShowPasswordModal(false)}
-                    className="btn-danger"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    className="MPbtn-secondary"
-                    onClick={handlePasswordSubmit}
-                    disabled={passwordLoading}
-                  >
+                  <button onClick={() => setShowPasswordModal(false)} className="btn-danger">Cancelar</button>
+                  <button className="MPbtn-secondary" onClick={handlePasswordSubmit} disabled={passwordLoading}>
                     {passwordLoading ? "Guardando..." : "Guardar"}
                   </button>
                 </div>
@@ -799,19 +701,14 @@ export default function EditarPerfilAdmin() {
             </div>
           )}
 
-          {/* ---------------- MODALES 2FA INTEGRADOS ---------------- */}
+          {/* ---------------- MODALES 2FA ---------------- */}
           {showTwoFactorModal && (
             <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
               <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-0 relative">
                 <div className="bg-[#2b6daf] text-white text-center py-2">
                   <h2 className="font-semibold text-lg">Activar autenticación en dos pasos</h2>
                 </div>
-                <button
-                  className="absolute top-3 right-3 text-white hover:text-gray-200"
-                  onClick={() => setShowTwoFactorModal(false)}
-                >
-                  ✕
-                </button>
+                <button className="absolute top-3 right-3 text-white hover:text-gray-200" onClick={() => setShowTwoFactorModal(false)}>✕</button>
                 <div className="p-6">
                   <div className="flex justify-center mb-4">
                     <img src="two-factor.png" alt="2FA" className="w-24 h-24" />
@@ -822,10 +719,7 @@ export default function EditarPerfilAdmin() {
                       <span className="align-middle">Enviar correo al ***@gmail.com</span>
                     </label>
                   </div>
-                  <button
-                    className="w-full bg-[#2b6daf] hover:bg-blue-700 text-white py-2 rounded-md"
-                    onClick={handleSendCode}
-                  >
+                  <button className="w-full bg-[#2b6daf] hover:bg-blue-700 text-white py-2 rounded-md" onClick={handleSendCode}>
                     Enviar código
                   </button>
                 </div>
@@ -839,18 +733,11 @@ export default function EditarPerfilAdmin() {
                 <div className="bg-[#2b6daf] text-white text-center py-2">
                   <h2 className="font-semibold text-lg">Activar autenticación en dos pasos</h2>
                 </div>
-                <button
-                  className="absolute top-3 right-3 text-white hover:text-gray-200"
-                  onClick={() => setShowTwoFactorCodeModal(false)}
-                >
-                  ✕
-                </button>
+                <button className="absolute top-3 right-3 text-white hover:text-gray-200" onClick={() => setShowTwoFactorCodeModal(false)}>✕</button>
                 <div className="p-6">
                   <div className="flex flex-col items-center mb-4">
                     <img src="two-factor.png" alt="2FA" className="w-24 h-24 mb-2" />
-                    <p className="text-center text-gray-700 text-sm">
-                      Por tu seguridad, ingresa el código que te hemos enviado
-                    </p>
+                    <p className="text-center text-gray-700 text-sm">Por tu seguridad, ingresa el código que te hemos enviado</p>
                   </div>
                   <div className="mb-4">
                     <input
@@ -861,17 +748,11 @@ export default function EditarPerfilAdmin() {
                       className="w-full border border-[#2b6daf] rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-[#2b6daf]"
                     />
                   </div>
-                  <button
-                    className="w-full bg-[#2b6daf] hover:bg-blue-700 text-white py-2 rounded-md mb-2"
-                    onClick={handleVerifyCode}
-                  >
+                  <button className="w-full bg-[#2b6daf] hover:bg-blue-700 text-white py-2 rounded-md mb-2" onClick={handleVerifyCode}>
                     Verificar
                   </button>
                   <div className="text-center">
-                    <button
-                      className="text-[#2b6daf] text-sm hover:underline"
-                      onClick={handleResendCode}
-                    >
+                    <button className="text-[#2b6daf] text-sm hover:underline" onClick={handleResendCode}>
                       Reenviar código
                     </button>
                   </div>
@@ -883,22 +764,13 @@ export default function EditarPerfilAdmin() {
           {/* ---------------- MODAL HISTORIAL DE ACCESOS ---------------- */}
           {showHistorial && (
             <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg shadow-lg w-full max-w-xl p-0 relative " style={{ marginTop: "80px" }}>
+              <div className="bg-white rounded-lg shadow-lg w/full max-w-xl p-0 relative" style={{ marginTop: "80px" }}>
                 <div className="bg-[#2b6daf] text-white text-center py-3 rounded-t-lg">
                   <h2 className="font-semibold text-lg">Historial de accesos</h2>
                 </div>
-                <button
-                  className="absolute top-3 right-3 text-white hover:text-gray-200"
-                  onClick={() => setShowHistorial(false)}
-                >
-                  ✕
-                </button>
-
+                <button className="absolute top-3 right-3 text-white hover:text-gray-200" onClick={() => setShowHistorial(false)}>✕</button>
                 <div className="p-6">
-                  <div
-                    className="historial-card mx-auto"
-                    style={{ maxWidth: "520px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.06)" }}
-                  >
+                  <div className="historial-card mx-auto" style={{ maxWidth: "520px", borderRadius: 8, border: "1px solid rgba(0,0,0,0.06)" }}>
                     <div style={{ padding: "8px 16px" }}>
                       {loadingHistorial ? (
                         <p className="text-center text-gray-500">Cargando historial...</p>
@@ -911,22 +783,18 @@ export default function EditarPerfilAdmin() {
                               historial.map((item, idx) => (
                                 <li key={idx} className="flex justify-between items-center py-2">
                                   <span className="text-gray-700">
-                                    {item.fecha}
-                                    {item.hora ? `, ${item.hora}` : ""}
+                                    {item.fecha}{item.hora ? `, ${item.hora}` : ""}
                                   </span>
                                 </li>
                               ))
                             ) : (
-                              <li className="flex justify-center text-gray-500 py-2">
-                                No hay registros de acceso.
-                              </li>
+                              <li className="flex justify-center text-gray-500 py-2">No hay registros de acceso.</li>
                             )}
                           </ul>
                         </div>
                       )}
                     </div>
-
-                    <div style={{ padding: "16px", textAlign: "center" }}></div>
+                    <div style={{ padding: "16px", textAlign: "center" }} />
                   </div>
                 </div>
               </div>
@@ -945,28 +813,13 @@ export default function EditarPerfilAdmin() {
         </div>
         <div className="f2-autenticacion">
           <img src="/f2.png" alt="imagen" className="f2" />
-          <Link
-            to="#"
-            className="new-link"
-            onClick={(e) => {
-              e.preventDefault();
-              setShowTwoFactorModal(true);
-            }}
-          >
+          <Link to="#" className="new-link" onClick={(e) => { e.preventDefault(); setShowTwoFactorModal(true); }}>
             Autenticación en dos pasos
           </Link>
         </div>
         <div className="historial">
           <img src="/historial-perfil.png" alt="imagen" className="historial-icono" />
-          <Link
-            to="#"
-            className="new-link"
-            onClick={(e) => {
-              e.preventDefault();
-              fetchHistorial();
-              setShowHistorial(true);
-            }}
-          >
+          <Link to="#" className="new-link" onClick={(e) => { e.preventDefault(); fetchHistorial(); setShowHistorial(true); }}>
             Historial de Acceso
           </Link>
         </div>

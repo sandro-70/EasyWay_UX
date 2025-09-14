@@ -1,6 +1,7 @@
 // src/components/ReporteUsuariosAdmin.jsx
 import React, { useEffect, useState, useMemo } from "react";
 import { estadosUsuarios } from "./api/Usuario.Route";
+
 import {
   promedioGastoUsuario,
   contarPedidosUsuario,
@@ -81,7 +82,11 @@ export default function ReporteUsuariosAdmin() {
       // Opción B (si tu helper no acepta params): descomenta e importa axiosInstance
       // const res = await axiosInstance.get('/api/reportes-usuario/reporte/tabla', { params });
 
-      const rows = res.data.rows || [];
+      let rows = res.data.rows || [];
+
+      // Ordenar por id_usuario de menor a mayor
+      rows.sort((a, b) => a.id_usuario - b.id_usuario);
+
       setUsuarios(rows);
       // meta.totalFiltrado viene de tu API (count)
       const meta = res.data.meta || {};
@@ -228,7 +233,13 @@ export default function ReporteUsuariosAdmin() {
                     {r.estado}
                   </td>
                   <td className="info" onClick={() => handleSelectUser(r)}>
-                    ℹ️
+                    <img
+                      src="/info-icon.png"
+                      alt="Info"
+                      width={17}
+                      height={17}
+                      style={{ marginLeft: "90px" }}
+                    />
                   </td>
                 </tr>
               ))}

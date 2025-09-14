@@ -1,16 +1,17 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import "./promocion.css";
 import Slider from "@mui/material/Slider";
 import Checkbox from "@mui/material/Checkbox";
 import { getAllProducts } from "./api/InventarioApi";
 import { useParams } from "react-router-dom";
-import { listarSubcategoria, listarPorCategoria } from "./api/SubcategoriaApi";
+import { listarPorCategoria } from "./api/SubcategoriaApi";
 import { AddNewCarrito, ViewCar, SumarItem } from "./api/CarritoApi";
 import { useNavigate } from "react-router-dom";
+import { useCart } from "./utils/CartContext";
 
 function Promocion() {
   const navigate = useNavigate();
+  const { incrementCart } = useCart();
 
   const prodRefRecomendados = useRef(null);
   const [products, setProducts] = useState([]);
@@ -96,7 +97,7 @@ function Promocion() {
   const applyFilters = (productList) => {
     let filtered = [...productList];
 
-    // Subcategoría
+    // Filtro subcategorías
     if (selectedSubcategorias.length > 0) {
       filtered = filtered.filter((product) => {
         const productSubcategoriaId =
@@ -105,13 +106,13 @@ function Promocion() {
       });
     }
 
-    // Precio
+    // Filtro precio
     filtered = filtered.filter((product) => {
       const precio = parseFloat(product.precio_base) || 0;
       return precio >= priceRange[0] && precio <= priceRange[1];
     });
 
-    // Marca
+    // Filtro marca
     if (selectedMarca && selectedMarca !== "") {
       filtered = filtered.filter((product) => {
         const productMarca = product.marca?.nombre || product.marca || "";
@@ -119,9 +120,16 @@ function Promocion() {
       });
     }
 
-    //Solo en oferta
+    // Solo en oferta
     if (soloOferta) {
       filtered = filtered.filter((p) => productoEsOferta(p));
+    }
+
+    // Ordenar si aplica
+    if (orderby === "Mas Vendidos") {
+      filtered.sort((a, b) => (b.estrellas || 0) - (a.estrellas || 0));
+    } else if (orderby === "Novedades") {
+      filtered.sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
     }
 
     return filtered;
@@ -157,7 +165,6 @@ function Promocion() {
       setCompare("CANCELAR");
       return;
     }
-
     setState("Agregar");
     setCompare("COMPARAR");
   }
@@ -196,7 +203,8 @@ function Promocion() {
     selectedSubcategorias,
     priceRange,
     selectedMarca,
-    soloOferta, // 👉 Nuevo: recalcular cuando cambie
+    soloOferta,
+    orderby,
   ]);
 
   useEffect(() => {
@@ -263,218 +271,297 @@ function Promocion() {
     }
 
     try {
-      let carritoActual = null;
-      let carritoVacio = false;
+      console.log("Agregando producto:", id_producto);
 
-      try {
-        carritoActual = await ViewCar();
-      } catch (error) {
-        if (error?.response?.status === 404) {
-          carritoVacio = true;
-        } else {
-          throw error;
-        }
-      }
+      const carritoActual = await ViewCar();
+      const carritoDetalles = carritoActual.data.carrito_detalles ?? [];
 
-      let existe = false;
-      if (!carritoVacio && carritoActual?.data) {
-        const items = carritoActual.data.carrito_detalles || carritoActual.data;
-        existe = Array.isArray(items)
-          ? items.find((item) => item.id_producto === id_producto)
-          : false;
-      }
+      const productoExistente = carritoDetalles.find(
+        (item) => item.producto.id_producto === id_producto
+      );
 
-      if (existe) {
-        await SumarItem(id_producto, 1);
-        alert(`Se aumentó la cantidad del producto`);
+      if (productoExistente) {
+        const cantidadActual = productoExistente.cantidad_unidad_medida || 0;
+        const nuevaCantidad = cantidadActual + 1;
+
+        console.log(`Actualizando de ${cantidadActual} a ${nuevaCantidad}`);
+        alert(`Actualizando a ${nuevaCantidad}`);
+
+        await SumarItem(id_producto, nuevaCantidad);
+
+        setCarrito((prev) => {
+          if (Array.isArray(prev)) {
+            return prev.map((item) =>
+              item.producto.id_producto === id_producto
+                ? {
+                    ...item,
+                    cantidad_unidad_medida: nuevaCantidad,
+                    subtotal_detalle: item.producto.precio_base * nuevaCantidad,
+                  }
+                : item
+            );
+          }
+          return prev;
+        });
+        incrementCart();
       } else {
+        console.log("Producto nuevo, agregando al carrito");
+
         await AddNewCarrito(id_producto, 1);
+
+        const carritoActualizado = await ViewCar();
+        const nuevosDetalles = carritoActualizado.data.carrito_detalles ?? [];
+        setCarrito(nuevosDetalles);
+
         alert(`Producto agregado al carrito`);
+        incrementCart();
       }
-
-      try {
-        const actualizado = await ViewCar();
-        setCarrito(actualizado.data);
-      } catch (_error) {}
     } catch (error) {
-      const errorMessage =
-        error?.response?.data?.msg ||
-        error?.response?.data?.message ||
-        error?.message ||
-        "No se pudo procesar el carrito";
+      console.error("Error:", error);
 
-      alert(errorMessage);
+      if (error?.response?.status === 404) {
+        try {
+          await AddNewCarrito(id_producto, 1);
+          const carritoNuevo = await ViewCar();
+          const nuevosDetalles = carritoNuevo.data.carrito_detalles ?? [];
+          setCarrito(nuevosDetalles);
+          alert(`Producto agregado al carrito`);
+        } catch (err) {
+          console.error("Error creando carrito:", err);
+          alert("No se pudo agregar el producto al carrito");
+        }
+      } else {
+        const errorMessage =
+          error?.response?.data?.msg ||
+          error?.response?.data?.message ||
+          error?.message ||
+          "No se pudo procesar el carrito";
+        alert(errorMessage);
+      }
     }
   };
 
   const handleProductClick = (productId) => {
+    if (stateProducto === "Comparar") {
+      return;
+    }
     navigate(`/producto/${productId}`);
   };
 
   return (
     <div className="" style={styles.fixedShell}>
       <div className="flex flex-row">
-        {/* Sidebar filtros */}
-        <div className="flex flex-col h-[578px] fixed w-[265px] gap-1 ">
-          {/* Sub-categoria */}
-          <div className="border-gray-300 border-2 space-y-1 px-4 py-2 rounded-md">
-            <h1 className="header">Sub-categoria</h1>
+        {/* Sidebar / Panel de filtros */}
+        <div className="flex flex-col h-[720px] fixed w-[320px] gap-4 p-4" style={{left: 10}}>
+          <div className="bg-white border border-gray-200 rounded-2xl shadow-md p-4 w-[300px] max-h-[680px] overflow-y-auto">
+            <h2 className="text-xl font-semibold mb-3">Filtrar productos</h2>
 
-            <ul className="overflow-y-auto h-20">
-              {subcategorias.length > 0 ? (
-                subcategorias.map((sub, i) => {
-                  const subcategoriaId = sub.id || sub.id_subcategoria;
-                  const isChecked =
-                    selectedSubcategorias.includes(subcategoriaId);
+            {/* Sub-categoría */}
+            <section className="mb-4">
+              <h3 className="text-md font-medium mb-2">Sub-categoría</h3>
+              <ul className="space-y-1 overflow-y-auto max-h-[100px] pr-2 custom-scroll">
+                {subcategorias.length > 0 ? (
+                  subcategorias.map((sub, i) => {
+                    const subcategoriaId = sub.id || sub.id_subcategoria;
+                    const isChecked = selectedSubcategorias.includes(subcategoriaId);
+                    return (
+                      <li key={subcategoriaId || i}>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            color="secondary"
+                            size="small"
+                            checked={isChecked}
+                            onChange={(e) =>
+                              handleSubcategoriaChange(subcategoriaId, e.target.checked)
+                            }
+                            sx={{
+                              color: "",
+                              "&.Mui-checked": { color: "#114C87" },
+                            }}
+                          />
+                          <span className="text-sm">{sub.nombre || `Subcategoría ${i + 1}`}</span>
+                        </div>
+                      </li>
+                    );
+                  })
+                ) : (
+                  <li className="text-gray-500 text-sm">No hay subcategorías disponibles</li>
+                )}
+              </ul>
+            </section>
 
-                  return (
-                    <li key={subcategoriaId || i}>
-                      <div className="flex flex-row gap-2 items-center">
-                        <Checkbox
-                          color="secondary"
-                          size="medium"
-                          checked={isChecked}
-                          onChange={(e) =>
-                            handleSubcategoriaChange(
-                              subcategoriaId,
-                              e.target.checked
-                            )
-                          }
-                          sx={{
-                            "&.Mui-checked": { color: "#114C87" },
-                          }}
-                        />
-                        <p>{sub.nombre || `Subcategoría ${i + 1}`}</p>
-                      </div>
-                    </li>
-                  );
-                })
-              ) : (
-                <li className="text-gray-500 text-sm">
-                  No hay subcategorías disponibles
-                </li>
-              )}
-            </ul>
+            <hr className="my-3" />
 
             {/* Marca */}
-            <h1 className="header">Marca</h1>
-            <select
-              className="w-full border-gray-300 border-2 rounded-md py-1 px-2 focus:outline-none focus:border-blue-500"
-              value={selectedMarca}
-              onChange={handleMarcaChange}
-            >
-              <option value="">Todas las marcas</option>
-              {marcasDisponibles.map((marca, index) => (
-                <option key={index} value={marca}>
-                  {marca}
-                </option>
-              ))}
-            </select>
+            <section className="mb-4">
+              <h3 className="text-md font-medium mb-2">Marca</h3>
+              <select
+                className="w-full border-gray-300 border rounded-md py-2 px-3 focus:outline-none"
+                value={selectedMarca}
+                onChange={handleMarcaChange}
+              >
+                <option value="">Todas las marcas</option>
+                {marcasDisponibles.map((marca, index) => (
+                  <option key={index} value={marca}>
+                    {marca}
+                  </option>
+                ))}
+              </select>
+            </section>
 
-            {/* 👉 Nuevo: Etiquetas */}
-            <h1 className="header mt-2">Etiquetas</h1>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                color="secondary"
-                size="medium"
-                checked={soloOferta}
-                onChange={(e) => setSoloOferta(e.target.checked)}
-                sx={{ "&.Mui-checked": { color: "#114C87" } }}
-              />
-              <p>Solo en oferta</p>
-            </div>
-          </div>
+            <hr className="my-3" />
 
-          {/* Precio */}
-          <div className="border-gray-300 border-2  py-2 space-y-1 rounded-md">
-            <h1 className="header px-4">Precio</h1>
-            <div className=" flex flex-col px-4">
-              <Slider
-                value={priceRange}
-                onChange={handlePriceChange}
-                min={minPrice}
-                max={maxPrice}
-                step={1}
-                valueLabelDisplay="auto"
-                sx={{
-                  "& .MuiSlider-thumb": { backgroundColor: "#2b6daf" },
-                  "& .MuiSlider-rail": { opacity: 1, backgroundColor: "#D4D3D2" },
-                  "& .MuiSlider-track": {
-                    backgroundColor: "#2b6daf",
-                    border: "#2b6daf",
-                  },
-                }}
-              />
-              <div className="flex flex-row w-full">
-                <p className="text-left">L.{minPrice}</p>
-                <p className="ml-auto">L.{maxPrice}</p>
+            {/* Precio */}
+            <section className="mb-4">
+              <h3 className="text-md font-medium mb-2">Precio</h3>
+              <div className="px-1">
+                <Slider
+                  value={priceRange}
+                  onChange={handlePriceChange}
+                  min={minPrice}
+                  max={maxPrice}
+                  step={1}
+                  valueLabelDisplay="auto"
+                  sx={{
+                    color: "#2b6daf",
+                    "& .MuiSlider-thumb": { backgroundColor: "#2b6daf" },
+                  }}
+                />
+                <div className="flex justify-between text-sm text-gray-700 mt-1">
+                  <span>L.{priceRange[0]}</span>
+                  <span>L.{priceRange[1]}</span>
+                </div>
+                <div className="flex gap-2 mt-3">
+                  <button
+                    className="flex-1 bg-white border border-gray-300 rounded-md h-9 text-sm hover:bg-gray-50"
+                    onClick={() => handleQuickPriceFilter("menos10")}
+                  >
+                    Menos 10L
+                  </button>
+                  <button
+                    className="flex-1 bg-white border border-gray-300 rounded-md h-9 text-sm hover:bg-gray-50"
+                    onClick={() => handleQuickPriceFilter("menos50")}
+                  >
+                    Menos 50L
+                  </button>
+                  <button
+                    className="flex-1 bg-white border border-gray-300 rounded-md h-9 text-sm hover:bg-gray-50"
+                    onClick={() => handleQuickPriceFilter("mas100")}
+                  >
+                    Más 100L
+                  </button>
+                </div>
               </div>
-              <div className="flex flex-row w-full justify-between text-sm text-gray-600 mt-1">
-                <p>L.{priceRange[0]}</p>
-                <p>L.{priceRange[1]}</p>
+            </section>
+
+            <hr className="my-3" />
+
+            {/* Etiquetas */}
+            <section className="mb-4">
+              <h3 className="text-md font-medium mb-2">Etiquetas</h3>
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  color="secondary"
+                  size="small"
+                  checked={soloOferta}
+                  onChange={(e) => setSoloOferta(e.target.checked)}
+                  sx={{ "&.Mui-checked": { color: "#114C87" } }}
+                />
+                <span className="text-sm">Solo en oferta</span>
               </div>
-            </div>
-            <div className="flex flex-row gap-2 text-[14px] font-medium px-1">
-              <button
-                className="bg-white border-2 border-gray-300 rounded-md h-[38px] whitespace-nowrap px-1 hover:bg-gray-100 transition-colors"
-                onClick={() => handleQuickPriceFilter("menos10")}
-              >
-                Menos 10L
-              </button>
-              <button
-                className="bg-white border-2 border-gray-300 rounded-md h-[38px] whitespace-nowrap px-1 hover:bg-gray-100 transition-colors"
-                onClick={() => handleQuickPriceFilter("menos50")}
-              >
-                Menos 50L
-              </button>
-              <button
-                className="bg-white border-2 border-gray-300 rounded-md h-[38px] whitespace-nowrap px-1 hover:bg-gray-100 transition-colors"
-                onClick={() => handleQuickPriceFilter("mas100")}
-              >
-                Mas 100L
-              </button>
-            </div>
-          </div>
+            </section>
 
-          {/* Ordenar Por */}
-          <div className="border-gray-300 border-2 px-2 py-2 pb-4 space-y-1 rounded-md">
-            <h1 className="header">Ordenar por</h1>
-            <div className="flex flex-col border-gray-300 bg-gray-200 border-2 rounded-md py-1">
-              <button
-                className={`${orderby === "Relevancia" ? "bg-[#D8DADC]" : ""}`}
-                onClick={(e) => setOrder(e.target.innerText)}
-              >
-                Relevancia
-              </button>
-              <button
-                className={`${
-                  orderby === "Mas Vendidos" ? "bg-[#D8DADC]" : ""
-                }`}
-                onClick={(e) => setOrder(e.target.innerText)}
-              >
-                Mas Vendidos
-              </button>
-              <button
-                className={`${orderby === "Novedades" ? "bg-[#D8DADC]" : ""}`}
-                onClick={(e) => setOrder(e.target.innerText)}
-              >
-                Novedades
-              </button>
-            </div>
-          </div>
+            <hr className="my-3" />
 
-          <button
-            onClick={agregarComparar}
-            className={`btnSubCat ${
-              stateProducto === "Agregar" ? "bg-[#2B6DAF]" : "bg-[#80838A]"
-            }`}
-          >
-            {btnCompare}
-          </button>
+            {/* Ordenar Por */}
+            <section className="mb-4">
+              <h3 className="text-md font-medium mb-2">Ordenar por</h3>
+              <div className="grid grid-cols-1 gap-2">
+                <button
+                  className={`text-left px-3 py-2 rounded-md ${orderby === "Relevancia" ? "bg-[#ffac77] font-semibold" : "hover:bg-[#ffac77]"}`}
+                  onClick={() => setOrder("Relevancia")}
+                >
+                  Relevancia
+                </button>
+                <button
+                  className={`text-left px-3 py-2 rounded-md ${orderby === "Mas Vendidos" ? "bg-[#ffac77] font-semibold" : "hover:bg-[#ffac77]"}`}
+                  onClick={() => setOrder("Mas Vendidos")}
+                >
+                  Mas Vendidos
+                </button>
+                <button
+                  className={`text-left px-3 py-2 rounded-md ${orderby === "Novedades" ? "bg-[#ffac77] font-semibold" : "hover:bg-[#ffac77]"}`}
+                  onClick={() => setOrder("Novedades")}
+                >
+                  Novedades
+                </button>
+              </div>
+            </section>
+            
+            <hr className="my-3" />
+
+            {/* Botón de comparar */}
+            <section className="flex flex-col items-center gap-2">
+              <button
+                onClick={agregarComparar}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold text-white shadow-md transition-colors duration-300 w-full
+                ${stateProducto === "Agregar" ? "bg-[#2B6DAF] hover:bg-[#1f4e7f]" : "bg-[#80838A]"}`}
+              >
+                {btnCompare}
+              </button>
+
+              {/* Mostrar badges para filtros activos */}
+              <div className="mt-3 w-full">
+                {(selectedSubcategorias.length > 0 ||
+                  priceRange[0] !== minPrice ||
+                  priceRange[1] !== maxPrice ||
+                  selectedMarca !== "" ||
+                  soloOferta) && (
+                  <div className="text-sm text-gray-500">
+                    <p className="mb-2">Filtros activos:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedMarca && (
+                        <button
+                          onClick={() => setSelectedMarca("")}
+                          className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs hover:bg-red-200"
+                        >
+                          ✕ Marca: {selectedMarca}
+                        </button>
+                      )}
+                      {(priceRange[0] !== minPrice || priceRange[1] !== maxPrice) && (
+                        <button
+                          onClick={() => setPriceRange([minPrice, maxPrice])}
+                          className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs hover:bg-red-200"
+                        >
+                          ✕ Precio: L.{priceRange[0]} - L.{priceRange[1]}
+                        </button>
+                      )}
+                      {selectedSubcategorias.length > 0 && (
+                        <button
+                          onClick={() => setSelectedSubcategorias([])}
+                          className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs hover:bg-red-200"
+                        >
+                          ✕ Subcategorías ({selectedSubcategorias.length})
+                        </button>
+                      )}
+                      {soloOferta && (
+                        <button
+                          onClick={() => setSoloOferta(false)}
+                          className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs hover:bg-red-200"
+                        >
+                          ✕ Solo en oferta
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
         </div>
 
         {/* Display Productos */}
-        <div className="w-full ml-[285px] mr-[20px]">
+        <div className="w-full ml-[350px] mr-[20px]">
           <div style={styles.divProducts} ref={prodRefRecomendados}>
             {filteredProducts.length === 0 ? (
               <div className="col-span-5 text-center py-10">
@@ -623,6 +710,13 @@ const styles = {
     width: "100%",
     padding: "0 20px",
   },
+  customScroll: {
+    maxHeight: "100px",
+    overflowY: "auto",
+    paddingRight: "6px",
+    scrollbarWidth: "thin",
+    scrollbarColor: "#999 transparent",
+  },
   arrow: {
     background: "transparent",
     width: "35px",
@@ -634,9 +728,9 @@ const styles = {
     justifyContent: "center",
   },
   productBox: {
-    height: "220px",
+    height: "260px",
     borderRadius: "25px",
-    padding: "10px",
+    padding: "12px",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
@@ -648,49 +742,49 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: "3px",
+    marginBottom: "6px",
   },
   badge: {
     backgroundColor: "#2b6daf",
     color: "white",
-    fontSize: "16px",
-    padding: "1px 15px",
-    borderRadius: "25px",
+    fontSize: "14px",
+    padding: "4px 10px",
+    borderRadius: "18px",
   },
   stars: {
     color: "#2b6daf",
-    fontSize: "25px",
+    fontSize: "18px",
   },
   productName: {
     width: "100%",
     textAlign: "left",
-    fontSize: "18px",
-    marginTop: "auto",
+    fontSize: "16px",
+    marginTop: "8px",
+    fontWeight: 600,
   },
   productPrice: {
     width: "100%",
     textAlign: "left",
-    fontSize: "17px",
+    fontSize: "15px",
     color: "#999",
-    marginTop: "auto",
+    marginTop: "4px",
   },
   addButton: {
     marginTop: "auto",
     width: "100%",
-    backgroundColor: "#F0833E",
     color: "white",
-    border: "#D8572F",
-    borderRadius: "25px",
-    padding: "2px 0",
+    border: "none",
+    borderRadius: "20px",
+    padding: "8px 0",
     cursor: "pointer",
-    fontSize: "16px",
+    fontSize: "15px",
     fontWeight: 600,
   },
   productImg: {
-    width: "70px",
-    height: "70px",
+    width: "90px",
+    height: "90px",
     objectFit: "contain",
-    marginTop: "8px",
+    marginTop: "6px",
   },
 };
 

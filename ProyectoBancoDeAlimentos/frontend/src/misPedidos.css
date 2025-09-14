@@ -39,7 +39,7 @@
 
 /* === Caja central === */
 .historial-box {
-  background: #fff;
+  background: hsl(0, 0%, 100%);
   border-radius: 10px;
   padding: 15px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
@@ -52,6 +52,7 @@
   margin-left: -15px;
   display: flex;
   justify-content: space-between;
+  /* Empuja el h3 a la izquierda y el contenedor de filtros a la derecha */
   align-items: center;
   background: #2b6daf;
   /* azul */
@@ -59,6 +60,8 @@
   padding: 20px 15px;
   margin-bottom: 15px;
   font-weight: bold;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px; /* Asegura el redondeo en ambos lados */
 }
 
 .historial-header h3 {
@@ -66,12 +69,34 @@
   font-size: 1.3rem;
 }
 
+/* Contenedor para agrupar los filtros y el icono */
+.filtro-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* Espacio entre los elementos de filtro */
+}
+
 .filtro-fecha {
   border: none;
   border-radius: 5px;
   padding: 6px 10px;
   font-size: 14px;
+  color: black;
+  width: 140px;
+}
+filtro-fecha-input {
+  border: none;
+  border-radius: 5px;
+  padding: 6px 10px;
+  font-size: 14px;
+  color: black;
+  background-color: white; /* Agrega un fondo blanco al input */
+}
 
+.icono-calendario {
+  /* Añade estilos para tu icono si es necesario, pero no de posición */
+  height: 24px;
 }
 
 /* === Lista de pedidos === */
@@ -118,27 +143,29 @@
   font-weight: bold;
   min-width: 90px;
   text-align: center;
+  color: white; /* Color de texto base, para que se lea en cualquier fondo */
 }
 
-.pedido-estado.en-curso {
-  background: #e0f0ff;
-  color: #0077cc;
+/* Colores para cada estado */
+.estado-pendiente {
+  background: #f0ad4e; /* Amarillo-naranja para pendiente */
 }
 
-.pedido-estado.entregado {
-  background: #247924;
-  /* El color de fondo verde oscuro que quieres */
-  color: white;
-  /* El color de texto blanco para que se lea bien */
+.estado-procesando {
+  background: #5bc0de; /* Azul claro para procesando */
 }
 
-.filtro-fecha {
-  position: absolute;
-  color: black;
-  left: 890px;
-  width: 140px;
+.estado-enviado {
+  background: #337ab7; /* Azul oscuro para enviado */
 }
 
+.estado-entregado {
+  background: #5cb85c; /* Verde para entregado */
+}
+
+.estado-cancelado {
+  background: #d9534f; /* Rojo para cancelado */
+}
 .clickable {
   cursor: pointer;
   transition: background 0.2s ease;

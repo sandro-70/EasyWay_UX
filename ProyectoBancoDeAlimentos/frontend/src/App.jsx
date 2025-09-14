@@ -230,6 +230,15 @@ function App() {
               }
             />
 
+            <Route
+              path="/misPedidos"
+              element={
+                <ProtectedRoute rolesPermitidos={["cliente"]}>
+                  <MisPedidos />
+                </ProtectedRoute>
+              }
+            />
+
             {/* ---------- CONSULTOR SEGÚN PRIVILEGIOS ---------- */}
             <Route
               path="/inventario"
@@ -297,6 +306,8 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
+            
 
             {/* ---------- OTROS ---------- */}
             <Route path="/inicio" element={<InicioAdmin />} />

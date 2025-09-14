@@ -1,11 +1,10 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import "./misPedidos.css";
 import calendarIcon from "./images/calendar.png";
 import PedidoEmergente from "./components/pedidoEmergente";
 import PerfilSidebar from "./components/perfilSidebar";
-
-// Asegúrate de que la ruta sea correcta para tu archivo de API
-import { getPedidosConDetalles, listarPedido } from "./api/PedidoApi";
+import { jwtDecode } from "jwt-decode";
+import { getPedidosConDetallesUsuario, listarPedido } from "./api/PedidoApi";
 
 const MisPedidos = () => {
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -16,11 +15,47 @@ const MisPedidos = () => {
   const [pedidos, setPedidos] = useState([]);
   const [cargando, setCargando] = useState(true);
 
+  // Mapeo de estados a clases CSS
+  const estadoClases = {
+    'Pendiente': 'estado-pendiente',
+    'Procesando': 'estado-procesando',
+    'Enviado': 'estado-enviado',
+    'Entregado': 'estado-entregado',
+    'Cancelado': 'estado-cancelado'
+  };
+
+  // ✨ Función para obtener el ID del usuario del token JWT
+  const getUserId = () => {
+    const token = localStorage.getItem("token");
+    if (!token) return null;
+    try {
+      const decoded = jwtDecode(token);
+      return decoded.id;
+    } catch {
+      console.error("Token JWT inválido");
+      return null;
+    }
+  };
+
   useEffect(() => {
+    const idUsuarioActual = getUserId();
+
+    if (!idUsuarioActual) {
+      console.error("Usuario no autenticado, no se pueden cargar los pedidos.");
+      setCargando(false);
+      setPedidos([]);
+      return;
+    }
+
     const cargarPedidos = async () => {
       try {
-        const response = await getPedidosConDetalles();
-        setPedidos(response.data);
+        const response = await getPedidosConDetallesUsuario(idUsuarioActual);
+        const formattedPedidos = response.data.map((p) => ({
+          id_pedido: p.id_pedido,
+          fecha: p.fecha_pedido ? p.fecha_pedido.split('T')[0] : 'Sin fecha',
+          estado: p.estado_pedido?.nombre_pedido || "Desconocido",
+        }));
+        setPedidos(formattedPedidos);
         setCargando(false);
       } catch (error) {
         console.error("Error al obtener los pedidos:", error);
@@ -43,16 +78,14 @@ const MisPedidos = () => {
   const pedidosMostrados = pedidosFiltrados.slice(0, limite);
 
   const abrirModal = async (pedido) => {
-  try {
-    const response = await listarPedido(pedido.id || pedido.id_pedido);
-    // Asumiendo que response.data es el objeto del pedido completo con la propiedad 'productos'
-    const pedidoConProductos = { ...pedido, productos: response.data.productos };
-    setPedidoSeleccionado(pedidoConProductos);
-    setModalAbierto(true);
-  } catch (error) {
-    console.error("Error al obtener los detalles del pedido:", error);
-  }
-};
+    try {
+      const response = await listarPedido(pedido.id_pedido);
+      setPedidoSeleccionado(response.data);
+      setModalAbierto(true);
+    } catch (error) {
+      console.error("Error al obtener los detalles del pedido:", error);
+    }
+  };
 
   const cerrarModal = () => {
     setPedidoSeleccionado(null);
@@ -73,7 +106,6 @@ const MisPedidos = () => {
           <div className="historial-box">
             <div className="historial-header">
               <h3>Historial de pedidos</h3>
-
               <select
                 className="filtro-fecha"
                 value={filtro}
@@ -83,50 +115,45 @@ const MisPedidos = () => {
                 <option value="antiguos">Más antiguos</option>
                 <option value="exacta">Fecha exacta</option>
               </select>
-
               {filtro === "exacta" && (
                 <input
                   type="date"
                   value={fechaExacta}
                   onChange={(e) => setFechaExacta(e.target.value)}
+                  className="filtro-fecha-input" // <--- NUEVA CLASE AQUÍ
                 />
               )}
-
               <img
                 src={calendarIcon}
                 alt="Calendario"
                 className="icono-calendario"
               />
             </div>
-
             <div className="historial-list">
               {cargando ? (
                 <p>Cargando pedidos...</p>
-              ) : (
+              ) : pedidosMostrados.length > 0 ? (
                 pedidosMostrados.map((pedido) => (
-                  <div key={pedido.id || pedido.id_pedido} className="pedido-item">
-                    <div
-                      className="pedido-info clickable"
-                      onClick={() => abrirModal(pedido)}
-                    >
-                      <p className="pedido-id">Pedido #{pedido.id || pedido.id_pedido}</p>
+                  <div
+                    key={pedido.id_pedido}
+                    className="pedido-item"
+                    onClick={() => abrirModal(pedido)}
+                  >
+                    <div className="pedido-info clickable">
+                      <p className="pedido-id">Pedido #{pedido.id_pedido}</p>
                       <p className="pedido-fecha">{pedido.fecha}</p>
                     </div>
                     <span
-                      className={`pedido-estado ${
-                        pedido.estado === "En curso" ? "en-curso" : "entregado"
-                      }`}
+                      className={`pedido-estado ${estadoClases[pedido.estado]}`}
                     >
                       {pedido.estado}
                     </span>
-                  </div>  
+                  </div>
                 ))
-              )}
-              {pedidosMostrados.length === 0 && !cargando && (
+              ) : (
                 <p>No se encontraron pedidos.</p>
               )}
             </div>
-
             {limite < pedidosFiltrados.length && (
               <div className="ver-mas-container">
                 <button

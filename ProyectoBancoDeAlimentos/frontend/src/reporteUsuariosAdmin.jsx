@@ -30,9 +30,14 @@ import "./reporteUsuariosAdmin.css";
 const PageSize = 10;
 
 export default function ReporteUsuariosAdmin() {
-  const [filtroFecha, setFiltroFecha] = useState("");
-  const [filtroEstado, setFiltroEstado] = useState("");
+  // rango que enviaremos al backend: "hoy"|"semana"|"mes"|"anio"|"todos"
+  const [rango, setRango] = useState("semana");
+  // estado para enviar al backend: "todos"|"activos"|"inactivos"
+  const [filtroEstado, setFiltroEstado] = useState("todos");
   const [page, setPage] = useState(1);
+
+  // total de filas en el servidor (para calcular paginación)
+  const [totalFiltrado, setTotalFiltrado] = useState(0);
   const [selectedUser, setSelectedUser] = useState(null);
   const [usuarios, setUsuarios] = useState([]);
   const [usuariosNuevos, setUsuariosNuevos] = useState([]);
@@ -49,27 +54,38 @@ export default function ReporteUsuariosAdmin() {
   const [promedioGasto, setPromedioGasto] = useState(0);
   const [totalPedidos, setTotalPedidos] = useState(0);
 
-  const filtered = useMemo(() => {
-    return usuarios
-      .filter(
-        (r) =>
-          (!filtroFecha || r.fecha.includes(filtroFecha)) &&
-          (!filtroEstado || r.estado === filtroEstado)
-      )
-      .sort((a, b) => a.id_usuario - b.id_usuario); // ID más bajo arriba
-  }, [filtroFecha, filtroEstado, usuarios]);
+  // Ya no necesitamos filtrar en el front, el backend devuelve los datos según 'rango' y 'filtroEstado'
+  const pageCount = Math.max(
+    1,
+    Math.ceil((totalFiltrado || usuarios.length) / PageSize)
+  );
 
-  const pageCount = Math.ceil(filtered.length / PageSize);
-  const start = (page - 1) * PageSize;
-  const pageItems = filtered.slice(start, start + PageSize);
+  // Items de la página actual
+  const pageItems = usuarios;
 
   const COLORS = ["#1976d2", "#e85c0d"];
 
   // Cargar tabla de usuarios
   const fetchUsuarios = async () => {
     try {
-      const res = await getUsuariosTabla();
-      setUsuarios(res.data.rows); // tu API devuelve { rows: [...] }
+      const params = {
+        rango, // "semana"|"mes"|...
+        estado: filtroEstado || "todos",
+        limit: PageSize,
+        offset: (page - 1) * PageSize,
+      };
+
+      // Opción A: si tu helper acepta params como objeto:
+      const res = await getUsuariosTabla(params);
+
+      // Opción B (si tu helper no acepta params): descomenta e importa axiosInstance
+      // const res = await axiosInstance.get('/api/reportes-usuario/reporte/tabla', { params });
+
+      const rows = res.data.rows || [];
+      setUsuarios(rows);
+      // meta.totalFiltrado viene de tu API (count)
+      const meta = res.data.meta || {};
+      setTotalFiltrado(meta.totalFiltrado ?? meta.total ?? rows.length);
     } catch (err) {
       console.error("Error cargando usuarios:", err);
     }
@@ -78,9 +94,11 @@ export default function ReporteUsuariosAdmin() {
   // Cargar usuarios nuevos por semana
   const fetchUsuariosNuevos = async () => {
     try {
-      const res = await getClientesNuevos();
-      console.log("Usuarios nuevos:", res.data); // Revisar consola para verificar datos
-      setUsuariosNuevos(res.data.series || []);
+      // si tu helper acepta un objeto:
+      const res = await getClientesNuevos({ rango });
+      // adaptamos según lo que retorne tu API (serie, out, data)
+      const data = res.data.series || res.data.out || res.data || [];
+      setUsuariosNuevos(data);
     } catch (err) {
       console.error("Error cargando usuarios nuevos:", err);
     }
@@ -89,11 +107,18 @@ export default function ReporteUsuariosAdmin() {
   // Cargar estados para gráfico pie
   const fetchEstados = async () => {
     try {
-      const res = await getUsuariosTabla(); // llamas a la misma API que llena la tabla
-      const meta = res.data.meta;
+      const params = {
+        rango, // "hoy"|"semana"|...
+        estado: filtroEstado || "todos",
+        limit: 1,
+        offset: 0,
+      };
+      const res = await getUsuariosTabla(params); // tu API de tabla
+      const meta = res.data.meta || {};
+
       setPieData([
-        { name: "Activos", value: meta.activos },
-        { name: "Inactivos", value: meta.inactivos },
+        { name: "Activos", value: meta.activos ?? 0 },
+        { name: "Inactivos", value: meta.inactivos ?? 0 },
       ]);
     } catch (err) {
       console.error("Error cargando estados:", err);
@@ -125,10 +150,11 @@ export default function ReporteUsuariosAdmin() {
   };
 
   useEffect(() => {
+    setPage(1);
     fetchUsuarios();
     fetchEstados();
     fetchUsuariosNuevos();
-  }, []);
+  }, [rango, filtroEstado]);
 
   const handleSelectUser = (usuario) => {
     setSelectedUser(usuario);
@@ -149,25 +175,34 @@ export default function ReporteUsuariosAdmin() {
             <h1>Reporte de Usuarios</h1>
             <div className="filters">
               <label>
-                Filtrar fecha por:
+                Filtrar periodo:
                 <select
-                  value={filtroFecha}
-                  onChange={(e) => setFiltroFecha(e.target.value)}
+                  value={rango}
+                  onChange={(e) => {
+                    setRango(e.target.value);
+                    setPage(1); // reiniciar a primera página
+                  }}
                 >
-                  <option value="">Todas</option>
-                  <option value="2025-09-12">12/09/2025</option>
-                  <option value="2025-09-11">11/09/2025</option>
+                  <option value="hoy">Hoy</option>
+                  <option value="semana">Última semana</option>
+                  <option value="mes">Este mes</option>
+                  <option value="anio">Este año</option>
+                  <option value="todos">Todos</option>
                 </select>
               </label>
+
               <label>
                 Filtrar usuarios por:
                 <select
                   value={filtroEstado}
-                  onChange={(e) => setFiltroEstado(e.target.value)}
+                  onChange={(e) => {
+                    setFiltroEstado(e.target.value);
+                    setPage(1);
+                  }}
                 >
-                  <option value="">Todos</option>
-                  <option value="Activo">Activo</option>
-                  <option value="Inactivo">Inactivo</option>
+                  <option value="todos">Todos</option>
+                  <option value="activos">Activos</option>
+                  <option value="inactivos">Inactivos</option>
                 </select>
               </label>
             </div>

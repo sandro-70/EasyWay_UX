@@ -14,6 +14,7 @@ import {
   getProductoById,
   getMarcas,
   listarProductosporsucursal,
+  crearMarca,
 } from "../api/InventarioApi";
 import { ListarCategoria } from "../api/CategoriaApi";
 import { listarSubcategoria } from "../api/SubcategoriaApi";
@@ -44,6 +45,8 @@ function emptyDraft() {
     imageFiles: [],
     imageUploadsNames: [], // <- aquí guardaremos SOLO los nombres para enviar a la BD
 
+    peso: "", // 👈 nuevo
+    unidadMedida: "unidad", // 👈 default claro
     descuentoGeneral: false,
     tipoDescuento: "", // "porcentaje" | "monto"
     valorDescuento: "",
@@ -51,6 +54,9 @@ function emptyDraft() {
     fechaHasta: "",
     preciosEscalonados: false,
     escalones: [],
+
+    pesoValor: "", // lo que escribe el usuario
+    pesoUnidad: "kg",
   };
 }
 
@@ -220,6 +226,11 @@ export default function Inventario() {
   const [selectedSucursalName, setSelectedSucursalName] = useState("");
   const [showSucursalPicker, setShowSucursalPicker] = useState(false);
 
+  // para crear marca desde el modal
+  const [showNewMarca, setShowNewMarca] = useState(false);
+  const [newMarcaName, setNewMarcaName] = useState("");
+  const [savingMarca, setSavingMarca] = useState(false);
+
   // ref para detectar clic fuera del popover
   const stockHeadRef = useRef(null);
   useEffect(() => {
@@ -236,6 +247,20 @@ export default function Inventario() {
     return () => document.removeEventListener("mousedown", onDown);
   }, [showSucursalPicker]);
   const [sucursalFiltro, setSucursalFiltro] = useState("");
+
+  useEffect(() => {
+    if (!modal.open || modal.mode !== "edit") return;
+    if (!categorias.length) return;
+
+    const d = modal.draft;
+    if (!d.categoriaId && d.categoria) {
+      const id = idByName(categorias, d.categoria);
+      if (id) {
+        setModal((m) => ({ ...m, draft: { ...m.draft, categoriaId: id } }));
+        listarSubcategoriaPorCategoria(id);
+      }
+    }
+  }, [categorias, modal.open, modal.mode]);
 
   // Abastecer
   const [savingSupply, setSavingSupply] = useState(false);
@@ -374,38 +399,16 @@ export default function Inventario() {
 
   // ===== HELPERS =====
 
-  async function cargarProductosPorSucursal(sucursalId) {
-    try {
-      let res;
-      if (sucursalId) {
-        // 🔹 solo esa sucursal
-        console.log("Endpoint usado: /api/producto/sucursal/" + sucursalId);
-        res = await listarProductosporsucursal(sucursalId);
-      } else {
-        // 🔹 todas las sucursales (inventario general)
-        console.log("Endpoint usado: /api/Inventario/");
-        res = await getAllProducts();
-      }
+  // Convierte a string “seguro”
+  const toStr = (v) => (v === undefined || v === null ? "" : String(v));
 
-      const productsRaw = pickArrayPayload(res, [
-        "productos",
-        "data",
-        "results",
-        "items",
-      ]);
-
-      // si hay sucursal, mapeamos prefiriendo el stock_en_sucursal
-      const mapped = productsRaw.map((p) =>
-        mapApiProduct(p, { preferSucursalStock: !!sucursalId })
-      );
-
-      setRows(mapped);
-      setSucursalFiltro(String(sucursalId || ""));
-    } catch (err) {
-      console.error("Error cargando productos:", err);
-      alert("No se pudo cargar los productos.");
-    }
-  }
+  // Busca ID por nombre (case-insensitive)
+  const idByName = (list, name) => {
+    if (!name) return "";
+    const n = String(name).trim().toLowerCase();
+    const found = list.find((x) => String(x.nombre).trim().toLowerCase() === n);
+    return toStr(found?.id || "");
+  };
 
   async function loadProductsBySucursal(sucursalId = "") {
     try {
@@ -445,58 +448,45 @@ export default function Inventario() {
     }
   }
 
-  async function handleSelectSucursal(id) {
-    try {
-      setSelectedSucursalId(id || "");
-      setLoading(true);
-
-      // Elegimos endpoint
-      const useAll = !id;
-      console.log(
-        "➡️  Endpoint usado:",
-        useAll ? "/api/Inventario/" : `/api/producto/sucursal/${id}`
-      );
-
-      const res = useAll
-        ? await getAllProducts()
-        : await listarProductosporsucursal(id);
-
-      // Normaliza el payload
-      const raw = pickArrayPayload(res, [
-        "productos",
-        "data",
-        "results",
-        "items",
-      ]);
-      console.log("RAW sucursal:", raw);
-      const mapped = raw.map(mapApiProduct);
-      console.log("mapped length:", mapped.length);
-
-      // 🚀 Actualiza la tabla y RESETEA PAGINACIÓN
-      setRows(mapped);
-      setPage(1); // <<<<<< CLAVE: evita que la tabla quede vacía
-      // (opcional) limpia filtros de texto si quieres evitar que “coman” resultados
-      // setFilters({ id:"", producto:"", marca:"", categoria:"", subcategoria:"" });
-    } catch (e) {
-      console.error(e);
-      alert("No se pudo cargar productos para la sucursal seleccionada.");
-    } finally {
-      setLoading(false);
-      setShowSucursalPicker(false);
+  async function handleCreateMarcaInline() {
+    const nombre = (newMarcaName || "").trim();
+    if (!nombre) {
+      alert("Escribe el nombre de la marca.");
+      return;
     }
-  }
-  // extrae el nombre del archivo desde una URL o string (ej. "https://.../fotos/jaguar.jpg?x=1" -> "jaguar.jpg")
-  // Saca un nombre de archivo desde una URL absoluta/relativa
-  function getFileNameFromUrl(u) {
     try {
-      const url = new URL(u, window.location.origin);
-      const path = url.pathname || "";
-      const last = path.split("/").pop() || "";
-      return last || String(u);
-    } catch {
-      const s = String(u).split("?")[0].split("#")[0];
-      const parts = s.split("/");
-      return parts[parts.length - 1] || s;
+      setSavingMarca(true);
+      const res = await crearMarca(nombre); // <-- usa la API nueva
+      // Normaliza la respuesta (id y nombre)
+      const data = res?.data ?? res ?? {};
+      const nueva = {
+        id: String(
+          data.id_marca_producto ?? data.id ?? data.marca?.id ?? Date.now()
+        ),
+        nombre: data.nombre ?? data.marca?.nombre ?? nombre,
+      };
+
+      // agrega a catálogo de marcas y selecciona en el draft
+      setMarcas((prev) => [...prev, nueva]);
+      setModal((m) => ({
+        ...m,
+        draft: {
+          ...m.draft,
+          marcaId: nueva.id,
+          marca: nueva.id, // por compatibilidad con tu saveModal actual
+        },
+      }));
+      setShowNewMarca(false);
+      setNewMarcaName("");
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.detail ||
+        err?.message ||
+        "No se pudo crear la marca.";
+      alert(msg);
+    } finally {
+      setSavingMarca(false);
     }
   }
 
@@ -534,14 +524,6 @@ export default function Inventario() {
     } finally {
       setLoading(false);
     }
-  }
-
-  // Cuando seleccionas en el menú de sucursal
-  function handleSucursalPick(id, nombre) {
-    setSelectedSucursalId(id);
-    setSelectedSucursalName(nombre);
-    setSucursalMenuOpen(false);
-    refreshProductsBySucursal(id);
   }
 
   // Devuelve el .nombre del item cuyo .id coincide (o undefined)
@@ -588,7 +570,7 @@ export default function Inventario() {
     const stock = preferSucursalStock
       ? stockSucursal ?? stockTotal ?? 0
       : stockTotal ?? stockSucursal ?? 0;
-
+    const pesoKg = Number(p.peso_kg ?? p.peso ?? 0);
     return {
       id: String(p.id ?? p.id_producto ?? p.producto_id ?? ""),
       producto: p.producto ?? p.nombre ?? "",
@@ -614,6 +596,7 @@ export default function Inventario() {
       // tu controller ya envía 'precio_venta' calculado
       precioVenta: Number(p.precioVenta ?? p.precio_venta ?? 0),
       activo,
+      pesoKg,
     };
   }
 
@@ -673,29 +656,6 @@ export default function Inventario() {
     return { id: String(idVal), nombre: nom };
   }
 
-  function toAbsoluteUrl(u) {
-    if (!u) return "";
-    // ¿ya es absoluta?
-    if (/^https?:\/\//i.test(u)) return u;
-    // base del backend (usa la de axios si existe, o el origen actual)
-    const base =
-      (typeof axiosInstance !== "undefined" &&
-        axiosInstance?.defaults?.baseURL) ||
-      window.location.origin;
-    const b = String(base).replace(/\/$/, "");
-    if (u.startsWith("/")) return b + u;
-    return `${b}/${u}`;
-  }
-
-  function readAsDataURL(file) {
-    return new Promise((res, rej) => {
-      const fr = new FileReader();
-      fr.onload = () => res(fr.result); // data URL
-      fr.onerror = rej;
-      fr.readAsDataURL(file);
-    });
-  }
-
   // Reemplaza tu mapApiImagen por este
   function mapApiImagen(i) {
     return (
@@ -711,29 +671,46 @@ export default function Inventario() {
     return typeof s === "string" && /^https?:\/\//i.test(s);
   }
 
-  function buildImagenesPayloadFromPreviews(previews = []) {
-    // Solo URLs públicas; los data: y blob: no sirven para tu API
-    const urls = previews.filter(isHttpUrl);
-    return urls.map((url, idx) => ({ url_imagen: url, orden_imagen: idx }));
-  }
-  function buildImagenesNamesOnlyFromDraft(d) {
-    const files = Array.isArray(d?.imageFiles) ? d.imageFiles : [];
-    // Solo nombres (incluye la extensión). También asignamos un orden.
-    const fromFiles = files
-      .map((f, idx) =>
-        f && f.name ? { url_imagen: f.name, orden_imagen: idx } : null
-      )
-      .filter(Boolean);
-
-    return fromFiles; // ← si quieres **solo** lo que el usuario acaba de seleccionar
-  }
-
   function toggleSort(key) {
     setSort((s) =>
       s.key === key
         ? { key, dir: s.dir === "asc" ? "desc" : "asc" }
         : { key, dir: "asc" }
     );
+  }
+
+  // helpers (ponlos una sola vez en el archivo, arriba de saveModal)
+  const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+
+  function toKg(valor, unidad) {
+    const v = Number(valor);
+    if (!Number.isFinite(v) || v < 0) return 0;
+    switch ((unidad || "").toLowerCase()) {
+      case "kg":
+      case "kilogramo":
+      case "kilogramos":
+        return v;
+      case "g":
+      case "gramo":
+      case "gramos":
+        return v / 1000;
+      case "mg":
+      case "miligramo":
+      case "miligramos":
+        return v / 1_000_000;
+      case "oz":
+      case "onza":
+      case "onzas":
+        return v * 0.028349523125;
+      // si aún tienes “libra” en datos legacy:
+      case "lb":
+      case "lbs":
+      case "libra":
+      case "libras":
+        return v * 0.45359237;
+      default:
+        return v;
+    }
   }
 
   async function listarSubcategoriaPorCategoria(categoriaId) {
@@ -762,44 +739,10 @@ export default function Inventario() {
     }
   }
 
-  function addEscalon() {
-    setModal((m) => ({
-      ...m,
-      draft: {
-        ...m.draft,
-        escalones: [...(m.draft.escalones || []), { cantidad: "", precio: "" }],
-      },
-    }));
-  }
-
-  function updateEscalon(index, key, value) {
-    setModal((m) => {
-      const next = [...(m.draft.escalones || [])];
-      next[index] = { ...next[index], [key]: value };
-      return { ...m, draft: { ...m.draft, escalones: next } };
-    });
-  }
-
-  function removeEscalon(index) {
-    setModal((m) => {
-      const next = [...(m.draft.escalones || [])];
-      next.splice(index, 1);
-      return { ...m, draft: { ...m.draft, escalones: next } };
-    });
-  }
-
   // === IMÁGENES ===
   const imgInputRef = useRef(null);
   function triggerImagePicker() {
     imgInputRef.current?.click();
-  }
-  function readAsDataURL(file) {
-    return new Promise((res, rej) => {
-      const fr = new FileReader();
-      fr.onload = () => res(fr.result);
-      fr.onerror = rej;
-      fr.readAsDataURL(file);
-    });
   }
 
   async function handleImagesSelected(ev) {
@@ -915,88 +858,110 @@ export default function Inventario() {
     };
   }
 
+  function mapProductoDetalle(apiRes, categoriasList = []) {
+    const d = apiRes?.data ?? apiRes ?? {};
+
+    const catId =
+      d.id_categoria ??
+      d.categoria?.id_categoria ??
+      d.categoria?.id ??
+      d.subcategoria?.id_categoria_padre ??
+      idByName(categoriasList, d.categoria?.nombre ?? d.categoria) ??
+      "";
+
+    const subId =
+      d.id_subcategoria ??
+      d.subcategoria?.id_subcategoria ??
+      d.subcategoria?.id ??
+      "";
+
+    const marcaId =
+      d.id_marca ?? d.marca?.id_marca_producto ?? d.marca?.id ?? "";
+
+    return {
+      id: toStr(d.id_producto ?? d.id),
+      producto: d.nombre ?? d.producto ?? "",
+      descripcion: d.descripcion ?? "",
+      precioBase: Number(d.precio_base ?? 0),
+      unidadMedida: d.unidad_medida ?? "unidad",
+      activo: d.activo ?? true,
+
+      categoriaId: toStr(catId),
+      subcategoriaId: toStr(subId),
+      marcaId: toStr(marcaId),
+
+      // nombres (útiles para fallback)
+      categoria: d.categoria?.nombre ?? "",
+      subcategoria: d.subcategoria?.nombre ?? "",
+      marca: d.marca?.nombre ?? "",
+
+      // etiquetas en texto para el input
+      etiquetasText: Array.isArray(d.etiquetas)
+        ? d.etiquetas.join(", ")
+        : d.etiquetas ?? "",
+    };
+  }
+
   async function openEdit(row) {
-    // abre el modal inmediatamente con lo mínimo
+    // abre el modal con lo mínimo
     setModal({
       open: true,
       mode: "edit",
-      draft: { ...emptyDraft(), id: String(row.id) },
+      draft: {
+        ...emptyDraft(),
+        id: String(row.id),
+        imagePreviews: [],
+        imageFiles: [],
+        pesoValor: row.pesoKg ? String(row.pesoKg) : "",
+        pesoUnidad: row.pesoKg ? "kg" : "kg",
+      },
     });
 
     try {
-      // pide detalle + imágenes en paralelo
-      const res = await getImagenesProducto(row.id);
-      const arr = Array.isArray(res?.data)
-        ? res.data
-        : (res?.data ?? res) || [];
-      const [detailRes, imgsRes] = await Promise.all([
-        getProductoById(row.id),
-        getImagenesProducto(row.id),
-      ]);
-
-      const d = mapApiProductDetail(detailRes);
-      const imgs = ((imgsRes?.data ?? imgsRes) || [])
-        .map(mapApiImagen)
-        .filter(Boolean);
-
-      const urls = arr
-        .map(
-          (i) =>
-            i?.url_imagen ||
-            i?.imagen_url ||
-            i?.src ||
-            i?.path ||
-            (typeof i === "string" ? i : "")
-        )
-        .filter(Boolean);
-      // carga subcategorías para la categoría del detalle
-      if (d.categoriaId) {
-        listarSubcategoriaPorCategoria(d.categoriaId);
+      // 1) Asegurar categorías
+      let cats = categorias;
+      if (!cats || !cats.length) {
+        const catsRes = await ListarCategoria();
+        const catsRaw = pickArrayPayload(catsRes, [
+          "categorias",
+          "data",
+          "results",
+          "items",
+        ]);
+        cats = catsRaw.map((c, i) => ({
+          id: String(c.id_categoria ?? c.id ?? i),
+          nombre: c.nombre ?? `Categoría ${i + 1}`,
+        }));
+        setCategorias(cats);
       }
 
-      setModal((m) => ({
-        ...m,
-        draft: {
-          ...m.draft,
-          imagePreviews: urls, // para verlas en el grid
-          imageUploadsNames: urls.map(getFileNameFromUrl), // 👈 solo nombres para reenviar
-          imageFiles: [],
-        },
-      }));
+      // 2) Detalle del producto
+      const detRes = await getProductoById(row.id);
+      const draftFromApi = mapProductoDetalle(detRes, cats);
+
+      // 3) Si aún no se pudo resolver el ID de la categoría, usar el nombre de la fila
+      if (!draftFromApi.categoriaId && row.categoria) {
+        draftFromApi.categoriaId = idByName(cats, row.categoria);
+      }
+
+      // 4) Cargar subcategorías para esa categoría
+      if (draftFromApi.categoriaId) {
+        listarSubcategoriaPorCategoria(draftFromApi.categoriaId);
+      }
+
+      // 5) Imágenes
+      try {
+        const imgsRes = await getImagenesProducto(row.id);
+        const urls = ((imgsRes?.data ?? imgsRes) || [])
+          .map((i) => i.url_imagen ?? i.url ?? i.imagen_url ?? i.src)
+          .filter(Boolean);
+        if (urls.length) draftFromApi.imagePreviews = urls;
+      } catch {}
+
+      // 6) Set al modal
+      setModal((m) => ({ ...m, draft: { ...m.draft, ...draftFromApi } }));
     } catch (e) {
-      console.error("No se pudo cargar el producto", e);
-      // fallback con lo que venga en la fila y lo que ya tengas en estado
-      const brandId =
-        row.marcaId || marcas.find((mm) => mm.nombre === row.marca)?.id || "";
-      const catId =
-        row.categoriaId ||
-        categorias.find((cc) => cc.nombre === row.categoria)?.id ||
-        "";
-      const subId =
-        row.subcategoriaId ||
-        subcategorias.find((ss) => ss.nombre === row.subcategoria)?.id ||
-        "";
-
-      if (catId) listarSubcategoriaPorCategoria(catId);
-
-      setModal((m) => ({
-        ...m,
-        draft: {
-          ...m.draft,
-          producto: row.producto || "",
-          descripcion: row.descripcion || "",
-          marcaId: String(brandId || ""),
-          categoriaId: String(catId || ""),
-          subcategoriaId: String(subId || ""),
-          unidadMedida: row.unidadMedida || "unidad",
-          precioBase: Number(row.precioBase ?? 0),
-          porcentajeGanancia: Number(row.porcentajeGanancia ?? 0),
-          etiquetasText: row.etiquetasText || "",
-          activo: row.activo !== false,
-          imagePreviews: [],
-          imageFiles: [],
-        },
-      }));
+      console.error("openEdit error", e);
     }
   }
 
@@ -1016,6 +981,7 @@ export default function Inventario() {
 
     try {
       setSavingProduct(true);
+      const pesoKg = toKg(d.pesoValor, d.pesoUnidad);
 
       // Preparar etiquetas
       const etiquetas = (d.etiquetasText || "")
@@ -1061,7 +1027,8 @@ export default function Inventario() {
           etiquetas,
           d.unidadMedida ?? "unidad",
           !!d.activo,
-          imagenesPayload
+          imagenesPayload,
+          pesoKg
         );
 
         // --- 2) Actualización optimista en la tabla (sin volver a pedir) ---
@@ -1069,27 +1036,76 @@ export default function Inventario() {
           prev.map((row) => {
             if (String(row.id) !== String(d.id)) return row;
 
-            const marcaNombre =
-              nameById(marcas, d.marcaId ?? d.marca) ?? row.marca;
-            const categoriaNombre =
-              nameById(categorias, d.categoriaId ?? d.categoria) ??
-              row.categoria;
-            const subcatNombre =
-              nameById(subcategorias, d.subcategoriaId ?? d.subcategoria) ??
-              row.subcategoria;
+            // IDs finales (si no vienen en d, usa lo que ya tiene la fila)
+            const nextMarcaId = String(
+              d.marcaId ?? d.marca ?? row.marcaId ?? ""
+            );
+            const nextCategoriaId = String(
+              d.categoriaId ?? d.categoria ?? row.categoriaId ?? ""
+            );
+            const nextSubcatId = String(
+              d.subcategoriaId ?? d.subcategoria ?? row.subcategoriaId ?? ""
+            );
+
+            // Nombres finales a partir de catálogos
+            const nextMarca = nameById(marcas, nextMarcaId) ?? row.marca;
+            const nextCategoria =
+              nameById(categorias, nextCategoriaId) ?? row.categoria;
+            const nextSubcategoria =
+              nameById(subcategorias, nextSubcatId) ?? row.subcategoria;
+
+            // Precio base y venta
+            const nextPrecioBase = Number.isFinite(Number(d.precioBase))
+              ? Number(d.precioBase)
+              : row.precioBase;
+
+            const porc = Number(d.porcentajeGanancia);
+            const nextPrecioVenta = Number.isFinite(porc)
+              ? round2(nextPrecioBase * (1 + porc / 100))
+              : row.precioVenta;
+
+            // Unidad y peso (si tienes estos campos en el draft)
+            const nextUnidadMedida = d.unidadMedida ?? row.unidadMedida; // ej. "kg", "g", "mg", "oz"
+            const nextPesoKg =
+              d.pesoValor !== undefined || d.pesoUnidad !== undefined
+                ? toKg(
+                    d.pesoValor ?? row.pesoValor,
+                    d.pesoUnidad ?? row.pesoUnidad
+                  )
+                : row.pesoKg;
 
             return {
               ...row,
-              producto: d.producto ?? row.producto,
-              marca: marcaNombre,
-              categoria: categoriaNombre,
-              subcategoria: subcatNombre,
-              precioBase: Number(
-                d.precioBase !== undefined && d.precioBase !== null
-                  ? d.precioBase
-                  : row.precioBase
-              ),
-              activo: d.activo ?? row.activo,
+
+              // básicos
+              producto: (d.producto ?? row.producto) || row.producto,
+              descripcion: d.descripcion ?? row.descripcion,
+
+              // relación marca/categoría/subcategoría
+              marcaId: nextMarcaId || row.marcaId,
+              marca: nextMarca,
+              categoriaId: nextCategoriaId || row.categoriaId,
+              categoria: nextCategoria,
+              subcategoriaId: nextSubcatId || row.subcategoriaId,
+              subcategoria: nextSubcategoria,
+
+              // precios
+              precioBase: nextPrecioBase,
+              precioVenta: nextPrecioVenta,
+
+              // peso / unidad (si usas estos en la tabla o en el row)
+              unidadMedida: nextUnidadMedida,
+              pesoKg: Number.isFinite(nextPesoKg) ? nextPesoKg : row.pesoKg,
+              pesoValor: d.pesoValor ?? row.pesoValor,
+              pesoUnidad: d.pesoUnidad ?? row.pesoUnidad,
+
+              // estado
+              activo: typeof d.activo === "boolean" ? d.activo : row.activo,
+
+              // opcional: etiquetas si las guardas en el row
+              etiquetas: Array.isArray(d.etiquetas)
+                ? d.etiquetas
+                : row.etiquetas ?? [],
             };
           })
         );
@@ -1105,7 +1121,8 @@ export default function Inventario() {
           Number(d.marcaId ?? d.marca ?? 0),
           etiquetas,
           d.unidadMedida ?? "unidad",
-          imagenesPayload
+          imagenesPayload,
+          pesoKg
         );
 
         // Recargar productos después de crear
@@ -1164,7 +1181,7 @@ export default function Inventario() {
 
     try {
       setDeletingId(prodId);
-      await desactivarProducto(prodId); // 👈 esto NO borra, solo desactiva en BD
+      await desactivarProducto(prodId);
 
       // ✅ Mantiene el registro en la tabla
       setRows((prev) =>
@@ -1275,7 +1292,6 @@ export default function Inventario() {
   /* ===================== UI ===================== */
   return (
     <div
-    
       className="w-screen px-4 bg-[#f9fafb]"
       style={{
         position: "absolute",
@@ -1658,20 +1674,21 @@ export default function Inventario() {
           />
 
           {/* Marca */}
-          <label className="flex flex-col gap-1">
+          <label className="flex flex-col gap-1 col-span-2 sm:col-span-1">
             <span className="text-sm text-gray-700">Marca</span>
-            <div className="relative">
+
+            <div className="relative flex gap-2">
               <select
                 className="w-full px-3 py-2 rounded-xl border border-[#d8dadc] focus:outline-none focus:ring-2 appearance-none pr-10"
                 style={{ outlineColor: "#2ca9e3" }}
-                value={modal.draft.marcaId || modal.draft.marca}
+                value={modal.draft.marcaId ?? modal.draft.marca ?? ""}
                 onChange={(e) =>
                   setModal((m) => ({
                     ...m,
                     draft: {
                       ...m.draft,
                       marcaId: e.target.value,
-                      marca: nameById(marcas, e.target.value) || "",
+                      marca: e.target.value,
                     },
                   }))
                 }
@@ -1683,13 +1700,49 @@ export default function Inventario() {
                   </option>
                 ))}
               </select>
-              <svg
-                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500"
-                viewBox="0 0 24 24"
+
+              {/* Botón + para agregar marca */}
+              <button
+                type="button"
+                onClick={() => setShowNewMarca((v) => !v)}
+                className="px-3 py-2 rounded-xl border border-[#d8dadc] bg-gray-100 hover:bg-gray-200"
+                title="Agregar nueva marca"
               >
-                <path d="M7 10l5 5 5-5" fill="currentColor" />
-              </svg>
+                +
+              </button>
             </div>
+
+            {/* Zona inline para escribir y crear la marca */}
+            {showNewMarca && (
+              <div className="mt-2 flex gap-2">
+                <input
+                  className="flex-1 px-3 py-2 rounded-xl border border-[#d8dadc] focus:outline-none focus:ring-2"
+                  style={{ outlineColor: "#2ca9e3" }}
+                  placeholder="Nombre de la nueva marca"
+                  value={newMarcaName}
+                  onChange={(e) => setNewMarcaName(e.target.value)}
+                />
+                <button
+                  type="button"
+                  disabled={savingMarca}
+                  onClick={handleCreateMarcaInline}
+                  className="px-3 py-2 rounded-xl text-white disabled:opacity-60"
+                  style={{ backgroundColor: "#2b6daf" }}
+                >
+                  {savingMarca ? "Guardando..." : "Agregar"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowNewMarca(false);
+                    setNewMarcaName("");
+                  }}
+                  className="px-3 py-2 rounded-xl border border-[#d8dadc]"
+                >
+                  Cancelar
+                </button>
+              </div>
+            )}
           </label>
 
           {/* Categoría */}
@@ -1699,24 +1752,19 @@ export default function Inventario() {
               <select
                 className="w-full px-3 py-2 rounded-xl border border-[#d8dadc] focus:outline-none focus:ring-2 appearance-none pr-10"
                 style={{ outlineColor: "#2ca9e3" }}
-                value={selectedCategoria}
+                value={String(modal.draft.categoriaId || "")}
                 onChange={(e) => {
-                  const categoriaId = e.target.value;
-                  setSelectedCategoria(categoriaId);
+                  const id = e.target.value;
                   setModal((m) => ({
                     ...m,
-                    draft: {
-                      ...m.draft,
-                      categoriaId: categoriaId,
-                      categoria: nameById(categorias, categoriaId) || "",
-                    },
+                    draft: { ...m.draft, categoriaId: id, subcategoriaId: "" }, // resetea subcat
                   }));
-                  listarSubcategoriaPorCategoria(categoriaId);
+                  listarSubcategoriaPorCategoria(id);
                 }}
               >
                 <option value="">Selecciona…</option>
                 {categorias.map((c) => (
-                  <option key={c.id} value={c.id}>
+                  <option key={c.id} value={String(c.id)}>
                     {c.nombre}
                   </option>
                 ))}
@@ -1773,16 +1821,73 @@ export default function Inventario() {
               setModal((m) => ({ ...m, draft: { ...m.draft, precioBase: v } }))
             }
           />
+          {/* Unidad de medida */}
+          <label className="flex flex-col gap-1 col-span-2 sm:col-span-1">
+            <span className="text-sm text-gray-700">Unidad de medida</span>
+            <div className="relative">
+              <select
+                className="w-full px-3 py-2 rounded-xl border border-[#d8dadc] focus:outline-none focus:ring-2 appearance-none pr-10"
+                style={{ outlineColor: "#2ca9e3" }}
+                value={modal.draft.unidadMedida || "unidad"}
+                onChange={(e) =>
+                  setModal((m) => ({
+                    ...m,
+                    draft: { ...m.draft, unidadMedida: e.target.value },
+                  }))
+                }
+              >
+                <option value="unidad">Unidad</option>
+                <option value="libra">Libra</option>
+                <option value="litro">Litro</option>
+              </select>
+              <svg
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500"
+                viewBox="0 0 24 24"
+              >
+                <path d="M7 10l5 5 5-5" fill="currentColor" />
+              </svg>
+            </div>
+          </label>
+
+          {/* Peso */}
           <Input
-            label="Unidad de Medida"
-            value={modal.draft.unidadMedida}
+            type="number"
+            label="Peso"
+            value={modal.draft.pesoValor}
             onChange={(v) =>
-              setModal((m) => ({
-                ...m,
-                draft: { ...m.draft, unidadMedida: v },
-              }))
+              setModal((m) => ({ ...m, draft: { ...m.draft, pesoValor: v } }))
             }
           />
+
+          {/* Unidad de peso */}
+          <label className="flex flex-col gap-1">
+            <span className="text-sm text-gray-700">Unidad de peso</span>
+            <div className="relative">
+              <select
+                className="w-full px-3 py-2 rounded-xl border border-[#d8dadc] focus:outline-none focus:ring-2 appearance-none pr-10"
+                style={{ outlineColor: "#2ca9e3" }}
+                value={modal.draft.pesoUnidad}
+                onChange={(e) =>
+                  setModal((m) => ({
+                    ...m,
+                    draft: { ...m.draft, pesoUnidad: e.target.value },
+                  }))
+                }
+              >
+                <option value="kg">Kilogramos (kg)</option>
+                <option value="g">Gramos (g)</option>
+                <option value="mg">Miligramos (mg)</option>
+                <option value="oz">Onzas (oz)</option>
+              </select>
+              <svg
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500"
+                viewBox="0 0 24 24"
+              >
+                <path d="M7 10l5 5 5-5" fill="currentColor" />
+              </svg>
+            </div>
+          </label>
+
           {isEdit && (
             <label className="flex flex-col gap-1">
               <span className="text-sm text-gray-700">Etiqueta</span>

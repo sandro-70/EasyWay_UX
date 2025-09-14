@@ -1,47 +1,56 @@
-const { producto, imagen_producto, categoria, subcategoria, marca_producto, sucursal_producto, Sequelize } = require('../models');
+const {
+  producto,
+  imagen_producto,
+  categoria,
+  subcategoria,
+  marca_producto,
+  sucursal_producto,
+  Sequelize,
+} = require("../models");
 const { Op } = Sequelize;
 // Productos destacados (últimos creados) con 1 imagen
 exports.destacados = async (req, res) => {
   try {
     const products = await producto.findAll({
       where: { activo: true },
-      attributes: [ 
-        'id_producto',
-        'nombre',
-        'descripcion',
-        'precio_base',
-        'unidad_medida',
-        'estrellas',
-        'etiquetas'
+      attributes: [
+        "id_producto",
+        "nombre",
+        "descripcion",
+        "precio_base",
+        "unidad_medida",
+        "estrellas",
+        "etiquetas",
       ],
       include: [
         {
           model: imagen_producto,
-          as: 'imagenes',
-          attributes: ['url_imagen'],
+          as: "imagenes",
+          attributes: ["url_imagen"],
           limit: 1,
           separate: true,
-          order: [['orden_imagen', 'ASC']]
-        },{
+          order: [["orden_imagen", "ASC"]],
+        },
+        {
           model: subcategoria,
           as: "subcategoria",
-          attributes: ['id_subcategoria', 'nombre', 'id_categoria_padre'], 
+          attributes: ["id_subcategoria", "nombre", "id_categoria_padre"],
           include: [
             {
               model: categoria,
               as: "categoria",
-              attributes: ["id_categoria", "nombre"] 
+              attributes: ["id_categoria", "nombre"],
             },
           ],
         },
         {
           model: marca_producto,
           as: "marca",
-          attributes: ["id_marca_producto", "nombre"]
-        }
+          attributes: ["id_marca_producto", "nombre"],
+        },
       ],
-      order: [['id_producto', 'DESC']],
-      limit: 10
+      order: [["id_producto", "DESC"]],
+      limit: 10,
     });
     res.json(products);
   } catch (err) {
@@ -55,43 +64,42 @@ exports.tendencias = async (req, res) => {
     const products = await producto.findAll({
       where: { activo: true },
       attributes: [
-        'id_producto',
-        'nombre',
-        'descripcion',
-        'precio_base',
-        'estrellas',
-        'etiquetas'
-
+        "id_producto",
+        "nombre",
+        "descripcion",
+        "precio_base",
+        "estrellas",
+        "etiquetas",
       ],
       include: [
         {
           model: imagen_producto,
-          as: 'imagenes',
-          attributes: ['url_imagen'],
+          as: "imagenes",
+          attributes: ["url_imagen"],
           limit: 1,
           separate: true,
-          order: [['orden_imagen', 'ASC']]
+          order: [["orden_imagen", "ASC"]],
         },
         {
           model: subcategoria,
           as: "subcategoria",
-          attributes: ['id_subcategoria', 'nombre', 'id_categoria_padre'], 
+          attributes: ["id_subcategoria", "nombre", "id_categoria_padre"],
           include: [
             {
               model: categoria,
               as: "categoria",
-              attributes: ["id_categoria", "nombre"] 
+              attributes: ["id_categoria", "nombre"],
             },
           ],
         },
         {
           model: marca_producto,
           as: "marca",
-          attributes: ["id_marca_producto", "nombre"]
-        }
+          attributes: ["id_marca_producto", "nombre"],
+        },
       ],
-      order: [['precio_base', 'DESC']],
-      limit: 10
+      order: [["precio_base", "DESC"]],
+      limit: 10,
     });
     res.json(products);
   } catch (err) {
@@ -104,53 +112,74 @@ exports.listarProductos = async (req, res) => {
     const products = await producto.findAll({
       where: { activo: { [Op.ne]: null } },
       attributes: [
-        'id_producto', 'nombre', 'descripcion', 'precio_base',
-        'unidad_medida', 'estrellas', 'etiquetas', 'activo', 'peso',
-        [Sequelize.literal('(SELECT SUM(stock_disponible) FROM sucursal_producto WHERE sucursal_producto.id_producto = producto.id_producto)'), 'stock_total']
+        "id_producto",
+        "nombre",
+        "descripcion",
+        "precio_base",
+        "unidad_medida",
+        "estrellas",
+        "etiquetas",
+        "activo",
+        "peso",
+        [
+          Sequelize.literal(
+            "(SELECT SUM(stock_disponible) FROM sucursal_producto WHERE sucursal_producto.id_producto = producto.id_producto)"
+          ),
+          "stock_total",
+        ],
       ],
       include: [
         {
           model: imagen_producto,
-          as: 'imagenes',
-          attributes: ['url_imagen', 'orden_imagen']
+          as: "imagenes",
+          attributes: ["url_imagen", "orden_imagen"],
         },
         {
           model: subcategoria,
-          as: 'subcategoria',
-          attributes: ['id_subcategoria', 'nombre', 'id_categoria_padre'],
-          include: [{
-            model: categoria,
-            as: 'categoria',
-            attributes: ['id_categoria', 'nombre', 'icono_categoria', 'PorcentajeDeGananciaMinimo']
-          }]
+          as: "subcategoria",
+          attributes: ["id_subcategoria", "nombre", "id_categoria_padre"],
+          include: [
+            {
+              model: categoria,
+              as: "categoria",
+              attributes: [
+                "id_categoria",
+                "nombre",
+                "icono_categoria",
+                "PorcentajeDeGananciaMinimo",
+              ],
+            },
+          ],
         },
         {
           model: marca_producto,
-          as: 'marca',
-          attributes: ['id_marca_producto', 'nombre']
-        }
+          as: "marca",
+          attributes: ["id_marca_producto", "nombre"],
+        },
       ],
-      order: [['id_producto', 'DESC']]
+      order: [["id_producto", "DESC"]],
     });
 
     // Calcular porcentaje_ganancia y precio_venta usando la categoría asociada
-    const productsWithCalculations = products.map(product => {
+    const productsWithCalculations = products.map((product) => {
       const productJSON = product.toJSON();
-      const porcentaje_ganancia = productJSON.subcategoria?.categoria?.PorcentajeDeGananciaMinimo ?? 0;
-      const precio_venta = parseFloat(productJSON.precio_base) * (1 + porcentaje_ganancia / 100);
+      const porcentaje_ganancia =
+        productJSON.subcategoria?.categoria?.PorcentajeDeGananciaMinimo ?? 0;
+      const precio_venta =
+        parseFloat(productJSON.precio_base) * (1 + porcentaje_ganancia / 100);
       return {
         ...productJSON,
         porcentaje_ganancia,
         stock_total: productJSON.stock_total || 0,
         precio_venta: precio_venta.toFixed(2),
-        categoria: productJSON.subcategoria?.categoria || null
+        categoria: productJSON.subcategoria?.categoria || null,
       };
     });
 
     return res.status(200).json(productsWithCalculations);
   } catch (err) {
     return res.status(500).json({ error: err.message });
-  };
+  }
 };
 
 exports.listarProductosporsucursal = async (req, res) => {
@@ -159,32 +188,66 @@ exports.listarProductosporsucursal = async (req, res) => {
     const products = await producto.findAll({
       where: { activo: { [Op.ne]: null } },
       attributes: [
-        'id_producto', 'nombre', 'descripcion', 'precio_base',
-        'unidad_medida', 'estrellas', 'etiquetas', 'activo', 'peso',
-        [Sequelize.literal(`(SELECT stock_disponible FROM sucursal_producto WHERE sucursal_producto.id_producto = producto.id_producto AND sucursal_producto.id_sucursal = ${id_sucursal})`), 'stock_en_sucursal']
+        "id_producto",
+        "nombre",
+        "descripcion",
+        "precio_base",
+        "unidad_medida",
+        "estrellas",
+        "etiquetas",
+        "activo",
+        "peso",
+        [
+          Sequelize.literal(
+            `(SELECT stock_disponible FROM sucursal_producto WHERE sucursal_producto.id_producto = producto.id_producto AND sucursal_producto.id_sucursal = ${id_sucursal})`
+          ),
+          "stock_en_sucursal",
+        ],
       ],
       include: [
-        { model: imagen_producto, as: 'imagenes', attributes: ['url_imagen', 'orden_imagen'] },
         {
-          model: subcategoria, as: 'subcategoria',
-          attributes: ['id_subcategoria', 'nombre', 'id_categoria_padre'],
-          include: [{ model: categoria, as: 'categoria', attributes: ['id_categoria', 'nombre', 'icono_categoria', 'PorcentajeDeGananciaMinimo'] }]
+          model: imagen_producto,
+          as: "imagenes",
+          attributes: ["url_imagen", "orden_imagen"],
         },
-        { model: marca_producto, as: 'marca', attributes: ['id_marca_producto', 'nombre'] }
+        {
+          model: subcategoria,
+          as: "subcategoria",
+          attributes: ["id_subcategoria", "nombre", "id_categoria_padre"],
+          include: [
+            {
+              model: categoria,
+              as: "categoria",
+              attributes: [
+                "id_categoria",
+                "nombre",
+                "icono_categoria",
+                "PorcentajeDeGananciaMinimo",
+              ],
+            },
+          ],
+        },
+        {
+          model: marca_producto,
+          as: "marca",
+          attributes: ["id_marca_producto", "nombre"],
+        },
       ],
-      order: [['id_producto', 'DESC']]
+      order: [["id_producto", "DESC"]],
     });
     // Calcular porcentaje_ganancia y precio_venta usando la categoría asociada
-    const productsWithCalculations = products.map(product => {
+    const productsWithCalculations = products.map((product) => {
       const productJSON = product.toJSON();
-      const porcentaje_ganancia = productJSON.subcategoria?.categoria?.PorcentajeDeGananciaMinimo ?? 0;
-      const precio_venta = parseFloat(productJSON.precio_base) * (1 + porcentaje_ganancia / 100);
+      const porcentaje_ganancia =
+        productJSON.subcategoria?.categoria?.PorcentajeDeGananciaMinimo ?? 0;
+      const precio_venta =
+        parseFloat(productJSON.precio_base) * (1 + porcentaje_ganancia / 100);
       return {
         ...productJSON,
         porcentaje_ganancia,
         stock_en_sucursal: productJSON.stock_en_sucursal || 0,
         precio_venta: precio_venta.toFixed(2),
-        categoria: productJSON.subcategoria?.categoria || null
+        categoria: productJSON.subcategoria?.categoria || null,
       };
     });
     return res.status(200).json(productsWithCalculations);
@@ -196,7 +259,7 @@ exports.listarProductosporsucursal = async (req, res) => {
 exports.listarMarcas = async (req, res) => {
   try {
     const marcas = await marca_producto.findAll({
-      attributes: ['id_marca_producto', 'nombre']
+      attributes: ["id_marca_producto", "nombre"],
     });
     res.json(marcas);
   } catch (err) {
@@ -209,46 +272,49 @@ exports.obtenerProductoPorId = async (req, res) => {
   try {
     const { id } = req.params;
     const product = await producto.findOne({
-      where: { id_producto: id, activo: true },
+      where: { id_producto: id, activo: { [Op.ne]: null } },
       attributes: [
-        'id_producto',
-        'nombre',
-        'descripcion',
-        'precio_base',
-        'unidad_medida',
-        'estrellas',
-        'etiquetas',
-        'porcentaje_ganancia',
-        [Sequelize.literal('precio_base * (1 + porcentaje_ganancia / 100)'), 'precio_venta']
+        "id_producto",
+        "nombre",
+        "descripcion",
+        "precio_base",
+        "unidad_medida",
+        "estrellas",
+        "etiquetas",
+        "porcentaje_ganancia",
+        [
+          Sequelize.literal("precio_base * (1 + porcentaje_ganancia / 100)"),
+          "precio_venta",
+        ],
       ],
       include: [
         {
           model: imagen_producto,
-          as: 'imagenes',
-          attributes: ['url_imagen', 'orden_imagen']
+          as: "imagenes",
+          attributes: ["url_imagen", "orden_imagen"],
         },
         {
           model: subcategoria,
           as: "subcategoria",
-          attributes: ['id_subcategoria', 'nombre', 'id_categoria_padre'], 
+          attributes: ["id_subcategoria", "nombre", "id_categoria_padre"],
           include: [
             {
               model: categoria,
               as: "categoria",
-              attributes: ["id_categoria", "nombre"] 
+              attributes: ["id_categoria", "nombre"],
             },
           ],
         },
         {
           model: marca_producto,
           as: "marca",
-          attributes: ["id_marca_producto", "nombre"]
-        }
+          attributes: ["id_marca_producto", "nombre"],
+        },
       ],
     });
 
     if (!product) {
-      return res.status(404).json({ error: 'Producto no encontrado' });
+      return res.status(404).json({ error: "Producto no encontrado" });
     }
     res.json(product);
   } catch (err) {
@@ -267,7 +333,7 @@ exports.addproducto = async (req, res) => {
       id_marca,
       unidad_medida,
       estrellas,
-      imagenes
+      imagenes,
     } = req.body;
 
     const prod = await producto.create({
@@ -278,23 +344,29 @@ exports.addproducto = async (req, res) => {
       id_marca,
       unidad_medida,
       estrellas: estrellas || 0,
-      activo: true
+      activo: true,
     });
 
     if (Array.isArray(imagenes) && imagenes.length) {
-      const imgs = imagenes.map(img => ({
+      const imgs = imagenes.map((img) => ({
         id_producto: prod.id_producto,
         url_imagen: img.url_imagen,
-        orden_imagen: img.orden_imagen ?? 0
+        orden_imagen: img.orden_imagen ?? 0,
       }));
       await imagen_producto.bulkCreate(imgs);
     }
 
     const result = await producto.findByPk(prod.id_producto, {
-      include: [{ model: imagen_producto, as: 'imagenes', attributes: ['url_imagen', 'orden_imagen'] }]
+      include: [
+        {
+          model: imagen_producto,
+          as: "imagenes",
+          attributes: ["url_imagen", "orden_imagen"],
+        },
+      ],
     });
 
-    res.status(201).json({ msg: 'Producto creado', producto: result });
+    res.status(201).json({ msg: "Producto creado", producto: result });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -306,8 +378,8 @@ exports.imagenesProducto = async (req, res) => {
     const { id } = req.params;
     const images = await imagen_producto.findAll({
       where: { id_producto: id },
-      attributes: ['id_imagen', 'url_imagen', 'orden_imagen'],
-      order: [['orden_imagen', 'ASC']]
+      attributes: ["id_imagen", "url_imagen", "orden_imagen"],
+      order: [["orden_imagen", "ASC"]],
     });
     res.json(images);
   } catch (err) {
@@ -320,14 +392,14 @@ exports.putPorcentajeGanancia = async (req, res) => {
   try {
     const { porcentaje_ganancia } = req.body;
     if (porcentaje_ganancia === undefined || porcentaje_ganancia < 0)
-      return res.status(400).json({ msg: 'porcentaje_ganancia debe ser >= 0' });
+      return res.status(400).json({ msg: "porcentaje_ganancia debe ser >= 0" });
 
     const [rows] = await producto.update(
       { porcentaje_ganancia },
       { where: { id_producto: req.params.id } }
     );
-    if (!rows) return res.status(404).json({ msg: 'Producto no encontrado' });
-    res.json({ msg: 'Margen actualizado', porcentaje_ganancia });
+    if (!rows) return res.status(404).json({ msg: "Producto no encontrado" });
+    res.json({ msg: "Margen actualizado", porcentaje_ganancia });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -337,12 +409,14 @@ exports.putPorcentajeGanancia = async (req, res) => {
 exports.getAllPorcentajeGanancia = async (_req, res) => {
   try {
     const cats = await categoria.findAll({
-      attributes: ["id_categoria", "nombre", "PorcentajeDeGananciaMinimo"]
+      attributes: ["id_categoria", "nombre", "PorcentajeDeGananciaMinimo"],
     });
     return res.json(cats);
   } catch (err) {
     console.error("GetAllPorcentajeDeGananciasEnCategoria error:", err);
-    return res.status(500).json({ error: "No se pudieron obtener los porcentajes." });
+    return res
+      .status(500)
+      .json({ error: "No se pudieron obtener los porcentajes." });
   }
 };
 
@@ -351,40 +425,42 @@ exports.productosRecomendados = async (req, res) => {
     const products = await producto.findAll({
       where: { activo: true },
       attributes: [
-        'id_producto',
-        'nombre',
-        'descripcion',
-        'precio_base',
-        'unidad_medida',
-        'estrellas',
-        'etiquetas',
-        'id_subcategoria',
-        'id_marca',
+        "id_producto",
+        "nombre",
+        "descripcion",
+        "precio_base",
+        "unidad_medida",
+        "estrellas",
+        "etiquetas",
+        "id_subcategoria",
+        "id_marca",
       ],
       include: [
         {
           model: imagen_producto,
-          as: 'imagenes',                 
-          attributes: ['url_imagen'],
-          limit: 1,                       
-          separate: true,                 
-          order: [['orden_imagen', 'ASC']]
+          as: "imagenes",
+          attributes: ["url_imagen"],
+          limit: 1,
+          separate: true,
+          order: [["orden_imagen", "ASC"]],
         },
         {
           model: subcategoria,
           as: "subcategoria",
-          attributes: ['id_subcategoria', 'nombre', 'id_categoria_padre'], 
+          attributes: ["id_subcategoria", "nombre", "id_categoria_padre"],
           include: [
             {
               model: categoria,
               as: "categoria",
-              attributes: ["id_categoria", "nombre"] 
+              attributes: ["id_categoria", "nombre"],
             },
           ],
-        }
+        },
       ],
-      order: [['estrellas', 'DESC'], ['id_producto', 'DESC']],
-      
+      order: [
+        ["estrellas", "DESC"],
+        ["id_producto", "DESC"],
+      ],
     });
     res.json(products);
   } catch (err) {
@@ -400,7 +476,9 @@ exports.desactivarProducto = async (req, res) => {
     const product = await producto.findByPk(id_producto);
 
     if (!product) {
-      return res.status(404).json({ message: "No se pudo encontrar el producto!" });
+      return res
+        .status(404)
+        .json({ message: "No se pudo encontrar el producto!" });
     }
 
     if (!product.activo) {
@@ -410,39 +488,44 @@ exports.desactivarProducto = async (req, res) => {
     product.activo = false;
 
     await product.save();
-    return res.status(200).json({ message: "Producto desactivado correctamente!" });
-
+    return res
+      .status(200)
+      .json({ message: "Producto desactivado correctamente!" });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Error al borrar producto!" });
   }
 };
 
-
-
 exports.crearMarca = async (req, res) => {
   try {
     const { nombre } = req.body;
-    
-    if (!nombre || typeof nombre !== 'string' || nombre.trim() === '') {
-      return res.status(400).json({ message: 'El nombre de la marca es requerido y debe ser válido' });
+
+    if (!nombre || typeof nombre !== "string" || nombre.trim() === "") {
+      return res
+        .status(400)
+        .json({
+          message: "El nombre de la marca es requerido y debe ser válido",
+        });
     }
 
     // Verificar si la marca ya existe
     const existingMarca = await marca_producto.findOne({ where: { nombre } });
     if (existingMarca) {
-      return res.status(409).json({ message: 'La marca ya existe' });
+      return res.status(409).json({ message: "La marca ya existe" });
     }
 
     // Crear la marca
     const newMarca = await marca_producto.create({ nombre });
-    res.json({ message: 'Marca creada correctamente', marca: newMarca.toJSON() });
+    res.json({
+      message: "Marca creada correctamente",
+      marca: newMarca.toJSON(),
+    });
   } catch (error) {
-    console.error('Error al crear marca:', error);
-    res.status(500).json({ error: 'Error al crear marca' });
+    console.error("Error al crear marca:", error);
+    res.status(500).json({ error: "Error al crear marca" });
   }
 };
-
 
 exports.actualizarProducto = async (req, res) => {
   try {
@@ -458,9 +541,9 @@ exports.actualizarProducto = async (req, res) => {
       unidad_medida,
       activo,
       peso,
-      imagenes // array of { url_imagen, orden_imagen }
+      imagenes, // array of { url_imagen, orden_imagen }
     } = req.body;
-    
+
     // Validar que el ID del producto sea numérico
     if (!id_producto || isNaN(parseInt(id_producto))) {
       return res.status(400).json({ message: "ID de producto inválido" });
@@ -498,8 +581,11 @@ exports.actualizarProducto = async (req, res) => {
     if (etiquetas) {
       if (Array.isArray(etiquetas)) {
         etiquetasArray = etiquetas;
-      } else if (typeof etiquetas === 'string') {
-        etiquetasArray = etiquetas.split(',').map(tag => tag.trim()).filter(tag => tag);
+      } else if (typeof etiquetas === "string") {
+        etiquetasArray = etiquetas
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter((tag) => tag);
       }
     }
 
@@ -510,15 +596,17 @@ exports.actualizarProducto = async (req, res) => {
     // Actualizar el producto
     await product.update({
       nombre: nombre.trim(),
-      descripcion: descripcion || '',
+      descripcion: descripcion || "",
       precio_base: parseFloat(precio_base),
       id_subcategoria: parseInt(id_subcategoria),
-      porcentaje_ganancia: porcentaje_ganancia ? parseFloat(porcentaje_ganancia) : null,
+      porcentaje_ganancia: porcentaje_ganancia
+        ? parseFloat(porcentaje_ganancia)
+        : null,
       id_marca: parseInt(id_marca),
       etiquetas: etiquetasArray,
       unidad_medida,
       activo: activo !== undefined ? Boolean(activo) : true,
-      peso: peso !== undefined ? parseFloat(peso) : null
+      peso: peso !== undefined ? parseFloat(peso) : null,
     });
 
     // Actualizar imagenes si se proporcionaron
@@ -526,10 +614,10 @@ exports.actualizarProducto = async (req, res) => {
       // Eliminar imágenes existentes para este producto
       await imagen_producto.destroy({ where: { id_producto: id_producto } });
       // Crear nuevas imágenes
-      const imgs = imagenes.map(img => ({
+      const imgs = imagenes.map((img) => ({
         id_producto: id_producto,
         url_imagen: img.url_imagen,
-        orden_imagen: img.orden_imagen ?? 0
+        orden_imagen: img.orden_imagen ?? 0,
       }));
       await imagen_producto.bulkCreate(imgs);
     }
@@ -537,38 +625,49 @@ exports.actualizarProducto = async (req, res) => {
     // Obtener el producto actualizado con detalles
     const updatedProduct = await producto.findByPk(id_producto, {
       include: [
-        { model: subcategoria, as: 'subcategoria', attributes: ['id_subcategoria', 'nombre']},
-        { model: marca_producto, as: 'marca', attributes: ['id_marca_producto', 'nombre']},
-        { model: imagen_producto, as: 'imagenes', attributes: ['url_imagen', 'orden_imagen']}
-      ]
+        {
+          model: subcategoria,
+          as: "subcategoria",
+          attributes: ["id_subcategoria", "nombre"],
+        },
+        {
+          model: marca_producto,
+          as: "marca",
+          attributes: ["id_marca_producto", "nombre"],
+        },
+        {
+          model: imagen_producto,
+          as: "imagenes",
+          attributes: ["url_imagen", "orden_imagen"],
+        },
+      ],
     });
 
     res.json({
       message: "Producto actualizado correctamente",
-      product: updatedProduct
+      product: updatedProduct,
     });
-
   } catch (error) {
     console.error("Error al actualizar producto:", error);
     // Manejar errores específicos de Sequelize
-    if (error.name === 'SequelizeValidationError') {
-      const errors = error.errors.map(err => err.message);
-      return res.status(400).json({ 
-        message: "Error de validación", 
-        errors 
-      });
-    }
-    
-    if (error.name === 'SequelizeForeignKeyConstraintError') {
-      return res.status(400).json({ 
-        message: "Error de referencia: verifica que la subcategoría y marca existan" 
+    if (error.name === "SequelizeValidationError") {
+      const errors = error.errors.map((err) => err.message);
+      return res.status(400).json({
+        message: "Error de validación",
+        errors,
       });
     }
 
-    return res.status(500).json({ 
+    if (error.name === "SequelizeForeignKeyConstraintError") {
+      return res.status(400).json({
+        message:
+          "Error de referencia: verifica que la subcategoría y marca existan",
+      });
+    }
+
+    return res.status(500).json({
       message: "Error interno al actualizar producto",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
 };
-

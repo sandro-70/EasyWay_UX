@@ -1,28 +1,27 @@
-import React, { useEffect, useRef, useState } from "react";
+// campanaPromocional.jsx
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Upload, Calendar, ChevronDown, X, Check } from "lucide-react";
 import "./campanaPromocional.css";
 
-const allProducts = [
-  { id: "SKU-001", name: "Café molido premium 500g" },
-  { id: "SKU-002", name: "Té verde orgánico 20 bolsitas" },
-  { id: "SKU-003", name: "Chocolate amargo 70%" },
-  { id: "SKU-004", name: "Leche deslactosada 1L" },
-  { id: "SKU-005", name: "Galletas integrales 300g" },
-  { id: "SKU-006", name: "Miel de abeja 250g" },
-  { id: "SKU-007", name: "Cereal multigrano 400g" },
-];
+/** ==== API ==== */
+import { getAllProducts, uploadProfilePhoto1 } from "../api/InventarioApi";
+import { crearPromocion } from "../api/PromocionesApi";
+
 
 const initialForm = {
   nombre: "",
   descripcion: "",
   validoDesde: "",
   hasta: "",
-  // Condiciones
-  tipo: "", // porcentaje | fijo | envio
+  // Tipo de campaña (agregamos compra mínima como tipo)
+  tipo: "", // 'porcentaje' | 'fijo' | 'compra_min'
+  // Campos asociados (solo se envía el del tipo elegido)
   valorFijo: "",
   valorPorcentual: "",
-  aplicaA: "todos", // todos | lista
-  productos: [], // [{id,name}]
+  compraMin: "",
+  // Alcance
+  aplicaA: "todos", // 'todos' | 'lista'
+  productos: [], // [{id, name}]
   // Banner
   bannerFile: null,
   bannerPreview: "",
@@ -31,6 +30,11 @@ const initialForm = {
 const CampanaPromocional = () => {
   const [formData, setFormData] = useState(initialForm);
   const [errors, setErrors] = useState({});
+  const [loadingSave, setLoadingSave] = useState(false);
+
+  // Catálogo productos
+  const [catalogo, setCatalogo] = useState([]);
+  const [cargandoProductos, setCargandoProductos] = useState(false);
 
   // Combo productos
   const [queryProd, setQueryProd] = useState("");
@@ -42,21 +46,44 @@ const CampanaPromocional = () => {
   // Banner
   const fileInputRef = useRef(null);
 
+  // ===== Cargar productos (id y nombre) =====
+  useEffect(() => {
+    (async () => {
+      try {
+        setCargandoProductos(true);
+        const { data } = await getAllProducts();
+        const mapped = Array.isArray(data)
+          ? data.map((p) => ({
+              id: String(p.id_producto),
+              name: String(p.nombre),
+            }))
+          : [];
+        setCatalogo(mapped);
+      } catch (e) {
+        console.error("Error cargando productos:", e);
+      } finally {
+        setCargandoProductos(false);
+      }
+    })();
+  }, []);
+
+  // ===== Handlers =====
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((s) => ({ ...s, [name]: value }));
-    setErrors((prev) => ({ ...prev, [name]: undefined })); // limpia error del campo
+    setErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
-  // Opciones filtradas (excluye ya seleccionados)
-  const filtered = allProducts
-    .filter(
-      (p) =>
-        (p.id.toLowerCase().includes(queryProd.toLowerCase()) ||
-          p.name.toLowerCase().includes(queryProd.toLowerCase())) &&
-        !formData.productos.some((sp) => sp.id === p.id)
-    )
-    .slice(0, 8);
+  const filtered = useMemo(() => {
+    const q = queryProd.toLowerCase();
+    return catalogo
+      .filter(
+        (p) =>
+          (p.id.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)) &&
+          !formData.productos.some((sp) => sp.id === p.id)
+      )
+      .slice(0, 8);
+  }, [catalogo, queryProd, formData.productos]);
 
   const addProducto = (prod) => {
     if (!prod) return;
@@ -95,7 +122,6 @@ const CampanaPromocional = () => {
     }
   };
 
-  // Cerrar lista al hacer clic fuera
   useEffect(() => {
     const onDocClick = (e) => {
       if (!comboRef.current) return;
@@ -105,7 +131,7 @@ const CampanaPromocional = () => {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, []);
 
-  // Banner
+  // ===== Banner =====
   const openFileDialog = () => fileInputRef.current?.click();
 
   const setBannerFromFile = (file) => {
@@ -131,33 +157,35 @@ const CampanaPromocional = () => {
     if (file) setBannerFromFile(file);
   };
 
-  // Validaciones
+  // ===== Validación =====
   const validate = () => {
     const nextErr = {};
+
     if (!formData.nombre.trim()) nextErr.nombre = "Ingresa el nombre.";
     if (!formData.descripcion.trim()) nextErr.descripcion = "Ingresa la descripción.";
+
     if (!formData.validoDesde) nextErr.validoDesde = "Selecciona la fecha de inicio.";
     if (!formData.hasta) nextErr.hasta = "Selecciona la fecha de fin.";
     if (formData.validoDesde && formData.hasta && formData.hasta < formData.validoDesde) {
       nextErr.hasta = "La fecha fin debe ser posterior a la de inicio.";
     }
 
-    if (!formData.tipo) nextErr.tipo = "Selecciona el tipo de campaña.";
-    if (formData.tipo === "porcentaje") {
+    if (!formData.tipo) {
+      nextErr.tipo = "Selecciona el tipo de campaña.";
+    } else if (formData.tipo === "porcentaje") {
       const v = Number(formData.valorPorcentual);
       if (!v || v <= 0 || v > 100) nextErr.valorPorcentual = "Ingresa un % válido (1-100).";
-    }
-    if (formData.tipo === "fijo") {
+    } else if (formData.tipo === "fijo") {
       const v = Number(formData.valorFijo);
       if (!v || v <= 0) nextErr.valorFijo = "Ingresa un valor fijo mayor que 0.";
+    } else if (formData.tipo === "compra_min") {
+      const v = Number(formData.compraMin);
+      if (!v || v <= 0) nextErr.compraMin = "Ingresa una compra mínima mayor que 0.";
     }
 
     if (formData.aplicaA === "lista" && formData.productos.length === 0) {
       nextErr.productos = "Agrega al menos un producto.";
     }
-
-    // Si también quieres forzar banner obligatorio, descomenta:
-    // if (!formData.bannerFile) nextErr.banner = "Sube una imagen de banner.";
 
     setErrors(nextErr);
     return Object.keys(nextErr).length === 0;
@@ -172,16 +200,73 @@ const CampanaPromocional = () => {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const guardar = () => {
+  // ===== Guardar =====
+  const guardar = async () => {
     if (!validate()) return;
 
-    // Aquí armarías tu payload real
-    console.log("Payload:", formData);
+    setLoadingSave(true);
+    try {
+      // 1) Subir banner (opcional)
+      let banner_url = null;
+      if (formData.bannerFile) {
+        const desiredName = `banner_campaign_${Date.now()}_${formData.bannerFile.name}`;
+        const up = await uploadProfilePhoto1(formData.bannerFile, desiredName);
+        banner_url =
+          up?.data?.url ||
+          up?.data?.url_foto ||
+          up?.data?.filePath ||
+          up?.data?.path ||
+          up?.data?.filename ||
+          null;
+      }
 
-    alert("Campaña guardada.");
-    limpiarFormulario();
+    // ...dentro de guardar(), antes de armar payload
+const esFijo = formData.tipo === "fijo";
+const esPct = formData.tipo === "porcentaje";
+const esCompraMin = formData.tipo === "compra_min";
+
+// Mapeo local: % => 1, fijo => 2, compra mínima => 3
+const id_tipo_promo =
+  esPct ? 1 :
+  esFijo ? 2 :
+  esCompraMin ? 3 : null;
+
+const payload = {
+  nombre_promocion: String(formData.nombre).trim(),
+  descripción: String(formData.descripcion).trim(),
+  valor_fijo: esFijo ? Number(formData.valorFijo) : null,
+  valor_porcentaje: esPct ? Number(formData.valorPorcentual) : null,
+  compra_min: esCompraMin ? Number(formData.compraMin) : null,
+  fecha_inicio: formData.validoDesde,
+  fecha_termina: formData.hasta,
+  id_tipo_promo, 
+  banner_url: banner_url || null,
+  productos: formData.aplicaA === "lista"
+    ? formData.productos.map((p) => Number(p.id)).filter(Number.isInteger)
+    : [],
+  
+};
+
+
+      console.log("Payload a enviar:", payload);
+      const resp = await crearPromocion(payload);
+      console.log("Respuesta servidor:", resp?.data);
+      alert("Campaña guardada correctamente.");
+      limpiarFormulario();
+    } catch (e) {
+      console.error("Error guardando campaña:", e);
+      console.log("Server said:", e?.response?.data);
+      alert(
+        e?.response?.data?.message ||
+          e?.response?.data?.error ||
+          "No se pudo guardar la campaña."
+      );
+    } finally {
+      setLoadingSave(false);
+    }
   };
 
+  // ===== UI =====
   return (
     <div className="pageWrapper">
       <div className="container">
@@ -257,6 +342,7 @@ const CampanaPromocional = () => {
           <h3 className="condTitle">Condiciones</h3>
 
           <div className="formGrid2">
+            {/* Tipo de campaña */}
             <div className="ui-field">
               <label className="ui-label" htmlFor="tipo">Tipo de Campaña</label>
               <div className="selectContainer">
@@ -270,13 +356,14 @@ const CampanaPromocional = () => {
                   <option value="">Seleccionar</option>
                   <option value="porcentaje">Descuento porcentual</option>
                   <option value="fijo">Descuento fijo</option>
-                  <option value="envio">Envío gratis</option>
+                  <option value="compra_min">Compra mínima</option>
                 </select>
                 <ChevronDown size={16} className="selectIcon" />
               </div>
               {errors.tipo && <p className="errorMsg">{errors.tipo}</p>}
             </div>
 
+            {/* Campo según tipo */}
             {formData.tipo === "porcentaje" && (
               <div className="ui-field">
                 <label className="ui-label" htmlFor="valorPorcentual">% Descuento</label>
@@ -312,6 +399,24 @@ const CampanaPromocional = () => {
               </div>
             )}
 
+            {formData.tipo === "compra_min" && (
+              <div className="ui-field">
+                <label className="ui-label" htmlFor="compraMin">Compra mínima</label>
+                <input
+                  id="compraMin"
+                  name="compraMin"
+                  className={`ui-input ${errors.compraMin ? "input-error" : ""}`}
+                  value={formData.compraMin}
+                  onChange={handleInputChange}
+                  type="number"
+                  min="0"
+                  placeholder="Lps"
+                />
+                {errors.compraMin && <p className="errorMsg">{errors.compraMin}</p>}
+              </div>
+            )}
+
+            {/* Aplica a */}
             <div className="ui-field">
               <label className="ui-label" htmlFor="aplicaA">Aplica a</label>
               <div className="selectContainer">
@@ -331,7 +436,9 @@ const CampanaPromocional = () => {
 
             {formData.aplicaA === "lista" && (
               <div className="ui-field ui-field--full">
-                <label className="ui-label" htmlFor="combo">Producto(s)</label>
+                <label className="ui-label" htmlFor="combo">
+                  Producto(s) {cargandoProductos && <small>(cargando…)</small>}
+                </label>
 
                 <div className={`comboRoot ${openList ? "is-open" : ""}`} ref={comboRef}>
                   <input
@@ -397,7 +504,7 @@ const CampanaPromocional = () => {
           </div>
         </div>
 
-        {/* Banner al final */}
+        {/* Banner */}
         <div className="bannerFull">
           <h3 className="bannerTitle">Añadir Banner</h3>
           <div
@@ -434,8 +541,13 @@ const CampanaPromocional = () => {
 
         {/* Acción */}
         <div className="buttonRow">
-          <button type="button" className="saveButton" onClick={guardar}>
-            Guardar Campaña
+          <button
+            type="button"
+            className="saveButton"
+            onClick={guardar}
+            disabled={loadingSave}
+          >
+            {loadingSave ? "Guardando..." : "Guardar Campaña"}
           </button>
         </div>
       </div>

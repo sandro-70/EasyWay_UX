@@ -342,7 +342,7 @@ exports.aplicarDescuentoseleccionados = async (req, res) => {
 
 exports.crearPromocion = async (req, res) => {
   try {
-    const { nombre_promocion, descripcion, valor_fijo, valor_porcentaje, fecha_inicio, fecha_termina, id_tipo_promo, banner_url, productos,orden } = req.body;
+    const { nombre_promocion, descripción, valor_fijo, valor_porcentaje,compra_min, fecha_inicio, fecha_termina, id_tipo_promo, banner_url, productos,orden } = req.body;
     if (!req.user || !req.user.id_usuario) {
       return res.status(401).json({ message: 'Usuario no autenticado' });
     }
@@ -355,11 +355,13 @@ exports.crearPromocion = async (req, res) => {
     if (!user || user.id_rol !== 1) {
       return res.status(403).json({ message: 'Solo los administradores pueden crear promociones' });
     }
+    
     const newPromocion = await promocion.create({
       nombre_promocion,
-      descripcion,
+      descripción,
       valor_fijo: valor_fijo || null,
       valor_porcentaje: valor_porcentaje || null,
+      compra_min: compra_min ||null,
       fecha_inicio,
       fecha_termina,
       id_tipo_promo,
@@ -380,7 +382,8 @@ exports.crearPromocion = async (req, res) => {
     }
     res.status(201).json({ message: 'Promoción creada correctamente', promocion: newPromocion });
   } catch (error) {
-    console.error('Error al crear la promoción:', error);
+    console.error('Error al crear la promoción:', error?.original || error);
+
     res.status(500).json({ error: 'Error al crear la promoción' });
   }
 };

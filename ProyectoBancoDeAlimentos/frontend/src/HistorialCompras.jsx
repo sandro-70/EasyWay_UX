@@ -233,7 +233,7 @@ const HistorialCompras = () => {
   return (
     <div style={styles.pageWrapper}>
       <div style={styles.headerWrapper}>
-        <h1 style={styles.header}>Hostorial de Compras</h1>
+        <h1 style={styles.header}>Historial de Compras</h1>
         <div style={styles.headerLineWrapper}>
           <div style={styles.headerLine}></div>
         </div>

@@ -580,9 +580,11 @@ function Carrito() {
                 >
                   <div style={styles.topRow}>
                     <div style={styles.stars}>
-                      <span>★</span>
-                      <span>★</span>
-                      <span>☆</span>
+                       {Array(5)
+                      .fill(0)
+                      .map((_, idx) => (
+                     <span key={idx}>{idx < p.rating ? '★' : '☆'}</span>
+                     ))}
                     </div>
                   </div>
 

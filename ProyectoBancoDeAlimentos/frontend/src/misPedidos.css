@@ -85,16 +85,13 @@
   color: black;
   width: 140px;
 }
-
-/* ✅ CLASE CORREGIDA: Se le añadió un punto al inicio para que funcione como una clase CSS. */
-.filtro-fecha-input {
+filtro-fecha-input {
   border: none;
   border-radius: 5px;
   padding: 6px 10px;
   font-size: 14px;
   color: black;
   background-color: white; /* Agrega un fondo blanco al input */
-  width: 140px; /* Asegura un ancho consistente con el select */
 }
 
 .icono-calendario {

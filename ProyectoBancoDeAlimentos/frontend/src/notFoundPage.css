@@ -3,11 +3,11 @@
   justify-content: center;
   align-items: center;
   width: 100vw;
-  background: linear-gradient(135deg, #007bff 40%, #00aaff 100%);
+  background: linear-gradient(135deg, #f1cdab 20%, #c2ebfa 80%);
+  background-color: #fff;
   color: #fff;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    height: 100vh;
-    
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  height: 100vh;
 }
 
 .ntF-error-content {
@@ -16,7 +16,7 @@
   background: #e7e4e4;
   color: #333;
   border-radius: 20px;
-  box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
   max-width: 100%;
   width: 700px;
   height: auto;
@@ -26,12 +26,12 @@
 .ntF-error-icon {
   width: 150px;
   margin-bottom: 1rem;
-  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
 }
 
 .ntF-error-title {
   font-size: 7.5rem;
-  margin-bottom:25px;
+  margin-bottom: 25px;
   font-weight: bold;
   color: #007bff;
 }
@@ -59,6 +59,12 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

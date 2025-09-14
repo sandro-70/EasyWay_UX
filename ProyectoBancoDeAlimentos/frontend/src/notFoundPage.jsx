@@ -30,7 +30,6 @@ export default function Error404() {
         alignItems: "center",
         justifyContent: "center",
         height: "90vh",
-        background: "linear-gradient(135deg, #007bff 40%, #00aaff 100%)",
       }}
     >
       <div className="ntF-error-content">

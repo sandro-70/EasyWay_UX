@@ -12,7 +12,7 @@ const mockData = [
     CantidadVendida: 120,
     precioBase: 1500,
     precioVenta: 1800,
-    descuento: 100,
+    Descuento: 100,
     Total: 1700,
   },
   {
@@ -23,7 +23,7 @@ const mockData = [
     CantidadVendida: 80,
     precioBase: 2000,
     precioVenta: 2300,
-    descuento: 200,
+    Descuento: 200,
     Total: 2100,
   },
   {
@@ -34,7 +34,7 @@ const mockData = [
     CantidadVendida: 50,
     precioBase: 3500,
     precioVenta: 4000,
-    descuento: 300,
+    Descuento: 300,
     Total: 3700,
   },
   {
@@ -45,7 +45,7 @@ const mockData = [
     CantidadVendida: 60,
     precioBase: 1200,
     precioVenta: 1400,
-    descuento: 50,
+    Descuento: 50,
     Total: 1350,
   },
   {
@@ -56,7 +56,7 @@ const mockData = [
     CantidadVendida: 90,
     precioBase: 800,
     precioVenta: 950,
-    descuento: 30,
+    Descuento: 30,
     Total: 920,
   },
   {
@@ -67,7 +67,7 @@ const mockData = [
     CantidadVendida: 110,
     precioBase: 2500,
     precioVenta: 2800,
-    descuento: 150,
+    Descuento: 150,
     Total: 2650,
   },
   {
@@ -78,7 +78,7 @@ const mockData = [
     CantidadVendida: 70,
     precioBase: 1000,
     precioVenta: 1200,
-    descuento: 80,
+    Descuento: 80,
     Total: 1120,
   },
   {
@@ -89,7 +89,7 @@ const mockData = [
     CantidadVendida: 40,
     precioBase: 3000,
     precioVenta: 3500,
-    descuento: 250,
+    Descuento: 250,
     Total: 3250,
   },
   {
@@ -100,7 +100,7 @@ const mockData = [
     CantidadVendida: 100,
     precioBase: 1800,
     precioVenta: 2100,
-    descuento: 120,
+    Descuento: 120,
     Total: 1980,
   },
 ];
@@ -167,8 +167,8 @@ function Pagination({ page, pageCount, onPage }) {
         <button
           key={p}
           onClick={() => handlePage(p)}
-          className={`w-9 h-9 ventas-page-btn ${
-            p === page ? "ring-2 ventas-page-btn-active" : ""
+          className={`w-9 h-9 rounded-full border border-[#d8dadc] ${
+            p === page ? "ring-2 ring-[#d8572f] text-[#d8572f]" : ""
           }`}
           title={`Página ${p}`}
         >
@@ -194,14 +194,21 @@ function TablaReportesVentas() {
   const [showFilter, setShowFilter] = useState(false);
   const [filterText, setFilterText] = useState("");
   const [appliedFilter, setAppliedFilter] = useState("");
+  const [orderDesc, setOrderDesc] = useState(true);
 
   const itemsPerPage = 6;
 
+  // Ordenar por ID
+  const sortedData = [...mockData].sort((a, b) =>
+    orderDesc ? b.id - a.id : a.id - b.id
+  );
+
+  // Filtrar datos
   const filteredData = appliedFilter
-    ? mockData.filter((item) =>
+    ? sortedData.filter((item) =>
         item.producto.toLowerCase().includes(appliedFilter.toLowerCase())
       )
-    : mockData;
+    : sortedData;
 
   const paginatedData = filteredData.slice(
     (page - 1) * itemsPerPage,
@@ -209,30 +216,86 @@ function TablaReportesVentas() {
   );
   const totalPages = Math.ceil(filteredData.length / itemsPerPage) || 1;
 
+  const exportToExcel = () => {
+    // Crear la hoja a partir de los datos
+    const worksheet = XLSX.utils.json_to_sheet(filteredData);
+
+    // Aplicar negrita a los encabezados
+    const headerRange = XLSX.utils.decode_range(worksheet["!ref"]);
+    for (let C = headerRange.s.c; C <= headerRange.e.c; ++C) {
+      const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
+      if (!worksheet[cellAddress]) continue;
+      worksheet[cellAddress].s = {
+        font: { bold: true },
+        alignment: { horizontal: "center" },
+      };
+    }
+
+    // Ajustar ancho de columnas automáticamente
+    const cols = [];
+    for (let C = headerRange.s.c; C <= headerRange.e.c; ++C) {
+      let maxLength = 10; // ancho mínimo
+      for (let R = headerRange.s.r; R <= headerRange.e.r; ++R) {
+        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+        const cell = worksheet[cellAddress];
+        if (cell && cell.v) {
+          const cellLength = cell.v.toString().length;
+          if (cellLength > maxLength) maxLength = cellLength;
+        }
+      }
+      cols.push({ wch: maxLength + 2 }); // +2 para margen
+    }
+    worksheet["!cols"] = cols;
+
+    // Crear libro y agregar hoja
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "ReporteVentas");
+
+    // Generar archivo Excel
+    const excelBuffer = XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array",
+    });
+    const data = new Blob([excelBuffer], { type: "application/octet-stream" });
+    saveAs(data, "Reporte_Ventas.xlsx");
+  };
+
   return (
-    <>
     <div
-      className="w-screen px-4 bg-[#f9fafb]"
+      className="px-1"
       style={{
         position: "absolute",
-        top: "165px",
         left: 0,
         right: 0,
         width: "100%",
-        display: "flex",
         flexDirection: "column",
         alignItems: "center",
       }}
-    ></div>
-      <div className="ventas-container">
-        <h1 className="ventas-title">Tabla de Reportes De Ventas</h1>
-        <table className="ventas-table">
-          <thead className="ventas-thead">
+    >
+      {/* Container interno para centrar y limitar ancho */}
+      <div className="inventario-container" style={{ maxWidth: "1200px" }}>
+        <h1 className="inventario-title">Tabla de Reportes De Ventas</h1>
+
+        <table className="inventario-table">
+          <thead className="inventario-thead">
             <tr>
-              <th>ID de Producto</th>
+              <th
+                style={{ cursor: "pointer" }}
+                onClick={() => setOrderDesc(!orderDesc)}
+                title="Ordenar por ID"
+              >
+                ID de Producto {orderDesc ? "↓" : "↑"}
+              </th>
               <th>
                 Producto{" "}
-                <span className="ventas-search-icon" onClick={() => setShowFilter(true)}>
+                <span
+                  style={{
+                    display: "inline-block",
+                    marginLeft: "4px",
+                    cursor: "pointer",
+                  }}
+                  onClick={() => setShowFilter(true)}
+                >
                   <Icon.Search />
                 </span>
               </th>
@@ -248,14 +311,8 @@ function TablaReportesVentas() {
           <tbody>
             {paginatedData.length === 0 ? (
               <tr>
-                <td
-                  colSpan={9}
-                  className="ventas-table-empty"
-                  style={{ minWidth: "100%", whiteSpace: "nowrap" }}
-                >
-                  <div style={{ width: "100%", textAlign: "center" }}>
-                    ⚠ Sin resultados para "{appliedFilter}"
-                  </div>
+                <td colSpan={9} className="inventario-table-empty">
+                  ⚠ Sin resultados para "{appliedFilter}"
                 </td>
               </tr>
             ) : (
@@ -268,16 +325,27 @@ function TablaReportesVentas() {
                   <td>{row.CantidadVendida}</td>
                   <td>{row.precioBase}</td>
                   <td>{row.precioVenta}</td>
-                  <td>{row.descuento}</td>
+                  <td>{row.Descuento}</td>
                   <td>{row.Total}</td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
-        <div className="ventas-footer">
-          <Pagination page={page} pageCount={totalPages} onPage={setPage} />
+
+        {/* Botón Excel */}
+        <div
+          className="inventario-excel-container"
+          style={{ textAlign: "right", marginTop: "10px" }}
+        >
+          <button onClick={exportToExcel} className="inventario-export-btn">
+            📊 Exportar a Excel
+          </button>
         </div>
+
+        <Pagination page={page} pageCount={totalPages} onPage={setPage} />
+
+        {/* Mini ventana emergente */}
         {showFilter && (
           <div className="mini-modal">
             <div className="mini-modal-content">
@@ -313,7 +381,7 @@ function TablaReportesVentas() {
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }
 

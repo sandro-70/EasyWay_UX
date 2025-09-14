@@ -51,6 +51,11 @@ import DetallePedido from "./components/DetallePedido.js";
 import ReportesInventario from "./pages/ReportesInventario.jsx";
 import MenuPromociones from "./MenuPromociones.jsx";
 import ReporteUsuarioAdmin from "./reporteUsuariosAdmin.jsx";
+import "./i18n.js";
+import Vista from "./components/VistaTranslate.jsx";
+import Reportes from "./components/ReporteCarrousel.jsx";
+import DetallePedidos from "../src/pages/DetallesPedido.jsx";
+import GestionDePedido from "./components/GestionPedidos.jsx";
 
 const HEADER_HEIGHT = 60; // px
 
@@ -93,6 +98,7 @@ function App() {
                 </ProtectedRoute>
               }
             >
+              <Route path="/reportes" element={<Reportes />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/MenuPromociones" element={<MenuPromociones />} />
               <Route path="/inventario" element={<Inventario />} />
@@ -102,6 +108,8 @@ function App() {
                 path="/personalizacionReportes"
                 element={<PersonalizacionReportes />}
               />
+              <Route path="/detallePedido/:id" element={<DetallePedidos />} />
+              <Route path="/gestionPedidos" element={<GestionDePedido />} />
               <Route
                 path="/EditarPerfilAdmin"
                 element={<EditarPerfilAdmin />}
@@ -137,6 +145,14 @@ function App() {
               element={
                 <ProtectedRoute rolesPermitidos={["cliente"]}>
                   <MiPerfil />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/idioma"
+              element={
+                <ProtectedRoute rolesPermitidos={["cliente"]}>
+                  <Vista />
                 </ProtectedRoute>
               }
             />

@@ -28,7 +28,7 @@ const ordersData = Array.from({ length: 49 }, (_, i) => {
   return {
     id,
     estado: i % 2 === 0 ? "En preparación" : "Entregado",
-    fechaPedido: formatoFecha(fechaPedido),   // fecha completa
+    fechaPedido: formatoFecha(fechaPedido), // fecha completa
     fechaEntrega: formatoFecha(fechaEntrega), // fecha completa
     tiempoPromedio: (i % 5) + 1,
     metodoPago: i % 2 === 0 ? "Tarjeta" : "Efectivo",
@@ -42,12 +42,22 @@ const ReportesPedidos = () => {
   const pedidosPorPagina = 7;
 
   const meses = [
-    "Enero","Febrero","Marzo","Abril","Mayo","Junio",
-    "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
+    "Enero",
+    "Febrero",
+    "Marzo",
+    "Abril",
+    "Mayo",
+    "Junio",
+    "Julio",
+    "Agosto",
+    "Septiembre",
+    "Octubre",
+    "Noviembre",
+    "Diciembre",
   ];
 
   const pedidosFiltrados = mes
-    ? ordersData.filter(order => {
+    ? ordersData.filter((order) => {
         const [day, month, year] = order.fechaPedido.split("/");
         return meses[parseInt(month) - 1].toLowerCase() === mes.toLowerCase();
       })
@@ -59,82 +69,113 @@ const ReportesPedidos = () => {
   const pedidosPaginados = pedidosFiltrados.slice(indiceInicio, indiceFinal);
 
   const exportToExcel = () => {
-    const exportData = pedidosFiltrados.map(order => ({
+    const exportData = pedidosFiltrados.map((order) => ({
       "ID de Pedido": order.id,
-      "Estado": order.estado,
+      Estado: order.estado,
       "Fecha de Pedido": order.fechaPedido,
       "Fecha de Entrega": order.fechaEntrega,
       "Tiempo Promedio de Entrega (días)": order.tiempoPromedio,
-      "Método de Pago": order.metodoPago
+      "Método de Pago": order.metodoPago,
     }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Pedidos");
     const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    saveAs(new Blob([excelBuffer], { type: "application/octet-stream" }), `ReportePedidos_${mes || "Todos"}.xlsx`);
+    saveAs(
+      new Blob([excelBuffer], { type: "application/octet-stream" }),
+      `ReportePedidos_${mes || "Todos"}.xlsx`
+    );
   };
 
   return (
-    <div className="absolute top-[145px] left-0 right-0 w-full flex flex-col items-center">
-      <div className="w-full max-w-[1200px]">
-        <h1 className="text-2xl font-semibold text-orange-400 mb-4 border-b border-orange-400 pb-2 text-left">
+    <div
+      className="px-4 "
+      style={{
+        position: "absolute",
+        left: 0,
+        right: 0,
+        width: "100%",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+      }}
+    >
+      <div className="w-full max-w-6xl mt-7 mb-10">
+        <h1 className="border-b-4 border-[#f0833e] text-[#f0833e] font-bold text-[30px] mb-4 text-left ml-10">
           Reportes de Pedidos
         </h1>
 
         {/* Filtros y número de pedidos */}
-<div className="flex items-center mb-4 flex-wrap w-full">
-  <div className="flex items-center space-x-2 ml-11">
-    <label className="font-medium">Filtrar Mes de Pedido:</label>
-    <select
-      value={mes}
-      onChange={(e) => { setMes(e.target.value); setPaginaActual(1); }}
-      className="border rounded px-3 py-1 bg-[#E6E6E6]"
-    >
-      <option value="">Todos</option>
-      {meses.map((m) => (
-        <option key={m}>{m}</option>
-      ))}
-    </select>
-  </div>
-  <div className="flex items-center space-x-2 ml-6 font-medium">
-    <span>N° de pedidos:</span>
-    <div className="w-8 h-8 rounded-full bg-[#2B6DAF] text-white flex items-center justify-center">
-      {pedidosFiltrados.length}
-    </div>
-  </div>
-</div>
-
+        <div className="flex items-center mb-4 flex-wrap w-full">
+          <div className="flex items-center space-x-2 ml-11">
+            <label className="font-medium">Filtrar Mes de Pedido:</label>
+            <select
+              value={mes}
+              onChange={(e) => {
+                setMes(e.target.value);
+                setPaginaActual(1);
+              }}
+              className="border rounded px-3 py-1 bg-[#E6E6E6]"
+            >
+              <option value="">Todos</option>
+              {meses.map((m) => (
+                <option key={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center space-x-2 ml-6 font-medium">
+            <span>N° de pedidos:</span>
+            <div className="w-8 h-8 rounded-full bg-[#2B6DAF] text-white flex items-center justify-center">
+              {pedidosFiltrados.length}
+            </div>
+          </div>
+        </div>
 
         {/* Tabla de pedidos */}
         <div className="w-full flex items-center justify-between">
           <button
             className="p-2 disabled:opacity-50"
-            onClick={() => setPaginaActual(prev => Math.max(prev - 1, 1))}
+            onClick={(e) => {
+              e.stopPropagation();
+              setPaginaActual((prev) => Math.max(prev - 1, 1));
+            }}
             disabled={paginaActual === 1}
           >
             <ChevronLeft size={28} className="text-[#2B6DAF]" />
           </button>
 
           <div className="w-full overflow-x-auto">
-<table className="table-auto w-full border border-black rounded-lg border-separate" style={{ borderSpacing: "0" }}>
+            <table
+              className="table-auto w-full border border-black rounded-lg border-separate"
+              style={{ borderSpacing: "0" }}
+            >
               <thead>
                 <tr>
                   {/** Encabezados con líneas verticales blancas separadas */}
                   {[
-                    { title: "ID de\nPedido", icon: LupaIcon },
-                    { title: "Estado", icon: AbajoIcon },
+                    { title: "ID de\nPedido" }, //icon: LupaIcon
+                    { title: "Estado" }, //icon: AbajoIcon
                     { title: "Fecha de\nPedido" },
                     { title: "Fecha de\nEntrega" },
                     { title: "Tiempo promedio\n de entrega (días)" },
-                    { title: "Método\n de Pago" }
+                    { title: "Método\n de Pago" },
                   ].map((col, idx) => (
-                    <th key={idx} className="px-4 py-3 text-white text-center bg-[#2B6DAF] relative">
+                    <th
+                      key={idx}
+                      className="px-4 py-3 text-white text-center bg-[#2B6DAF] relative"
+                    >
                       <div className="flex items-center justify-center">
                         <span className="whitespace-pre-line">{col.title}</span>
-                        {col.icon && <img src={col.icon} alt="icono" className="w-4 h-4 ml-2" />}
+                        {col.icon && (
+                          <img
+                            src={col.icon}
+                            alt="icono"
+                            className="w-4 h-4 ml-2"
+                          />
+                        )}
                       </div>
-<div className="absolute inset-y-0 right-0 w-[1px] bg-white"></div>
+                      <div className="absolute inset-y-0 right-0 w-[1px] bg-white"></div>
                     </th>
                   ))}
                   <th className="px-4 py-3 text-white text-center bg-[#2B6DAF]">
@@ -144,27 +185,50 @@ const ReportesPedidos = () => {
               </thead>
 
               <tbody>
-                {pedidosPaginados.map(order => (
-                  <tr key={order.id} className="border-b border-black text-center">
-                    <td className="px-4 py-2 border-black text-center">{order.id}</td>
-                    <td className="px-4 py-2 border-black text-center">{order.estado}</td>
-                    <td className="px-4 py-2 border-black text-center">{order.fechaPedido}</td>
-                    <td className="px-4 py-2 border-black text-center">{order.fechaEntrega}</td>
-                    <td className="px-4 py-2 border-black text-center">{order.tiempoPromedio}</td>
-                    <td className="px-4 py-2 border-black text-center">{order.metodoPago}</td>
+                {pedidosPaginados.map((order) => (
+                  <tr
+                    key={order.id}
+                    className="border-b border-black text-center"
+                  >
+                    <td className="px-4 py-2 border-black text-center">
+                      {order.id}
+                    </td>
+                    <td className="px-4 py-2 border-black text-center">
+                      {order.estado}
+                    </td>
+                    <td className="px-4 py-2 border-black text-center">
+                      {order.fechaPedido}
+                    </td>
+                    <td className="px-4 py-2 border-black text-center">
+                      {order.fechaEntrega}
+                    </td>
+                    <td className="px-4 py-2 border-black text-center">
+                      {order.tiempoPromedio}
+                    </td>
+                    <td className="px-4 py-2 border-black text-center">
+                      {order.metodoPago}
+                    </td>
                     <td className="px-4 py-2 border-black text-center">
                       <button
                         className="flex items-center justify-center w-6 h-6 mx-auto"
-                        onClick={() => setPedidoSeleccionado(order)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPedidoSeleccionado(order);
+                        }}
                       >
-                        <img src={InfoIcon} alt="info" className="w-4 h-4"/>
+                        <img src={InfoIcon} alt="info" className="w-4 h-4" />
                       </button>
                     </td>
                   </tr>
                 ))}
                 {pedidosPaginados.length === 0 && (
                   <tr>
-                    <td colSpan="7" className="py-4 text-black border-black text-center">No hay pedidos</td>
+                    <td
+                      colSpan="7"
+                      className="py-4 text-black border-black text-center"
+                    >
+                      No hay pedidos
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -173,7 +237,9 @@ const ReportesPedidos = () => {
 
           <button
             className="p-2 disabled:opacity-50"
-            onClick={() => setPaginaActual(prev => Math.min(prev + 1, totalPaginas))}
+            onClick={() =>
+              setPaginaActual((prev) => Math.min(prev + 1, totalPaginas))
+            }
             disabled={paginaActual === totalPaginas || totalPaginas === 0}
           >
             <ChevronRight size={28} className="text-[#2B6DAF]" />
@@ -181,49 +247,59 @@ const ReportesPedidos = () => {
         </div>
 
         {/* Paginación centrada con íconos funcionales */}
-        <div className="flex flex-col items-center mt-4 w-full">
-          <div className="flex justify-center items-center space-x-2 mb-1">
+        <div className="flex flex-col items-center mt-4 w-full reportes-pagination-wrapper">
+          <div className="flex justify-center items-center space-x-3 mb-3 reportes-pagination">
             {Array.from({ length: totalPaginas }, (_, i) => {
               const page = i + 1;
               return (
                 <React.Fragment key={page}>
+                  {/* Genera un desbordamiento
                   {page === 1 && (
                     <img
                       src={IzqIcon}
                       alt="izq"
-                      className="w-4 h-4 mr-1 cursor-pointer"
-                      onClick={() => setPaginaActual(prev => Math.max(prev - 1, 1))}
+                      className="page-arrow-icon mr-2 cursor-pointer"
+                      onClick={() =>
+                        setPaginaActual((prev) => Math.max(prev - 1, 1))
+                      }
                     />
                   )}
+                  */}
 
                   <button
                     onClick={() => setPaginaActual(page)}
-                    className={`
-                      w-8 h-8 flex items-center justify-center rounded-full border 
-                      ${page === paginaActual ? "border-orange-400 text-orange-400" : "border-gray-300 text-gray-700"}
+                    className={`page-number-btn flex items-center justify-center rounded-full border px-2 py-1 text-sm select-none 
+                      ${page === paginaActual ? "active-page" : "inactive-page"}
                     `}
                   >
                     {page}
                   </button>
 
+                  {/* Genera un desbordamiento 
                   {page === totalPaginas && (
                     <img
                       src={DerIcon}
                       alt="der"
-                      className="w-4 h-4 ml-1 cursor-pointer"
-                      onClick={() => setPaginaActual(prev => Math.min(prev + 1, totalPaginas))}
+                      className="page-arrow-icon ml-2 cursor-pointer"
+                      onClick={() =>
+                        setPaginaActual((prev) =>
+                          Math.min(prev + 1, totalPaginas)
+                        )
+                      }
                     />
+                    
                   )}
+                    */}
                 </React.Fragment>
               );
             })}
           </div>
 
           {/* Botón exportar alineado debajo de la tabla */}
-          <div className="w-full flex justify-end -mt-16 mr-20">
+          <div className="w-full flex justify-end mt-2 pr-6 reportes-export-wrapper">
             <button
               onClick={exportToExcel}
-              className="bg-[#009900] text-white px-4 py-1 rounded flex items-center space-x-2"
+              className="bg-[#009900] text-white px-4 py-2 rounded flex items-center space-x-2"
             >
               <img src={ExcelIcon} alt="Excel" className="w-5 h-5" />
               <span>EXPORTAR</span>

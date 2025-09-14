@@ -286,7 +286,6 @@ function TablaReportesPromociones() {
       className="promocion-container"
       style={{
         position: "absolute",
-        top: "145px",
         left: 0,
         right: 0,
         width: "100%",

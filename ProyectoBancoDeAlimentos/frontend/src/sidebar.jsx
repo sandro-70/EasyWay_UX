@@ -52,8 +52,8 @@ const Sidebar = ({ moveButton, showSidebar }) => {
                 </span>
                 Gestión de Productos
               </a>
-           </li>
-
+                        
+            </li>
 
             <li>
               <a href="/Inventario" className="sidebar_item">
@@ -66,7 +66,7 @@ const Sidebar = ({ moveButton, showSidebar }) => {
               </a>
             </li>
             <li>
-              <a href="/reportes" className="sidebar_item">
+              <a href="/gestionPedidos" className="sidebar_item">
                 <span className="material-symbols-outlined text-[42px] text-white">
                   assignment
                 </span>
@@ -96,7 +96,7 @@ const Sidebar = ({ moveButton, showSidebar }) => {
               </a>
             </li>
             <li>
-              <a href="/mensajeria" className="sidebar_item">
+              <a href="/reportes" className="sidebar_item">
                 <span className="material-symbols-outlined text-[42px] text-white">
                   clinical_notes
                 </span>

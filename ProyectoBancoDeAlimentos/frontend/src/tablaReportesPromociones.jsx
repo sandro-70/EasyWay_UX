@@ -181,10 +181,10 @@ function Pagination({ page, pageCount, onPage }) {
   };
 
   return (
-    <div className="inventario-pagination">
+    <div className="promocion-pagination">
       <button
         onClick={() => handlePage(page - 1)}
-        className="inventario-pagination-btn"
+        className="promocion-pagination-btn"
         disabled={page === 1}
       >
         <Icon.ChevronLeft />
@@ -202,7 +202,7 @@ function Pagination({ page, pageCount, onPage }) {
       ))}
       <button
         onClick={() => handlePage(page + 1)}
-        className="inventario-pagination-btn"
+        className="promocion-pagination-btn"
         disabled={page === pageCount}
       >
         <Icon.ChevronRight />
@@ -283,7 +283,7 @@ function TablaReportesPromociones() {
 
   return (
     <div
-      className="inventario-container"
+      className="promocion-container"
       style={{
         position: "absolute",
         top: "145px",
@@ -295,10 +295,10 @@ function TablaReportesPromociones() {
         alignItems: "center",
       }}
     >
-      <h1 className="inventario-title">Reporte de Promociones y Descuentos</h1>
+      <h1 className="promocion-title">Reporte de Promociones y Descuentos</h1>
 
-      <table className="inventario-table">
-        <thead className="inventario-thead">
+      <table className="promocion-table">
+        <thead className="promocion-thead">
           <tr>
             <th>ID Promoción</th>
             <th>Nombre Promoción</th>
@@ -337,7 +337,7 @@ function TablaReportesPromociones() {
         <tbody>
           {paginatedData.length === 0 ? (
             <tr>
-              <td colSpan={6} className="inventario-table-empty">
+              <td colSpan={6} className="promocion-table-empty">
                 ⚠ Sin resultados
               </td>
             </tr>
@@ -361,14 +361,14 @@ function TablaReportesPromociones() {
         </tbody>
       </table>
 
-      <div className="inventario-footer">
+      <div className="promocion-footer">
         <span>Total Promociones: {filteredData.length}</span>
-        <button onClick={exportToExcel} className="inventario-export-btn-green">
+        <button onClick={exportToExcel} className="promocion-export-btn-green">
           📊 Exportar a Excel
         </button>
       </div>
 
-      <div className="inventario-pagination mt-4">
+      <div className="promocion-pagination mt-4">
         <Pagination page={page} pageCount={totalPages} onPage={setPage} />
       </div>
     </div>

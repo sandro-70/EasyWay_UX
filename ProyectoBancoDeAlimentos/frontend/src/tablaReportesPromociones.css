@@ -1,33 +1,38 @@
-.inventario-container {
+.promocion-container {
   padding: 20px;
-  font-family: Arial, sans-serif;
   margin: 0 auto;
   max-width: 1200px;
 }
 
-.inventario-title {
+.promocion-title {
+  border-bottom: #f0833e 4px solid;
   color: #f0833e;
-  margin-bottom: 15px;
-  font-size: 1.8rem;
-  text-align: left;
-  border-bottom: 3px solid #f0833e;
-}
-
-.inventario-table {
-  padding: 12px 14px;
-  width: 100%;
-  border-collapse: collapse;
-  margin-bottom: 8px;
-}
-
-.inventario-thead th {
-  background-color: #f3f3f3;
-  padding: 12px 16px;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  font-size: 24px;
   text-align: center;
-  position: relative;
+  display: inline-block;
 }
 
-.inventario-thead th .categoria-icon {
+.promocion-table {
+  width: 100%;
+  max-width: 1200px;
+  border-collapse: collapse;
+  border-radius: 8px;
+  overflow: hidden;
+  table-layout: auto;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.promocion-thead th {
+  width: 1200px;
+  min-width: 50px;
+  text-align: center;
+  background-color: #2b6daf;
+  color: #fff;
+}
+
+.promocion-thead th .categoria-icon {
   cursor: pointer;
   vertical-align: middle;
 }
@@ -59,25 +64,26 @@
   cursor: pointer;
 }
 
-.inventario-table td {
+.promocion-table td {
   padding: 8px;
   border-bottom: 1px solid #e0e0e0;
+  text-align: center;
 }
 
-.inventario-table-empty {
+.promocion-table-empty {
   text-align: center;
   padding: 15px;
   color: #555;
 }
 
-.inventario-pagination {
+.promocion-pagination {
   display: flex;
   justify-content: center;
   margin-top: 10px;
   gap: 5px;
 }
 
-.inventario-footer {
+.promocion-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -85,24 +91,27 @@
   width: 100%;
 }
 
-.inventario-pagination-btn {
+.promocion-pagination-btn,
+.promocion-pagination button.w-9 {
   background-color: #fff;
   border: 1px solid #d8dadc;
   padding: 5px 8px;
   cursor: pointer;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.inventario-pagination button.w-9 {
-  background-color: #fff;
-}
-
-.inventario-pagination button.w-9.ring-2 {
+.promocion-pagination button.w-9.ring-2 {
   background-color: #fff;
   border-color: #f0833e;
   color: #f0833e;
 }
 
-.inventario-export-btn-green {
+.promocion-export-btn-green {
   background-color: #f0833e;
   color: #fff;
   padding: 6px 12px;
@@ -114,6 +123,6 @@
   gap: 5px;
 }
 
-.inventario-export-btn-green:hover {
+.promocion-export-btn-green:hover {
   background-color: #ea6b1c;
 }

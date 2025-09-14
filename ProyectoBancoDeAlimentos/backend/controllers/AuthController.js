@@ -75,7 +75,7 @@ const registrarse = async (req, res) => {
       contraseña: hashedPassword,
       id_rol,
       telefono,
-      foto_perfil_url: foto_perfil_url || "UserIcon.png",
+      foto_perfil_url: "UserIcon.png",
       genero
     });
 

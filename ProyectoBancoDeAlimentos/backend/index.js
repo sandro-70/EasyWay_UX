@@ -43,17 +43,145 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Error interno del servidor" });
 });
 
-// Conexión y sincronización con la base de datos
+//Inserciones iniciales en la base de datos
+
+// Insertar
+const insertUsuarios = require("./Inserts/InsertUsuarios");
+const insertProductos = require("./Inserts/InsertProductos");
+const insertMarcas = require("./Inserts/InsertsMarcas");
+const insertSubcategorias = require("./Inserts/InsertsSubcategorias");
+const insertImagesProducto = require("./Inserts/insertsImagesProducto");
+const insertCategorias = require("./Inserts/InsertCategorias");
+const insertEstadoPedido = require("./Inserts/InsertEstadoPedido");
+const insertSucursales = require("./Inserts/InsertSucursales");
+const insertDepartamentosSeed = require("./Inserts/InsertDepartamentos");
+const insertMunicipios = require("./Inserts/InsertMunicipios");
+const insertCupones = require("./Inserts/InsertCupones");
+const insertPedido = require("./Inserts/InsertPedidos");
+const insertPromociones = require("./Inserts/InsertPromociones");
+
+// Conexión y sincronización con la base de datos y seeds secuenciales
 (async () => {
   try {
     await db.sequelize.authenticate();
     console.log("Conexión a la BD establecida");
 
-    // Sincroniza modelos
-    await db.sequelize.sync({ alter: true }); // usar { force: true } solo en desarrollo si quieres recrear tablas
-    console.log("Modelos sincronizados");
+    // Sincroniza modelos y reinicia IDs en desarrollo
+    await db.sequelize.sync({ force: true });
+    console.log("Modelos sincronizados y tablas reiniciadas");
+
+    // Inserta los seeds en orden correcto
+    await insertUsuarios(
+      { app: { locals: { db } } },
+      {
+        status: () => ({ json: (msg) => console.log("Seed usuarios:", msg) }),
+      }
+    );
+    await insertCategorias(
+      { app: { locals: { db } } },
+      {
+        status: () => ({
+          json: (msg) => console.log("Seed categorias:", msg),
+        }),
+      }
+    );
+    await insertMarcas(
+      { app: { locals: { db } } },
+      { status: () => ({ json: (msg) => console.log("Seed marcas:", msg) }) }
+    );
+    await insertSubcategorias(
+      { app: { locals: { db } } },
+      {
+        status: () => ({
+          json: (msg) => console.log("Seed subcategorias:", msg),
+        }),
+      }
+    );
+    await insertProductos(
+      { app: { locals: { db } } },
+      {
+        status: () => ({
+          json: (msg) => console.log("Seed productos:", msg),
+        }),
+      }
+    );
+    await insertImagesProducto(
+      { app: { locals: { db } } },
+      {
+        status: () => ({
+          json: (msg) => console.log("Seed images productos:", msg),
+        }),
+      }
+    );
+    await insertDepartamentosSeed(
+      { app: { locals: { db } } },
+      {
+        status: () => ({
+          json: (msg) => console.log("Seed de departamentos:", msg),
+        }),
+      }
+    );
+    await insertMunicipios(
+      { app: { locals: { db } } },
+      {
+        status: () => ({
+          json: (msg) => console.log("Seed de municipios:", msg),
+        }),
+      }
+    );
+    await insertCupones(
+      { app: { locals: { db } } },
+      {
+        status: () => ({
+          json: (msg) => console.log("Seed de cupones:", msg),
+        }),
+      }
+    );
+    await insertSucursales(
+      { app: { locals: { db } } },
+      {
+        status: () => ({
+          json: (msg) => console.log("Seed de sucursales:", msg),
+        }),
+      }
+    );
+
+    await await insertImagesProducto(
+      { app: { locals: { db } } },
+      {
+        status: () => ({
+          json: (msg) => console.log("Seed de imagenes:", msg),
+        }),
+      }
+    );
+    await insertEstadoPedido(
+      { app: { locals: { db } } },
+      {
+        status: () => ({
+          json: (msg) => console.log("Seed de estado de pedido:", msg),
+        }),
+      }
+    );
+    await insertPedido(
+      { app: { locals: { db } } },
+      {
+        status: () => ({
+          json: (msg) => console.log("Seed de pedidos:", msg),
+        }),
+      }
+    );
+    await insertPromociones(
+      { app: { locals: { db } } },
+      {
+        status: () => ({
+          json: (msg) => console.log("Seed de promociones:", msg),
+        }),
+      }
+    );
+
+    console.log("Seeds insertados correctamente");
   } catch (error) {
-    console.error("Error al conectar/sincronizar:", error);
+    console.error("Error al conectar/sincronizar o insertar seeds:", error);
   }
 })();
 

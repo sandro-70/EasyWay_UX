@@ -1,0 +1,169 @@
+.vt-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  margin-top: 120px; /* para que no quede debajo del header fijo */
+}
+
+.vt-card {
+  width: 100vw;
+  max-width: 920px;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.98), #ddeaf7);
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(11, 54, 92, 0.12);
+  padding: 20px 26px;
+  color: #0f172a;
+  border: 1px solid rgba(43, 109, 175, 0.08);
+}
+
+.vt-header h1 {
+  margin: 0;
+  color: #0b4f86; /* tono azul del sitio */
+  font-size: 20px;
+  letter-spacing: 0.2px;
+}
+
+.vt-sub {
+  margin: 6px 0 0;
+  color: #475569;
+  font-size: 13px;
+}
+
+.vt-controls {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.vt-label {
+  font-size: 13px;
+  color: #334155;
+  margin-bottom: 6px;
+}
+
+.vt-selector-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.vt-select {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(43, 109, 175, 0.15);
+  background: white;
+  color: #0f172a;
+  font-size: 14px;
+  min-width: 200px;
+}
+
+.vt-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.vt-lang-button {
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: #0b4f86;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.vt-lang-button:hover {
+  background: rgba(0, 0, 0, 0.09);
+}
+
+.vt-active {
+  background: linear-gradient(90deg, #da5a28, #b84c0e);
+  color: white !important;
+  box-shadow: 0 6px 18px rgba(43, 109, 175, 0.18);
+}
+.vt-flag {
+  font-size: 18px;
+  margin-right: 8px;
+}
+.vt-sample-btn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(43, 109, 175, 0.12);
+  background: linear-gradient(90deg, #da5a28, #b84c0e);
+  color: white;
+  font-weight: 700;
+}
+.vt-preview-text.small {
+  color: #334155;
+}
+
+.vt-preview {
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(15, 23, 42, 0.04);
+}
+
+.vt-preview h2 {
+  margin: 0 0 8px 0;
+  color: #0b4f86;
+}
+
+.vt-preview-text {
+  margin: 0 0 6px 0;
+  color: #0f172a;
+  font-size: 15px;
+}
+
+.vt-note {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+@media (max-width: 600px) {
+  .vt-card {
+    padding: 16px;
+  }
+  .vt-selector-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .vt-buttons {
+    justify-content: flex-start;
+  }
+}
+
+.vt-vocab {
+  margin-top: 14px;
+}
+.vt-vocab-title {
+  margin: 10px 0;
+  color: #0b4f86;
+}
+.vt-vocab-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.vt-vocab-table th,
+.vt-vocab-table td {
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.04);
+}
+.vt-vocab-table th {
+  background: linear-gradient(90deg, #eaf4fa, #ffffff);
+  color: #0b4f86;
+  font-weight: 700;
+  text-align: center;
+  font-size: 18px;
+}
+.vt-key {
+  font-family: monospace;
+  color: #334155;
+}

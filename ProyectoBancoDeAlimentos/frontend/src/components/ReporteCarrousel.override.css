@@ -1,0 +1,46 @@
+.rc-container {
+  width: 100%;
+  box-sizing: border-box;
+}
+.carousel .slide,
+.carousel .slider-wrapper {
+  height: auto !important;
+}
+.carousel .slider {
+  align-items: stretch;
+}
+.carousel .slide > div {
+  height: auto !important;
+}
+.carousel .thumbs-wrapper {
+  display: none;
+}
+.carousel .slide img {
+  max-height: none;
+}
+
+/* Ensure slide content can expand and tables are scrollable if too wide */
+.carousel .slide > div,
+.carousel .slide .rc-slide-content {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+.carousel .slider-wrapper {
+  overflow: visible !important;
+}
+
+/* If table is wider than slide, allow horizontal scrolling within the table container */
+.report-table-container {
+  overflow-x: auto;
+  width: 100%;
+}
+
+/* Remove any max-height set by the carousel to avoid clipping */
+.carousel .carousel-slider,
+.carousel .slider-wrapper,
+.carousel .slide {
+  max-height: 1000px !important;
+}

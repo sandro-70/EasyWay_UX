@@ -24,6 +24,32 @@ function VistaTranslate() {
     } catch {}
   }, [lang, i18n]);
 
+  // Cargar preferencia de tema desde localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("site-theme");
+      if (saved) setTheme(saved);
+      // aplicar incluso si no hay saved: preferencia del sistema
+      const prefersDark =
+        window.matchMedia &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches;
+      const initial = saved || (prefersDark ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", initial);
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
+  // Aplicar y persistir el tema cuando cambie
+  useEffect(() => {
+    try {
+      if (theme) {
+        document.documentElement.setAttribute("data-theme", theme);
+        localStorage.setItem("site-theme", theme);
+      }
+    } catch (e) {}
+  }, [theme]);
+
   return (
     <div className="vt-container">
       <div className="vt-card">
@@ -116,32 +142,37 @@ function VistaTranslate() {
             </table>
           </div>
         </section>
+      </div>
 
-        {/*Card aparte para cambiar el tema de la pagina web* */}
-        <div className="vt-footer">
-          <h2>{t("theme") || "Tema"}</h2>
-          <div className="vt-theme-selector">
-            <button
-              type="button"
-              className={`vt-theme-button ${
-                theme === "light" ? "vt-active" : ""
-              }`}
-              onClick={() => setTheme("light")}
-              aria-pressed={theme === "light"}
-            >
-              {t("light_theme") || "Tema claro"}
-            </button>
-            <button
-              type="button"
-              className={`vt-theme-button ${
-                theme === "dark" ? "vt-active" : ""
-              }`}
-              onClick={() => setTheme("dark")}
-              aria-pressed={theme === "dark"}
-            >
-              {t("dark_theme") || "Tema oscuro"}
-            </button>
-          </div>
+      <div
+        className="vt-card"
+        style={{
+          display: "block",
+          marginLeft: "50px",
+          fontSize: "18px",
+        }}
+      >
+        <h2>{t("theme") || "Tema"}</h2>
+        <span>{t("theme_description") || "Seleccione un tema"}</span>
+        <div className="vt-theme-selector">
+          <button
+            type="button"
+            className={`vt-theme-button ${
+              theme === "light" ? "vt-active" : ""
+            }`}
+            onClick={() => setTheme("light")}
+            aria-pressed={theme === "light"}
+          >
+            {t("light_theme") || "Tema claro"}
+          </button>
+          <button
+            type="button"
+            className={`vt-theme-button ${theme === "dark" ? "vt-active" : ""}`}
+            onClick={() => setTheme("dark")}
+            aria-pressed={theme === "dark"}
+          >
+            {t("dark_theme") || "Tema oscuro"}
+          </button>
         </div>
       </div>
     </div>

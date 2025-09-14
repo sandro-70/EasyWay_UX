@@ -29,5 +29,9 @@
   "select_department": "Sélectionner un département",
   "select_municipality": "Sélectionner une municipalité",
   "session_expired": "La session temporaire a expiré. Veuillez vous reconnecter.",
-  "account_created": "Compte créé avec succès ! Vous pouvez maintenant vous connecter."
+  "account_created": "Compte créé avec succès ! Vous pouvez maintenant vous connecter.",
+  "theme": "Thème",
+  "light_theme": "Clair Thème",
+  "dark_theme": "Sombre Thème",
+  "theme_description": "Sélectionnez un thème :"
 }

@@ -25,5 +25,9 @@
   "view_profile": "Ver mi Perfil",
   "guest": "Invitado",
   "cart_empty": "Tu carrito está vacío",
-  "go_home": "Regresar al inicio"
+  "go_home": "Regresar al inicio",
+  "theme": "Tema",
+  "light_theme": "Tema Claro",
+  "dark_theme": "Tema Oscuro",
+  "theme_description": "Selecciona un tema:"
 }

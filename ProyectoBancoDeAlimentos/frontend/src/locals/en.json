@@ -29,5 +29,9 @@
   "select_department": "Select a department",
   "select_municipality": "Select a municipality",
   "session_expired": "Temporary session expired. Please sign in again.",
-  "account_created": "Account created successfully! You can now sign in."
+  "account_created": "Account created successfully! You can now sign in.",
+  "theme": "Theme",
+  "light_theme": "Light Theme",
+  "dark_theme": "Dark Theme",
+  "theme_description": "Select a theme:"
 }

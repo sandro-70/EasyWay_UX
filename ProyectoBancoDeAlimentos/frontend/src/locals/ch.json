@@ -29,5 +29,9 @@
   "select_department": "选择一个部门",
   "select_municipality": "选择一个市",
   "session_expired": "临时会话已过期。请重新登录。",
-  "account_created": "账户创建成功！您现在可以登录。"
+  "account_created": "账户创建成功！您现在可以登录。",
+  "theme": "主题",
+  "light_theme": "浅色 主题",
+  "dark_theme": "深色 主题",
+  "theme_description": "选择一个主题："
 }

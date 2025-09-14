@@ -79,8 +79,10 @@ export default function SistemaValoracion() {
           </div>
           <div className="card-content">
             <div className="suggestion-visual">
+
               <div className="visual-icon">
-                <Icon icon="mdi:bell-notification-outline" />
+                 {/*aqui iria la imagen de sugerencia*/}
+                <img src="/ruta/a/tu/imagen-sugerencia.png" alt="Sugerencia" style={{ width: "60px", height: "60px" }} />
               </div>
             </div>
             <div className="suggestion-text">
@@ -130,7 +132,11 @@ export default function SistemaValoracion() {
 
                 <div className="product-display">
                   <div className="product-image">
-                    <span className="product-emoji">🛒</span>
+<img
+                src={currentProduct?.producto?.imagen_url || "/ruta/a/imagen-default.png"}
+                alt={currentProduct?.producto?.nombre}
+                style={{ width: "100%", height: "100%", borderRadius: "16px", objectFit: "cover" }}
+                />
                   </div>
                   <div className="product-info">
                     <h3>
@@ -162,7 +168,7 @@ export default function SistemaValoracion() {
         {/* Tarjeta de Hábitos de Compra */}
         <div className="dashboard-card habits-card">
           <div className="card-header">
-            <h2>HÁBITOS DE COMPRA</h2>
+            <h2>pPEDIDOS POR SEMANA</h2>
           </div>
           <div className="card-content">
             {loading ? (

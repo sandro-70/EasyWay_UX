@@ -1,6 +1,6 @@
 /* ====== Variables ====== */
 :root {
-  --primary-blue: #2b6daf;
+  --primary-blue: #2B6DAF;
   --accent-orange: #ff7a2a;
   --ink-900: #0f172a;
   --ink-700: #334155;
@@ -13,20 +13,21 @@
   --contai: #f7f7f7;
   --radius-md: 12px;
   --radius-lg: 16px;
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.15);
-  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.2);
-  --brand-blue: #2b6daf;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, .15);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, .2);
+  --brand-blue: #2B6DAF;
   --brand-cyan: #2ca9e3;
   --brand-orange: #d8572f;
   --border: #d8dadc;
   --radius-xl: 1.25rem;
+  --appbar-h: 90px;
 }
+
 
 .page-container {
   background: #f7f7f7;
   color: var(--ink-900);
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
-    Helvetica, Arial;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
   width: 1120px;
   display: flex;
   position: relative;
@@ -40,7 +41,7 @@
   border-radius: 20px;
 }
 
-/*ENCABEZADO DE GESTION PERFIL DE USUARIOS*/
+
 .divider {
   height: 0.25rem;
   width: 100%;
@@ -56,8 +57,8 @@
 }
 
 .page-header h1 {
-  color: #f0833e;
-  font-size: 2.1rem;
+  color: #d8572f;
+  font-size: 2.25rem;
   font-weight: 600;
   margin: 0;
   letter-spacing: 0.03em;
@@ -70,9 +71,9 @@
   gap: 6px;
   border: none;
   border-radius: 12px;
-  background: #f0833e;
+  background: var(--accent-orange);
   color: #fff;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -96,12 +97,12 @@
 
 /* Botones de acción en celdas (misma base que inventario) */
 .icon-btn {
-  padding: 0.5rem;
+  padding: .5rem;
   border-radius: 1rem;
   border: 1px solid var(--border);
   background: #fff;
   cursor: pointer;
-  transition: background 0.15s ease, transform 0.06s ease, box-shadow 0.2s ease;
+  transition: background .15s ease, transform .06s ease, box-shadow .2s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -118,7 +119,7 @@
 
 /* azul claro */
 .icon-btn--edit:hover {
-  background: rgba(44, 169, 227, 0.2);
+  background: rgba(44, 169, 227, .20);
 }
 
 /* azul claro */
@@ -163,7 +164,7 @@
   border-radius: 999px;
   font-size: 14px;
   outline: none;
-  box-shadow: 0 3px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 3px 3px rgba(0,0,0,0.08); 
   transition: all 0.2s ease;
 }
 
@@ -193,7 +194,7 @@
 }
 /* Al enfocar (cuando escribes) */
 .search-input input:focus {
-  border-color: var(--brand-orange); /* tu naranja */
+  border-color: var(--brand-orange);    /* tu naranja */
   box-shadow: 0 3px 8px rgba(216, 87, 47, 0.35);
   background: #fff;
 }
@@ -213,7 +214,7 @@
   width: 100%;
   min-width: 900px;
   border-collapse: collapse;
-  font-size: 0.875rem;
+  font-size: .875rem;
   margin: 0;
 }
 
@@ -234,7 +235,7 @@
 }
 
 .users-table td {
-  padding: 0.75rem 0.75rem;
+  padding: .75rem .75rem;
   vertical-align: middle;
 }
 
@@ -341,14 +342,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.75rem 1rem;
+  padding: .75rem 1rem;
   /* py-3 px-4 */
   background: #fff;
   border-top: 1px solid var(--border);
   border-bottom-left-radius: 1.25rem;
   /* misma curva que la tarjeta (rounded-2xl) */
   border-bottom-right-radius: 1.25rem;
-  gap: 0.25rem;
+  gap: .25rem;
+
 }
 
 .pagination button {
@@ -367,8 +369,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s ease, border-color 0.15s ease,
-    transform 0.06s ease;
+  transition: background .15s ease, border-color .15s ease, transform .06s ease;
 }
 
 .pagination button:hover {
@@ -391,7 +392,7 @@
 
 /* Deshabilitado (flechas al límite) */
 .pagination button:disabled {
-  opacity: 0.6;
+  opacity: .6;
   cursor: not-allowed;
 }
 
@@ -401,41 +402,80 @@
   height: 18px;
 }
 
-/* ====== Modal ====== */
+/* ====== Modal General ====== */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, .45);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  padding: 32px 16px;
+  z-index: 5000;
+  box-sizing: border-box;
 }
 
 .modal-container {
   width: min(600px, 92vw);
-  /* más ancho para mejor visualización */
   background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.2);
+  border-radius: 14px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, .25);
   overflow: hidden;
-}
-
-.modal-header {
-  background: #2b6daf;
-  color: #fff;
-  padding: 16px;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+}
+
+/* === FIX: header del modal a ancho completo, sin sangrías === */
+.modal-overlay .modal-container{
+  position: relative;
+  overflow: hidden;                 /* para respetar bordes redondeados */
+  border-radius: 14px;
+}
+
+.modal-overlay .modal-container > .modal-header{
+  display: flex !important;
   align-items: center;
+  justify-content: center;          /* centra el título */
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 14px 56px 14px 20px !important; /* espacio para la X */
+  background: #2B6DAF !important;
+  color: #fff !important;
+  box-sizing: border-box;
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
 }
 
-.modal-title {
-  margin: 0;
-  font-size: 18px;
+.modal-overlay .modal-container > .modal-header .modal-title{
+  margin: 0 !important;
   font-weight: 700;
+  font-size: 18px;
+  line-height: 1;
+  width: 100%;
+  text-align: center;
 }
 
+.modal-overlay .modal-container > .modal-header .modal-close{
+  position: absolute;
+  right: 16px;                      /* botón de cerrar a la derecha */
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: 0;
+  color: #fff;
+  cursor: pointer;
+  padding: 6px;
+  line-height: 0;
+}
+
+/* Evita que algún reset global empuje el header */
+.modal-overlay .modal-container > .modal-header *{
+  margin: 0;
+}
+
+
+
+/* ====== Cuerpo ====== */
 .modal-body {
   padding: 20px;
   display: grid;
@@ -443,18 +483,365 @@
   gap: 16px;
 }
 
-@media (min-width: 768px) {
+@media(min-width:768px) {
   .modal-body {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr;   /* dos columnas en pantallas medianas */
   }
 }
 
+.modal-body.modal-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 16px;
+}
+
+/* ====== Acciones ====== */
 .modal-actions {
   padding: 0 20px 20px;
   display: flex;
   justify-content: flex-end;
   gap: 12px;
 }
+
+/* ====== Forms ====== */
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+label span {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-700);
+}
+
+input,
+select {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--ink-900);
+}
+
+input[readonly] {
+  background: #f8fafc;
+}
+/* ====== Tabs ====== */
+.tabs-nav {
+  display: flex;
+  gap: 10px;
+  padding: 10px 15px;
+  border-bottom: 1px solid var(--border);
+  background: #f8fafc;
+}
+
+.tab-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 999px;
+  font-size: 13px;
+  cursor: pointer;
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.tab-btn.active {
+  background: #ff7a2a;
+  color: #fff;
+}
+
+.tabs-body {
+  padding: 15px;
+}
+
+/* ====== Privilegios list ====== */
+.priv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 450px;
+  overflow: auto;
+}
+
+.priv-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 5px;
+  border-bottom: 1px solid #eee;
+}
+
+.priv-label {
+  font-size: 14px;
+}
+
+.edit-checkmark {
+  height: 20px;
+  width: 20px;
+  border: 2px solid #80838A;
+  border-radius: 4px;
+  background: #fff;
+}
+
+.priv-item input {
+  position: absolute;
+  opacity: 0;
+}
+
+.priv-item input:checked+.edit-checkmark {
+  background: #2E9FD4;
+  border-color: #2E9FD4;
+}
+
+.edit-checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+  left: 6px;
+  top: 2px;
+  width: 4px;
+  height: 10px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.priv-item input:checked+.edit-checkmark:after {
+  display: block;
+}
+
+/* ====== Responsive ====== */
+@media(max-width:980px) {
+  .users-table {
+    min-width: 800px;
+  }
+
+  .main-content {
+    max-width: 100%;
+    margin: 0 10px;
+    padding: 16px;
+  }
+
+  .table-container {
+    overflow-x: auto;
+  }
+}
+
+/* ===== Fix encabezado tabla forzado ===== */
+.table-container table thead,
+.table-container table thead tr,
+.table-container table thead th {
+  background-color: var(--primary-blue) !important;
+  color: #ffffff !important;
+}
+
+/* ===== Privilegios en línea (checkbox + texto a la par) ===== */
+.priv-item {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.priv-item input {
+  position: absolute;
+  opacity: 0;
+}
+
+.priv-item .edit-checkmark {
+  height: 20px;
+  width: 20px;
+  border: 2px solid #80838A;
+  border-radius: 4px;
+  background: #fff;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.priv-item input:checked+.edit-checkmark {
+  background: #2E9FD4;
+  border-color: #2E9FD4;
+}
+
+.priv-item .edit-checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+  left: 6px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.priv-item input:checked+.edit-checkmark:after {
+  display: block;
+}
+
+/* texto a la PAR del check */
+.priv-item .priv-label {
+  font-size: 15px;
+  color: #0f172a;
+  line-height: 1.4;
+  margin: 0;
+}
+
+/* Versión solo lectura (consultar) */
+.priv-item.readonly input {
+  pointer-events: none;
+}
+
+.priv-item.readonly .edit-checkmark {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.table-container {
+  width: 100%;
+}
+
+.users-table {
+  width: 100%;
+}
+
+/* Mejora visual para pantallas grandes */
+@media (min-width: 1200px) {
+  .main-content {
+    margin: 0 auto;
+  }
+
+  .users-table {
+    font-size: 16px;
+  }
+
+  .users-table th,
+  .users-table td {
+    padding: 16px 14px;
+  }
+}
+
+/* Forzar estilo a TODOS los <select> dentro del modal */
+.modal-container .modal-body select{
+  height: 44px !important;
+  padding: 0 44px 0 12px !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  border: 1px solid var(--border) !important;
+  color: var(--ink-900) !important;
+  font-size: 14px !important;
+  outline: none !important;
+
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+
+  box-shadow: 0 1px 2px rgba(0,0,0,.06) !important;
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease !important;
+
+  /* Flecha custom */
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="%2364748b"><path d="M7 10l5 5 5-5"/></svg>') !important;
+  background-repeat: no-repeat !important;
+  background-position: right 12px center !important;
+  background-size: 18px !important;
+}
+
+/* Hover / Focus coherentes con tu paleta */
+.modal-container .modal-body select:hover{
+  border-color: var(--brand-cyan) !important;
+}
+.modal-container .modal-body select:focus{
+  border-color: var(--brand-orange) !important;
+  box-shadow: 0 0 0 3px rgba(216,87,47,.25) !important;
+}
+
+/* Ocultar flecha de IE/Edge legacy */
+.modal-container .modal-body select::-ms-expand{ display:none; }
+
+/* ===== Inputs con la MISMA animación del buscador ===== */
+/* aplica en formularios del modal; excluye check/radio */
+.modal-container .modal-body input:not([type="checkbox"]):not([type="radio"]),
+.modal-container .modal-body textarea {
+  width: 100%;
+  height: 44px;                       /* misma altura que select */
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px 12px;
+  font-size: 14px;
+  color: var(--ink-900);
+  outline: none;
+
+  /* animación igual que el search input */
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  transition: all 0.2s ease;          /* borde + sombra */
+}
+
+/* hover igual que el buscador */
+.modal-container .modal-body input:not([type="checkbox"]):not([type="radio"]):hover,
+.modal-container .modal-body textarea:hover {
+  border-color: var(--brand-cyan);
+  box-shadow: 0 2px 6px rgba(44,169,227,0.25);
+}
+
+/* focus igual que el buscador (naranja) */
+.modal-container .modal-body input:not([type="checkbox"]):not([type="radio"]):focus,
+.modal-container .modal-body textarea:focus {
+  border-color: var(--brand-orange);
+  box-shadow: 0 3px 8px rgba(216,87,47,0.35);
+  background: #fff;
+}
+
+/* estados útiles */
+.modal-container .modal-body input[readonly],
+.modal-container .modal-body textarea[readonly] {
+  background: #f8fafc;
+  color: var(--ink-700);
+  cursor: default;
+}
+
+.modal-container .modal-body input:disabled,
+.modal-container .modal-body textarea:disabled {
+  background: #f1f5f9;
+  color: var(--ink-500);
+  cursor: not-allowed;
+}
+
+/* error opcional */
+.input-error {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239,68,68,0.15) !important;
+}
+
+/* textarea altura y alineación */
+.modal-container .modal-body textarea {
+  height: auto;
+  min-height: 88px;
+  resize: vertical;
+}
+
+/* corrige amarillos del autofill (Chrome) */
+.modal-container .modal-body input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0px 1000px #fff inset, 0 1px 2px rgba(0,0,0,0.06);
+  -webkit-text-fill-color: var(--ink-900);
+  transition: background-color 9999s ease-out;
+}
+.modal-container .modal-body.modal-grid-2{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 16px;
+  justify-items: stretch;   /* evita que los inputs queden centrados */
+  align-items: start;
+}
+
+
+
+
+
 
 /* ====== Forms ====== */
 label {
@@ -515,83 +902,13 @@ input[readonly] {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 220px;
-  overflow: auto;
+
+  /* 🔹 mismo alto que el form */
+  min-height: 320px;
+  max-height: 320px;
+  overflow-y: auto;
 }
 
-.priv-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 5px;
-  border-bottom: 1px solid #eee;
-}
-
-.priv-label {
-  font-size: 14px;
-}
-
-.edit-checkmark {
-  height: 20px;
-  width: 20px;
-  border: 2px solid #80838a;
-  border-radius: 4px;
-  background: #fff;
-}
-
-.priv-item input {
-  position: absolute;
-  opacity: 0;
-}
-
-.priv-item input:checked + .edit-checkmark {
-  background: #2e9fd4;
-  border-color: #2e9fd4;
-}
-
-.edit-checkmark:after {
-  content: "";
-  position: absolute;
-  display: none;
-  left: 6px;
-  top: 2px;
-  width: 4px;
-  height: 10px;
-  border: solid #fff;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-}
-
-.priv-item input:checked + .edit-checkmark:after {
-  display: block;
-}
-
-/* ====== Responsive ====== */
-@media (max-width: 980px) {
-  .users-table {
-    min-width: 800px;
-  }
-
-  .main-content {
-    max-width: 100%;
-    margin: 0 10px;
-    padding: 16px;
-  }
-
-  .table-container {
-    overflow-x: auto;
-  }
-}
-
-/* ===== Fix encabezado tabla forzado ===== */
-.table-container table thead,
-.table-container table thead tr,
-.table-container table thead th {
-  background-color: var(--primary-blue) !important;
-  color: #ffffff !important;
-}
-
-/* ===== Privilegios en línea (checkbox + texto a la par) ===== */
 .priv-item {
   display: flex !important;
   flex-direction: row !important;
@@ -609,16 +926,16 @@ input[readonly] {
 .priv-item .edit-checkmark {
   height: 20px;
   width: 20px;
-  border: 2px solid #80838a;
+  border: 2px solid #80838A;
   border-radius: 4px;
   background: #fff;
   position: relative;
   flex-shrink: 0;
 }
 
-.priv-item input:checked + .edit-checkmark {
-  background: #2e9fd4;
-  border-color: #2e9fd4;
+.priv-item input:checked+.edit-checkmark {
+  background: #2E9FD4;
+  border-color: #2E9FD4;
 }
 
 .priv-item .edit-checkmark:after {
@@ -634,161 +951,13 @@ input[readonly] {
   transform: rotate(45deg);
 }
 
-.priv-item input:checked + .edit-checkmark:after {
+.priv-item input:checked+.edit-checkmark:after {
   display: block;
 }
 
-/* texto a la PAR del check */
 .priv-item .priv-label {
   font-size: 15px;
   color: #0f172a;
   line-height: 1.4;
   margin: 0;
-}
-
-/* Versión solo lectura (consultar) */
-.priv-item.readonly input {
-  pointer-events: none;
-}
-
-.priv-item.readonly .edit-checkmark {
-  border-color: #cbd5e1;
-  background: #f8fafc;
-}
-
-.table-container {
-  width: 100%;
-}
-
-.users-table {
-  width: 100%;
-}
-
-/* Mejora visual para pantallas grandes */
-@media (min-width: 1200px) {
-  .main-content {
-    margin: 0 auto;
-  }
-
-  .users-table {
-    font-size: 16px;
-  }
-
-  .users-table th,
-  .users-table td {
-    padding: 16px 14px;
-  }
-}
-
-/* Forzar estilo a TODOS los <select> dentro del modal */
-.modal-container .modal-body select {
-  height: 44px !important;
-  padding: 0 44px 0 12px !important;
-  border-radius: 10px !important;
-  background: #fff !important;
-  border: 1px solid var(--border) !important;
-  color: var(--ink-900) !important;
-  font-size: 14px !important;
-  outline: none !important;
-
-  appearance: none !important;
-  -webkit-appearance: none !important;
-  -moz-appearance: none !important;
-
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06) !important;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease,
-    background 0.15s ease !important;
-
-  /* Flecha custom */
-  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="%2364748b"><path d="M7 10l5 5 5-5"/></svg>') !important;
-  background-repeat: no-repeat !important;
-  background-position: right 12px center !important;
-  background-size: 18px !important;
-}
-
-/* Hover / Focus coherentes con tu paleta */
-.modal-container .modal-body select:hover {
-  border-color: var(--brand-cyan) !important;
-}
-.modal-container .modal-body select:focus {
-  border-color: var(--brand-orange) !important;
-  box-shadow: 0 0 0 3px rgba(216, 87, 47, 0.25) !important;
-}
-
-/* Ocultar flecha de IE/Edge legacy */
-.modal-container .modal-body select::-ms-expand {
-  display: none;
-}
-
-/* ===== Inputs con la MISMA animación del buscador ===== */
-/* aplica en formularios del modal; excluye check/radio */
-.modal-container .modal-body input:not([type="checkbox"]):not([type="radio"]),
-.modal-container .modal-body textarea {
-  width: 100%;
-  height: 44px; /* misma altura que select */
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: #fff;
-  padding: 10px 12px;
-  font-size: 14px;
-  color: var(--ink-900);
-  outline: none;
-
-  /* animación igual que el search input */
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-  transition: all 0.2s ease; /* borde + sombra */
-}
-
-/* hover igual que el buscador */
-.modal-container
-  .modal-body
-  input:not([type="checkbox"]):not([type="radio"]):hover,
-.modal-container .modal-body textarea:hover {
-  border-color: var(--brand-cyan);
-  box-shadow: 0 2px 6px rgba(44, 169, 227, 0.25);
-}
-
-/* focus igual que el buscador (naranja) */
-.modal-container
-  .modal-body
-  input:not([type="checkbox"]):not([type="radio"]):focus,
-.modal-container .modal-body textarea:focus {
-  border-color: var(--brand-orange);
-  box-shadow: 0 3px 8px rgba(216, 87, 47, 0.35);
-  background: #fff;
-}
-
-/* estados útiles */
-.modal-container .modal-body input[readonly],
-.modal-container .modal-body textarea[readonly] {
-  background: #f8fafc;
-  color: var(--ink-700);
-  cursor: default;
-}
-
-.modal-container .modal-body input:disabled,
-.modal-container .modal-body textarea:disabled {
-  background: #f1f5f9;
-  color: var(--ink-500);
-  cursor: not-allowed;
-}
-
-/* error opcional */
-.input-error {
-  border-color: #ef4444 !important;
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
-}
-
-/* textarea altura y alineación */
-.modal-container .modal-body textarea {
-  height: auto;
-  min-height: 88px;
-  resize: vertical;
-}
-
-/* corrige amarillos del autofill (Chrome) */
-.modal-container .modal-body input:-webkit-autofill {
-  -webkit-box-shadow: 0 0 0px 1000px #fff inset, 0 1px 2px rgba(0, 0, 0, 0.06);
-  -webkit-text-fill-color: var(--ink-900);
-  transition: background-color 9999s ease-out;
 }

@@ -1275,6 +1275,7 @@ export default function Inventario() {
   /* ===================== UI ===================== */
   return (
     <div
+    
       className="w-screen px-4 bg-[#f9fafb]"
       style={{
         position: "absolute",

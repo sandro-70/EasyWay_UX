@@ -42,20 +42,16 @@ function Categoria() {
   const [hoveredProductDest, setHoveredProductDest] = React.useState(null);
   const [hoveredProductTrend, setHoveredProductTrend] = React.useState(null);
 
+  // ----- Comparar productos -----
   const agregarAComparar = (producto) => {
     setProductosParaComparar((prev) => {
-      // Si el producto ya está en la lista, lo removemos
       const exists = prev.find((p) => p.id_producto === producto.id_producto);
       if (exists) {
         return prev.filter((p) => p.id_producto !== producto.id_producto);
       }
-
-      // Si ya hay 2 productos, reemplazamos el primero
       if (prev.length >= 2) {
         return [prev[1], producto];
       }
-
-      // Agregamos el producto
       return [...prev, producto];
     });
   };
@@ -78,6 +74,7 @@ function Categoria() {
     setCompare("COMPARAR");
   };
 
+  // ----- Fetch subcategorias por categoria -----
   const fetchPorCategoria = async (idCategoria) => {
     try {
       setLoading(true);
@@ -104,6 +101,7 @@ function Categoria() {
     }
   };
 
+  // ----- Handlers filtro -----
   const handleSubcategoriaChange = (subcategoriaId, checked) => {
     if (checked) {
       setSelectedSubcategorias((prev) => [...prev, subcategoriaId]);
@@ -138,6 +136,15 @@ function Categoria() {
         const productMarca = product.marca?.nombre || product.marca || "";
         return productMarca.toLowerCase() === selectedMarca.toLowerCase();
       });
+    }
+
+    // Ordenar si aplica
+    if (orderby === "Mas Vendidos") {
+      // Si tu API trae un campo de ventas, úsalo. Aquí ordeno por estrellas como ejemplo
+      filtered.sort((a, b) => (b.estrellas || 0) - (a.estrellas || 0));
+    } else if (orderby === "Novedades") {
+      // Si tienes fecha de creación, ordena por fecha. Aquí asumo campo fecha_creacion
+      filtered.sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
     }
 
     return filtered;
@@ -208,7 +215,7 @@ function Categoria() {
   useEffect(() => {
     const filtered = applyFilters(products);
     setFilteredProducts(filtered);
-  }, [products, selectedSubcategorias, priceRange, selectedMarca]);
+  }, [products, selectedSubcategorias, priceRange, selectedMarca, orderby]);
 
   useEffect(() => {
     const productos = async () => {
@@ -377,179 +384,206 @@ function Categoria() {
       )}
 
       <div className="flex flex-row">
-        {/* Sidebar Sub-categorias */}
-        <div className="flex flex-col h-[578px] fixed w-[265px] gap-1 ">
-          {/* Sub-categoria */}
-          <div className="border-gray-300 border-2 space-y-1 px-4 py-2 rounded-md">
-            <h1 className="header">Sub-categoria</h1>
+        {/* Sidebar / Panel de filtros unificado (NO tocar otras partes del layout) */}
+        <div className="flex flex-col h-[720px] fixed w-[320px] gap-4 p-4" style={{left: 10}}>
+          <div className="bg-white border border-gray-200 rounded-2xl shadow-md p-4 w-[300px] max-h-[680px] overflow-y-auto">
+            <h2 className="text-xl font-semibold mb-3">Filtrar productos</h2>
 
-            <ul className="overflow-y-auto h-20">
-              {subcategorias.length > 0 ? (
-                subcategorias.map((sub, i) => {
-                  const subcategoriaId = sub.id || sub.id_subcategoria;
-                  const isChecked =
-                    selectedSubcategorias.includes(subcategoriaId);
+            {/* Sub-categoría */}
+<section className="mb-4">
+  <h3 className="text-md font-medium mb-2">Sub-categoría</h3>
 
-                  return (
-                    <li key={subcategoriaId || i}>
-                      <div className="flex flex-row gap-2 items-center">
-                        <Checkbox
-                          color="secondary"
-                          size="medium"
-                          checked={isChecked}
-                          onChange={(e) =>
-                            handleSubcategoriaChange(
-                              subcategoriaId,
-                              e.target.checked
-                            )
-                          }
-                          sx={{
-                            color: "",
-                            "&.Mui-checked": { color: "#114C87" },
-                          }}
-                        />
-                        <p>{sub.nombre || `Subcategoría ${i + 1}`}</p>
-                      </div>
-                    </li>
-                  );
-                })
-              ) : (
-                <li className="text-gray-500 text-sm">
-                  No hay subcategorías disponibles
-                </li>
-              )}
-            </ul>
+  {/* Scroll propio con altura limitada y barra personalizada */}
+  <ul className="space-y-1 overflow-y-auto max-h-[100px] pr-2 custom-scroll">
+    {subcategorias.length > 0 ? (
+      subcategorias.map((sub, i) => {
+        const subcategoriaId = sub.id || sub.id_subcategoria;
+        const isChecked = selectedSubcategorias.includes(subcategoriaId);
 
-            <h1 className="header">Marca</h1>
-            <select
-              className="w-full border-gray-300 border-2 rounded-md py-1 px-2 focus:outline-none focus:border-blue-500"
-              value={selectedMarca}
-              onChange={handleMarcaChange}
-            >
-              <option value="">Todas las marcas</option>
-              {marcasDisponibles.map((marca, index) => (
-                <option key={index} value={marca}>
-                  {marca}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Precio */}
-          <div className="border-gray-300 border-2  py-2 space-y-1 rounded-md">
-            <h1 className="header px-4">Precio</h1>
-            <div className=" flex flex-col px-4">
-              <Slider
-                value={priceRange}
-                onChange={handlePriceChange}
-                min={minPrice}
-                max={maxPrice}
-                step={1}
-                valueLabelDisplay="auto"
-                className=""
+        return (
+          <li key={subcategoriaId || i}>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                color="secondary"
+                size="small"
+                checked={isChecked}
+                onChange={(e) =>
+                  handleSubcategoriaChange(subcategoriaId, e.target.checked)
+                }
                 sx={{
-                  color: "green",
-                  "& .MuiSlider-thumb": {
-                    backgroundColor: "#2b6daf",
-                  },
-                  "& .MuiSlider-rail": {
-                    opacity: 1,
-                    backgroundColor: "#D4D3D2",
-                  },
-                  "& .MuiSlider-track": {
-                    backgroundColor: "#2b6daf",
-                    border: "#2b6daf",
-                  },
+                  color: "",
+                  "&.Mui-checked": { color: "#114C87" },
                 }}
               />
-              <div className="flex flex-row w-full">
-                <p className="text-left">L.{minPrice}</p>
-                <p className="ml-auto">L.{maxPrice}</p>
+              <span className="text-sm">{sub.nombre || `Subcategoría ${i + 1}`}</span>
+            </div>
+          </li>
+        );
+      })
+    ) : (
+      <li className="text-gray-500 text-sm">No hay subcategorías disponibles</li>
+    )}
+  </ul>
+</section>
+
+
+            <hr className="my-3" />
+
+            {/* Marca */}
+            <section className="mb-4">
+              <h3 className="text-md font-medium mb-2">Marca</h3>
+              <select
+                className="w-full border-gray-300 border rounded-md py-2 px-3 focus:outline-none"
+                value={selectedMarca}
+                onChange={handleMarcaChange}
+              >
+                <option value="">Todas las marcas</option>
+                {marcasDisponibles.map((marca, index) => (
+                  <option key={index} value={marca}>
+                    {marca}
+                  </option>
+                ))}
+              </select>
+            </section>
+
+            <hr className="my-3" />
+
+            {/* Precio */}
+            <section className="mb-4">
+              <h3 className="text-md font-medium mb-2">Precio</h3>
+              <div className="px-1">
+                <Slider
+                  value={priceRange}
+                  onChange={handlePriceChange}
+                  min={minPrice}
+                  max={maxPrice}
+                  step={1}
+                  valueLabelDisplay="auto"
+                  sx={{
+                    color: "#2b6daf",
+                    "& .MuiSlider-thumb": { backgroundColor: "#2b6daf" },
+                  }}
+                />
+
+                <div className="flex justify-between text-sm text-gray-700 mt-1">
+                  <span>L.{priceRange[0]}</span>
+                  <span>L.{priceRange[1]}</span>
+                </div>
+
+                <div className="flex gap-2 mt-3">
+                  <button
+                    className="flex-1 bg-white border border-gray-300 rounded-md h-9 text-sm hover:bg-gray-50"
+                    onClick={() => handleQuickPriceFilter("menos10")}
+                  >
+                    Menos 10L
+                  </button>
+                  <button
+                    className="flex-1 bg-white border border-gray-300 rounded-md h-9 text-sm hover:bg-gray-50"
+                    onClick={() => handleQuickPriceFilter("menos50")}
+                  >
+                    Menos 50L
+                  </button>
+                  <button
+                    className="flex-1 bg-white border border-gray-300 rounded-md h-9 text-sm hover:bg-gray-50"
+                    onClick={() => handleQuickPriceFilter("mas100")}
+                  >
+                    Más 100L
+                  </button>
+                </div>
               </div>
-              <div className="flex flex-row w-full justify-between text-sm text-gray-600 mt-1">
-                <p>L.{priceRange[0]}</p>
-                <p>L.{priceRange[1]}</p>
+            </section>
+
+            <hr className="my-3" />
+
+            {/* Ordenar Por */}
+            <section className="mb-4">
+              <h3 className="text-md font-medium mb-2">Ordenar por</h3>
+              <div className="grid grid-cols-1 gap-2">
+                <button
+                  className={`text-left px-3 py-2 rounded-md ${orderby === "Relevancia" ? "bg-[#ffac77] font-semibold" : "hover:bg-[#ffac77]"}`}
+                  onClick={(e) => setOrder("Relevancia")}
+                >
+                  Relevancia
+                </button>
+                <button
+                  className={`text-left px-3 py-2 rounded-md ${orderby === "Mas Vendidos" ? "bg-[#ffac77] font-semibold" : "hover:bg-[#ffac77]"}`}
+                  onClick={(e) => setOrder("Mas Vendidos")}
+                >
+                  Mas Vendidos
+                </button>
+                <button
+                  className={`text-left px-3 py-2 rounded-md ${orderby === "Novedades" ? "bg-[#ffac77] font-semibold" : "hover:bg-[#ffac77]"}`}
+                  onClick={(e) => setOrder("Novedades")}
+                >
+                  Novedades
+                </button>
               </div>
-            </div>
-            <div className="flex flex-row gap-2 text-[14px] font-medium px-1">
-              <button
-                className="bg-white border-2 border-gray-300 rounded-md h-[38px] whitespace-nowrap px-1 hover:bg-gray-100 transition-colors"
-                onClick={() => handleQuickPriceFilter("menos10")}
-              >
-                Menos 10L
-              </button>
-              <button
-                className="bg-white border-2 border-gray-300 rounded-md h-[38px] whitespace-nowrap px-1 hover:bg-gray-100 transition-colors"
-                onClick={() => handleQuickPriceFilter("menos50")}
-              >
-                Menos 50L
-              </button>
-              <button
-                className="bg-white border-2 border-gray-300 rounded-md h-[38px] whitespace-nowrap px-1 hover:bg-gray-100 transition-colors"
-                onClick={() => handleQuickPriceFilter("mas100")}
-              >
-                Mas 100L
-              </button>
-            </div>
-          </div>
+            </section>
 
-          {/* Ordenar Por */}
-          <div className="border-gray-300 border-2 px-2 py-2 pb-4 space-y-1 rounded-md">
-            <h1 className="header">Ordenar por</h1>
-            <div className="flex flex-col border-gray-300 bg-gray-200 border-2 rounded-md py-1">
-              <button
-                className={`${orderby === "Relevancia" ? "bg-[#D8DADC]" : ""}`}
-                onClick={(e) => setOrder(e.target.innerText)}
-              >
-                Relevancia
-              </button>
-              <button
-                className={`${
-                  orderby === "Mas Vendidos" ? "bg-[#D8DADC]" : ""
-                }`}
-                onClick={(e) => setOrder(e.target.innerText)}
-              >
-                Mas Vendidos
-              </button>
-              <button
-                className={`${orderby === "Novedades" ? "bg-[#D8DADC]" : ""}`}
-                onClick={(e) => setOrder(e.target.innerText)}
-              >
-                Novedades
-              </button>
-            </div>
-          </div>
+            <hr className="my-3" />
 
-          {/* Botón de comparar */}
-          <div className="relative flex flex-col items-center gap-2">
-            <button
-              onClick={agregarComparar}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold text-white shadow-md transition-colors duration-300
-              ${
-                stateProducto === "Agregar"
-                  ? "bg-[#2B6DAF] hover:bg-[#1f4e7f]"
-                  : "bg-[#80838A] "
-              }
-            `}
-            >
-              {btnCompare}
-            </button>
+            {/* Botón de comparar */}
+            <section className="flex flex-col items-center gap-2">
+              <button
+                onClick={agregarComparar}
+                className={`px-4 py-2 rounded-xl text-sm font-semibold text-white shadow-md transition-colors duration-300 w-full
+                ${stateProducto === "Agregar" ? "bg-[#2B6DAF] hover:bg-[#1f4e7f]" : "bg-[#80838A]"}`}
+              >
+                {btnCompare}
+              </button>
 
-            {/* Botón para comparar cuando hay productos seleccionados */}
-            {stateProducto === "Comparar" &&
-              productosParaComparar.length >= 2 && (
+              {stateProducto === "Comparar" && productosParaComparar.length >= 2 && (
                 <button
                   onClick={iniciarComparacion}
-                  className="px-6 py-2 rounded-xl bg-[#2B6DAF] text-white text-sm font-semibold shadow-md hover:bg-[#1f4e7f] transition-colors duration-300"
+                  className="px-6 py-2 rounded-xl bg-[#2B6DAF] text-white text-sm font-semibold shadow-md hover:bg-[#1f4e7f] transition-colors duration-300 w-full"
                 >
                   COMPARAR
                 </button>
               )}
+
+              {/* Mostrar badges para filtros activos */}
+              <div className="mt-3 w-full">
+                {(selectedSubcategorias.length > 0 ||
+                  priceRange[0] !== minPrice ||
+                  priceRange[1] !== maxPrice ||
+                  selectedMarca !== "") && (
+                  <div className="text-sm text-gray-500">
+                    <p className="mb-2">Filtros activos:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedMarca && (
+                        <button
+                          onClick={() => setSelectedMarca("")}
+                          className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs hover:bg-red-200"
+                        >
+                          ✕ Marca: {selectedMarca}
+                        </button>
+                      )}
+                      {(priceRange[0] !== minPrice || priceRange[1] !== maxPrice) && (
+                        <button
+                          onClick={() => setPriceRange([minPrice, maxPrice])}
+                          className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs hover:bg-red-200"
+                        >
+                          ✕ Precio: L.{priceRange[0]} - L.{priceRange[1]}
+                        </button>
+                      )}
+                      {selectedSubcategorias.length > 0 && (
+                        <button
+                          onClick={() => setSelectedSubcategorias([])}
+                          className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs hover:bg-red-200"
+                        >
+                          ✕ Subcategorías ({selectedSubcategorias.length})
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
           </div>
         </div>
 
         {/* Display Productos */}
-        <div className="w-full ml-[285px] mr-[20px]">
+        <div className="w-full ml-[350px] mr-[20px]">
           <div style={styles.divProducts} ref={prodRefRecomendados}>
             {filteredProducts.length === 0 ? (
               <div className="col-span-5 text-center py-10">
@@ -716,6 +750,13 @@ const styles = {
     width: "100%",
     padding: "0 20px",
   },
+  customScroll: {
+    maxHeight: "100px",
+    overflowY: "auto",
+    paddingRight: "6px",
+    scrollbarWidth: "thin",              // Firefox
+    scrollbarColor: "#999 transparent",  // Firefox
+  },
   arrow: {
     background: "transparent",
     width: "35px",
@@ -727,9 +768,9 @@ const styles = {
     justifyContent: "center",
   },
   productBox: {
-    height: "220px",
+    height: "260px",
     borderRadius: "25px",
-    padding: "10px",
+    padding: "12px",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
@@ -741,50 +782,52 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: "3px",
+    marginBottom: "6px",
   },
   badge: {
     backgroundColor: "#2b6daf",
     color: "white",
-    fontSize: "16px",
-    padding: "1px 15px",
-    borderRadius: "25px",
+    fontSize: "14px",
+    padding: "4px 10px",
+    borderRadius: "18px",
   },
   stars: {
     color: "#2b6daf",
-    fontSize: "25px",
+    fontSize: "18px",
   },
   productName: {
     width: "100%",
     textAlign: "left",
-    fontSize: "18px",
-    marginTop: "auto",
+    fontSize: "16px",
+    marginTop: "8px",
+    fontWeight: 600,
   },
   productPrice: {
     width: "100%",
     textAlign: "left",
-    fontSize: "17px",
+    fontSize: "15px",
     color: "#999",
-    marginTop: "auto",
+    marginTop: "4px",
   },
   addButton: {
     marginTop: "auto",
     width: "100%",
-    backgroundColor: "#F0833E",
     color: "white",
-    border: "#D8572F",
-    borderRadius: "25px",
-    padding: "2px 0",
+    border: "none",
+    borderRadius: "20px",
+    padding: "8px 0",
     cursor: "pointer",
-    fontSize: "16px",
+    fontSize: "15px",
     fontWeight: 600,
   },
   productImg: {
-    width: "70px",
-    height: "70px",
+    width: "90px",
+    height: "90px", 
     objectFit: "contain",
-    marginTop: "8px",
+    marginTop: "6px",
   },
 };
+
+
 
 export default Categoria;

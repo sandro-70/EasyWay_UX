@@ -5,8 +5,10 @@ const promocionesController = require('../controllers/promocionesController');
 const verificarToken = require('../middleware/verificarToken');
 
 router.get('/detalles', promocionesController.listarPromocionesConDetallesURL);
+router.get('/listarorden', promocionesController.listarPorOrden);
 
 router.get('/', promocionesController.listar);
+
 router.get('/:id', promocionesController.getpromocionById);
 router.get('/usuario/:id_usuario', promocionesController.getpromocionbyusuario);
 router.get('/descuentos/aplicados/:id_usuario', promocionesController.getDescuentosAplicadosPorUsuario);

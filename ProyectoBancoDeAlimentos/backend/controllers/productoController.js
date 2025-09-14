@@ -457,7 +457,8 @@ exports.actualizarProducto = async (req, res) => {
       etiquetas,
       unidad_medida,
       activo,
-      peso
+      peso,
+      imagenes // array of { url_imagen, orden_imagen }
     } = req.body;
     
     // Validar que el ID del producto sea numérico
@@ -519,6 +520,19 @@ exports.actualizarProducto = async (req, res) => {
       activo: activo !== undefined ? Boolean(activo) : true,
       peso: peso !== undefined ? parseFloat(peso) : null
     });
+
+    // Actualizar imagenes si se proporcionaron
+    if (Array.isArray(imagenes)) {
+      // Eliminar imágenes existentes para este producto
+      await imagen_producto.destroy({ where: { id_producto: id_producto } });
+      // Crear nuevas imágenes
+      const imgs = imagenes.map(img => ({
+        id_producto: id_producto,
+        url_imagen: img.url_imagen,
+        orden_imagen: img.orden_imagen ?? 0
+      }));
+      await imagen_producto.bulkCreate(imgs);
+    }
 
     // Obtener el producto actualizado con detalles
     const updatedProduct = await producto.findByPk(id_producto, {

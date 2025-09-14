@@ -1,5 +1,14 @@
 import axiosInstance from './axiosInstance';
 
+export const uploadProfilePhoto1 = async (file, desiredName) => {
+  const form = new FormData();
+  // el tercer argumento fija el nombre con el que se guarda en el disco del backend
+  form.append("foto", file, desiredName || file.name);
+  return axiosInstance.post("/api/uploads/profile-photo", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+};
+
 export function getAllProducts(){
     return axiosInstance.get('/api/Inventario/');
 }
@@ -76,7 +85,6 @@ export function addOrUpdateValoracion(id_producto, { puntuacion, comentario }) {
   );
 }
 
-// (si lo usas después)
 export function AddProductoFav(id_producto) {
   return axiosInstance.post(`/api/producto/${id_producto}/favoritos`);
 }

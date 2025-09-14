@@ -15,6 +15,21 @@ exports.listar = async (req, res) => {
     }
 };
 
+exports.listarPorOrden = async (req, res) => {
+  try {
+      const promos = await promocion.findAll({
+      where: { activa: { [Op.ne]: null }, orden: { [Op.ne]: null } },
+      order: [['orden', 'ASC']]
+      });
+      res.json(promos)
+  } catch (error) {
+      console.error('Error solicitando categories:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+
+
 exports.getpromocionById = async (req, res) => {
     try {
         const { id } = req.params;  
@@ -174,6 +189,8 @@ exports.listarPromocionesConDetallesURL = async (req, res) => {
 
 
 
+
+
 // controllers/promocionesController.js
 
 
@@ -325,7 +342,7 @@ exports.aplicarDescuentoseleccionados = async (req, res) => {
 
 exports.crearPromocion = async (req, res) => {
   try {
-    const { nombre_promocion, descripcion, valor_fijo, valor_porcentaje, fecha_inicio, fecha_termina, id_tipo_promo, banner_url, productos } = req.body;
+    const { nombre_promocion, descripcion, valor_fijo, valor_porcentaje, fecha_inicio, fecha_termina, id_tipo_promo, banner_url, productos,orden } = req.body;
     if (!req.user || !req.user.id_usuario) {
       return res.status(401).json({ message: 'Usuario no autenticado' });
     }
@@ -347,6 +364,7 @@ exports.crearPromocion = async (req, res) => {
       fecha_termina,
       id_tipo_promo,
       banner_url,
+      orden: orden || null,
       activa: true
     });
     if (productos && Array.isArray(productos)) {
@@ -429,7 +447,7 @@ exports.activarPromocion = async (req, res) => {
 exports.actualizarPromocion = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre_promocion, descripcion, valor_fijo, valor_porcentaje, fecha_inicio, fecha_termina, id_tipo_promo, banner_url, productos } = req.body;
+    const { nombre_promocion, descripcion, valor_fijo, valor_porcentaje, fecha_inicio, fecha_termina, id_tipo_promo, banner_url, productos,orden } = req.body;
     if (!req.user || !req.user.id_usuario) {
       return res.status(401).json({ message: 'Usuario no autenticado' });
     }
@@ -454,6 +472,7 @@ exports.actualizarPromocion = async (req, res) => {
     promocionToUpdate.fecha_inicio = fecha_inicio || promocionToUpdate.fecha_inicio;
     promocionToUpdate.fecha_termina = fecha_termina || promocionToUpdate.fecha_termina;
     promocionToUpdate.id_tipo_promo = id_tipo_promo || promocionToUpdate.id_tipo_promo;
+    promocionToUpdate.orden = orden !== undefined ? orden : promocionToUpdate.orden;
     promocionToUpdate.banner_url = banner_url || promocionToUpdate.banner_url;
     await promocionToUpdate.save();
 

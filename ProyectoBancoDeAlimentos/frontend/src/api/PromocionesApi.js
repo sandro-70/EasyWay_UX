@@ -4,6 +4,10 @@ export function getPromociones(){
     return axiosInstance.get('/api/promociones');
 }
 
+export function getPromocionesOrden(){
+    return axiosInstance.get('/api/promociones/listarorden');
+}
+
 export function getPromocionById(id){
     return axiosInstance.get(`/api/promociones/${id}`);
 }

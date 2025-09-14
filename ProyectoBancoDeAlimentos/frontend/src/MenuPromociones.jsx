@@ -47,6 +47,13 @@ const MenuPromociones = () => {
             >
               Asignar Descuentos
             </Link>
+
+            <Link
+              to="/configBanner"
+              className="border border-blue-300 rounded-2xl p-5 text-left shadow-neutral-600 shadow-sm block"
+            >
+              Configurar Banner Promocional
+            </Link>
           </div>
         </main>
       </div>

@@ -16,22 +16,20 @@ const ConfigBanner = () => {
   });
   const [validationError, setValidationError] = useState("");
 
-  // Función para cargar banners de la API
   const fetchBanners = async () => {
     try {
       setLoading(true);
       setError(null);
       const res = await getPromocionesOrden();
-      console.log("Respuesta completa de la API:", res); // Para debug
+      console.log("Respuesta completa de la API:", res);
 
       const mappedBanners = res.data.map((item) => {
-        console.log("Item individual:", item); // Para debug
+        console.log("Item individual:", item);
         return {
           id_promocion: item.id_promocion,
           orden: item.orden,
           name: item.nombre_promocion,
-          description: item.descripción || item.descripcion, // Maneja ambos casos
-          status: item.activa,
+          description: item.descripción || item.descripcion, //tilde
           backgroundImage: item.banner_url,
           textColor: "white",
           statusColor: "statusOrange",
@@ -90,22 +88,19 @@ const ConfigBanner = () => {
   const handleInputChange = (field, value) => {
     setEditForm((prev) => ({ ...prev, [field]: value }));
 
-    // Limpiar error de validación cuando el usuario cambia el orden
     if (field === "orden") {
       setValidationError("");
     }
   };
 
-  // Función para validar que el orden no esté duplicado
   const validateOrden = (nuevoOrden) => {
     const currentBanner = banners[currentIndex];
 
-    // Si el orden no cambió, no validar
     if (nuevoOrden === currentBanner.orden) {
       return true;
     }
 
-    // Verificar si el orden ya existe en otro banner
+    // orden ya existe en otro banner
     const ordenExiste = banners.some(
       (banner) =>
         banner.orden === nuevoOrden &&
@@ -122,7 +117,6 @@ const ConfigBanner = () => {
     return true;
   };
 
-  // Función para guardar cambios en la API
   const saveChanges = async () => {
     // Validaciones básicas
     if (!editForm.name.trim() || !editForm.description.trim()) {
@@ -135,7 +129,7 @@ const ConfigBanner = () => {
       return;
     }
 
-    // Validar orden duplicado
+    // duplicado
     if (!validateOrden(editForm.orden)) {
       return;
     }
@@ -145,7 +139,7 @@ const ConfigBanner = () => {
       setValidationError("");
       const currentBanner = banners[currentIndex];
 
-      // Preparar datos para enviar a la API - asegurarse de usar los nombres correctos
+      //  datos para enviar a la API
       const updateData = {
         orden: editForm.orden,
         nombre_promocion: editForm.name.trim(),
@@ -160,14 +154,12 @@ const ConfigBanner = () => {
         updateData
       );
 
-      // Actualizar en la API usando el ID de promoción
       const response = await actualizarPromocion(
         currentBanner.id_promocion,
         updateData
       );
-      console.log("Respuesta de actualización:", response); // Para debug
+      console.log("Respuesta de actualización:", response);
 
-      // Recargar datos desde la API para asegurar consistencia
       await fetchBanners();
 
       alert("Banner actualizado exitosamente");
@@ -531,12 +523,13 @@ const styles = {
     flexDirection: "column",
   },
   headerWrapper: {
-    marginBottom: "20px",
+    margin: "0 auto 20px",
     padding: "0 20px",
+    width: "70%",
   },
   header: {
-    fontSize: "24px",
-    fontWeight: "600",
+    fontSize: "28px",
+    fontWeight: "650",
     color: "#f97316",
     textAlign: "left",
   },

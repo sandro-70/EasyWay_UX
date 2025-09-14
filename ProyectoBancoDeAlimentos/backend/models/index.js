@@ -49,9 +49,19 @@ const estado_pedido         = require('./estado_pedido.js')(sequelize, Sequelize
 const historial_accesos     = require('./historial_accesos.js')(sequelize, Sequelize.DataTypes);
 const lista_deseos          = require('./lista_deseos.js')(sequelize, Sequelize.DataTypes);
 const usuario_log          = require('./usuario_log.js')(sequelize, Sequelize.DataTypes);
+const auditoria_inventario = require('./auditoria_inventario.js')(sequelize, Sequelize.DataTypes);
 
 // ================== ASOCIACIONES ================== //
+// auditoria---
+Usuario.hasMany(auditoria_inventario, { foreignKey: 'id_usuario' });
+auditoria_inventario.belongsTo(Usuario, { foreignKey: 'id_usuario' });
 
+producto.hasMany(auditoria_inventario, { foreignKey: 'id_producto' });
+auditoria_inventario.belongsTo(producto, { foreignKey: 'id_producto' });
+
+sucursal.hasMany(auditoria_inventario, { foreignKey: 'id_sucursal' });
+auditoria_inventario.belongsTo(sucursal, { foreignKey: 'id_sucursal' });
+//-----------
 
 Usuario.hasMany(usuario_log, { foreignKey: 'id_usuario' });
 usuario_log.belongsTo(Usuario, { foreignKey: 'id_usuario' });
@@ -203,5 +213,6 @@ module.exports = {
   estado_pedido,
   historial_accesos,
   lista_deseos,
-  usuario_log
+  usuario_log,
+  auditoria_inventario
 };

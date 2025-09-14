@@ -43,6 +43,8 @@ router.use('/uploads', require('./routesuploads'));
 
 router.use('/usuarios', require('./userRoute'));
 
+router.use('/auditorias', require('./auditorias'));
+
 // 1) Estáticos públicos (para ver /images/fotoDePerfil/...)
 router.use("/images", express.static(path.join(process.cwd(), "public", "images")));
 

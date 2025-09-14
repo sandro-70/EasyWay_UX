@@ -22,7 +22,7 @@ export default function TestAuth() {
   const fetchProductos = async () => {
     try {
       setLoading(true);
-      const res = await GetALLCupones(1); // axios response
+      const res = await getAllProducts(); // axios response
 
       /*
       4,

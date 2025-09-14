@@ -36,6 +36,9 @@ router.use('/roles-privilegios',require('./roles_privilegios'));
 router.use('/pedidos',require('./pedidoRoute'));
 
 router.use('/reportes-usuario', require('./reportesUsuarioRoute'));
+
+router.use('/reportes', require('./nutesReportes'));
+
 router.use('/uploads', require('./routesuploads'));
 
 router.use('/usuarios', require('./userRoute'));

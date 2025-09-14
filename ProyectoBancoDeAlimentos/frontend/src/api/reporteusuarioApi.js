@@ -17,10 +17,20 @@ export function getUsuariosReporte(){
     return axiosInstance.get('/api/reportes-usuario/reporte');
 }
 
-
 export function getUsuariosTabla(params){
     return axiosInstance.get('/api/reportes-usuario/reporte-filtrado/', { params });
 }
 export function getClientesNuevos(params){
     return axiosInstance.get('/api/reportes-usuario/clientes-nuevos', { params });
+}
+
+export function getVentasConFiltros(params) {
+    return axiosInstance.get('/api/reportes/ventas', { params });
+}
+
+export function exportVentasExcel(params) {//no funciona bien
+    return axiosInstance.get('/api/reportes/ventas/export/excel', { params, responseType: 'blob' });
+}
+export function exportVentasPDF(params) {//no funciona bien
+    return axiosInstance.get('/api/reportes/ventas/export/pdf', { params, responseType: 'blob' });
 }

@@ -91,6 +91,18 @@
   margin-top: 10px;
   width: 100%;
 }
+.promocion-footer span {
+  font-size: 17px;
+  font-weight: bold;
+  color: #555;
+  text-transform: uppercase;
+}
+.promocion-footer p {
+  margin-right: 780px;
+  color: #f0833e;
+  font-size: 19px;
+  font-weight: bold;
+}
 
 .promocion-pagination-btn,
 .promocion-pagination button.w-9 {

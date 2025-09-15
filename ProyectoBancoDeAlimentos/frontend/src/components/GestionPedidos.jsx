@@ -16,6 +16,7 @@ import { InformacionUserNombre } from "../api/Usuario.Route";
 // estado, sucursal, productos, descuento, subtotal, direccion, metodo_pago, total.
 
 // Helper: formatea un campo antes de renderizar para evitar pasar objetos/arrays
+
 function formatField(value) {
   if (value === null || value === undefined) return "-";
   if (typeof value === "string" || typeof value === "number") return value;
@@ -64,6 +65,44 @@ function formatDate(value) {
   const year = d.getFullYear();
   return `${day}/${month}/${year}`;
 }
+const Icon = {
+  Search: (props) => (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      className={"w-4 h-4 " + (props.className || "")}
+    >
+      <path
+        d="M11 19a8 8 0 1 1 5.29-14.03A8 8 0 0 1 11 19Zm10 2-5.4-5.4"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  ),
+  ChevronLeft: (props) => (
+    <svg viewBox="0 0 24 24" className={"w-6 h-6 " + (props.className || "")}>
+      <path
+        d="M15 6l-6 6 6 6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        fill="none"
+      />
+    </svg>
+  ),
+  ChevronRight: (props) => (
+    <svg viewBox="0 0 24 24" className={"w-6 h-6 " + (props.className || "")}>
+      <path
+        d="M9 6l6 6-6 6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        fill="none"
+      />
+    </svg>
+  ),
+};
 
 function PaginationSmall({ page, pageCount, onPage }) {
   const pages = Array.from({ length: pageCount }, (_, i) => i + 1);
@@ -74,7 +113,7 @@ function PaginationSmall({ page, pageCount, onPage }) {
         className="pedido-pagination-btn"
         disabled={page === 1}
       >
-        ◀
+        <Icon.ChevronLeft />
       </button>
       {pages.map((p) => (
         <button
@@ -92,7 +131,7 @@ function PaginationSmall({ page, pageCount, onPage }) {
         className="pedido-pagination-btn"
         disabled={page === pageCount}
       >
-        ▶
+        <Icon.ChevronRight />
       </button>
     </div>
   );
@@ -101,6 +140,8 @@ function PaginationSmall({ page, pageCount, onPage }) {
 const GestionPedidos = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
+  // estado para alternar orden asc/desc por id
+  const [orderDesc, setOrderDesc] = useState(false);
   const [pedidos, setPedidos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -248,7 +289,18 @@ const GestionPedidos = () => {
 
   const totalPages = Math.max(1, Math.ceil(pedidos.length / itemsPerPage));
 
-  const visible = pedidos.slice(
+  // ordenar los pedidos localmente por id (robusto ante id como string o faltante)
+  const getId = (x) =>
+    Number(x?.id ?? x?.id_pedido ?? x?.ID ?? x?.idPedido ?? 0) || 0;
+  const sortedPedidos = React.useMemo(() => {
+    return [...pedidos].sort((a, b) => {
+      const ia = getId(a);
+      const ib = getId(b);
+      return orderDesc ? ib - ia : ia - ib;
+    });
+  }, [pedidos, orderDesc]);
+
+  const visible = sortedPedidos.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
@@ -289,7 +341,16 @@ const GestionPedidos = () => {
           <table className="pedido-table">
             <thead className="pedido-thead">
               <tr>
-                <th>ID Pedido</th>
+                <th
+                  style={{ cursor: "pointer" }}
+                  onClick={() => {
+                    setOrderDesc(!orderDesc);
+                    setCurrentPage(1); // reset paginación al cambiar orden
+                  }}
+                  title="Ordenar por ID"
+                >
+                  ID de Producto {orderDesc ? "↓" : "↑"}
+                </th>
                 <th>Usuario</th>
                 <th>Fecha</th>
                 <th>Estado</th>
@@ -581,7 +642,8 @@ const GestionPedidos = () => {
         {/* Paginación */}
         <div className="pedido-footer">
           <span>
-            {loading ? "Cargando total..." : `Total Pedidos: ${pedidos.length}`}
+            {loading ? "Cargando total..." : `Total Pedidos: `}{" "}
+            <p>{pedidos.length}</p>
           </span>
           <PaginationSmall
             page={currentPage}

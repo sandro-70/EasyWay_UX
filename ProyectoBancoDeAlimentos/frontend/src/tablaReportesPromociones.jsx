@@ -361,7 +361,8 @@ function TablaReportesPromociones() {
       </table>
 
       <div className="promocion-footer">
-        <span>Total Promociones: {filteredData.length}</span>
+        <span>Total Promociones:</span>
+        <p>{filteredData.length}</p>
         <button onClick={exportToExcel} className="promocion-export-btn-green">
           📊 Exportar a Excel
         </button>

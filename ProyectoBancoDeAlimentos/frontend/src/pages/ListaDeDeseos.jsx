@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import appleImage from "../images/appleImage.png";
 import carritoImage from "../images/ncarrito.png";
+import izqImage from "../images/izq.png";
+import derImage from "../images/der.png";
 
 export default function ListaDeDeseos() {
   const tabs = ["Ordenar Por:", "Más recientes", "En Oferta", "Disponibles"];
   const [activeTab, setActiveTab] = useState("Más recientes");
 
-  // Generar productos de ejemplo
   const products = Array.from({ length: 12 }).map((_, i) => ({
     id: i + 1,
     name: "Manzana",
@@ -17,7 +18,6 @@ export default function ListaDeDeseos() {
     onSale: i % 3 === 0,
   }));
 
-  // Filtrar según la pestaña activa
   const filteredProducts = products.filter((p) => {
     if (activeTab === "Más recientes") return true;
     if (activeTab === "En Oferta") return p.onSale;
@@ -25,12 +25,25 @@ export default function ListaDeDeseos() {
     return true;
   });
 
-  // Limitar a 6 productos (2 filas x 3 columnas)
-  const limitedProducts = filteredProducts.slice(0, 6);
+  const [startIndex, setStartIndex] = useState(0);
 
-  // Dividir en filas
-  const firstRow = limitedProducts.slice(0, 3);
-  const secondRow = limitedProducts.slice(3, 6);
+  const recomendados = [
+    { id: 1, name: "Manzana Roja", price: "L. 14.00", img: appleImage, rating: 2 },
+    { id: 2, name: "Banano", price: "L. 8.00", img: appleImage, rating: 3 },
+    { id: 3, name: "Pera", price: "L. 12.00", img: appleImage, rating: 1 },
+    { id: 4, name: "Uvas", price: "L. 20.00", img: appleImage, rating: 2 },
+    { id: 5, name: "Sandía", price: "L. 35.00", img: appleImage, rating: 3 },
+    { id: 6, name: "Melón", price: "L. 30.00", img: appleImage, rating: 2 },
+    { id: 7, name: "Fresa", price: "L. 18.00", img: appleImage, rating: 2 },
+    { id: 8, name: "Mango", price: "L. 25.00", img: appleImage, rating: 3 },
+    { id: 9, name: "Piña", price: "L. 28.00", img: appleImage, rating: 2 },
+    { id: 10, name: "Cereza", price: "L. 40.00", img: appleImage, rating: 3 },
+  ];
+
+  const visibleCount = 5;
+
+  const handlePrev = () => setStartIndex((prev) => Math.max(prev - 1, 0));
+  const handleNext = () => setStartIndex((prev) => Math.min(prev + 1, recomendados.length - visibleCount));
 
   return (
     <div
@@ -46,70 +59,91 @@ export default function ListaDeDeseos() {
       }}
     >
       <div className="max-w-6xl w-full px-6 font-sans">
-        {/* Título principal */}
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold text-orange-400 drop-shadow-md">
-            Lista de Deseos
-          </h1>
-  {/* Línea decorativa un poco menos larga */}
-  <div className="mt-2 h-1 bg-orange-400 mx-auto rounded-full" style={{ width: "608px" }}></div>
-</div>
+        {/* Fondo unificado: título + ordenar por + productos */}
+        <div className="w-full max-w-[1080px] bg-white rounded-xl shadow-lg p-6 mb-8 mx-auto">
+          {/* Título */}
+          <div className="mb-6 text-center">
+            <h1 className="text-2xl font-bold text-orange-400 drop-shadow-md">
+              Lista de Deseos
+            </h1>
+            <div
+              className="mt-2 h-1 bg-orange-400 mx-auto rounded-full"
+           style={{ width: "100%", maxWidth: "1080px" }}
+            ></div>
+          </div>
 
-  {/* Tabs / filtros */}
-<div
-  className="flex items-center gap-4 mb-6"
-  style={{ width: "608px", margin: "0 auto", marginTop: "-10px" }}
->
-  <div className="text-sm text-gray-600">Ordenar Por:</div>
-  <div className="flex bg-white rounded-lg shadow-sm overflow-hidden flex-1">
-    {tabs.slice(1).map((t) => (
-      <button
-        key={t}
-        onClick={() => setActiveTab(t)}
-        className={`px-5 py-2 text-sm whitespace-nowrap focus:outline-none ${
-          activeTab === t ? "bg-gray-300 text-white" : "text-gray-500"
-        }`}
-      >
-        {t}
-      </button>
-    ))}
-  </div>
-</div>
-
-        {/* Contenedor con scroll horizontal para ambas filas */}
-        <div className="overflow-x-auto w-full pb-4 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-200">
-<div className="flex flex-col items-center" style={{ marginTop: "20px" }}>
-            {/* Fila 1 */}
-            <div className="flex gap-4">
-              {firstRow.map((p) => (
-                <ProductoCard key={p.id} p={p} />
+          {/* Tabs */}
+          <div className="flex items-center gap-4 mb-6 shadow-lg bg-gray-50 rounded-lg p-1">
+            <div className="text-sm text-gray-700 font-semibold px-3">Ordenar Por:</div>
+            <div className="flex overflow-hidden flex-1 rounded-lg">
+              {tabs.slice(1).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setActiveTab(t)}
+                  className={`px-5 py-3 text-sm whitespace-nowrap font-semibold focus:outline-none ${
+                    activeTab === t ? "bg-gray-600 text-white" : "text-gray-700"
+                  }`}
+                >
+                  {t}
+                </button>
               ))}
             </div>
-            {/* Fila 2 */}
-            <div className="flex gap-4 mt-6">
-              {secondRow.map((p) => (
+          </div>
+
+          {/* Grid de productos filtrados */}
+          <div className="overflow-y-auto h-[450px] w-full pb-4 scrollbar-thin scrollbar-thumb-orange-400 scrollbar-track-gray-200">
+            <div className="grid grid-cols-5 gap-6 px-4 mt-8">
+              {filteredProducts.map((p) => (
                 <ProductoCard key={p.id} p={p} />
               ))}
             </div>
           </div>
+        </div>
+
+        {/* Recomendados con fondo */}
+        <div className="mt-6 w-full max-w-[1080px] bg-white rounded-xl shadow-lg p-6 mx-auto">
+          <h2 className="text-xl font-bold text-orange-400 mb-4">
+            Productos que podrían interesarte
+          </h2>
+          <div className="relative flex items-center">
+  <button
+    onClick={handlePrev}
+  className="absolute left-[-18px] z-10 bg-white rounded-full p-3 shadow-md"
+  >
+    <img src={izqImage} alt="Izquierda" className="w-6 h-6" />
+  </button>
+
+  <div className="flex gap-6 overflow-hidden w-full px-10">
+    {recomendados
+      .slice(startIndex, startIndex + visibleCount)
+      .map((p) => (
+        <ProductoCard key={`rec-${p.id}`} p={p} />
+      ))}
+  </div>
+
+  <button
+    onClick={handleNext}
+  className="absolute right-[-18px] z-10 bg-white rounded-full p-3 shadow-md"
+  >
+    <img src={derImage} alt="Derecha" className="w-6 h-6" />
+  </button>
+</div>
+
         </div>
       </div>
     </div>
   );
 }
 
-// Componente de producto
 function ProductoCard({ p }) {
   return (
-    <div className="relative bg-white rounded-2xl p-3 shadow-sm w-48 flex-shrink-0">
-      {/* Icono carrito */}
+    <div className="relative bg-white rounded-2xl p-3 shadow-lg w-full">
       <div className="absolute top-2 left-2 w-5 h-5">
         <img src={carritoImage} alt="Carrito" className="w-full h-full object-contain" />
       </div>
-
-      {/* Rating stars */}
       <div className="absolute top-2 right-2 flex items-center gap-1">
-        {Array.from({ length: 3 }).map((_, i) => (
+        {/* Ahora 5 estrellas */}
+        {Array.from({ length: 5 }).map((_, i) => (
           <svg
             key={i}
             width="14"
@@ -126,28 +160,22 @@ function ProductoCard({ p }) {
           </svg>
         ))}
       </div>
-
-      {/* Imagen */}
       <div className="flex justify-center mt-2">
-        <div className="bg-white rounded-xl p-2 shadow-md w-20 h-20 flex items-center justify-center">
-          <img src={p.img} alt={p.name} className="max-h-16 object-contain" />
+        <div className="bg-white rounded-xl p-2 shadow-lg w-24 h-24 flex items-center justify-center">
+          <img src={p.img} alt={p.name} className="max-h-20 object-contain" />
         </div>
       </div>
-
-      {/* Precio y nombre */}
       <div className="mt-2 text-sm text-gray-500 text-center">
         <div className="font-semibold text-gray-700">{p.price}</div>
         <div className="mt-1">{p.name}</div>
       </div>
-
-      {/* Barra inferior con botón "AGREGAR AL CARRITO" */}
       <div className="mt-3 pt-1">
-        <div className="h-10 rounded-full bg-orange-400 w-5/6 mx-auto flex items-center justify-center cursor-pointer hover:bg-orange-500">
-          <span className="text-white font-semibold text-xs text-center">
-            AGREGAR AL CARRITO
-          </span>
-        </div>
-      </div>
+  <div className="h-10 rounded-full bg-orange-400 w-11/12 mx-auto flex items-center justify-center cursor-pointer hover:bg-orange-500 shadow-md">
+    <span className="text-white font-semibold text-xs text-center">
+      AGREGAR AL CARRITO
+    </span>
+  </div>
+</div>
     </div>
   );
 }

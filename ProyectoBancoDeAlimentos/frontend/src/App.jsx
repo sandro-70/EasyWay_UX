@@ -57,6 +57,7 @@ import Reportes from "./components/ReporteCarrousel.jsx";
 import DetallePedidos from "../src/pages/DetallesPedido.jsx";
 import GestionDePedido from "./components/GestionPedidos.jsx";
 import ConfigBanner from "./configBanner.jsx";
+import ListaDeDeseos from "./pages/ListaDeDeseos.jsx";
 
 const HEADER_HEIGHT = 60; // px
 
@@ -236,6 +237,15 @@ function App() {
               element={
                 <ProtectedRoute rolesPermitidos={["cliente"]}>
                   <MisPedidos />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/listadedeseos"
+              element={
+                <ProtectedRoute rolesPermitidos={["cliente"]}>
+                  <ListaDeDeseos/>
                 </ProtectedRoute>
               }
             />

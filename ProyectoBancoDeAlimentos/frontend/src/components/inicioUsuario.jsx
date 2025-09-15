@@ -5,9 +5,9 @@ import { useNavigate } from "react-router-dom";
 import { getAllProducts, getProductoById } from "../api/InventarioApi";
 import { ObtenerCategoria, ListarCategoria } from "../api/CategoriaApi";
 import { AddNewCarrito, ViewCar, SumarItem } from "../api/CarritoApi";
-import { getPromociones } from "../api/PromocionesApi"; 
+import { getPromociones } from "../api/PromocionesApi";
 import { useCart } from "../utils/CartContext";
-
+import { useSearch } from "../searchContext";
 
 import "swiper/css";
 import "swiper/css/effect-coverflow";
@@ -40,6 +40,8 @@ const banners = [
 ];
 
 const InicioUsuario = () => {
+  const { searchText } = useSearch();
+
   const navigate = useNavigate();
 
   const catRef = useRef(null);
@@ -47,7 +49,7 @@ const InicioUsuario = () => {
   const prodRefTendencias = useRef(null);
   const swiperRef = useRef(null);
 
-  const {incrementCart}=useCart();
+  const { incrementCart } = useCart();
 
   const [hoveredIndex, setHoveredIndex] = React.useState(null);
   const [hoveredProductDest, setHoveredProductDest] = React.useState(null);
@@ -203,9 +205,9 @@ const InicioUsuario = () => {
 
   const handlePromoClick = async (promo) => {
     try {
-      const result=await getProductoById(promo.id_tipo_promo); // id del producto
-      const producto=result.data;
-      const categoria=producto?.subcategoria?.categoria;
+      const result = await getProductoById(promo.id_tipo_promo); // id del producto
+      const producto = result.data;
+      const categoria = producto?.subcategoria?.categoria;
 
       if (categoria) {
         navigate(`/promocion/${categoria.id_categoria}`);
@@ -226,6 +228,15 @@ const InicioUsuario = () => {
       });
     }
   };
+
+  // Filtrar productos según searchText (ignora mayúsculas/minúsculas)
+  const filteredDestacados = products.filter((p) =>
+    p.nombre.toLowerCase().includes(searchText.toLowerCase())
+  );
+
+  const filteredTendencias = products.filter((p) =>
+    p.nombre.toLowerCase().includes(searchText.toLowerCase())
+  );
 
   return (
     <div
@@ -300,13 +311,34 @@ const InicioUsuario = () => {
       </div>
 
       {/*Banner*/}
-      <div style={{ position: "relative", margin: "40px 0", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div
+        style={{
+          position: "relative",
+          margin: "40px 0",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
         <button
           className="arrow-button"
-          style={{ position: "absolute", left: 0, zIndex: 10, background: "transparent", border: "none", cursor: "pointer", width: "40px", height: "40px" }}
+          style={{
+            position: "absolute",
+            left: 0,
+            zIndex: 10,
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            width: "40px",
+            height: "40px",
+          }}
           onClick={() => swiperRef.current?.slidePrev()}
         >
-          <img src={arrowL} alt="left" style={{ width: "100%", height: "100%" }} />
+          <img
+            src={arrowL}
+            alt="left"
+            style={{ width: "100%", height: "100%" }}
+          />
         </button>
 
         <div style={{ width: "90%", margin: "0 auto" }}>
@@ -317,18 +349,30 @@ const InicioUsuario = () => {
             slidesPerView={1}
             loop={false}
             autoplay={{ delay: 3000, disableOnInteraction: false }}
-            coverflowEffect={{ rotate: 0, stretch: 0, depth: 100, modifier: 2.5, slideShadows: true }}
-            onSwiper={(swiper) => { swiperRef.current = swiper; }}
+            coverflowEffect={{
+              rotate: 0,
+              stretch: 0,
+              depth: 100,
+              modifier: 2.5,
+              slideShadows: true,
+            }}
+            onSwiper={(swiper) => {
+              swiperRef.current = swiper;
+            }}
           >
             {promociones.length > 0 ? (
               promociones.map((promo, index) => (
-                <SwiperSlide key={promo.id_promocion ?? index} style={{ width: "33.333%", padding: "10px" }}>
+                <SwiperSlide
+                  key={promo.id_promocion ?? index}
+                  style={{ width: "33.333%", padding: "10px" }}
+                >
                   <div
                     onMouseEnter={() => setHoveredBanner(index)}
                     onMouseLeave={() => setHoveredBanner(null)}
                     onClick={() => handlePromoClick(promo)}
                     style={{
-                      transform: hoveredBanner === index ? "scale(1.017)" : "scale(1)",
+                      transform:
+                        hoveredBanner === index ? "scale(1.017)" : "scale(1)",
                       transition: "all 0.2s ease-in-out",
                       cursor: "pointer",
                       display: "flex",
@@ -339,7 +383,12 @@ const InicioUsuario = () => {
                       src={`/images/promotions/${promo.banner_url}`}
                       alt={promo.nombre_promocion}
                       className="banner-img"
-                      style={{ width: "100%", height: "350px", borderRadius: "16px", objectFit: "cover" }}
+                      style={{
+                        width: "100%",
+                        height: "350px",
+                        borderRadius: "16px",
+                        objectFit: "cover",
+                      }}
                       onError={(e) => {
                         e.currentTarget.onerror = null;
                         e.currentTarget.src = "/PlaceHolder.png";
@@ -349,17 +398,32 @@ const InicioUsuario = () => {
                 </SwiperSlide>
               ))
             ) : (
-              <p style={{ textAlign: "center" }}>No hay promociones disponibles</p>
+              <p style={{ textAlign: "center" }}>
+                No hay promociones disponibles
+              </p>
             )}
           </Swiper>
         </div>
 
         <button
           className="arrow-button"
-          style={{ position: "absolute", right: 0, zIndex: 10, background: "transparent", border: "none", cursor: "pointer", width: "40px", height: "40px" }}
+          style={{
+            position: "absolute",
+            right: 0,
+            zIndex: 10,
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            width: "40px",
+            height: "40px",
+          }}
           onClick={() => swiperRef.current?.slideNext()}
         >
-          <img src={arrowR} alt="right" style={{ width: "100%", height: "100%" }} />
+          <img
+            src={arrowR}
+            alt="right"
+            style={{ width: "100%", height: "100%" }}
+          />
         </button>
       </div>
 
@@ -379,7 +443,7 @@ const InicioUsuario = () => {
         </button>
 
         <div style={styles.divProducts} ref={prodRefDestacados}>
-          {products.map((p, i) => (
+          {filteredDestacados.map((p, i) => (
             <div
               key={i}
               style={{
@@ -476,7 +540,7 @@ const InicioUsuario = () => {
         </button>
 
         <div style={styles.divProducts} ref={prodRefTendencias}>
-          {products.map((p, i) => (
+          {filteredTendencias.map((p, i) => (
             <div
               key={i}
               style={{

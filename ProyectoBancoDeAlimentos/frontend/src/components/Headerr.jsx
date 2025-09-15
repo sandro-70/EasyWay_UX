@@ -17,6 +17,7 @@ import { ViewCar } from "../api/CarritoApi";
 import { UserContext } from "./userContext";
 import { useCart } from "../utils/CartContext";
 import axiosInstance from "../api/axiosInstance";
+import { useSearch } from "../searchContext";
 
 /* =================== Helpers de URL para foto (alineados con MiPerfil) =================== */
 const BACKEND_ORIGIN = (() => {
@@ -125,6 +126,7 @@ function AvatarImg({ user, size = 40 }) {
 /* ========================================================================================== */
 
 const Headerr = () => {
+  const { searchText, setSearchText } = useSearch();
   const [reportesMenu, setReportesMenu] = useState(false);
   const [logMenu, setLogOpen] = useState(false);
   const navigate = useNavigate();
@@ -156,20 +158,20 @@ const Headerr = () => {
   }, [logMenu]);
 
   useEffect(() => {
-  const handleClickOutsideReportes = (event) => {
-    if (
-      reportesMenu &&
-      reportesMenuRef.current &&
-      !reportesMenuRef.current.contains(event.target)
-    ) {
-      setReportesMenu(false);
-    }
-  };
-  document.addEventListener("mousedown", handleClickOutsideReportes);
-  return () => {
-    document.removeEventListener("mousedown", handleClickOutsideReportes);
-  };
-}, [reportesMenu]);
+    const handleClickOutsideReportes = (event) => {
+      if (
+        reportesMenu &&
+        reportesMenuRef.current &&
+        !reportesMenuRef.current.contains(event.target)
+      ) {
+        setReportesMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutsideReportes);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutsideReportes);
+    };
+  }, [reportesMenu]);
 
   useEffect(() => {
     const fetchCartCount = async () => {
@@ -228,6 +230,8 @@ const Headerr = () => {
                 type="text"
                 placeholder={t("search_placeholder") || "Buscar..."}
                 style={styles.searchInput}
+                value={searchText} // <- conectar valor con contexto
+                onChange={(e) => setSearchText(e.target.value)} // <- actualizar contexto
               />
               <button style={styles.iconBtn}>
                 <img src={SearchIcon} alt="Search" style={styles.icon} />
@@ -302,9 +306,7 @@ const Headerr = () => {
                 <>
                   <div style={styles.userHeader}>
                     <span style={styles.hello}>{t("hello") || "Hola,"}</span>
-                    <span style={styles.fullName}>
-                      {user?.nombre || ""} 
-                    </span>
+                    <span style={styles.fullName}>{user?.nombre || ""}</span>
                   </div>
                   <div style={styles.headerDivider} />
                   <Link
@@ -381,7 +383,7 @@ const Headerr = () => {
                 {t("personal_reports") || "Reportes Personales"}
               </button>
 
-               {reportesMenu && (
+              {reportesMenu && (
                 <div style={styles.dropdownReportes}>
                   <Link
                     to="/HistorialCompras"
@@ -408,7 +410,6 @@ const Headerr = () => {
               )}
             </div>
 
-           
             <a href="#" style={styles.navLink}>
               <img src={soporte} alt="" style={styles.navIcon} />
               {t("support") || "Soporte"}

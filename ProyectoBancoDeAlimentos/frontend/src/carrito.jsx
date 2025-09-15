@@ -14,7 +14,11 @@ import {
   AddNewCarrito,
 } from "./api/CarritoApi";
 import { GetCupones, desactivarCupon } from "./api/CuponesApi";
-import { getProductosRecomendados, getAllSucursales } from "./api/InventarioApi";
+import {
+  getProductosRecomendados,
+  getAllSucursales,
+  listarProductosporsucursal,
+} from "./api/InventarioApi";
 import { crearPedido } from "./api/PedidoApi";
 import { UserContext } from "./components/userContext";
 import { useCart } from "../src/utils/CartContext";
@@ -27,6 +31,9 @@ function Carrito() {
   //Productos de pagina de inicio //necesita cantidad, imagen
   const [detalles, setDetalles] = useState([]);
   const [prodRec, setRec] = useState([]);
+
+  // Estado para el stock por sucursal
+  const [stockPorSucursal, setStockPorSucursal] = useState({});
 
   //Scroll
   const scroll = (direction, ref, itemWidth) => {
@@ -55,7 +62,7 @@ function Carrito() {
   const { user } = useContext(UserContext);
   const navigate = useNavigate();
   // cantidades en edición por id_carrito_detalle
-const [qtyDraft, setQtyDraft] = useState({});
+  const [qtyDraft, setQtyDraft] = useState({});
 
   console.log("Header user carrito", user);
 
@@ -69,6 +76,37 @@ const [qtyDraft, setQtyDraft] = useState({});
       Number(obj?.estrellas ?? obj?.rating ?? obj?.valoracion ?? 0)
     );
     return Math.max(0, Math.min(5, isNaN(n) ? 0 : n));
+  };
+
+  // Función para obtener el stock de un producto específico en la sucursal seleccionada
+  const getStockEnSucursal = (idProducto) => {
+    if (!idSucursal || !stockPorSucursal[idSucursal]) return 0;
+    const producto = stockPorSucursal[idSucursal].find(
+      (p) => p.id_producto === idProducto
+    );
+    return producto ? producto.stock_en_sucursal : 0;
+  };
+
+  // Función para cargar el stock de productos por sucursal
+  const cargarStockPorSucursal = async (idSucursalParam) => {
+    if (!idSucursalParam) return;
+
+    try {
+      const response = await listarProductosporsucursal(idSucursalParam);
+      const productos = response.data || [];
+
+      setStockPorSucursal((prev) => ({
+        ...prev,
+        [idSucursalParam]: productos,
+      }));
+
+      console.log(`Stock cargado para sucursal ${idSucursalParam}:`, productos);
+    } catch (error) {
+      console.error(
+        `Error cargando stock para sucursal ${idSucursalParam}:`,
+        error
+      );
+    }
   };
 
   const obtenerTotal = () => {
@@ -99,6 +137,15 @@ const [qtyDraft, setQtyDraft] = useState({});
   };
   const updateQuantity = async (idDetalle, id, n) => {
     if (n < 1) return;
+
+    // Verificar stock disponible en la sucursal seleccionada
+    const stockDisponible = getStockEnSucursal(id);
+    if (n > stockDisponible) {
+      alert(
+        `Solo hay ${stockDisponible} unidades disponibles en esta sucursal`
+      );
+      return;
+    }
 
     try {
       await SumarBackend(id, n);
@@ -151,6 +198,17 @@ const [qtyDraft, setQtyDraft] = useState({});
   };
 
   const realizarCompra = async () => {
+    // Verificar stock antes de proceder con la compra
+    for (const item of detalles) {
+      const stockDisponible = getStockEnSucursal(item.producto.id_producto);
+      if (item.cantidad_unidad_medida > stockDisponible) {
+        alert(
+          `No hay suficiente stock de ${item.producto.nombre}. Disponible: ${stockDisponible}, Solicitado: ${item.cantidad_unidad_medida}`
+        );
+        return;
+      }
+    }
+
     try {
       const total_factura = obtenerTotal();
       let desc = 0;
@@ -166,9 +224,7 @@ const [qtyDraft, setQtyDraft] = useState({});
       console.log(total_factura);
 
       // usar sucursal seleccionada (fallback a primera / 2)
-      const sucursalId = Number(
-        idSucursal ?? sucursales[0]?.id_sucursal ?? 2
-      );
+      const sucursalId = Number(idSucursal ?? sucursales[0]?.id_sucursal ?? 2);
 
       const response = await crearPedido(
         user.id_usuario, // int
@@ -211,6 +267,9 @@ const [qtyDraft, setQtyDraft] = useState({});
       return;
     }
 
+    // Verificar stock disponible en la sucursal seleccionada
+    const stockDisponible = getStockEnSucursal(id_producto);
+
     try {
       console.log("Agregando producto:", id_producto);
 
@@ -227,7 +286,17 @@ const [qtyDraft, setQtyDraft] = useState({});
         const cantidadActual = productoExistente.cantidad_unidad_medida || 0;
         const nuevaCantidad = cantidadActual + 1;
 
-        console.log("Actualizando de " + cantidadActual + " a " + nuevaCantidad);
+        // Verificar que no exceda el stock
+        if (nuevaCantidad > stockDisponible) {
+          alert(
+            `Solo hay ${stockDisponible} unidades disponibles en esta sucursal`
+          );
+          return;
+        }
+
+        console.log(
+          "Actualizando de " + cantidadActual + " a " + nuevaCantidad
+        );
         alert("Actualizando a " + nuevaCantidad);
 
         // Actualizar en backend
@@ -290,38 +359,50 @@ const [qtyDraft, setQtyDraft] = useState({});
       }
     }
   };
-  
+
   // Se escribe localmente sin tocar backend
-const handleQtyInputChange = (idDetalle, raw) => {
-  // sólo dígitos
-  const clean = raw.replace(/[^\d]/g, "");
-  setQtyDraft(prev => ({ ...prev, [idDetalle]: clean }));
-};
+  const handleQtyInputChange = (idDetalle, raw) => {
+    // sólo dígitos
+    const clean = raw.replace(/[^\d]/g, "");
+    setQtyDraft((prev) => ({ ...prev, [idDetalle]: clean }));
+  };
 
-// Se confirma a backend en blur o Enter
-const commitQtyChange = async (p, raw) => {
-  let n = parseInt(raw, 10);
-  if (isNaN(n) || n < 1) n = 1; // mínimo 1
-  // si tuvieras stock máximo: n = Math.min(n, p.producto.stock_disponible ?? n);
+  // Se confirma a backend en blur o Enter
+  const commitQtyChange = async (p, raw) => {
+    let n = parseInt(raw, 10);
+    if (isNaN(n) || n < 1) n = 1; // mínimo 1
 
-  // ajustar el contador global del carrito (diff respecto a lo actual)
-  const diff = n - p.cantidad_unidad_medida;
-  try {
-    await updateQuantity(p.id_carrito_detalle, p.producto.id_producto, n);
-    if (diff > 0) incrementCart(diff);
-    if (diff < 0) decrementCart(-diff);
-  } catch (err) {
-    console.error("Error confirmando cantidad:", err);
-    alert("No se pudo actualizar la cantidad");
-  } finally {
-    // limpiar el borrador para volver a mostrar el valor “oficial”
-    setQtyDraft(prev => {
-      const { [p.id_carrito_detalle]: _, ...rest } = prev;
-      return rest;
-    });
-  }
-};
+    // Verificar stock disponible en la sucursal seleccionada
+    const stockDisponible = getStockEnSucursal(p.producto.id_producto);
+    if (n > stockDisponible) {
+      alert(
+        `Solo hay ${stockDisponible} unidades disponibles en esta sucursal`
+      );
+      // Restaurar valor anterior
+      setQtyDraft((prev) => {
+        const { [p.id_carrito_detalle]: _, ...rest } = prev;
+        return rest;
+      });
+      return;
+    }
 
+    // ajustar el contador global del carrito (diff respecto a lo actual)
+    const diff = n - p.cantidad_unidad_medida;
+    try {
+      await updateQuantity(p.id_carrito_detalle, p.producto.id_producto, n);
+      if (diff > 0) incrementCart(diff);
+      if (diff < 0) decrementCart(-diff);
+    } catch (err) {
+      console.error("Error confirmando cantidad:", err);
+      alert("No se pudo actualizar la cantidad");
+    } finally {
+      // limpiar el borrador para volver a mostrar el valor "oficial"
+      setQtyDraft((prev) => {
+        const { [p.id_carrito_detalle]: _, ...rest } = prev;
+        return rest;
+      });
+    }
+  };
 
   useEffect(() => {
     setTotal(sumaCarrito());
@@ -331,6 +412,7 @@ const commitQtyChange = async (p, raw) => {
       setShowProd(true);
     }
   }, [detalles]);
+
   useEffect(() => {
     const productos = async () => {
       try {
@@ -366,7 +448,10 @@ const commitQtyChange = async (p, raw) => {
         const arr = res?.data ?? [];
         setSucursales(arr);
         if (arr.length && !idSucursal) {
-          setIdSucursal(arr[0].id_sucursal ?? arr[0].id ?? null);
+          const primeraSucursal = arr[0].id_sucursal ?? arr[0].id;
+          setIdSucursal(primeraSucursal);
+          // Cargar stock de la primera sucursal
+          cargarStockPorSucursal(primeraSucursal);
         }
       } catch (err) {
         console.error("Error cargando sucursales:", err);
@@ -376,8 +461,24 @@ const commitQtyChange = async (p, raw) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Efecto para cargar stock cuando cambia la sucursal seleccionada
+  useEffect(() => {
+    if (idSucursal) {
+      cargarStockPorSucursal(idSucursal);
+    }
+  }, [idSucursal]);
+
   const handleIncrement = async (p) => {
     const nuevaCantidad = p.cantidad_unidad_medida + 1;
+    const stockDisponible = getStockEnSucursal(p.producto.id_producto);
+
+    if (nuevaCantidad > stockDisponible) {
+      alert(
+        `Solo hay ${stockDisponible} unidades disponibles en esta sucursal`
+      );
+      return;
+    }
+
     try {
       await updateQuantity(
         p.id_carrito_detalle,
@@ -446,127 +547,168 @@ const commitQtyChange = async (p, raw) => {
               showProducts && (
                 <div className="px-6 py-4">
                   <ul className="flex flex-col space-y-4">
-                    {detalles.map((p, i) => (
-                      <li key={i}>
-                        <div className="flex flex-row gap-8 justify-between ">
-                          {p.producto.imagenes &&
-                          p.producto.imagenes.length > 0 &&
-                          p.producto.imagenes[0].url_imagen ? (
-                            <img
-                              src={`/images/productos/${p.producto.imagenes[0].url_imagen}`}
-                              alt={p.producto.nombre}
-                              style={styles.productImg}
-                              onClick={() =>
-                                navigate(`/producto/${p.producto.id_producto}`)
-                              }
-                              className="cursor-pointer"
-                              onError={(e) => {
-                                e.target.src =
-                                  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
-                              }}
-                            />
-                          ) : (
-                            <div
-                              style={styles.productImg}
-                              onClick={() =>
-                                navigate(`/producto/${p.producto.id_producto}`)
-                              }
-                              className="cursor-pointer flex items-center justify-center text-xs text-gray-500"
-                            >
-                              Imagen no disponible
-                            </div>
-                          )}
+                    {detalles.map((p, i) => {
+                      const stockDisponible = getStockEnSucursal(
+                        p.producto.id_producto
+                      );
+                      const sinStock = stockDisponible === 0;
 
-                          <div className="flex flex-col w-full text-left font-medium">
-                            <p
-                              className="py-2 text-xl cursor-pointer"
-                              onClick={() =>
-                                navigate(`/producto/${p.producto.id_producto}`)
-                              }
-                            >
-                              {p.producto.nombre}
-                            </p>
+                      return (
+                        <li key={i}>
+                          <div className="flex flex-row gap-8 justify-between ">
+                            {p.producto.imagenes &&
+                            p.producto.imagenes.length > 0 &&
+                            p.producto.imagenes[0].url_imagen ? (
+                              <img
+                                src={`/images/productos/${p.producto.imagenes[0].url_imagen}`}
+                                alt={p.producto.nombre}
+                                style={styles.productImg}
+                                onClick={() =>
+                                  navigate(
+                                    `/producto/${p.producto.id_producto}`
+                                  )
+                                }
+                                className="cursor-pointer"
+                                onError={(e) => {
+                                  e.target.src =
+                                    'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
+                                }}
+                              />
+                            ) : (
+                              <div
+                                style={styles.productImg}
+                                onClick={() =>
+                                  navigate(
+                                    `/producto/${p.producto.id_producto}`
+                                  )
+                                }
+                                className="cursor-pointer flex items-center justify-center text-xs text-gray-500"
+                              >
+                                Imagen no disponible
+                              </div>
+                            )}
 
-                            {/* Estrellas del producto */}
-                            <div className="flex -mt-1 mb-1">
-                              {Array.from({ length: 5 }).map((_, idx) => (
-                                <span
-                                  key={idx}
-                                  className="text-xl"
-                                  style={{
-                                    color:
-                                      idx < getStars(p.producto)
-                                        ? "#2b6daf"
-                                        : "#ddd",
-                                  }}
+                            <div className="flex flex-col w-full text-left font-medium">
+                              <p
+                                className="py-2 text-xl cursor-pointer"
+                                onClick={() =>
+                                  navigate(
+                                    `/producto/${p.producto.id_producto}`
+                                  )
+                                }
+                              >
+                                {p.producto.nombre}
+                              </p>
+
+                              {/* Estrellas del producto */}
+                              <div className="flex -mt-1 mb-1">
+                                {Array.from({ length: 5 }).map((_, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="text-xl"
+                                    style={{
+                                      color:
+                                        idx < getStars(p.producto)
+                                          ? "#2b6daf"
+                                          : "#ddd",
+                                    }}
+                                  >
+                                    ★
+                                  </span>
+                                ))}
+                              </div>
+
+                              {/* Indicador de stock */}
+                              <div className="mb-2">
+                                {sinStock ? (
+                                  <span className="text-red-600 font-semibold text-sm">
+                                    Sin stock en esta sucursal
+                                  </span>
+                                ) : (
+                                  <span className="text-green-600 text-sm">
+                                    {stockDisponible} disponibles
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex flex-row gap-1">
+                                <button
+                                  onClick={() => handleDecrement(p)}
+                                  className=" bg-[#114C87] text-white rounded-md h-9 px-1"
+                                  disabled={sinStock}
                                 >
-                                  ★
-                                </span>
-                              ))}
-                            </div>
+                                  <span className="material-symbols-outlined text-3xl">
+                                    check_indeterminate_small
+                                  </span>
+                                </button>
 
-                            <div className="flex flex-row gap-1">
-                              <button
-                                onClick={() => handleDecrement(p)}
-                                className=" bg-[#114C87] text-white rounded-md h-9 px-1"
-                              >
-                                <span className="material-symbols-outlined text-3xl">
-                                  check_indeterminate_small
-                                </span>
-                              </button>
-                              
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={stockDisponible}
+                                  step={1}
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
+                                  className={`border-2 rounded-md text-center ${
+                                    sinStock
+                                      ? "border-red-400 bg-red-50"
+                                      : "border-black"
+                                  }`}
+                                  value={
+                                    qtyDraft[p.id_carrito_detalle] ??
+                                    p.cantidad_unidad_medida
+                                  }
+                                  onChange={(e) =>
+                                    handleQtyInputChange(
+                                      p.id_carrito_detalle,
+                                      e.target.value
+                                    )
+                                  }
+                                  onBlur={(e) =>
+                                    commitQtyChange(p, e.target.value)
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter")
+                                      e.currentTarget.blur(); // dispara onBlur => guarda
+                                  }}
+                                  onFocus={(e) => e.target.select()} // para seleccionar todo al hacer click
+                                  disabled={sinStock}
+                                />
 
-<input
-  type="number"
-  min={1}
-  step={1}
-  inputMode="numeric"
-  pattern="[0-9]*"
-  className="border-2 border-black rounded-md text-center"
-  value={qtyDraft[p.id_carrito_detalle] ?? p.cantidad_unidad_medida}
-  onChange={(e) => handleQtyInputChange(p.id_carrito_detalle, e.target.value)}
-  onBlur={(e) => commitQtyChange(p, e.target.value)}
-  onKeyDown={(e) => {
-    if (e.key === "Enter") e.currentTarget.blur(); // dispara onBlur => guarda
-  }}
-  onFocus={(e) => e.target.select()} // para seleccionar todo al hacer click
-/>
-
-
-
-
-                              <button
-                                onClick={() => handleIncrement(p)}
-                                className="bg-[#114C87] text-white rounded-md h-9 px-1"
-                              >
-                                <span className="material-symbols-outlined text-3xl">
-                                  add
-                                </span>
-                              </button>
-                              <div className="flex  w-full h-full justify-center items-center ">
-                                <p className="text-2xl pl-16 ">
-                                  L. {p.subtotal_detalle}
-                                </p>
+                                <button
+                                  onClick={() => handleIncrement(p)}
+                                  className="bg-[#114C87] text-white rounded-md h-9 px-1"
+                                  disabled={sinStock}
+                                >
+                                  <span className="material-symbols-outlined text-3xl">
+                                    add
+                                  </span>
+                                </button>
+                                <div className="flex  w-full h-full justify-center items-center ">
+                                  <p className="text-2xl pl-16 ">
+                                    L. {p.subtotal_detalle}
+                                  </p>
+                                </div>
                               </div>
                             </div>
+                            <button
+                              onClick={() => {
+                                eliminarProducto(
+                                  p.id_carrito_detalle,
+                                  p.producto.id_producto
+                                );
+                                decrementCart(p.cantidad_unidad_medida);
+                              }}
+                              className=" text-black hover:bg-red-500 hover:text-white rounded-md p-8"
+                            >
+                              <span className="material-symbols-outlined text-5xl ">
+                                delete
+                              </span>
+                            </button>
                           </div>
-                          <button
-                            onClick={() => {
-                              eliminarProducto(
-                                p.id_carrito_detalle,
-                                p.producto.id_producto
-                              );
-                              decrementCart(p.cantidad_unidad_medida);
-                            }}
-                            className=" text-black hover:bg-red-500 hover:text-white rounded-md p-8"
-                          >
-                            <span className="material-symbols-outlined text-5xl ">
-                              delete
-                            </span>
-                          </button>
-                        </div>
-                      </li>
-                    ))}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               )
@@ -600,27 +742,31 @@ const commitQtyChange = async (p, raw) => {
             }
 
             {/* Sucursal (discreto, alineado a la izq y en negrita) */}
-<div className="pb-2">
-  <label
-    htmlFor="select-sucursal"
-    className="block text-left font-bold pb-2"
-  >
-    Sucursal
-  </label>
-  <select
-    id="select-sucursal"
-    value={idSucursal ?? ""}
-    onChange={(e) => setIdSucursal(e.target.value)}
-    className="w-full border border-gray-300 bg-white rounded-md px-2 py-1 text-sm"
-  >
-    {(sucursales ?? []).map((s) => (
-      <option key={s.id_sucursal ?? s.id} value={s.id_sucursal ?? s.id}>
-        {s.nombre_sucursal ?? s.nombre ?? `Sucursal ${s.id_sucursal ?? s.id}`}
-      </option>
-    ))}
-  </select>
-</div>
-
+            <div className="pb-2">
+              <label
+                htmlFor="select-sucursal"
+                className="block text-left font-bold pb-2"
+              >
+                Sucursal
+              </label>
+              <select
+                id="select-sucursal"
+                value={idSucursal ?? ""}
+                onChange={(e) => setIdSucursal(e.target.value)}
+                className="w-full border border-gray-300 bg-white rounded-md px-2 py-1 text-sm"
+              >
+                {(sucursales ?? []).map((s) => (
+                  <option
+                    key={s.id_sucursal ?? s.id}
+                    value={s.id_sucursal ?? s.id}
+                  >
+                    {s.nombre_sucursal ??
+                      s.nombre ??
+                      `Sucursal ${s.id_sucursal ?? s.id}`}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             {
               //RESUMEN DE PAGO SIEMPRE SE MUESTRA
@@ -740,8 +886,7 @@ const commitQtyChange = async (p, raw) => {
                         <span
                           key={idx}
                           style={{
-                            color:
-                              idx < getStars(p) ? "#2b6daf" : "#ddd",
+                            color: idx < getStars(p) ? "#2b6daf" : "#ddd",
                           }}
                         >
                           ★

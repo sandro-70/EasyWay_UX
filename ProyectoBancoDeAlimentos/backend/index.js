@@ -59,6 +59,10 @@ const insertMunicipios = require("./Inserts/InsertMunicipios");
 const insertCupones = require("./Inserts/InsertCupones");
 const insertPedido = require("./Inserts/InsertPedidos");
 const insertPromociones = require("./Inserts/InsertPromociones");
+const insertDireccion = require("./Inserts/InsertDireccion");
+const insertMetodoPago = require("./Inserts/InsertMetodoPago");
+const insertFactura = require("./Inserts/InsertFactura");
+const insertFacturaDetalle = require("./Inserts/InsertFacturaDetalle");
 
 // Conexión y sincronización con la base de datos y seeds secuenciales
 (async () => {
@@ -67,117 +71,152 @@ const insertPromociones = require("./Inserts/InsertPromociones");
     console.log("Conexión a la BD establecida");
 
     // Sincroniza modelos y reinicia IDs en desarrollo
-    await db.sequelize.sync({ force: true });
+    await db.sequelize.sync({ alter: true });
     console.log("Modelos sincronizados y tablas reiniciadas");
 
-    // Inserta los seeds en orden correcto
-    await insertUsuarios(
-      { app: { locals: { db } } },
-      {
-        status: () => ({ json: (msg) => console.log("Seed usuarios:", msg) }),
-      }
-    );
-    await insertCategorias(
-      { app: { locals: { db } } },
-      {
-        status: () => ({
-          json: (msg) => console.log("Seed categorias:", msg),
-        }),
-      }
-    );
-    await insertMarcas(
-      { app: { locals: { db } } },
-      { status: () => ({ json: (msg) => console.log("Seed marcas:", msg) }) }
-    );
-    await insertSubcategorias(
-      { app: { locals: { db } } },
-      {
-        status: () => ({
-          json: (msg) => console.log("Seed subcategorias:", msg),
-        }),
-      }
-    );
-    await insertProductos(
-      { app: { locals: { db } } },
-      {
-        status: () => ({
-          json: (msg) => console.log("Seed productos:", msg),
-        }),
-      }
-    );
-    await insertImagesProducto(
-      { app: { locals: { db } } },
-      {
-        status: () => ({
-          json: (msg) => console.log("Seed images productos:", msg),
-        }),
-      }
-    );
-    await insertDepartamentosSeed(
-      { app: { locals: { db } } },
-      {
-        status: () => ({
-          json: (msg) => console.log("Seed de departamentos:", msg),
-        }),
-      }
-    );
-    await insertMunicipios(
-      { app: { locals: { db } } },
-      {
-        status: () => ({
-          json: (msg) => console.log("Seed de municipios:", msg),
-        }),
-      }
-    );
-    await insertCupones(
-      { app: { locals: { db } } },
-      {
-        status: () => ({
-          json: (msg) => console.log("Seed de cupones:", msg),
-        }),
-      }
-    );
-    await insertSucursales(
-      { app: { locals: { db } } },
-      {
-        status: () => ({
-          json: (msg) => console.log("Seed de sucursales:", msg),
-        }),
-      }
-    );
+    // // Inserta los seeds en orden correcto
+    // await insertUsuarios(
+    //   { app: { locals: { db } } },
+    //   {
+    //     status: () => ({ json: (msg) => console.log("Seed usuarios:", msg) }),
+    //   }
+    // );
+    // await insertCategorias(
+    //   { app: { locals: { db } } },
+    //   {
+    //     status: () => ({
+    //       json: (msg) => console.log("Seed categorias:", msg),
+    //     }),
+    //   }
+    // );
+    // await insertMarcas(
+    //   { app: { locals: { db } } },
+    //   { status: () => ({ json: (msg) => console.log("Seed marcas:", msg) }) }
+    // );
+    // await insertSubcategorias(
+    //   { app: { locals: { db } } },
+    //   {
+    //     status: () => ({
+    //       json: (msg) => console.log("Seed subcategorias:", msg),
+    //     }),
+    //   }
+    // );
+    // await insertProductos(
+    //   { app: { locals: { db } } },
+    //   {
+    //     status: () => ({
+    //       json: (msg) => console.log("Seed productos:", msg),
+    //     }),
+    //   }
+    // );
+    // await insertImagesProducto(
+    //   { app: { locals: { db } } },
+    //   {
+    //     status: () => ({
+    //       json: (msg) => console.log("Seed images productos:", msg),
+    //     }),
+    //   }
+    // );
+    // await insertDepartamentosSeed(
+    //   { app: { locals: { db } } },
+    //   {
+    //     status: () => ({
+    //       json: (msg) => console.log("Seed de departamentos:", msg),
+    //     }),
+    //   }
+    // );
+    // await insertMunicipios(
+    //   { app: { locals: { db } } },
+    //   {
+    //     status: () => ({
+    //       json: (msg) => console.log("Seed de municipios:", msg),
+    //     }),
+    //   }
+    // );
+    // await insertCupones(
+    //   { app: { locals: { db } } },
+    //   {
+    //     status: () => ({
+    //       json: (msg) => console.log("Seed de cupones:", msg),
+    //     }),
+    //   }
+    // );
+    // await insertSucursales(
+    //   { app: { locals: { db } } },
+    //   {
+    //     status: () => ({
+    //       json: (msg) => console.log("Seed de sucursales:", msg),
+    //     }),
+    //   }
+    // );
 
-    await await insertImagesProducto(
-      { app: { locals: { db } } },
-      {
-        status: () => ({
-          json: (msg) => console.log("Seed de imagenes:", msg),
-        }),
-      }
-    );
-    await insertEstadoPedido(
-      { app: { locals: { db } } },
-      {
-        status: () => ({
-          json: (msg) => console.log("Seed de estado de pedido:", msg),
-        }),
-      }
-    );
-    await insertPedido(
-      { app: { locals: { db } } },
-      {
-        status: () => ({
-          json: (msg) => console.log("Seed de pedidos:", msg),
-        }),
-      }
-    );
-    await insertPromociones(
-      { app: { locals: { db } } },
-      {
-        status: () => ({
-          json: (msg) => console.log("Seed de promociones:", msg),
-        }),
-      }
-    );
+    // await await insertImagesProducto(
+    //   { app: { locals: { db } } },
+    //   {
+    //     status: () => ({
+    //       json: (msg) => console.log("Seed de imagenes:", msg),
+    //     }),
+    //   }
+    // );
+    // await insertEstadoPedido(
+    //   { app: { locals: { db } } },
+    //   {
+    //     status: () => ({
+    //       json: (msg) => console.log("Seed de estado de pedido:", msg),
+    //     }),
+    //   }
+    // );
+    // await insertPedido(
+    //   { app: { locals: { db } } },
+    //   {
+    //     status: () => ({
+    //       json: (msg) => console.log("Seed de pedidos:", msg),
+    //     }),
+    //   }
+    // );
+
+    // await insertPromociones(
+    //   { app: { locals: { db } } },
+    //   {
+    //     status: () => ({
+    //       json: (msg) => console.log("Seed de promociones:", msg),
+    //     }),
+    //   }
+    // );
+
+    // await insertDireccion(
+    //   { app: { locals: { db } } },
+    //   {
+    //     status: () => ({
+    //       json: (msg) => console.log("Seed de direcciones:", msg),
+    //     }),
+    //   }
+    // );
+
+    // await insertMetodoPago(
+    //   { app: { locals: { db } } },
+    //   {
+    //     status: () => ({
+    //       json: (msg) => console.log("Seed de metodos de pago:", msg),
+    //     }),
+    //   }
+    // );
+    // await insertFactura(
+    //   { app: { locals: { db } } },
+    //   {
+    //     status: () => ({
+    //       json: (msg) => console.log("Seed de facturas:", msg),
+    //     }),
+    //   }
+    // );
+    // await insertFacturaDetalle(
+    //   { app: { locals: { db } } },
+    //   {
+    //     status: () => ({
+    //       json: (msg) => console.log("Seed de detalles de facturas:", msg),
+    //     }),
+    //   }
+    // );
 
     console.log("Seeds insertados correctamente");
   } catch (error) {

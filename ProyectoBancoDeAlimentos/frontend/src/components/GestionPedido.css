@@ -17,13 +17,6 @@
   width: 70%;
 }
 
-.pedido-filter {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 1rem;
-  width: 100%;
-}
-
 .pedido-table {
   width: 50%;
   margin: 0 auto;
@@ -133,7 +126,7 @@
   border-radius: 12px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
   text-align: center;
-  width: 300px;
+  width: 200px;
   animation: fadeIn 0.3s ease;
 }
 
@@ -327,6 +320,9 @@
   justify-content: center;
   align-items: center;
   z-index: 2000;
+  padding: 16px; /* espacio para que el modal no pegue con los bordes */
+  padding-top: 60px; /* espacio extra arriba para móviles */
+  overflow: auto; /* permite scroll si el modal excede la ventana */
 }
 
 /* Contenido del modal */
@@ -334,10 +330,13 @@
   background: #fff;
   border-radius: 10px;
   padding: 20px;
-  width: 500px;
-  max-width: 95%;
+  width: 100%;
+  max-width: 640px; /* ancho máximo más compacto */
+  max-height: 80vh; /* limitar altura a la ventana y permitir scroll */
+  overflow-y: auto; /* habilita scroll interno si el contenido es alto */
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   animation: fadeIn 0.3s ease-in-out;
+  -webkit-overflow-scrolling: touch; /* mejor scroll en móviles */
 }
 
 /* Header */
@@ -369,7 +368,9 @@
 .productos-lista {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 15px;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
 }
 
 .producto-card {
@@ -377,7 +378,7 @@
   border: 1px solid #ddd;
   border-radius: 8px;
   padding: 8px;
-  width: 30%;
+  width: calc(50% - 12px);
 }
 
 .producto-card img {
@@ -391,7 +392,9 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 8px;
-  margin-bottom: 15px;
+  margin-bottom: 12px;
+  max-height: 40vh;
+  overflow-y: auto;
 }
 
 .pedido-info label {

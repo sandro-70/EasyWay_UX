@@ -33,5 +33,6 @@
   "theme": "Theme",
   "light_theme": "Light Theme",
   "dark_theme": "Dark Theme",
-  "theme_description": "Select a theme:"
+  "theme_description": "Select a theme:",
+  "rating_system": "Rating System"
 }

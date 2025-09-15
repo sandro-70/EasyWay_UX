@@ -9,7 +9,7 @@ const {
   Usuario,
   carrito,
   carrito_detalle,
-  sucursal_producto
+  sucursal_producto,
 } = require("../models");
 const { Op } = require("sequelize");
 
@@ -130,7 +130,8 @@ exports.crearPedido = async (req, res) => {
 
   const t = await pedido.sequelize.transaction(); //iniciar transaccion
   try {
-    const { id_usuario, direccion_envio, id_sucursal, id_cupon, descuento } = req.body;
+    const { id_usuario, direccion_envio, id_sucursal, id_cupon, descuento } =
+      req.body;
 
     //obtener carrito
     const cart = await carrito.findOne({
@@ -154,22 +155,22 @@ exports.crearPedido = async (req, res) => {
       await t.rollback();
       return res.status(400).json({ error: "El carrito está vacío" });
     }
-    
+
     //validar existencia
     for (const item of itemsCarrito) {
       const sucProd = await sucursal_producto.findOne({
         where: {
           id_sucursal,
-          id_producto: item.id_producto
+          id_producto: item.id_producto,
         },
-        transaction: t
+        transaction: t,
       });
 
       //existe?
       if (!sucProd) {
         await t.rollback();
         return res.status(400).json({
-          error: `El producto con ID ${item.id_producto} no está disponible en la sucursal seleccionada`
+          error: `El producto con ID ${item.id_producto} no está disponible en la sucursal seleccionada`,
         });
       }
 
@@ -177,7 +178,7 @@ exports.crearPedido = async (req, res) => {
       if (sucProd.stock_disponible < item.cantidad_unidad_medida) {
         await t.rollback();
         return res.status(400).json({
-          error: `Stock insuficiente para el producto ${item.producto.nombre}. Disponible: ${sucProd.stock_disponible}, solicitado: ${item.cantidad_unidad_medida}`
+          error: `Stock insuficiente para el producto ${item.producto.nombre}. Disponible: ${sucProd.stock_disponible}, solicitado: ${item.cantidad_unidad_medida}`,
         });
       }
     }
@@ -198,7 +199,7 @@ exports.crearPedido = async (req, res) => {
     for (const item of itemsCarrito) {
       const sucProd = await sucursal_producto.findOne({
         where: { id_sucursal, id_producto: item.id_producto },
-        transaction: t
+        transaction: t,
       });
       sucProd.stock_disponible -= item.cantidad_unidad_medida;
       await sucProd.save({ transaction: t });
@@ -339,7 +340,9 @@ exports.getPedidosConDetallesUsuario = async (req, res) => {
     res.json(pedidos);
   } catch (error) {
     console.error("Error al obtener pedidos con detalles del usuario:", error);
-    res.status(500).json({ error: "Error al obtener pedidos con detalles del usuario" });
+    res
+      .status(500)
+      .json({ error: "Error al obtener pedidos con detalles del usuario" });
   }
 };
 
@@ -435,5 +438,38 @@ exports.getPedidoDetalles = async (req, res) => {
   } catch (error) {
     console.error("Error al obtener detalles del pedido:", error);
     res.status(500).json({ error: "Error al obtener detalles del pedido" });
+  }
+};
+
+// Actualizar estado de un pedido
+exports.actualizarEstado = async (req, res) => {
+  try {
+    const { id_pedido } = req.params;
+    const { id_estado_pedido } = req.body;
+
+    if (!id_estado_pedido) {
+      return res
+        .status(400)
+        .json({ error: "Falta id_estado_pedido en el body" });
+    }
+
+    const pedidoToUpdate = await pedido.findByPk(id_pedido);
+    if (!pedidoToUpdate) {
+      return res.status(404).json({ error: "Pedido no encontrado" });
+    }
+
+    pedidoToUpdate.id_estado_pedido = id_estado_pedido;
+    await pedidoToUpdate.save();
+
+    // opcional: devolver pedido con estado incluido
+    const updated = await pedido.findOne({
+      where: { id_pedido },
+      include: [{ model: estado_pedido, attributes: ["nombre_pedido"] }],
+    });
+
+    res.json({ message: "Estado actualizado", pedido: updated });
+  } catch (error) {
+    console.error("Error al actualizar estado del pedido:", error);
+    res.status(500).json({ error: "Error al actualizar estado del pedido" });
   }
 };

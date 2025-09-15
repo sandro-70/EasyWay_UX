@@ -28,9 +28,16 @@ export function getPedidosConDetalles() {
   return axiosInstance.get("/api/pedidos/pedidos-con-detalles");
 }
 export function getPedidosConDetallesUsuario(id_usuario) {
-  return axiosInstance.get(`/api/pedidos/mis-pedidos-con-detalles/${id_usuario}`);
+  return axiosInstance.get(
+    `/api/pedidos/mis-pedidos-con-detalles/${id_usuario}`
+  );
 }
 export function listarPedido(id_pedido) {
   return axiosInstance.get(`/api/pedidos/detalles/${id_pedido}`);
 }
 
+export function actualizarEstadoPedido(id_pedido, id_estado_pedido) {
+  return axiosInstance.patch(`/api/pedidos/actualizar-estado/${id_pedido}`, {
+    id_estado_pedido,
+  });
+}

@@ -20,6 +20,7 @@ import {
 } from "./api/InventarioApi";
 import { ListarCategoria } from "./api/CategoriaApi";
 import { listarSubcategoria } from "./api/SubcategoriaApi";
+import { crearPromocion } from "./api/PromocionesApi";
 /**
  * Paleta:
  * #d8572f (naranja primario)
@@ -263,10 +264,48 @@ export default function AsignarDescuentos() {
   const handleChange = (event, newValue) => {
     setDiscount(newValue);
   };
-  const handleGuardar = () => {
-    {
-      //Guardar Promocion y asignar descuento a todos los productos seleccionados
+  const [descuentos, setDescuentos] = useState([
+    "Monto Fijo",
+    "Escalonado",
+    "Porcentaje",
+  ]);
+  const [selectedDiscount, setSelectedDisc] = useState("Monto Fijo");
+  const [cantidad, setCantidad] = useState(0);
+  const [showFecha, setShowFecha] = useState(false);
+  const [inicio, setInicio] = useState("");
+  const [fin, setFin] = useState("");
+  const handleDiscChange = (event) => {
+    setSelectedDisc(event.target.value);
+  };
+  const handleGuardar = async (e) => {
+    e.preventDefault();
+    console.log("descripcion", selectedDiscount);
+    console.log("valor_fijo", monto);
+    console.log("valor_porcentaje", discount);
+    //Crear funcion para verificar que los datos son validos
+    //verifyData
+
+    //Guardar Promocion y asignar descuento a todos los productos seleccionados
+    const data = {
+      nombre_promocion: "descuento",
+      descripcion: selectedDiscount,
+      valor_fijo: monto,
+      valor_porcentaje: discount,
+      cantidad_min: cantidad,
+      fecha_inicio: inicio,
+      fecha_termina: fin,
+      id_tipo_promo: 1,
+      banner_url: null,
+      productos: selectedItems,
+    };
+    try {
+      const res = await crearPromocion(data);
+    } catch (err) {
+      console.error("Error creando Promocion:", err);
     }
+
+    //Crear Promocion
+    //Aplicar los descuentos de la promocion a los productos
   };
   const [checked, setChecked] = useState(false);
   {
@@ -1247,7 +1286,7 @@ export default function AsignarDescuentos() {
           Asignar Descuentos
         </h1>
         <hr className="h-1 mt-2 w-full rounded-md bg-[#f0833e]"></hr>
-        <div className="w-full flex flex-row gap-4 pl-16  mt-4">
+        <div className="w-full flex flex-row gap-8 pl-2  mt-4">
           {/* ancho completo sin max-w para visualizar toda la tabla */}
           <div className="  ">
             {/* Sidebar */}
@@ -1859,83 +1898,162 @@ export default function AsignarDescuentos() {
           {
             //VISTA PREVIA
           }
-          <div className="flex flex-col bg-white shadow-neutral-600 shadow-sm w-[300px] h-[630px] rounded-3xl px-2 py-4 text-left">
-            <div className="flex-1 flex flex-col space-y-2">
+          <div className="flex flex-col bg-white shadow-neutral-600 shadow-sm w-[320px] h-[630px] rounded-3xl px-2 py-2 text-left">
+            <div className="flex-1 flex flex-col space-y-2 px-4">
               <h1 className="font-bold text-2xl text-center">Vista Previa</h1>
-              <img src={frutas}></img>
+              <img className="object-cover" src={frutas}></img>
               <p className="text-[#80838A] text-xl">Nombre producto</p>
               <p className="text-[#80838A] line-through text-xl">$35.00</p>
               <div className="flex flex-row gap-4">
                 <p className="text-2xl text-[#009900] font-extrabold">$24.50</p>
                 <p className="bg-red-500 p-1 rounded-full text-white font-bold text-lg">
-                  {checked ? discount + "% OFF" : "LPS. " + monto + " OFF"}
+                  {selectedDiscount === "Porcentaje"
+                    ? discount + "% OFF"
+                    : "LPS. " + monto + " OFF"}
                 </p>
               </div>
-              <div className="flex flex-row gap-4 pt-4">
-                <p className="text-xl">Tipo de descuento</p>
-                <Switch
-                  checked={checked}
-                  onChange={() => setChecked(!checked)}
-                  sx={{
-                    "& .Mui-checked": { color: "orange" },
-                    "& .Mui-checked + .MuiSwitch-track": {
-                      backgroundColor: "orange",
-                      opacity: 1,
-                    },
-                  }}
-                />
+              <div className="flex flex-row gap-2 pt-4">
+                <p className="text-lg whitespace-nowrap">Tipo de descuento</p>
+                <select
+                  className=" border-gray-300 border-2 rounded-md  text-lg px-2 focus:outline-none focus:border-blue-500"
+                  value={selectedDiscount}
+                  onChange={handleDiscChange}
+                >
+                  {descuentos.map((d, index) => (
+                    <option key={index} value={d}>
+                      {d}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <div className="flex  flex-row gap-2 pt-4">
-                {checked && <p className="text-xl">Porcentaje</p>}
-                {!checked && (
+              <div className="flex flex-row gap-2 pt-8 items-center justify-center ">
+                {selectedDiscount === "Monto Fijo" && (
                   <>
-                    <p className="text-xl">Monto Fijo L.</p>{" "}
+                    <p className="text-xl whitespace-nowrap">Monto L.</p>{" "}
                     <input
                       type="text"
+                      value={monto}
                       placeholder="Monto"
-                      className="input-field rounded-xl mt-4 h-10 bg-gray-100 border-black border-2 pl-2"
+                      className="input-field rounded-xl  h-10 bg-gray-100 border-black border-2 pl-2"
+                      onChange={(e) => setMonto(e.target.value)}
+                    ></input>
+                  </>
+                )}
+                {selectedDiscount === "Escalonado" && (
+                  <>
+                    <p className="text-xl whitespace-nowrap">Monto L.</p>{" "}
+                    <input
+                      type="text"
+                      value={monto}
+                      placeholder="Monto"
+                      className="input-field rounded-xl  h-10 bg-gray-100 border-black border-2 pl-2"
                       onChange={(e) => setMonto(e.target.value)}
                     ></input>
                   </>
                 )}
               </div>
-              {checked && (
-                <div className="flex flex-row gap-8 pt-4">
-                  <p className="text-md">Ajustar %</p>
-                  <Slider
-                    defaultValue={discount}
-                    min={10}
-                    max={100}
-                    step={5}
-                    valueLabelDisplay="auto"
-                    onChange={handleChange}
-                    sx={{
-                      width: 130,
-                      color: "green",
-                      "& .MuiSlider-thumb": { backgroundColor: "white" },
-                      "& .MuiSlider-rail": {
-                        opacity: 1,
-                        backgroundColor: "#D4D3D2",
-                      },
-                      "& .MuiSlider-track": {
-                        backgroundColor: "blue",
-                        border: "#D4D3D2",
-                      },
-                    }}
-                  />
-                </div>
-              )}
+              <div className="flex flex-row gap-8 items-center justify-center">
+                {selectedDiscount === "Porcentaje" && (
+                  <>
+                    <p className="text-md">Ajustar %</p>
+                    <Slider
+                      defaultValue={discount}
+                      min={10}
+                      max={100}
+                      step={5}
+                      valueLabelDisplay="auto"
+                      onChange={handleChange}
+                      sx={{
+                        width: 130,
+                        color: "green",
+                        "& .MuiSlider-thumb": { backgroundColor: "white" },
+                        "& .MuiSlider-rail": {
+                          opacity: 1,
+                          backgroundColor: "#D4D3D2",
+                        },
+                        "& .MuiSlider-track": {
+                          backgroundColor: "blue",
+                          border: "#D4D3D2",
+                        },
+                      }}
+                    />
+                  </>
+                )}
+                {selectedDiscount === "Escalonado" && (
+                  <>
+                    <p className="text-xl whitespace-nowrap"> Cantidad min.</p>
+                    <input
+                      type="number"
+                      placeholder="0"
+                      className="input-field rounded-xl w-24 h-10 bg-gray-100 border-black border-2 pl-2"
+                      onChange={(e) => setCantidad(e.target.value)}
+                    ></input>
+                  </>
+                )}
+              </div>
             </div>
 
             <button
-              onClick={handleGuardar}
+              onClick={() => {
+                setShowFecha(true);
+              }}
               className="p-2 w-full bg-orange-500 rounded-full text-white font-bold"
             >
-              Guardar
+              Asignar Duracion
             </button>
           </div>
         </div>
       </div>
+      {showFecha && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-lg w-96  relative animate-fadeIn">
+            <h2 className="bg-[#2b6daf] text-xl rounded-t-lg font-bold p-2 text-center text-white mb-6">
+              Periodo del descuento
+            </h2>
+
+            <form
+              className="flex flex-col space-y-4 pr-6 pl-6 pb-8"
+              onSubmit={handleGuardar}
+            >
+              <div>
+                <p className="text-[18px]">Valido desde</p>
+                <input
+                  type="date"
+                  placeholder=""
+                  className="w-full px-4 py-2 border border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => setInicio(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <p className="text-[18px]">Hasta</p>
+                <input
+                  type="date"
+                  placeholder=""
+                  className="w-full px-4 py-2 border border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => setFin(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="flex gap-8">
+                <button
+                  onClick={() => setShowFecha(false)}
+                  className="text-white py-2 w-1/2 bg-red-600 rounded-lg"
+                  type="button"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className=" bg-blue-600 text-white py-2 w-1/2 rounded-lg hover:bg-blue-700 transition"
+                >
+                  Guardar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

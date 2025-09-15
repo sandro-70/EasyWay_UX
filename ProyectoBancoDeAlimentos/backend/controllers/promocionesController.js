@@ -342,7 +342,7 @@ exports.aplicarDescuentoseleccionados = async (req, res) => {
 
 exports.crearPromocion = async (req, res) => {
   try {
-    const { nombre_promocion, descripción, valor_fijo, valor_porcentaje,compra_min, fecha_inicio, fecha_termina, id_tipo_promo, banner_url, productos,orden } = req.body;
+    const { nombre_promocion, descripción, valor_fijo, valor_porcentaje,compra_min, fecha_inicio, fecha_termina, id_tipo_promo, banner_url, productos,orden, } = req.body;
     if (!req.user || !req.user.id_usuario) {
       return res.status(401).json({ message: 'Usuario no autenticado' });
     }
@@ -450,7 +450,7 @@ exports.activarPromocion = async (req, res) => {
 exports.actualizarPromocion = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre_promocion, descripcion, valor_fijo, valor_porcentaje, fecha_inicio, fecha_termina, id_tipo_promo, banner_url, productos,orden } = req.body;
+    const { nombre_promocion, descripcion, valor_fijo, valor_porcentaje, compra_min,fecha_inicio, fecha_termina, id_tipo_promo, banner_url, productos,orden } = req.body;
     if (!req.user || !req.user.id_usuario) {
       return res.status(401).json({ message: 'Usuario no autenticado' });
     }
@@ -471,6 +471,7 @@ exports.actualizarPromocion = async (req, res) => {
     promocionToUpdate.nombre_promocion = nombre_promocion || promocionToUpdate.nombre_promocion;
     promocionToUpdate.descripcion = descripcion || promocionToUpdate.descripcion;
     promocionToUpdate.valor_fijo = valor_fijo !== undefined ? valor_fijo : promocionToUpdate.valor_fijo;
+    promocionToUpdate.compra_min = compra_min !== undefined ? compra_min : promocionToUpdate.compra_min;
     promocionToUpdate.valor_porcentaje = valor_porcentaje !== undefined ? valor_porcentaje : promocionToUpdate.valor_porcentaje;
     promocionToUpdate.fecha_inicio = fecha_inicio || promocionToUpdate.fecha_inicio;
     promocionToUpdate.fecha_termina = fecha_termina || promocionToUpdate.fecha_termina;

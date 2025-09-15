@@ -41,7 +41,7 @@ export function getProductosTendencias() {
 }
 
 export function crearMarca(nombre_marca) {
-  return axiosInstance.post("/api/reportes-usuario/marcas", { nombre_marca });
+  return axiosInstance.post("/api/producto/marcas", { nombre_marca });
 }
 
 export function getProductoById(id) {

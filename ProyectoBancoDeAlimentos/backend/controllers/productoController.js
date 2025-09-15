@@ -322,52 +322,103 @@ exports.obtenerProductoPorId = async (req, res) => {
   }
 };
 
+const { crearProductoConStockEnSucursales } = require('../services/serviceInventario');
+
 // Crear producto con imágenes
 exports.addproducto = async (req, res) => {
   try {
-    const {
-      nombre,
-      descripcion,
-      precio_base,
-      id_subcategoria,
-      id_marca,
-      unidad_medida,
-      estrellas,
-      imagenes,
-    } = req.body;
+    const payload = {
+      ...req.body,
+      files: req.files // archivos subidos por multer
+    };
+    const data = await crearProductoConStockEnSucursales(payload);
+    return res.status(201).json(data);
+  } catch (e) {
+    console.error('❌ Crear producto error:', e);
 
-    const prod = await producto.create({
-      nombre,
-      descripcion,
-      precio_base,
-      id_subcategoria,
-      id_marca,
-      unidad_medida,
-      estrellas: estrellas || 0,
-      activo: true,
-    });
-
-    if (Array.isArray(imagenes) && imagenes.length) {
-      const imgs = imagenes.map((img) => ({
-        id_producto: prod.id_producto,
-        url_imagen: img.url_imagen,
-        orden_imagen: img.orden_imagen ?? 0,
-      }));
-      await imagen_producto.bulkCreate(imgs);
+    if (
+      e.name === 'SequelizeValidationError' ||
+      e.name === 'SequelizeUniqueConstraintError'
+    ) {
+      return res.status(400).json({
+        name: e.name,
+        errors: (e.errors || []).map(err => ({
+          message: err.message,
+          path: err.path,
+          value: err.value,
+          validatorKey: err.validatorKey
+        }))
+      });
     }
 
-    const result = await producto.findByPk(prod.id_producto, {
-      include: [
-        {
-          model: imagen_producto,
-          as: "imagenes",
-          attributes: ["url_imagen", "orden_imagen"],
-        },
-      ],
-    });
+    if (e.name === 'SequelizeForeignKeyConstraintError') {
+      return res.status(400).json({
+        name: e.name,
+        index: e.index,
+        fields: e.fields,
+        table: e.table,
+        message: e.parent?.detail || e.message
+      });
+    }
 
-    res.status(201).json({ msg: "Producto creado", producto: result });
+    return res.status(400).json({ message: String(e?.message || e) });
+  }
+};
+
+// POST /api/productos/imagenes
+exports.subirImagenesProducto = async (req, res) => {
+  try {
+    const { id_producto } = req.body;
+    const files = req.files; // Archivos subidos con multer
+
+    // Validar que se proporcionó id_producto
+    if (!id_producto) {
+      return res.status(400).json({ msg: "id_producto es requerido" });
+    }
+
+    // Validar que hay archivos
+    if (!files || files.length === 0) {
+      return res.status(400).json({ msg: "Archivos de imagen son requeridos" });
+    }
+
+    // Verificar que el producto existe
+    const prod = await producto.findByPk(id_producto);
+    if (!prod) {
+      return res.status(404).json({ msg: "Producto no encontrado" });
+    }
+
+    // Procesar cada archivo subido
+    const imagenesData = files.map((file, index) => ({
+      id_producto: parseInt(id_producto),
+      url_imagen: `/images/productos/${file.filename}`, // URL relativa al archivo subido
+      orden_imagen: index, // Orden basado en el índice del array
+    }));
+
+    // Guardar en la base de datos
+    const createdImages = await imagen_producto.bulkCreate(imagenesData);
+
+    res.status(201).json({
+      msg: "Imágenes subidas y guardadas",
+      imagenes: createdImages,
+      archivos: files.map(f => f.filename)
+    });
   } catch (err) {
+    console.error('Error en subirImagenesProducto:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+// DELETE /api/productos/imagenes/:imagenId
+exports.eliminarImagenProducto = async (req, res) => {
+  try {
+    const { imagenId } = req.params;
+    const img = await imagen_producto.findByPk(imagenId);
+    if (!img) {
+      return res.status(404).json({ msg: "Imagen no encontrada" });
+    }
+    await img.destroy();
+    res.json({ msg: "Imagen eliminada" });
+  }
+  catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
@@ -386,6 +437,7 @@ exports.imagenesProducto = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // PUT /api/productos/:id/porcentaje-ganancia
 exports.putPorcentajeGanancia = async (req, res) => {
@@ -541,8 +593,9 @@ exports.actualizarProducto = async (req, res) => {
       unidad_medida,
       activo,
       peso,
-      imagenes, // array of { url_imagen, orden_imagen }
     } = req.body;
+
+    const files = req.files; // Archivos subidos con multer
 
     // Validar que el ID del producto sea numérico
     if (!id_producto || isNaN(parseInt(id_producto))) {
@@ -609,17 +662,20 @@ exports.actualizarProducto = async (req, res) => {
       peso: peso !== undefined ? parseFloat(peso) : null,
     });
 
-    // Actualizar imagenes si se proporcionaron
-    if (Array.isArray(imagenes)) {
+    // Actualizar imagenes si se proporcionaron archivos
+    if (files && files.length > 0) {
       // Eliminar imágenes existentes para este producto
       await imagen_producto.destroy({ where: { id_producto: id_producto } });
-      // Crear nuevas imágenes
-      const imgs = imagenes.map((img) => ({
-        id_producto: id_producto,
-        url_imagen: img.url_imagen,
-        orden_imagen: img.orden_imagen ?? 0,
+
+      // Procesar cada archivo subido
+      const imagenesData = files.map((file, index) => ({
+        id_producto: parseInt(id_producto),
+        url_imagen: `/images/productos/${file.filename}`, // URL relativa al archivo subido
+        orden_imagen: index, // Orden basado en el índice del array
       }));
-      await imagen_producto.bulkCreate(imgs);
+
+      // Guardar en la base de datos
+      await imagen_producto.bulkCreate(imagenesData);
     }
 
     // Obtener el producto actualizado con detalles

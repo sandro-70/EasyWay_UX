@@ -72,7 +72,11 @@ function esAdmin(req) {
 // controllers/producto.controller.js
 exports.crear = async (req, res) => {
   try {
-    const data = await crearProductoConStockEnSucursales(req.body);
+    const payload = {
+      ...req.body,
+      files: req.files // archivos subidos por multer
+    };
+    const data = await crearProductoConStockEnSucursales(payload);
     return res.status(201).json(data);
   } catch (e) {
     console.error('❌ Crear producto error:', e);

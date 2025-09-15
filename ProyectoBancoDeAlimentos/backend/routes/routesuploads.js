@@ -3,6 +3,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const { imagen_producto } = require('../models');
 
 const router = express.Router();
 
@@ -51,11 +52,43 @@ router.post('/profile-photo', upload.single('foto'), (req, res) => {
   return res.json({ ok: true, filename: req.file.filename });
 });
 
-router.post('/product-photos', uploadProducto.array('fotos', 10), (req, res) => {
-  if (!req.files || req.files.length === 0) return res.status(400).json({ ok: false, msg: 'Archivos requeridos (fotos)' });
-  const filenames = req.files.map(file => file.filename);
-  console.log(' Fotos guardadas:', filenames);
-  return res.json({ ok: true, filenames });
+router.post('/product-photos', uploadProducto.array('fotos', 10), async (req, res) => {
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ ok: false, msg: 'Archivos requeridos (fotos)' });
+  }
+  
+  try {
+    const { id_producto } = req.body; // Should be sent with the upload request
+    const filenames = req.files.map(file => file.filename);
+    
+    // Construct URLs for the uploaded files
+    const imagenes = filenames.map((filename, index) => ({
+      url_imagen: `/images/productos/${filename}`, // Adjust path as needed
+      orden_imagen: index
+    }));
+    
+    // Save to database if id_producto is provided
+    if (id_producto) {
+      const imgs = imagenes.map(img => ({
+        id_producto: parseInt(id_producto),
+        url_imagen: img.url_imagen,
+        orden_imagen: img.orden_imagen
+      }));
+      await imagen_producto.bulkCreate(imgs);
+    }
+    
+    console.log(' Fotos guardadas:', filenames);
+    return res.json({ 
+      ok: true, 
+      filenames,
+      imagenes: imagenes,
+      message: id_producto ? 'Archivos subidos y guardados en BD' : 'Archivos subidos'
+    });
+  } catch (error) {
+    console.error('Error saving images to DB:', error);
+    return res.status(500).json({ ok: false, msg: 'Error al guardar imágenes' });
+  }
 });
 
 module.exports = router;
+module.exports.uploadProducto = uploadProducto;

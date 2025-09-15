@@ -141,6 +141,7 @@ export function uploadProductPhotos(files) {
     headers: { "Content-Type": "multipart/form-data" },
   });
 }
+
 export async function uploadProductPhotos2(namedFiles) {
   const form = new FormData();
   namedFiles.forEach(({ file, desiredName }) => {

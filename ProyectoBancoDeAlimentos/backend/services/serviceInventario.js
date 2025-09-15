@@ -187,6 +187,7 @@ async function crearProductoConStockEnSucursales(payload = {}) {
     estrellas,
     etiquetas, // ARRAY(STRING) en Postgres; si usas MySQL => usar JSON
     imagenes, // ARRAY de objetos { url_imagen: string, orden_imagen?: number }
+    files, // Archivos subidos con multer (opcional)
   } = payload;
 
   // --- Validaciones básicas ---
@@ -274,6 +275,7 @@ async function crearProductoConStockEnSucursales(payload = {}) {
     }
 
     // 4) Crear imagenes si se proporcionaron
+    let imagenesCreadas = 0;
     if (imagenesArr.length) {
       // Obtener el máximo orden_imagen actual para el producto (aunque sea nuevo, por si acaso)
       const maxOrdenResult = await imagen_producto.findOne({
@@ -290,6 +292,30 @@ async function crearProductoConStockEnSucursales(payload = {}) {
         orden_imagen: img.orden_imagen !== undefined ? img.orden_imagen : maxOrden + 1 + index,
       }));
       await imagen_producto.bulkCreate(filasImagenes, { transaction: t });
+      imagenesCreadas = filasImagenes.length;
+    }
+
+    // 4.1) Procesar archivos subidos si se proporcionaron
+    if (files && files.length > 0) {
+      // Obtener el máximo orden_imagen actual para el producto
+      const maxOrdenResult = await imagen_producto.findOne({
+        where: { id_producto: prod.id_producto },
+        attributes: [[sequelize.fn('MAX', sequelize.col('orden_imagen')), 'max_orden']],
+        raw: true,
+        transaction: t
+      });
+      const maxOrden = maxOrdenResult?.max_orden || -1;
+
+      // Procesar cada archivo subido
+      const imagenesData = files.map((file, index) => ({
+        id_producto: prod.id_producto,
+        url_imagen: `/images/productos/${file.filename}`, // URL relativa al archivo subido
+        orden_imagen: maxOrden + 1 + index, // Orden basado en el índice del array
+      }));
+
+      // Guardar en la base de datos
+      await imagen_producto.bulkCreate(imagenesData, { transaction: t });
+      imagenesCreadas += imagenesData.length;
     }
 
     // 5) Devolver el producto con include usando ALIAS correctos

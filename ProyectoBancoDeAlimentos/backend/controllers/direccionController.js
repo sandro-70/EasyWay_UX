@@ -16,6 +16,17 @@ exports.addDirection = async (req,res) => {
             return res.status(404).json({message : "Usuario no existe!"});
         }
 
+        // Check if a direction with the same details already exists for this user
+        const existingDirection = await direccion.findOne({
+            where: {
+                id_usuario: id_usuario,
+                calle: calle,
+                ciudad: ciudad,
+                codigo_postal: codigo_postal,
+                id_municipio: id_municipio
+            }
+        });
+
         if (predeterminada === true) {
             await direccion.update(
                 { predeterminada: false },
@@ -23,24 +34,37 @@ exports.addDirection = async (req,res) => {
             );
         }
 
-        direccion.create({
-            id_usuario,
-            calle,
-            ciudad,
-            codigo_postal,
-            predeterminada,
-            id_municipio
-        });
+        if (existingDirection) {
+            // Update existing direction
+            existingDirection.predeterminada = predeterminada;
+            await existingDirection.save();
 
-        return res.status(201).json({
-            message: "Direccion agregada!",
-        });
+            return res.status(200).json({
+                message: "Direccion actualizada!",
+                id_direccion: existingDirection.id_direccion
+            });
+        } else {
+            // Create new direction
+            const newDirection = await direccion.create({
+                id_usuario,
+                calle,
+                ciudad,
+                codigo_postal,
+                predeterminada,
+                id_municipio
+            });
+
+            return res.status(201).json({
+                message: "Direccion agregada!",
+                id_direccion: newDirection.id_direccion
+            });
+        }
 
     }catch(error){
         console.error(error);
-        return res.status(400);
+        return res.status(400).json({ message: 'Error al agregar direccion' });
     }
-    
+
 }
 
 

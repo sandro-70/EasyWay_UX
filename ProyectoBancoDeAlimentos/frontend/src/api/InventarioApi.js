@@ -28,6 +28,8 @@ export function abastecerPorSucursalProducto(
   );
 }
 
+
+
 export function getMarcas() {
   return axiosInstance.get("/api/producto/marcas");
 }
@@ -50,6 +52,22 @@ export function getProductoById(id) {
 export function getImagenesProducto(id) {
   return axiosInstance.get(`/api/producto/${id}/imagenes`);
 }
+
+export function subirImagenesProducto(files, id_producto) {
+  const form = new FormData();
+  files.forEach((file) => {
+    form.append("fotos", file, file.name);
+  });
+  if (id_producto) form.append("id_producto", id_producto);
+  return axiosInstance.post("/api/uploads/product-photos", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+}
+
+export function eliminarImagenProducto(imagenId) {
+  return axiosInstance.delete(`/api/producto/imagenes/${imagenId}`);
+}
+
 export function getAllPorcentajeGanancia() {
   return axiosInstance.get("/api/producto/porcentaje-ganancia");
 }
@@ -76,6 +94,7 @@ export function getCuponesByUser(id_usuario) {
 export function desactivarProducto(id_producto) {
   return axiosInstance.patch(`/api/producto/desactivar/${id_producto}`);
 }
+
 export function actualizarProducto(
   id_producto,
   nombre,
@@ -86,24 +105,35 @@ export function actualizarProducto(
   id_marca,
   etiquetas,
   unidad_medida,
-  activo,
   imagenes,
-  peso
+  peso,
+  files = [] // Array de archivos para subir
 ) {
-  return axiosInstance.put(`/api/producto/actualizar-producto/${id_producto}`, {
-    nombre,
-    descripcion,
-    precio_base,
-    id_subcategoria,
-    porcentaje_ganancia,
-    id_marca,
-    etiquetas,
-    unidad_medida,
-    activo,
-    imagenes,
-    peso,
+  const formData = new FormData();
+
+  // Agregar datos del producto
+  formData.append('nombre', nombre);
+  formData.append('descripcion', descripcion || '');
+  formData.append('precio_base', precio_base);
+  formData.append('id_subcategoria', id_subcategoria);
+  if (porcentaje_ganancia !== undefined) formData.append('porcentaje_ganancia', porcentaje_ganancia);
+  formData.append('id_marca', id_marca);
+  if (etiquetas) formData.append('etiquetas', Array.isArray(etiquetas) ? etiquetas.join(',') : etiquetas);
+  formData.append('unidad_medida', unidad_medida);
+  if (peso !== undefined) formData.append('peso', peso);
+
+  // Agregar archivos de imagen
+  if (files && files.length > 0) {
+    files.forEach((file, index) => {
+      formData.append('imagenes', file, file.name);
+    });
+  }
+
+  return axiosInstance.put(`/api/producto/actualizar-producto/${id_producto}`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
   });
 }
+
 
 export function crearProducto(
   nombre,
@@ -115,19 +145,31 @@ export function crearProducto(
   etiquetas,
   unidad_medida,
   imagenes,
-  peso
+  peso,
+  files = [] // Array de archivos para subir
 ) {
-  return axiosInstance.post("/api/Inventario/productos", {
-    nombre,
-    descripcion,
-    precio_base,
-    id_subcategoria,
-    porcentaje_ganancia,
-    id_marca,
-    etiquetas,
-    unidad_medida,
-    imagenes,
-    peso,
+  const formData = new FormData();
+
+  // Agregar datos del producto
+  formData.append('nombre', nombre);
+  formData.append('descripcion', descripcion || '');
+  formData.append('precio_base', precio_base);
+  formData.append('id_subcategoria', id_subcategoria);
+  if (porcentaje_ganancia !== undefined) formData.append('porcentaje_ganancia', porcentaje_ganancia);
+  formData.append('id_marca', id_marca);
+  if (etiquetas) formData.append('etiquetas', Array.isArray(etiquetas) ? etiquetas.join(',') : etiquetas);
+  formData.append('unidad_medida', unidad_medida);
+  if (peso !== undefined) formData.append('peso', peso);
+
+  // Agregar archivos de imagen
+  if (files && files.length > 0) {
+    files.forEach((file, index) => {
+      formData.append('imagenes', file, file.name);
+    });
+  }
+
+  return axiosInstance.post("/api/Inventario/productos", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
   });
 }
 

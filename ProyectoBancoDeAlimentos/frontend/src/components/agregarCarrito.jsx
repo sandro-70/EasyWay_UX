@@ -11,6 +11,7 @@ import {
 import { AddNewCarrito, ViewCar, SumarItem } from "../api/CarritoApi";
 import axiosInstance from "../api/axiosInstance"; // valoraciones
 import { useCart } from "../utils/CartContext";
+import { height } from "@mui/system";
 
 function AgregarCarrito() {
   const { id } = useParams();
@@ -598,18 +599,22 @@ function AgregarCarrito() {
 
                 {/* Formulario para dejar comentario */}
                 <div style={styles.formCol}>
-                  <form onSubmit={(e) => {
-                      e.preventDefault(); 
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
                       if (myRating < 1) {
-                        alert("Debes seleccionar al menos 1 estrella para tu calificación.");
-                        return; 
+                        alert(
+                          "Debes seleccionar al menos 1 estrella para tu calificación."
+                        );
+                        return;
                       }
                       if (!myComment.trim()) {
                         alert("Escribe tu comentario.");
-                        return; 
+                        return;
                       }
-                      submitReview(e); 
-                    }}>
+                      submitReview(e);
+                    }}
+                  >
                     <div style={styles.formGroup}>
                       <label style={styles.formLabel}>Tu calificación</label>
                       <div>
@@ -635,59 +640,59 @@ function AgregarCarrito() {
                       />
                     </div>
 
-                    <button
-                      type="submit"
-                      style={styles.submitBtn}
-                    >
+                    <button type="submit" style={styles.submitBtn}>
                       {submitting ? "Enviando…" : "Enviar opinión"}
                     </button>
                   </form>
                 </div>
               </div>
-              
+
               {/* Lista de comentarios */}
               <div style={styles.reviewList}>
-              {effectiveTotal === 0 ? (
-                <div style={styles.noReviews}>
-                  Aún no hay opiniones. ¡Sé el primero!
-                </div>
-              ) : (
-                reviews
-                  .slice() 
-                  .sort(
-                    (a, b) =>
-                      new Date(b.fecha_creacion) - new Date(a.fecha_creacion) 
-                  )
-                  .map((r) => (
-                    <div key={r.id_valoracion_producto} style={styles.reviewCard}>
-                      <div style={styles.reviewMeta}>
-                        <div>
-                          {[1, 2, 3, 4, 5].map((n) => (
-                            <Star
-                              key={n}
-                              filled={n <= Number(r.puntuacion || 0)}
-                            />
-                          ))}
+                {effectiveTotal === 0 ? (
+                  <div style={styles.noReviews}>
+                    Aún no hay opiniones. ¡Sé el primero!
+                  </div>
+                ) : (
+                  reviews
+                    .slice()
+                    .sort(
+                      (a, b) =>
+                        new Date(b.fecha_creacion) - new Date(a.fecha_creacion)
+                    )
+                    .map((r) => (
+                      <div
+                        key={r.id_valoracion_producto}
+                        style={styles.reviewCard}
+                      >
+                        <div style={styles.reviewMeta}>
+                          <div>
+                            {[1, 2, 3, 4, 5].map((n) => (
+                              <Star
+                                key={n}
+                                filled={n <= Number(r.puntuacion || 0)}
+                              />
+                            ))}
+                          </div>
+                          <div style={styles.reviewUserDate}>
+                            {r?.usuario?.nombre
+                              ? r.usuario.nombre
+                              : r.id_usuario
+                              ? `Usuario #${r.id_usuario}`
+                              : "Usuario"}
+                            {" • "}
+                            {r.fecha_creacion
+                              ? new Date(r.fecha_creacion).toLocaleDateString()
+                              : ""}
+                          </div>
                         </div>
-                        <div style={styles.reviewUserDate}>
-                          {r?.usuario?.nombre
-                            ? r.usuario.nombre
-                            : r.id_usuario
-                            ? `Usuario #${r.id_usuario}`
-                            : "Usuario"}
-                          {" • "}
-                          {r.fecha_creacion
-                            ? new Date(r.fecha_creacion).toLocaleDateString()
-                            : ""}
-                        </div>
+                        {r.comentario && (
+                          <div style={styles.reviewText}>{r.comentario}</div>
+                        )}
                       </div>
-                      {r.comentario && (
-                        <div style={styles.reviewText}>{r.comentario}</div>
-                      )}
-                    </div>
-                  ))
-              )}
-            </div>
+                    ))
+                )}
+              </div>
             </div>
             {/* FIN valoraciones dentro del card */}
           </div>
@@ -718,7 +723,6 @@ const styles = {
     gap: "24px",
     width: "100%",
     maxWidth: "1680px", // más ancho
-    height: "100%",
     boxSizing: "border-box",
   },
 
@@ -812,7 +816,7 @@ const styles = {
     borderRadius: "16px",
     padding: "20px",
     boxShadow: "0px 4px 10px rgba(0,0,0,0.1)",
-    minHeight: "100%",
+    height: "900px",
     width: "100%",
     display: "flex",
     flexDirection: "column",

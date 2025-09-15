@@ -6,6 +6,15 @@
   background: #f5f7fa;
 }
 
+.mis-pedidos-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #f5f7fa;
+  /* ✨ Aquí está la corrección: Usamos las variables directamente. */
+  margin-top: calc(var(--topbar-h) + var(--bottombar-h) + var(--perfil-gap));
+}
+
 .historial-box {
   width: 700px;
 }
@@ -195,4 +204,20 @@
 
 .btn-ver-mas:hover {
   background-color: #fc9e63;
+}
+
+:root {
+  --topbar-h: 10px;
+  --bottombar-h: 55px;
+  --perfil-gap: 40px;
+}
+
+/* Si en móviles no tienes bottom bar, puedes reducir el offset */
+@media (max-width: 1024px) {
+  :root {
+    --bottombar-h: 0px;
+  }
+  .mis-pedidos-container {
+    margin-top: calc(var(--topbar-h) + 24px);
+  }
 }

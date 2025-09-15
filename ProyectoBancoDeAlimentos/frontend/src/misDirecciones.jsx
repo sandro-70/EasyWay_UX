@@ -202,6 +202,7 @@ export default function MisDirecciones() {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
+          padding: "35px",
         }}
       >
         <div style={{ width: "200%", maxWidth: "800px" }}>

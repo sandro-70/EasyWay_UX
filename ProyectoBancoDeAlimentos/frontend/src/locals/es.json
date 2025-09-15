@@ -30,5 +30,6 @@
   "light_theme": "Tema Claro",
   "dark_theme": "Tema Oscuro",
   "theme_description": "Selecciona un tema:",
-  "rating_system": "Sistema de Valoración"
+  "rating_system": "Sistema de Valoración",
+  "vocab_title": "Lista de Vocabulario"
 }

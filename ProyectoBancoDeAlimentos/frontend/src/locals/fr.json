@@ -34,5 +34,6 @@
   "theme": "Thème",
   "light_theme": "Clair Thème",
   "dark_theme": "Sombre Thème",
-  "theme_description": "Sélectionnez un thème :"
+  "theme_description": "Sélectionnez un thème :",
+  "vocab_title": "Liste de vocabulaire"
 }

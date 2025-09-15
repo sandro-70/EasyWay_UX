@@ -5,10 +5,18 @@
   padding: 28px;
   margin-top: 120px; /* para que no quede debajo del header fijo */
 }
+.vt-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 300px;
+  width: 90%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
 
 .vt-card {
   width: 100vw;
-  max-width: 920px;
+  max-width: 1500px;
   background: linear-gradient(160deg, rgba(255, 255, 255, 0.98), #ddeaf7);
   border-radius: 14px;
   box-shadow: 0 10px 30px rgba(11, 54, 92, 0.12);
@@ -17,35 +25,52 @@
   border: 1px solid rgba(43, 109, 175, 0.08);
 }
 
+.vt-left {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-left: 100px;
+}
+.vt-right {
+  background: var(--card-bg);
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 1px 10px 22px rgba(11, 54, 92, 0.12);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
 .vt-header h1 {
   margin: 0;
   color: #0b4f86; /* tono azul del sitio */
-  font-size: 20px;
+  font-size: 26px;
   letter-spacing: 0.2px;
 }
 
 .vt-sub {
   margin: 6px 0 0;
   color: #475569;
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .vt-controls {
   margin-top: 18px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
 
 .vt-label {
-  font-size: 13px;
+  font-size: 16px;
   color: #334155;
   margin-bottom: 6px;
 }
 
 .vt-selector-row {
   display: flex;
-  gap: 12px;
+  gap: 20px;
   align-items: center;
 }
 
@@ -55,13 +80,13 @@
   border: 1px solid rgba(43, 109, 175, 0.15);
   background: white;
   color: #0f172a;
-  font-size: 14px;
+  font-size: 22x;
   min-width: 200px;
 }
 
 .vt-buttons {
   display: flex;
-  gap: 8px;
+  gap: 15px;
 }
 
 .vt-lang-button {
@@ -86,7 +111,7 @@
 }
 .vt-flag {
   font-size: 18px;
-  margin-right: 8px;
+  margin-right: 10px;
 }
 .vt-sample-btn {
   padding: 8px 12px;
@@ -153,6 +178,7 @@
 .vt-vocab-table th,
 .vt-vocab-table td {
   padding: 8px 12px;
+  font-size: 16px;
   text-align: left;
   border-bottom: 1px solid rgba(15, 23, 42, 0.04);
 }
@@ -161,7 +187,7 @@
   color: #0b4f86;
   font-weight: 700;
   text-align: center;
-  font-size: 18px;
+  font-size: 20px;
 }
 .vt-key {
   font-family: monospace;
@@ -230,7 +256,7 @@ body {
 .vt-theme-button {
   padding: 8px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  border: 2px solid rgba(0, 0, 0, 0.06);
   background: transparent;
   cursor: pointer;
   color: var(--text);
@@ -270,6 +296,53 @@ body {
   color: var(--header-blue);
 }
 
+/* toggle theme switch */
+.vt-theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.vt-switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 24px;
+}
+
+.vt-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.vt-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: #ccc;
+  border-radius: 34px;
+  transition: 0.4s;
+}
+.vt-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: 0.4s;
+}
+.vt-switch input:checked + .vt-slider {
+  background-color: #4f8df5;
+}
+.vt-switch input:checked + .vt-slider:before {
+  transform: translateX(26px);
+}
+
 /* Dark theme adjustments for row colors */
 :root[data-theme="dark"] .vt-vocab-table tbody tr:nth-child(odd) {
   background: rgba(255, 255, 255, 0.02);
@@ -279,7 +352,7 @@ body {
 }
 :root[data-theme="dark"] .vt-vocab-table {
   background: #112131;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 2px solid rgba(255, 255, 255, 0.06);
 }
 :root[data-theme="dark"] .vt-vocab-table th {
   background: linear-gradient(90deg, #0b2a47, #112131);
@@ -287,5 +360,5 @@ body {
 }
 :root[data-theme="dark"] .vt-vocab-table th,
 :root[data-theme="dark"] .vt-vocab-table td {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 2px solid rgba(255, 255, 255, 0.06);
 }

@@ -34,5 +34,6 @@
   "light_theme": "Light Theme",
   "dark_theme": "Dark Theme",
   "theme_description": "Select a theme:",
-  "rating_system": "Rating System"
+  "rating_system": "Rating System",
+  "vocab_title": "Vocabulary List"
 }

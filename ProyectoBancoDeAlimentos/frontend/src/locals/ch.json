@@ -34,5 +34,6 @@
   "light_theme": "浅色 主题",
   "dark_theme": "深色 主题",
   "theme_description": "选择一个主题：",
-  "rating_system": "评级系统"
+  "rating_system": "评级系统",
+  "vocab_title": "词汇列表"
 }

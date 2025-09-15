@@ -63,6 +63,7 @@ const insertDireccion = require("./Inserts/InsertDireccion");
 const insertMetodoPago = require("./Inserts/InsertMetodoPago");
 const insertFactura = require("./Inserts/InsertFactura");
 const insertFacturaDetalle = require("./Inserts/InsertFacturaDetalle");
+const insertRolesPrvilegios = require("./Inserts/InsertRolesPrvilegios");
 
 // Conexión y sincronización con la base de datos y seeds secuenciales
 (async () => {
@@ -70,15 +71,21 @@ const insertFacturaDetalle = require("./Inserts/InsertFacturaDetalle");
     await db.sequelize.authenticate();
     console.log("Conexión a la BD establecida");
 
-    // Sincroniza modelos y reinicia IDs en desarrollo
-     await db.sequelize.sync({ alter: true });
-     console.log("Modelos sincronizados y tablas reiniciadas");
+    // await db.sequelize.sync({ alter: true });
+    // console.log("Modelos sincronizados y tablas reiniciadas");
 
-    // // Inserta los seeds en orden correcto
     // await insertUsuarios(
     //   { app: { locals: { db } } },
     //   {
     //     status: () => ({ json: (msg) => console.log("Seed usuarios:", msg) }),
+    //   }
+    // );
+    // await insertRolesPrvilegios(
+    //   { app: { locals: { db } } },
+    //   {
+    //     status: () => ({
+    //       json: (msg) => console.log("Seed roles y privilegios:", msg),
+    //     }),
     //   }
     // );
     // await insertCategorias(
@@ -149,8 +156,7 @@ const insertFacturaDetalle = require("./Inserts/InsertFacturaDetalle");
     //     }),
     //   }
     // );
-
-    // await await insertImagesProducto(
+    // await insertImagesProducto(
     //   { app: { locals: { db } } },
     //   {
     //     status: () => ({
@@ -174,7 +180,6 @@ const insertFacturaDetalle = require("./Inserts/InsertFacturaDetalle");
     //     }),
     //   }
     // );
-
     // await insertPromociones(
     //   { app: { locals: { db } } },
     //   {
@@ -183,7 +188,6 @@ const insertFacturaDetalle = require("./Inserts/InsertFacturaDetalle");
     //     }),
     //   }
     // );
-
     // await insertDireccion(
     //   { app: { locals: { db } } },
     //   {
@@ -192,7 +196,6 @@ const insertFacturaDetalle = require("./Inserts/InsertFacturaDetalle");
     //     }),
     //   }
     // );
-
     // await insertMetodoPago(
     //   { app: { locals: { db } } },
     //   {
@@ -218,7 +221,7 @@ const insertFacturaDetalle = require("./Inserts/InsertFacturaDetalle");
     //   }
     // );
 
-    console.log("Seeds insertados correctamente");
+    // console.log("Seeds insertados correctamente");
   } catch (error) {
     console.error("Error al conectar/sincronizar o insertar seeds:", error);
   }

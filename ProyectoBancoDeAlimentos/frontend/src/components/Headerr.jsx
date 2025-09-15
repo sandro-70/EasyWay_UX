@@ -128,6 +128,7 @@ const Headerr = () => {
   const [reportesMenu, setReportesMenu] = useState(false);
   const [logMenu, setLogOpen] = useState(false);
   const navigate = useNavigate();
+  const reportesMenuRef = useRef(null);
 
   const { t } = useTranslation();
   const { cartCount, setCount } = useCart();
@@ -153,6 +154,22 @@ const Headerr = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [logMenu]);
+
+  useEffect(() => {
+  const handleClickOutsideReportes = (event) => {
+    if (
+      reportesMenu &&
+      reportesMenuRef.current &&
+      !reportesMenuRef.current.contains(event.target)
+    ) {
+      setReportesMenu(false);
+    }
+  };
+  document.addEventListener("mousedown", handleClickOutsideReportes);
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutsideReportes);
+  };
+}, [reportesMenu]);
 
   useEffect(() => {
     const fetchCartCount = async () => {
@@ -349,9 +366,9 @@ const Headerr = () => {
             </a>
             <a href="#" style={styles.navLink}>
               <img src={sistemaVal} alt="" style={styles.navIcon} />
-              {t("rating_system") || "Sistema de Valoración"}
+              {t("rating_system") || "Sistema de Valoracion"}
             </a>
-            <div style={{ position: "relative" }}>
+            <div style={{ position: "relative" }} ref={reportesMenuRef}>
               <button
                 style={{
                   ...styles.navLink,
@@ -364,25 +381,34 @@ const Headerr = () => {
                 {t("personal_reports") || "Reportes Personales"}
               </button>
 
-              {reportesMenu && (
+               {reportesMenu && (
                 <div style={styles.dropdownReportes}>
-                  <Link to="/HistorialCompras" style={styles.dropdownLink}>
+                  <Link
+                    to="/HistorialCompras"
+                    style={styles.dropdownLink}
+                    onClick={() => setReportesMenu(false)} // **NUEVO:** Cierra el menú
+                  >
                     Historial de Compras
                   </Link>
-                  <Link to="/descuentos_aplicados" style={styles.dropdownLink}>
+                  <Link
+                    to="/descuentos_aplicados"
+                    style={styles.dropdownLink}
+                    onClick={() => setReportesMenu(false)} // **NUEVO:** Cierra el menú
+                  >
                     Descuentos aplicados
                   </Link>
-                  <Link to="/SistemaValoracion" style={styles.dropdownLink}>
+                  <Link
+                    to="/SistemaValoracion"
+                    style={styles.dropdownLink}
+                    onClick={() => setReportesMenu(false)} // **NUEVO:** Cierra el menú
+                  >
                     Resumen de Actividad
                   </Link>
                 </div>
               )}
             </div>
 
-            <a href="#" style={styles.navLink}>
-              <img src={checkout} alt="" style={styles.navIcon} />
-              {t("checkout") || "Checkout"}
-            </a>
+           
             <a href="#" style={styles.navLink}>
               <img src={soporte} alt="" style={styles.navIcon} />
               {t("support") || "Soporte"}
@@ -541,7 +567,7 @@ const styles = {
   },
   nav: {
     display: "grid",
-    gridTemplateColumns: "repeat(6, 1fr)",
+    gridTemplateColumns: "repeat(5, 1fr)",
     width: "100%",
     height: "100%",
   },

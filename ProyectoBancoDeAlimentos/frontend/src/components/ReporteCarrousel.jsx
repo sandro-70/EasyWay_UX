@@ -1,6 +1,5 @@
 import TablaVentas from "../tablaReportesVentas.jsx";
 import TablaPromociones from "../tablaReportesPromociones.jsx";
-import TablaUsuarios from "../UserManagementViews.jsx";
 import ReportesPedidos from "../pages/ReportesPedidos.jsx";
 import ReportesInventario from "../pages/ReportesInventario.jsx";
 import PersonalizacionReportes from "../PersonalizacionReportes.jsx";
@@ -14,7 +13,6 @@ const ReporteCarrousel = () => {
   const tabs = [
     { id: "ventas", label: "Ventas", node: <TablaVentas /> },
     { id: "promociones", label: "Promociones", node: <TablaPromociones /> },
-    { id: "usuarios", label: "Usuarios", node: <TablaUsuarios /> },
     { id: "pedidos", label: "Pedidos", node: <ReportesPedidos /> },
     { id: "inventario", label: "Inventario", node: <ReportesInventario /> },
     {

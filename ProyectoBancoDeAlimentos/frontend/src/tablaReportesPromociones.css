@@ -9,13 +9,14 @@
   color: #f0833e;
   font-weight: bold;
   margin-bottom: 1rem;
-  font-size: 24px;
-  text-align: center;
+  font-size: 30px;
+  text-align: left;
   display: inline-block;
+  width: 100%;
 }
 
 .promocion-table {
-  width: 100%;
+  width: 90%;
   max-width: 1200px;
   border-collapse: collapse;
   border-radius: 8px;

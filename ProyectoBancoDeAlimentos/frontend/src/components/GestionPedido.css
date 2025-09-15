@@ -23,6 +23,8 @@
   table-layout: fixed; /* evita que las columnas se expandan por contenido */
   min-width: 600px; /* ajusta el mínimo que quieras evitar scroll horizontal */
   border-collapse: collapse;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 .pedido-thead th {

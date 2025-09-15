@@ -167,8 +167,8 @@ function Pagination({ page, pageCount, onPage }) {
         <button
           key={p}
           onClick={() => handlePage(p)}
-          className={`w-9 h-9 rounded-full border border-[#d8dadc] ${
-            p === page ? "ring-2 ring-[#d8572f] text-[#d8572f]" : ""
+          className={`ventas-page-btn ${
+            p === page ? "ventas-page-btn-active" : ""
           }`}
           title={`Página ${p}`}
         >
@@ -262,17 +262,17 @@ function TablaReportesVentas() {
 
   return (
     <div
-      className="px-1"
+      className="px-4"
       style={{
         position: "absolute",
         left: 0,
         right: 0,
         width: "100%",
+        display: "flex",
         flexDirection: "column",
         alignItems: "center",
       }}
     >
-      {/* Container interno para centrar y limitar ancho */}
       <div className="ventas-container" style={{ maxWidth: "1200px" }}>
         <h1 className="ventas-title">Tabla de Reportes De Ventas</h1>
 
@@ -289,11 +289,7 @@ function TablaReportesVentas() {
               <th>
                 Producto{" "}
                 <span
-                  style={{
-                    display: "inline-block",
-                    marginLeft: "4px",
-                    cursor: "pointer",
-                  }}
+                  className="ventas-search-icon"
                   onClick={() => setShowFilter(true)}
                 >
                   <Icon.Search />
@@ -335,7 +331,7 @@ function TablaReportesVentas() {
 
         {/* Botón Excel */}
         <div
-          className="ventas-excel-container"
+          className="ventas-footer"
           style={{ textAlign: "right", marginTop: "10px" }}
         >
           <button onClick={exportToExcel} className="ventas-export-btn">

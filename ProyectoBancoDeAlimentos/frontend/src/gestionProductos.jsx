@@ -1,11 +1,11 @@
 // GestionProductos.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useOutletContext } from "react-router-dom";
 import {
   ListarCategoria,
   CrearCategoria,
   ActualizarCategoria,
-  DesactivarProductosDeCategoria, // usar como "eliminar" categoría (desactiva productos y la quitamos del UI)
+  DesactivarProductosDeCategoria,
 } from "./api/CategoriaApi";
 import {
   listarPorCategoria,
@@ -16,47 +16,173 @@ import {
 import "./gestionProductos.css";
 import Sidebar from "./sidebar";
 
+/* ------------------ Botón cuadrado con borde gris ------------------ */
+const IconSquareButton = ({ children, className = "", ...props }) => (
+  <button
+    {...props}
+    type="button"
+    className={
+      "w-12 h-12 rounded-2xl border border-[#d8dadc] bg-white " +
+      "flex items-center justify-center shadow-[0_1px_0_rgba(0,0,0,.03)] " +
+      "hover:bg-gray-50 hover:border-gray-400 active:scale-[.98] transition " +
+      className
+    }
+  >
+    {children}
+  </button>
+);
+
+/* ------------------ Iconos SVG: lápiz y bote ------------------ */
+const PencilIcon = ({ className = "" }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden="true"
+  >
+    <path d="M16.86 4.49l2.65 2.65M5 19l2.12-.53c.36-.09.69-.28.95-.54l8.4-8.4a1.5 1.5 0 10-2.12-2.12l-8.4 8.4c-.26.26-.45.59-.54.95L5 19z" />
+  </svg>
+);
+
+const TrashIcon = ({ className = "" }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden="true"
+  >
+    <path d="M3 6h18" />
+    <path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+    <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
+    <path d="M10 10v8M14 10v8" />
+  </svg>
+);
+
+/* ------------------ Uploader reutilizable ------------------ */
+function ImageUploader({ label = "Imágenes", value = [], onChange }) {
+  const inputRef = useRef(null);
+  const [files, setFiles] = useState(value);
+  const [previews, setPreviews] = useState([]);
+
+  useEffect(() => {
+    return () => previews.forEach((u) => URL.revokeObjectURL(u));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const openPicker = () => inputRef.current?.click();
+
+  const handleSelect = (e) => {
+    const selected = Array.from(e.target.files || []);
+    const next = [...files, ...selected];
+    setFiles(next);
+    const nextPreviews = next.map((f) => URL.createObjectURL(f));
+    setPreviews(nextPreviews);
+    onChange?.(next); // entrega File[] al padre
+  };
+
+  return (
+    <div className="w-full">
+      {label && (
+        <h3 className="text-sm font-medium text-gray-700 mb-2 text-left">
+          {label}
+        </h3>
+      )}
+
+      <div
+        onClick={openPicker}
+        className="border-2 border-dashed border-[#d8dadc] rounded-xl p-8 flex flex-col items-center justify-center text-center gap-3 hover:bg-gray-50 cursor-pointer"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          className="w-10 h-10"
+          fill="none"
+          stroke="currentColor"
+        >
+          <path
+            d="M12 16V8m0 0l-3 3m3-3l3 3M4 17a4 4 0 01-4-4V7a4 4 0 014-4h12a4 4 0 014 4v6a4 4 0 01-4 4H4z"
+            strokeWidth="1.5"
+          />
+        </svg>
+        <p className="text-gray-500">Haz clic para cargar</p>
+        <button
+          type="button"
+          onClick={openPicker}
+          className="px-4 py-2 rounded-xl bg-[#2b6daf] text-white font-semibold hover:brightness-110 active:scale-[.99] shadow-sm"
+        >
+          Cargar imágenes
+        </button>
+
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={handleSelect}
+        />
+      </div>
+
+      {previews.length > 0 && (
+        <div className="mt-3 grid grid-cols-4 gap-2">
+          {previews.map((src, i) => (
+            <img
+              key={i}
+              src={src}
+              alt={`preview-${i}`}
+              className="w-full h-20 object-cover rounded-lg border"
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function GestionProductos() {
-  //Sidebar
-  const { moveButton, setMoveButton } = useOutletContext();
+  // Sidebar
+  const { moveButton } = useOutletContext();
   const [showSidebar, setShowSidebar] = useState(false);
 
-  //Info del producto a agregar (placeholder)
+  // Producto (placeholder)
   const [producto, setNombre] = useState("");
   const [precio, setPrecio] = useState("");
   const [marca, setMarca] = useState("");
   const [count, setCantidad] = useState(0);
 
-  //Categoria y subcategorias seleccionadas
+  // Categoría / Subcategoría seleccionadas
   const [categoryName, setCategoria] = useState("Granos Basicos");
   const [subName, setSubcategoria] = useState("");
 
-  //Modales (crear)
+  // Modales
   const [showCat, setShowCat] = useState(false);
   const [showSub, setShowSub] = useState(false);
-
-  //Modales (editar)
   const [showEditCat, setShowEditCat] = useState(false);
   const [showEditSub, setShowEditSub] = useState(false);
 
-  //Inputs modal (crear)
+  // Inputs crear
   const [newCategory, setNew] = useState("");
   const [newSub, setNewSub] = useState("");
+  const [newCatImages, setNewCatImages] = useState([]); // File[]
 
-  //Inputs modal (editar)
+  // Inputs editar
   const [editCatName, setEditCatName] = useState("");
   const [editCatId, setEditCatId] = useState(null);
-  const [editCatIcon, setEditCatIcon] = useState("default");
-
+  const [editCatImages, setEditCatImages] = useState([]); // File[]
   const [editSubName, setEditSubName] = useState("");
   const [editSubId, setEditSubId] = useState(null);
 
-  // Estructura interna: [{ id_categoria, name, icono_categoria, subcategories: [{id_subcategoria, nombre}] }]
+  // Estructura
   const [categories, setCategories] = useState([]);
 
-  // ==========================
-  // Carga inicial de categorías
-  // ==========================
+  /* ---------- Carga inicial ---------- */
   useEffect(() => {
     (async () => {
       try {
@@ -66,11 +192,10 @@ function GestionProductos() {
           id_categoria: c.id_categoria,
           name: c.nombre,
           icono_categoria: c.icono_categoria,
-          subcategories: [], // se carga aparte
+          subcategories: [],
         }));
         setCategories(mapped);
 
-        // Selección por defecto
         const selected =
           mapped.find((c) => c.name === categoryName) ||
           (mapped.length ? mapped[0] : null);
@@ -86,12 +211,10 @@ function GestionProductos() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Cargar subcategorías para una categoría
   async function loadSubcategories(id_categoria) {
     try {
       const res = await listarPorCategoria(id_categoria);
       const subs = Array.isArray(res?.data) ? res.data : [];
-      // Guardamos objetos (id + nombre) para poder editar/eliminar
       const subsObjs = subs.map((s) => ({
         id_subcategoria: s.id_subcategoria,
         nombre: s.nombre,
@@ -110,9 +233,7 @@ function GestionProductos() {
     }
   }
 
-  // ==========================
-  // Helpers locales
-  // ==========================
+  /* ---------- Helpers locales ---------- */
   function addCategoryLocal(category) {
     if (typeof category === "string") {
       setCategories((prev) => [
@@ -169,7 +290,6 @@ function GestionProductos() {
 
   function removeCategoryLocal(id) {
     setCategories((prev) => prev.filter((c) => c.id_categoria !== id));
-    // Si se elimina la seleccionada, seleccionar otra
     if (categories.find((c) => c.id_categoria === id)?.name === categoryName) {
       const remaining = categories.filter((c) => c.id_categoria !== id);
       if (remaining.length) {
@@ -226,14 +346,18 @@ function GestionProductos() {
     if (removedName && removedName === subName) setSubcategoria("");
   }
 
-  // ==========================
-  // Crear categoría / subcategoría
-  // ==========================
+  /* ---------- Crear ---------- */
   async function addCat(e) {
     e.preventDefault();
     setShowCat(false);
     if (!newCategory?.trim()) return;
     try {
+      // Ejemplo si luego conectas imágenes:
+      // const fd = new FormData();
+      // fd.append("nombre", newCategory.trim());
+      // newCatImages.forEach(f => fd.append("imagenes", f));
+      // await axios.post("/api/categoria", fd, { headers: {'Content-Type':'multipart/form-data'} });
+
       const res = await CrearCategoria(newCategory.trim(), "default");
       const created = res?.data;
       if (created) {
@@ -241,11 +365,11 @@ function GestionProductos() {
         setCategoria(created.nombre);
         await loadSubcategories(created.id_categoria);
       } else {
-        // fallback local
         addCategoryLocal(newCategory.trim());
         setCategoria(newCategory.trim());
       }
       setNew("");
+      setNewCatImages([]);
     } catch (e) {
       console.error("Error creando categoría:", e);
       alert(
@@ -273,7 +397,6 @@ function GestionProductos() {
       }
 
       const res = await crearSubcategoria(newSub.trim(), cat.id_categoria);
-      // Algunas APIs devuelven el objeto creado; si no, reconsultamos.
       const createdId = res?.data?.id_subcategoria;
       addSubCategoryLocal({
         id_subcategoria: createdId ?? Date.now(),
@@ -290,29 +413,20 @@ function GestionProductos() {
     }
   }
 
-  // ==========================
-  // Editar categoría / subcategoría
-  // ==========================
+  /* ---------- Editar ---------- */
   function openEditCategory(cat) {
     setEditCatId(cat.id_categoria);
     setEditCatName(cat.name);
-    setEditCatIcon(cat.icono_categoria || "default");
+    setEditCatImages([]);
     setShowEditCat(true);
   }
 
   async function submitEditCategory(e) {
     e.preventDefault();
     try {
-      await ActualizarCategoria(
-        editCatId,
-        editCatName.trim(),
-        editCatIcon || "default"
-      );
-      updateCategoryLocal(
-        editCatId,
-        editCatName.trim(),
-        editCatIcon || "default"
-      );
+      // Para subir imágenes: construir FormData como en addCat()
+      await ActualizarCategoria(editCatId, editCatName.trim(), "default");
+      updateCategoryLocal(editCatId, editCatName.trim(), "default");
       setShowEditCat(false);
     } catch (e) {
       console.error("Error actualizando categoría:", e);
@@ -352,9 +466,7 @@ function GestionProductos() {
     }
   }
 
-  // ==========================
-  // Eliminar categoría / subcategoría
-  // ==========================
+  /* ---------- Eliminar ---------- */
   async function deleteCategory(cat) {
     if (
       !window.confirm(
@@ -392,14 +504,12 @@ function GestionProductos() {
     }
   }
 
-  // Util para click en categoría (set + cargar subcategorías)
   const handleSelectCategory = async (cat) => {
     setCategoria(cat.name);
     if (!cat?.id_categoria) return;
     await loadSubcategories(cat.id_categoria);
   };
 
-  // Placeholder (producto)
   const addProducto = (e) => {
     e?.preventDefault?.();
     console.log("Agregar producto:", {
@@ -412,169 +522,180 @@ function GestionProductos() {
     });
   };
 
-  // ==========================
-  // UI (diseño intacto)
-  // ==========================
+  /* ---------- UI ---------- */
   return (
     <div
-      className="bg-gray-100 w-screen pb-8 "
+      className="bg-gray-100 w-screen pb-8"
       style={{ ...styles.fixedShell, backgroundColor: "#f3f4f6" }}
     >
       <div
-        className={` transition-all duration-300 pt-4 ${
+        className={`transition-all duration-300 pt-4 ${
           moveButton ? "ml-[270px] mr-[70px]" : "ml-[70px] mr-[70px]"
         }`}
       >
-        <h1 className="font-roboto text-[#f0833e] text-5xl justify-center pb-1 text-left">
+        <h1 className="font-roboto text-[#f0833e] text-5xl pb-1 text-left">
           Gestion de Productos
         </h1>
-        <hr className="bg-[#f0833e] h-[2px]"></hr>
-        <div className="">
-          <div className=" pt-5 grid grid-cols-2 grid-rows-2 h-[620px] items-stretch gap-4">
-            {/* Categorías */}
-            <div className=" col-span-1 row-span-2 bg-white w-full rounded-md items-center text-xl overflow-y-auto p-2">
-              <h1 className="relative px-2 font-roboto text-gray-500 text-4xl pb-1 text-left">
-                Categorias
+        <hr className="h-[2px] border-0 bg-[#f0833e]" />
+
+        <div className="pt-5 grid grid-cols-2 grid-rows-2 h-[620px] items-stretch gap-4">
+          {/* Categorías */}
+          <div className="col-span-1 row-span-2 bg-white w-full rounded-md items-center text-xl overflow-y-auto p-2">
+            <h1 className="relative px-2 font-roboto text-black text-4xl pb-1 text-left">
+              Categorias
+              <button
+                onClick={() => setShowCat(true)}
+                className="absolute right-0"
+                title="Agregar categoría"
+              >
+                <span className="material-symbols-outlined text-5xl">add</span>
+              </button>
+            </h1>
+            <hr className="border-0 h-[2px] bg-black" />
+            <ul className="flex flex-col mt-4">
+              {categories.map((cat, i) => (
+                <li key={cat.id_categoria ?? i}>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleSelectCategory(cat)}
+                      className={`list-item ${
+                        categoryName === cat.name
+                          ? "bg-orange-100 border-orange-500"
+                          : "hover:bg-orange-100 hover:border-orange-500"
+                      }`}
+                    >
+                      {cat.name}
+                    </button>
+
+                    <IconSquareButton
+                      onClick={() => openEditCategory(cat)}
+                      title="Editar categoría"
+                      aria-label="Editar categoría"
+                    >
+                      <PencilIcon className="w-6 h-6 text-sky-500" />
+                    </IconSquareButton>
+
+                    <IconSquareButton
+                      onClick={() => deleteCategory(cat)}
+                      title="Eliminar categoría"
+                      aria-label="Eliminar categoría"
+                    >
+                      <TrashIcon className="w-6 h-6 text-red-500" />
+                    </IconSquareButton>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Subcategorías */}
+          <div className="grid grid-cols-1 grid-rows-2 h-[600px] items-stretch gap-8">
+            <div className="col-span-1 row-span-2 bg-white w-full rounded-md items-center text-xl overflow-y-auto p-2">
+              <h1 className="relative px-2 font-roboto text-black text-4xl pb-1 text-left">
+                Subcategorias
                 <button
-                  onClick={() => setShowCat(true)}
+                  onClick={() => setShowSub(true)}
                   className="absolute right-0"
+                  title="Agregar subcategoría"
                 >
-                  <span class="material-symbols-outlined text-5xl">add</span>
+                  <span className="material-symbols-outlined text-5xl">
+                    add
+                  </span>
                 </button>
               </h1>
-              <hr className="bg-gray-500 h-[2px]"></hr>
+              <hr className="border-0 h-[2px] bg-black" />
               <ul className="flex flex-col mt-4">
-                {categories.map((cat, i) => (
-                  <li key={cat.id_categoria ?? i}>
-                    <div className="flex">
+                {(
+                  categories.find((c) => c.name === categoryName)
+                    ?.subcategories || []
+                ).map((sub, i) => (
+                  <li key={sub.id_subcategoria ?? i}>
+                    <div className="flex gap-2">
                       <button
-                        onClick={() => handleSelectCategory(cat)}
+                        onClick={() => setSubcategoria(sub.nombre)}
                         className={`list-item ${
-                          categoryName === cat.name
+                          subName === sub.nombre
                             ? "bg-orange-100 border-orange-500"
                             : "hover:bg-orange-100 hover:border-orange-500"
                         }`}
                       >
-                        {cat.name}
+                        {sub.nombre}
                       </button>
-                      <button
-                        className="border-2 hover:bg-orange-100 hover:border-orange-500 rounded-md p-1"
-                        onClick={() => openEditCategory(cat)}
-                        title="Editar categoría"
+
+                      <IconSquareButton
+                        onClick={() => openEditSubcategory(sub)}
+                        title="Editar subcategoría"
+                        aria-label="Editar subcategoría"
                       >
-                        <span class="material-symbols-outlined text-3xl">
-                          edit_square
-                        </span>
-                      </button>
-                      <button
-                        className="border-2 hover:bg-orange-100 hover:border-orange-500 rounded-md p-1"
-                        onClick={() => deleteCategory(cat)}
-                        title="Eliminar categoría"
+                        <PencilIcon className="w-6 h-6 text-sky-500" />
+                      </IconSquareButton>
+
+                      <IconSquareButton
+                        onClick={() => deleteSubcategory(sub)}
+                        title="Eliminar subcategoría"
+                        aria-label="Eliminar subcategoría"
                       >
-                        <span class="material-symbols-outlined text-3xl">
-                          delete
-                        </span>
-                      </button>
+                        <TrashIcon className="w-6 h-6 text-red-500" />
+                      </IconSquareButton>
                     </div>
                   </li>
                 ))}
               </ul>
             </div>
-
-            {/* Subcategorías */}
-            <div className="grid grid-cols-1 grid-rows-2 h-[600px] items-stretch gap-8">
-              <div className=" col-span-1 row-span-2 bg-white w-full rounded-md items-center text-xl overflow-y-auto p-2">
-                <h1 className="relative px-2 font-roboto text-gray-500 text-4xl pb-1 text-left">
-                  Subcategorias
-                  <button
-                    onClick={() => setShowSub(true)}
-                    className="absolute right-0"
-                  >
-                    <span class="material-symbols-outlined text-5xl">add</span>
-                  </button>
-                </h1>
-                <hr className="bg-gray-500 h-[2px]"></hr>
-                <ul className="flex flex-col mt-4">
-                  {(
-                    categories.find((c) => c.name === categoryName)
-                      ?.subcategories || []
-                  ).map((sub, i) => (
-                    <li key={sub.id_subcategoria ?? i}>
-                      <div className="flex">
-                        <button
-                          onClick={() => setSubcategoria(sub.nombre)}
-                          className={`list-item ${
-                            subName === sub.nombre
-                              ? "bg-orange-100 border-orange-500"
-                              : "hover:bg-orange-100 hover:border-orange-500"
-                          }`}
-                        >
-                          {sub.nombre}
-                        </button>
-                        <button
-                          className="border-2 hover:bg-orange-100 hover:border-orange-500 rounded-md p-1"
-                          onClick={() => openEditSubcategory(sub)}
-                          title="Editar subcategoría"
-                        >
-                          <span class="material-symbols-outlined text-3xl">
-                            edit_square
-                          </span>
-                        </button>
-                        <button
-                          className="border-2 hover:bg-orange-100 hover:border-orange-500 rounded-md p-1"
-                          onClick={() => deleteSubcategory(sub)}
-                          title="Eliminar subcategoría"
-                        >
-                          <span class="material-symbols-outlined text-3xl">
-                            delete
-                          </span>
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
           </div>
         </div>
       </div>
 
-      {/* Modales Crear */}
-      <div className=" flex items-center justify-center bg-gray-100">
+      {/* ------------------ Modales: Crear ------------------ */}
+      <div className="flex items-center justify-center">
         {showCat && (
           <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-md shadow-lg w-96  relative animate-fadeIn">
-              <h2 className="bg-[#2b6daf] text-xl rounded-md font-bold p-2 text-center text-white mb-6">
-                Agregar Categoria
-              </h2>
+            <div className="bg-white rounded-2xl shadow-lg w-[680px] relative animate-fadeIn overflow-hidden">
+              <div className="bg-[#2b6daf] px-5 py-3">
+                <h2 className="text-xl font-bold text-white">
+                  Agregar Categoria
+                </h2>
+              </div>
 
-              <form
-                className="flex flex-col space-y-4 pr-6 pl-6 pb-8"
-                onSubmit={addCat}
-              >
-                <div>
-                  <p className="text-[18px]">Nombre</p>
+              <form className="grid grid-cols-2 gap-6 p-6" onSubmit={addCat}>
+                {/* Uploader (reemplaza Icono) */}
+                <div className="col-span-2">
+                  <ImageUploader
+                    label="Imágenes / Icono de la categoría"
+                    value={[]}
+                    onChange={setNewCatImages}
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label
+                    htmlFor="nombreCat"
+                    className="block text-sm font-medium text-gray-700 text-left"
+                  >
+                    Nombre
+                  </label>
                   <input
+                    id="nombreCat"
                     type="text"
-                    placeholder=""
-                    className="w-full px-4 py-2 border border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     onChange={(e) => setNew(e.target.value)}
                     required
                   />
                 </div>
-                <div className="flex gap-8">
+
+                <div className="col-span-2 mt-2 flex justify-end gap-3">
                   <button
-                    onClick={() => setShowCat(false)}
-                    className="text-white py-2 w-1/2 bg-red-600 rounded-lg"
                     type="button"
+                    onClick={() => setShowCat(false)}
+                    className="px-4 py-2 rounded-xl border border-[#d8dadc] text-gray-700 bg-white hover:bg-gray-50"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className=" bg-blue-600 text-white py-2 w-1/2 rounded-lg hover:bg-blue-700 transition"
+                    className="px-4 py-2 rounded-xl bg-[#e96803] text-white font-semibold hover:brightness-110 active:scale-[.99] shadow-sm"
                   >
-                    Agregar
+                    Guardar
                   </button>
                 </div>
               </form>
@@ -584,38 +705,41 @@ function GestionProductos() {
 
         {showSub && (
           <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-md shadow-lg w-96  relative animate-fadeIn">
-              <h2 className="bg-[#2b6daf] text-xl rounded-md font-bold p-2 text-center text-white mb-6">
-                Agregar Subcategoria
-              </h2>
+            <div className="bg-white rounded-2xl shadow-lg w-[520px] relative animate-fadeIn overflow-hidden">
+              <div className="bg-[#2b6daf] px-5 py-3">
+                <h2 className="text-xl font-bold text-white">
+                  Agregar Subcategoria
+                </h2>
+              </div>
 
-              <form
-                className="flex flex-col space-y-4 pr-6 pl-6 pb-8"
-                onSubmit={addSubcat}
-              >
-                <div>
-                  <p className="text-[18px]">Nombre</p>
-                  <input
-                    type="text"
-                    placeholder=""
-                    className="w-full px-4 py-2 border border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    onChange={(e) => setNewSub(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="flex gap-8">
+              <form className="p-6" onSubmit={addSubcat}>
+                <label
+                  htmlFor="nombreSub"
+                  className="block text-sm font-medium text-gray-700 text-left"
+                >
+                  Nombre
+                </label>
+                <input
+                  id="nombreSub"
+                  type="text"
+                  className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => setNewSub(e.target.value)}
+                  required
+                />
+
+                <div className="mt-6 flex justify-end gap-3">
                   <button
-                    onClick={() => setShowSub(false)}
-                    className="text-white py-2 w-1/2 bg-red-600 rounded-lg"
                     type="button"
+                    onClick={() => setShowSub(false)}
+                    className="px-4 py-2 rounded-xl border border-[#d8dadc] text-gray-700 bg-white hover:bg-gray-50"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className=" bg-blue-600 text-white py-2 w-1/2 rounded-lg hover:bg-blue-700 transition"
+                    className="px-4 py-2 rounded-xl bg-[#e96803] text-white font-semibold hover:brightness-110 active:scale-[.99] shadow-sm"
                   >
-                    Agregar
+                    Guardar
                   </button>
                 </div>
               </form>
@@ -624,47 +748,54 @@ function GestionProductos() {
         )}
       </div>
 
-      {/* Modales Editar */}
+      {/* ------------------ Modales: Editar ------------------ */}
       {showEditCat && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-md shadow-lg w-96  relative animate-fadeIn">
-            <h2 className="bg-[#2b6daf] text-xl rounded-md font-bold p-2 text-center text-white mb-6">
-              Editar Categoria
-            </h2>
+          <div className="bg-white rounded-2xl shadow-lg w-[680px] relative animate-fadeIn overflow-hidden">
+            <div className="bg-[#2b6daf] px-5 py-3">
+              <h2 className="text-xl font-bold text-white">Editar Categoria</h2>
+            </div>
+
             <form
-              className="flex flex-col space-y-4 pr-6 pl-6 pb-8"
+              className="grid grid-cols-2 gap-6 p-6"
               onSubmit={submitEditCategory}
             >
-              <div>
-                <p className="text-[18px]">Nombre</p>
+              <div className="col-span-2">
+                <ImageUploader
+                  label="Imágenes / Icono de la categoría"
+                  value={[]}
+                  onChange={setEditCatImages}
+                />
+              </div>
+
+              <div className="col-span-2">
+                <label
+                  htmlFor="editNombreCat"
+                  className="block text-sm font-medium text-gray-700 text-left"
+                >
+                  Nombre
+                </label>
                 <input
+                  id="editNombreCat"
                   type="text"
-                  className="w-full px-4 py-2 border border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={editCatName}
                   onChange={(e) => setEditCatName(e.target.value)}
                   required
                 />
               </div>
-              <div>
-                <p className="text-[18px]">Icono (opcional)</p>
-                <input
-                  type="text"
-                  className="w-full px-4 py-2 border border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={editCatIcon}
-                  onChange={(e) => setEditCatIcon(e.target.value)}
-                />
-              </div>
-              <div className="flex gap-8">
+
+              <div className="col-span-2 mt-2 flex justify-end gap-3">
                 <button
-                  onClick={() => setShowEditCat(false)}
-                  className="text-white py-2 w-1/2 bg-red-600 rounded-lg"
                   type="button"
+                  onClick={() => setShowEditCat(false)}
+                  className="px-4 py-2 rounded-xl border border-[#d8dadc] text-gray-700 bg-white hover:bg-gray-50"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className=" bg-blue-600 text-white py-2 w-1/2 rounded-lg hover:bg-blue-700 transition"
+                  className="px-4 py-2 rounded-xl bg-[#e96803] text-white font-semibold hover:brightness-110 active:scale-[.99] shadow-sm"
                 >
                   Guardar
                 </button>
@@ -676,35 +807,40 @@ function GestionProductos() {
 
       {showEditSub && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-md shadow-lg w-96  relative animate-fadeIn">
-            <h2 className="bg-[#2b6daf] text-xl rounded-md font-bold p-2 text-center text-white mb-6">
-              Editar Subcategoria
-            </h2>
-            <form
-              className="flex flex-col space-y-4 pr-6 pl-6 pb-8"
-              onSubmit={submitEditSubcategory}
-            >
-              <div>
-                <p className="text-[18px]">Nombre</p>
-                <input
-                  type="text"
-                  className="w-full px-4 py-2 border border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={editSubName}
-                  onChange={(e) => setEditSubName(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="flex gap-8">
+          <div className="bg-white rounded-2xl shadow-lg w-[520px] relative animate-fadeIn overflow-hidden">
+            <div className="bg-[#2b6daf] px-5 py-3">
+              <h2 className="text-xl font-bold text-white">
+                Editar Subcategoria
+              </h2>
+            </div>
+
+            <form className="p-6" onSubmit={submitEditSubcategory}>
+              <label
+                htmlFor="editNombreSub"
+                className="block text-sm font-medium text-gray-700 text-left"
+              >
+                Nombre
+              </label>
+              <input
+                id="editNombreSub"
+                type="text"
+                className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={editSubName}
+                onChange={(e) => setEditSubName(e.target.value)}
+                required
+              />
+
+              <div className="mt-6 flex justify-end gap-3">
                 <button
-                  onClick={() => setShowEditSub(false)}
-                  className="text-white py-2 w-1/2 bg-red-600 rounded-lg"
                   type="button"
+                  onClick={() => setShowEditSub(false)}
+                  className="px-4 py-2 rounded-xl border border-[#d8dadc] text-gray-700 bg-white hover:bg-gray-50"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className=" bg-blue-600 text-white py-2 w-1/2 rounded-lg hover:bg-blue-700 transition"
+                  className="px-4 py-2 rounded-xl bg-[#e96803] text-white font-semibold hover:brightness-110 active:scale-[.99] shadow-sm"
                 >
                   Guardar
                 </button>
@@ -716,6 +852,7 @@ function GestionProductos() {
     </div>
   );
 }
+
 const styles = {
   fixedShell: {
     position: "absolute",

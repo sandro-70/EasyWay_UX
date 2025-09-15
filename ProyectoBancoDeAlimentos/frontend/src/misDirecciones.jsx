@@ -450,7 +450,7 @@ export default function MisDirecciones() {
                             cursor: "pointer",
                           }}
                         >
-                          <Icon.Edit size={18} color="#2b6daf" />
+                          
                         </button>
                         <button
                           onClick={() => removeRow(d.id_direccion)}

@@ -273,11 +273,11 @@ function TablaReportesVentas() {
       }}
     >
       {/* Container interno para centrar y limitar ancho */}
-      <div className="inventario-container" style={{ maxWidth: "1200px" }}>
-        <h1 className="inventario-title">Tabla de Reportes De Ventas</h1>
+      <div className="ventas-container" style={{ maxWidth: "1200px" }}>
+        <h1 className="ventas-title">Tabla de Reportes De Ventas</h1>
 
-        <table className="inventario-table">
-          <thead className="inventario-thead">
+        <table className="ventas-table">
+          <thead className="ventas-thead">
             <tr>
               <th
                 style={{ cursor: "pointer" }}
@@ -311,7 +311,7 @@ function TablaReportesVentas() {
           <tbody>
             {paginatedData.length === 0 ? (
               <tr>
-                <td colSpan={9} className="inventario-table-empty">
+                <td colSpan={9} className="ventas-table-empty">
                   ⚠ Sin resultados para "{appliedFilter}"
                 </td>
               </tr>
@@ -335,10 +335,10 @@ function TablaReportesVentas() {
 
         {/* Botón Excel */}
         <div
-          className="inventario-excel-container"
+          className="ventas-excel-container"
           style={{ textAlign: "right", marginTop: "10px" }}
         >
-          <button onClick={exportToExcel} className="inventario-export-btn">
+          <button onClick={exportToExcel} className="ventas-export-btn">
             📊 Exportar a Excel
           </button>
         </div>

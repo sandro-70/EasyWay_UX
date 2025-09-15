@@ -1,3 +1,4 @@
+// src/Carrito.jsx
 import { useState, useEffect, useContext } from "react";
 import carrito from "./images/carrito_icon.png";
 
@@ -13,7 +14,7 @@ import {
   AddNewCarrito,
 } from "./api/CarritoApi";
 import { GetCupones, desactivarCupon } from "./api/CuponesApi";
-import { getProductosRecomendados } from "./api/InventarioApi";
+import { getProductosRecomendados, getAllSucursales } from "./api/InventarioApi";
 import { crearPedido } from "./api/PedidoApi";
 import { UserContext } from "./components/userContext";
 import { useCart } from "../src/utils/CartContext";
@@ -21,7 +22,6 @@ import { useCart } from "../src/utils/CartContext";
 //Agregar Parametro que diga cuantos productos en carrito?
 function Carrito() {
   //Objeto de producto
-
   const { setCount, incrementCart, decrementCart } = useCart();
 
   //Productos de pagina de inicio //necesita cantidad, imagen
@@ -54,9 +54,25 @@ function Carrito() {
   const [total, setTotal] = useState(0);
   const { user } = useContext(UserContext);
   const navigate = useNavigate();
+  // cantidades en edición por id_carrito_detalle
+const [qtyDraft, setQtyDraft] = useState({});
+
   console.log("Header user carrito", user);
+
+  // --- Sucursales (discreto) ---
+  const [sucursales, setSucursales] = useState([]);
+  const [idSucursal, setIdSucursal] = useState(null);
+
+  // helper estrellas (no invasivo)
+  const getStars = (obj) => {
+    const n = Math.round(
+      Number(obj?.estrellas ?? obj?.rating ?? obj?.valoracion ?? 0)
+    );
+    return Math.max(0, Math.min(5, isNaN(n) ? 0 : n));
+  };
+
   const obtenerTotal = () => {
-    return (total * (1-descCupon/100) * 1.15).toFixed(2);
+    return (total * (1 - descCupon / 100) * 1.15).toFixed(2);
   };
 
   const obtenerImpuesto = () => {
@@ -83,7 +99,7 @@ function Carrito() {
   };
   const updateQuantity = async (idDetalle, id, n) => {
     if (n < 1) return;
-    
+
     try {
       await SumarBackend(id, n);
       setDetalles((prev) =>
@@ -107,20 +123,21 @@ function Carrito() {
     e.preventDefault();
     try {
       console.log("Intentando obtener cupones...");
-      const res=await GetCupones();
+      const res = await GetCupones();
       console.log(res.data);
       const allCoupons = res.data ?? [];
 
       const cuponValido = allCoupons.find(
         (c) =>
-          c.codigo.toLowerCase() === cupon.toLowerCase() &&
-          c.activo === true
+          c.codigo.toLowerCase() === cupon.toLowerCase() && c.activo === true
       );
 
       if (cuponValido) {
         setVisible(true);
         setDesc(cuponValido.valor); // usar el valor real del cupón
-        alert(`Cupón agregado: ${cuponValido.codigo}, ${cuponValido.valor}% de descuento`);
+        alert(
+          `Cupón agregado: ${cuponValido.codigo}, ${cuponValido.valor}% de descuento`
+        );
         setIDCuponDesactivar(cuponValido.id_cupon);
       } else {
         setVisible(false);
@@ -144,20 +161,25 @@ function Carrito() {
       console.log(user.id_usuario);
       console.log(user.direccions[0].id_direccion);
       const id_direccion = user.direccions[0].id_direccion.toString();
-      //console.log(id_sucursal)
       console.log(cupon);
       console.log(desc);
       console.log(total_factura);
+
+      // usar sucursal seleccionada (fallback a primera / 2)
+      const sucursalId = Number(
+        idSucursal ?? sucursales[0]?.id_sucursal ?? 2
+      );
+
       const response = await crearPedido(
         user.id_usuario, // int
         id_direccion, // string (o int si cambias el modelo)
-        2, // id_sucursal
+        sucursalId, // ✅ id_sucursal seleccionado
         null, // id_cupon
         desc // descuento
       );
 
       setCount(0);
-      if(idCuponDesactivar!==0) desactivarCupon(idCuponDesactivar);
+      if (idCuponDesactivar !== 0) desactivarCupon(idCuponDesactivar);
       console.log("Pedido creado:", response.data);
       alert("Pedido creado correctamente!");
       setShowProd(false);
@@ -205,9 +227,7 @@ function Carrito() {
         const cantidadActual = productoExistente.cantidad_unidad_medida || 0;
         const nuevaCantidad = cantidadActual + 1;
 
-        console.log(
-          "Actualizando de " + cantidadActual + " a " + nuevaCantidad
-        );
+        console.log("Actualizando de " + cantidadActual + " a " + nuevaCantidad);
         alert("Actualizando a " + nuevaCantidad);
 
         // Actualizar en backend
@@ -270,6 +290,39 @@ function Carrito() {
       }
     }
   };
+  
+  // Se escribe localmente sin tocar backend
+const handleQtyInputChange = (idDetalle, raw) => {
+  // sólo dígitos
+  const clean = raw.replace(/[^\d]/g, "");
+  setQtyDraft(prev => ({ ...prev, [idDetalle]: clean }));
+};
+
+// Se confirma a backend en blur o Enter
+const commitQtyChange = async (p, raw) => {
+  let n = parseInt(raw, 10);
+  if (isNaN(n) || n < 1) n = 1; // mínimo 1
+  // si tuvieras stock máximo: n = Math.min(n, p.producto.stock_disponible ?? n);
+
+  // ajustar el contador global del carrito (diff respecto a lo actual)
+  const diff = n - p.cantidad_unidad_medida;
+  try {
+    await updateQuantity(p.id_carrito_detalle, p.producto.id_producto, n);
+    if (diff > 0) incrementCart(diff);
+    if (diff < 0) decrementCart(-diff);
+  } catch (err) {
+    console.error("Error confirmando cantidad:", err);
+    alert("No se pudo actualizar la cantidad");
+  } finally {
+    // limpiar el borrador para volver a mostrar el valor “oficial”
+    setQtyDraft(prev => {
+      const { [p.id_carrito_detalle]: _, ...rest } = prev;
+      return rest;
+    });
+  }
+};
+
+
   useEffect(() => {
     setTotal(sumaCarrito());
     if (detalles.length === 0) {
@@ -305,24 +358,49 @@ function Carrito() {
     return () => {};
   }, []);
 
+  // Cargar sucursales (discreto, sin bloquear flujo)
+  useEffect(() => {
+    const fetchSucursales = async () => {
+      try {
+        const res = await getAllSucursales();
+        const arr = res?.data ?? [];
+        setSucursales(arr);
+        if (arr.length && !idSucursal) {
+          setIdSucursal(arr[0].id_sucursal ?? arr[0].id ?? null);
+        }
+      } catch (err) {
+        console.error("Error cargando sucursales:", err);
+      }
+    };
+    fetchSucursales();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleIncrement = async (p) => {
     const nuevaCantidad = p.cantidad_unidad_medida + 1;
     try {
-      await updateQuantity(p.id_carrito_detalle, p.producto.id_producto, nuevaCantidad);
-      incrementCart(1); 
+      await updateQuantity(
+        p.id_carrito_detalle,
+        p.producto.id_producto,
+        nuevaCantidad
+      );
+      incrementCart(1);
     } catch (err) {
       console.error("Error incrementando producto:", err);
       alert("No se pudo aumentar la cantidad");
     }
   };
 
-
   const handleDecrement = async (p) => {
-    if (p.cantidad_unidad_medida <= 1) return; 
+    if (p.cantidad_unidad_medida <= 1) return;
     const nuevaCantidad = p.cantidad_unidad_medida - 1;
     try {
-      await updateQuantity(p.id_carrito_detalle, p.producto.id_producto, nuevaCantidad);
-      decrementCart(1); 
+      await updateQuantity(
+        p.id_carrito_detalle,
+        p.producto.id_producto,
+        nuevaCantidad
+      );
+      decrementCart(1);
     } catch (err) {
       console.error("Error disminuyendo producto:", err);
       alert("No se pudo disminuir la cantidad");
@@ -347,7 +425,7 @@ function Carrito() {
               //se renderiza solo si productos es = 0
               !showProducts && (
                 <div className="flex flex-row justify-center items-center gap-8">
-                  <img src={carrito} className="object-cover mt-16"></img>
+                  <img src={carrito} className="object-cover mt-16" />
 
                   <div className="mx-4 flex flex-col gap-y-6 font-medium">
                     <p className="text-[24px] mt-8">Tu carrito esta vacio</p>
@@ -378,37 +456,90 @@ function Carrito() {
                               src={`/images/productos/${p.producto.imagenes[0].url_imagen}`}
                               alt={p.producto.nombre}
                               style={styles.productImg}
+                              onClick={() =>
+                                navigate(`/producto/${p.producto.id_producto}`)
+                              }
+                              className="cursor-pointer"
                               onError={(e) => {
                                 e.target.src =
                                   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
                               }}
                             />
                           ) : (
-                            <div style={styles.productImg}>
+                            <div
+                              style={styles.productImg}
+                              onClick={() =>
+                                navigate(`/producto/${p.producto.id_producto}`)
+                              }
+                              className="cursor-pointer flex items-center justify-center text-xs text-gray-500"
+                            >
                               Imagen no disponible
                             </div>
                           )}
 
                           <div className="flex flex-col w-full text-left font-medium">
-                            <p className="py-2 text-xl">{p.producto.nombre}</p>
+                            <p
+                              className="py-2 text-xl cursor-pointer"
+                              onClick={() =>
+                                navigate(`/producto/${p.producto.id_producto}`)
+                              }
+                            >
+                              {p.producto.nombre}
+                            </p>
+
+                            {/* Estrellas del producto */}
+                            <div className="flex -mt-1 mb-1">
+                              {Array.from({ length: 5 }).map((_, idx) => (
+                                <span
+                                  key={idx}
+                                  className="text-xl"
+                                  style={{
+                                    color:
+                                      idx < getStars(p.producto)
+                                        ? "#2b6daf"
+                                        : "#ddd",
+                                  }}
+                                >
+                                  ★
+                                </span>
+                              ))}
+                            </div>
+
                             <div className="flex flex-row gap-1">
                               <button
                                 onClick={() => handleDecrement(p)}
                                 className=" bg-[#114C87] text-white rounded-md h-9 px-1"
                               >
-                                <span class="material-symbols-outlined text-3xl">
+                                <span className="material-symbols-outlined text-3xl">
                                   check_indeterminate_small
                                 </span>
                               </button>
-                              <input
-                                className="border-2 border-black rounded-md text-center"
-                                value={p.cantidad_unidad_medida}
-                              ></input>
+                              
+
+<input
+  type="number"
+  min={1}
+  step={1}
+  inputMode="numeric"
+  pattern="[0-9]*"
+  className="border-2 border-black rounded-md text-center"
+  value={qtyDraft[p.id_carrito_detalle] ?? p.cantidad_unidad_medida}
+  onChange={(e) => handleQtyInputChange(p.id_carrito_detalle, e.target.value)}
+  onBlur={(e) => commitQtyChange(p, e.target.value)}
+  onKeyDown={(e) => {
+    if (e.key === "Enter") e.currentTarget.blur(); // dispara onBlur => guarda
+  }}
+  onFocus={(e) => e.target.select()} // para seleccionar todo al hacer click
+/>
+
+
+
+
                               <button
                                 onClick={() => handleIncrement(p)}
                                 className="bg-[#114C87] text-white rounded-md h-9 px-1"
                               >
-                                <span class="material-symbols-outlined text-3xl">
+                                <span className="material-symbols-outlined text-3xl">
                                   add
                                 </span>
                               </button>
@@ -429,7 +560,7 @@ function Carrito() {
                             }}
                             className=" text-black hover:bg-red-500 hover:text-white rounded-md p-8"
                           >
-                            <span class="material-symbols-outlined text-5xl ">
+                            <span className="material-symbols-outlined text-5xl ">
                               delete
                             </span>
                           </button>
@@ -467,6 +598,29 @@ function Carrito() {
                 </div>
               )
             }
+
+            {/* Sucursal (discreto, alineado a la izq y en negrita) */}
+<div className="pb-2">
+  <label
+    htmlFor="select-sucursal"
+    className="block text-left font-bold pb-2"
+  >
+    Sucursal
+  </label>
+  <select
+    id="select-sucursal"
+    value={idSucursal ?? ""}
+    onChange={(e) => setIdSucursal(e.target.value)}
+    className="w-full border border-gray-300 bg-white rounded-md px-2 py-1 text-sm"
+  >
+    {(sucursales ?? []).map((s) => (
+      <option key={s.id_sucursal ?? s.id} value={s.id_sucursal ?? s.id}>
+        {s.nombre_sucursal ?? s.nombre ?? `Sucursal ${s.id_sucursal ?? s.id}`}
+      </option>
+    ))}
+  </select>
+</div>
+
 
             {
               //RESUMEN DE PAGO SIEMPRE SE MUESTRA
@@ -522,7 +676,7 @@ function Carrito() {
               !showProducts && (
                 <div className="flex flex-col text-blue-950 justify-end h-full text-left">
                   <div className="flex flex-row items-center">
-                    <span class="material-symbols-outlined text-4xl pr-2">
+                    <span className="material-symbols-outlined text-4xl pr-2">
                       verified_user
                     </span>
                     <h1 className="font-bold text-lg">
@@ -574,17 +728,25 @@ function Carrito() {
                     transform:
                       hoveredProductDest === i ? "scale(1.05)" : "scale(1)",
                     transition: "all 0.2s ease-in-out",
+                    cursor: "pointer",
                   }}
                   onMouseEnter={() => setHoveredProductDest(i)}
                   onMouseLeave={() => setHoveredProductDest(null)}
+                  onClick={() => navigate(`/producto/${p.id_producto}`)}
                 >
                   <div style={styles.topRow}>
                     <div style={styles.stars}>
-                       {Array(5)
-                      .fill(0)
-                      .map((_, idx) => (
-                     <span key={idx}>{idx < p.rating ? '★' : '☆'}</span>
-                     ))}
+                      {Array.from({ length: 5 }).map((_, idx) => (
+                        <span
+                          key={idx}
+                          style={{
+                            color:
+                              idx < getStars(p) ? "#2b6daf" : "#ddd",
+                          }}
+                        >
+                          ★
+                        </span>
+                      ))}
                     </div>
                   </div>
 
@@ -611,7 +773,8 @@ function Carrito() {
                       backgroundColor:
                         hoveredProductDest === i ? "#2b6daf" : "#F0833E",
                     }}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       incrementCart(1);
                       handleAgregar(p.id_producto, 1);
                     }}

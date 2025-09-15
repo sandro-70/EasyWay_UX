@@ -77,6 +77,9 @@ function App() {
               path="/cambiar_contraseña"
               element={<Cambiar_contraseña />}
             />
+            
+              <Route path="/facturas" element={<Facturas />} />
+              <Route path="/factura/:id" element={<DetalleFactura />} />
             <Route path="/verificar-codigo" element={<VerificarCodigo />} />
             <Route
               path="/verificar-codigoAuth"
@@ -125,8 +128,6 @@ function App() {
               />
               <Route path="/tablaUsuarios" element={<TablaUsuarios />} />
               <Route path="/tablaVentas" element={<TablaVentas />} />
-              <Route path="/facturas" element={<Facturas />} />
-              <Route path="/factura/:id" element={<DetalleFactura />} />
               <Route path="/reportesPedidos" element={<ReportesPedidos />} />
               <Route path="/detallePedidos" element={<DetallePedido />} />
               <Route path="/gestionProductos" element={<GestionProductos />} />

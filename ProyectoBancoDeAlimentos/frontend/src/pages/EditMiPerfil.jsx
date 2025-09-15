@@ -1,3 +1,4 @@
+
 // src/EditarPerfilAdmin.jsx
 import { useState, useEffect, useContext, useRef } from "react";
 import "./EditMiPerfil.css";
@@ -16,11 +17,11 @@ import {
 import {
   getAllDepartamentos,
   getAllMunicipios,
-  getDirecciones,
+  getDirecciones, // ← para obtener id_direccion
 } from "../api/DireccionesApi";
 import axiosInstance from "../api/axiosInstance";
 
-/* ===================== ORIGIN backend + helpers ===================== */
+/* ===================== ORIGIN backend + helper URL imagen ===================== */
 const BACKEND_ORIGIN = (() => {
   const base = axiosInstance?.defaults?.baseURL;
   try {
@@ -64,30 +65,6 @@ const getExt = (file) => {
 // Helpers de ID
 const getUserId = (u) => u?.id_usuario ?? u?.id ?? u?.usuario_id ?? u?.userId ?? 1;
 const buildIdProfileFileName = (user, file) => `user_${getUserId(user)}${getExt(file)}`;
-
-/* ==== helpers foto (idéntico approach a MiPerfil) ==== */
-const buildFotoCandidates = (dataObj, ctx) => {
-  const uid = getUserId(dataObj || ctx || {});
-  const list = [];
-  const push = (v) => {
-    const n = fileNameFromPath(v);
-    if (n && !list.includes(n)) list.push(n);
-  };
-
-  // 1) Preferir lo que venga de la API
-  push(dataObj?.foto_perfil_url);
-  push(dataObj?.foto_perfil);
-  push(dataObj?.foto);
-
-  // 2) Luego lo que haya en el contexto (el header suele tenerlo)
-  push(ctx?.foto_perfil_url);
-  push(ctx?.foto);
-
-  // 3) Convenciones por id (por si el backend guarda por id)
-  if (uid) ["jpg", "png", "webp"].forEach((ext) => list.push(`user_${uid}.${ext}`));
-
-  return list;
-};
 
 /* ===================== UI helpers ===================== */
 function Icon({ name, className = "icon" }) {
@@ -159,8 +136,8 @@ export default function EditarPerfilAdmin() {
   // Dirección
   const [calle, setCalle] = useState("");
   const [ciudad, setCiudad] = useState("");
-  const [codigoPostal, setCodigoPostal] = useState("");
-  const [predeterminada, setPredeterminada] = useState(true);
+  const [codigoPostal, setCodigoPostal] = useState(""); // opcional (no UI)
+  const [predeterminada, setPredeterminada] = useState(true); // opcional (no UI)
   const [idDireccion, setIdDireccion] = useState(null);
 
   const [departamento, setDepartamento] = useState("");
@@ -172,15 +149,13 @@ export default function EditarPerfilAdmin() {
   // Foto
   const [fotoUrl, setFotoUrl] = useState("");
   const [fotoFileName, setFotoFileName] = useState("");
-  const [fotoCandidates, setFotoCandidates] = useState([]); // 👈 NUEVO
-  const [fotoIdx, setFotoIdx] = useState(0);                // 👈 NUEVO
 
   // UI
   const [cargando, setCargando] = useState(true);
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [passwordError, setPasswordError] = useState("");
 
-  // Solo lectura por defecto
+  // 🔴 arranca en SOLO LECTURA
   const [editMode, setEditMode] = useState(false);
 
   // modales
@@ -212,10 +187,6 @@ export default function EditarPerfilAdmin() {
       ...(payload || {}),
       foto_perfil_url: cleanName,
     }));
-  };
-
-  const advanceCandidate = () => {
-    setFotoIdx((i) => (i + 1 < fotoCandidates.length ? i + 1 : i));
   };
 
   useEffect(() => {
@@ -252,21 +223,14 @@ export default function EditarPerfilAdmin() {
         setGenero(_genero);
         setRol(_rol);
 
-        // Foto (🎯 igual que MiPerfil: build candidates + seleccionar)
-        const cands = buildFotoCandidates(data, user);
-        setFotoCandidates(cands);
-        setFotoIdx(0);
-
-        const first = cands[0] || "";
-        if (first) {
-          const justName = fileNameFromPath(first);
-          setFotoFileName(justName);
-          setFotoUrl(`${toPublicFotoSrc(justName)}?t=${Date.now()}`);
-          pushUserToContext({ ...data, foto_perfil_url: justName });
-        } else {
-          setFotoFileName("");
-          setFotoUrl("");
-        }
+        // Foto (normalizada a user_<id>.<ext>)
+        const fromApi = data.foto_perfil_url || data.foto_perfil || data.foto || "";
+        const guessedExt = fileNameFromPath(fromApi).split(".").pop() || "png";
+        const idName = `user_${uid}.${guessedExt}`;
+        const url = `${backendImageUrl(idName)}?t=${Date.now()}`;
+        setFotoFileName(idName);
+        setFotoUrl(url);
+        pushUserToContext({ ...data, foto_perfil_url: idName });
 
         // Catálogos
         const [resDeptos, resMunis] = await Promise.all([
@@ -298,6 +262,7 @@ export default function EditarPerfilAdmin() {
             _idMunicipio = String(muni.id_municipio);
             const dept = dpt.find((d) => d.id_departamento === muni.id_departamento);
             if (dept) _departamento = dept.nombre_departamento;
+            // si ciudad viene vacío, default al nombre del municipio
             if (!_ciudad) _ciudad = muni.nombre_municipio;
           }
         }
@@ -320,8 +285,8 @@ export default function EditarPerfilAdmin() {
           correo: _correo,
           genero: _genero,
           rol: _rol,
-          fotoUrl: first ? `${toPublicFotoSrc(fileNameFromPath(first))}?t=${Date.now()}` : "",
-          fotoFileName: fileNameFromPath(first || ""),
+          fotoUrl: url,
+          fotoFileName: idName,
           calle: _calle,
           ciudad: _ciudad,
           codigoPostal: _codigoPostal,
@@ -345,17 +310,8 @@ export default function EditarPerfilAdmin() {
     };
   }, []);
 
-  // Si falla la imagen, probar siguiente candidato (★ como en MiPerfil)
-  useEffect(() => {
-    const next = fotoCandidates[fotoIdx];
-    if (!next) return;
-    const justName = fileNameFromPath(next);
-    setFotoUrl(`${toPublicFotoSrc(justName)}?t=${Date.now()}`);
-    setFotoFileName(justName);
-  }, [fotoIdx, fotoCandidates]);
-
   /* =================== SUBIR FOTO (solo en modo edición) =================== */
-  // ✅ Guardar la foto inmediatamente después de subirla
+ // ✅ Guardar la foto inmediatamente después de subirla
 const handleFotoChange = async (e) => {
   if (!editMode) return;                 // solo en modo edición
   const file = e.target.files?.[0];
@@ -510,6 +466,7 @@ const handleFotoChange = async (e) => {
     const muni = municipios.find((m) => String(m.id_municipio) === String(nuevoIdMunicipio));
     if (muni) {
       setMunicipio(muni.nombre_municipio);
+      // si el usuario no escribió ciudad, por defecto igualar a municipio
       if (!ciudad) setCiudad(muni.nombre_municipio);
     }
   };
@@ -531,18 +488,18 @@ const handleFotoChange = async (e) => {
       if (!uid) return alert("No se pudo determinar el usuario.");
 
       await editarPerfil(
-        uid,
-        (nombre || "").trim(),
-        (apellidos || "").trim(),
-        (telefono || "").trim(),
-        genero,
-        fotoFileName || "",
-        idDireccion ?? null,
-        (calle || "").trim(),
-        (ciudad || "").trim(),
-        (codigoPostal || "").trim(),
-        !!predeterminada,
-        idMunicipio ? Number(idMunicipio) : null
+        uid,                          // id_usuario
+        (nombre || "").trim(),        // nombre
+        (apellidos || "").trim(),     // apellido
+        (telefono || "").trim(),      // telefono
+        genero,                       // genero
+        fotoFileName || "",           // foto_perfil_url (nombre archivo)
+        idDireccion ?? null,          // id_direccion (si hay)
+        (calle || "").trim(),         // calle
+        (ciudad || "").trim(),        // ciudad
+        (codigoPostal || "").trim(),  // codigo_postal
+        !!predeterminada,             // predeterminada
+        idMunicipio ? Number(idMunicipio) : null // id_municipio
       );
 
       // refresca usuario + foto
@@ -556,7 +513,7 @@ const handleFotoChange = async (e) => {
       setFotoUrl(freshUrl);
       setUser({ ...data, foto_perfil_url: freshName, avatar_rev: Date.now() });
 
-      // refresca dirección
+      // refresca dirección para capturar id_direccion si cambió/creó
       try {
         const resDir = await getDirecciones(uid);
         const lista = resDir?.data || [];
@@ -566,6 +523,7 @@ const handleFotoChange = async (e) => {
         }
       } catch {}
 
+      // Actualiza snapshot a lo guardado
       setSnapshot({
         telefono, nombre, apellidos, correo, genero, rol,
         fotoUrl: freshUrl, fotoFileName: freshName,
@@ -600,6 +558,7 @@ const handleFotoChange = async (e) => {
       setMunicipio(snapshot.municipio || "");
       setIdMunicipio(snapshot.idMunicipio || "");
     }
+    // limpia selección del file input si había
     if (fileInputRef.current) fileInputRef.current.value = "";
     setEditMode(false);
   };
@@ -672,12 +631,7 @@ const handleFotoChange = async (e) => {
         <aside className="perfil-sidebar">
           <div className="perfil-avatar">
             {fotoUrl ? (
-              <img
-                src={fotoUrl}
-                alt="Foto de perfil"
-                className="perfil-avatar-image"
-                onError={advanceCandidate}  // 👈 si falla, prueba el siguiente candidato
-              />
+              <img src={fotoUrl} alt="Foto de perfil" className="perfil-avatar-image" />
             ) : (
               <div className="perfil-avatar-placeholder">
                 <Icon name="user" className="icon-large" />
@@ -704,7 +658,7 @@ const handleFotoChange = async (e) => {
           </button>
         </aside>
 
-        {/* Form principal */}
+        {/* Form principal – Nombre/Apellido · Correo/Teléfono · Género/Rol · Depto/Muni · Calle/Ciudad */}
         <section className="perfil-card">
           <div className="fields-grid">
             <Field label="Nombre" icon={<Icon name="user" />}>
@@ -941,5 +895,4 @@ const handleFotoChange = async (e) => {
         </div>
       </section>
     </div>
-  );
-}
+  );}

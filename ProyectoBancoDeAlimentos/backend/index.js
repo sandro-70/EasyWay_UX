@@ -71,8 +71,8 @@ const insertFacturaDetalle = require("./Inserts/InsertFacturaDetalle");
     console.log("Conexión a la BD establecida");
 
     // Sincroniza modelos y reinicia IDs en desarrollo
-    await db.sequelize.sync({ alter: true });
-    console.log("Modelos sincronizados y tablas reiniciadas");
+    // await db.sequelize.sync({ alter: true });
+    // console.log("Modelos sincronizados y tablas reiniciadas");
 
     // // Inserta los seeds en orden correcto
     // await insertUsuarios(

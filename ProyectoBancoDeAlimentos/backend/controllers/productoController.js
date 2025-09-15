@@ -499,9 +499,9 @@ exports.desactivarProducto = async (req, res) => {
 
 exports.crearMarca = async (req, res) => {
   try {
-    const { nombre } = req.body;
+    const { nombre_marca } = req.body;
 
-    if (!nombre || typeof nombre !== "string" || nombre.trim() === "") {
+    if (!nombre_marca || typeof nombre_marca !== "string" || nombre_marca.trim() === "") {
       return res
         .status(400)
         .json({
@@ -510,13 +510,13 @@ exports.crearMarca = async (req, res) => {
     }
 
     // Verificar si la marca ya existe
-    const existingMarca = await marca_producto.findOne({ where: { nombre } });
+    const existingMarca = await marca_producto.findOne({ where: { nombre: nombre_marca } });
     if (existingMarca) {
       return res.status(409).json({ message: "La marca ya existe" });
     }
 
     // Crear la marca
-    const newMarca = await marca_producto.create({ nombre });
+    const newMarca = await marca_producto.create({ nombre: nombre_marca });
     res.json({
       message: "Marca creada correctamente",
       marca: newMarca.toJSON(),

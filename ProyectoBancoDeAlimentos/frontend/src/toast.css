@@ -1,0 +1,39 @@
+/* Personalizar SUCCESS */
+.toast-success {
+  background-color: #28a745 !important;
+  color: white !important;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* Personalizar ERROR */
+.toast-error {
+  background-color: #dc3545 !important;
+  color: #fff !important;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* Personalizar WARN */
+.toast-warn {
+  background-color: #ffc107 !important;
+  color: black !important;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* Personalizar INFO */
+.toast-info {
+  background-color: #17a2b8 !important;
+  color: white !important;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/*Personalizar DEFAUULT*/
+.toast-default{
+    background-color: #b81793 !important;
+    color: white !important;
+    font-size: 18px;
+    font-weight: bold;
+}

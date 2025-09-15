@@ -5,6 +5,8 @@ import { Link, useNavigate } from "react-router-dom";
 import LoginUser from "./api/Usuario.Route";
 import { InformacionUser, forgetPassword } from "./api/Usuario.Route";
 import { UserContext } from "./components/userContext";
+import { toast } from "react-toastify";
+import "./toast.css";
 
 /* Helpers (foto desde token) */
 function parseJwt(token) {
@@ -36,12 +38,12 @@ const Login = () => {
     try {
       setLoading(true);
       await forgetPassword(correo);
-      alert("Te enviamos un código a tu correo.");
+      toast.info("Te enviamos un código a tu correo.", { className: "toast-info" });
 
       sessionStorage.setItem("prelogin", JSON.stringify({ correo, contraseña }));
       navigate("/verificar-codigoAuth", { state: { correo, contraseña } });
     } catch (err) {
-      alert(err?.response?.data?.error || "No se pudo enviar el correo.");
+      toast.error(err?.response?.data?.error || "No se pudo enviar el correo.", { className: "toast-error" });
     } finally {
       setLoading(false);
     }
@@ -49,8 +51,11 @@ const Login = () => {
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    if (!correo || !contraseña) {
-      alert("Ingresa correo y contraseña.");
+    if (!correo) {
+      toast.warn("⚠️ Ingresa correo electrónico.", { className: "toast-warn" });
+      return;
+    }else if(!contraseña){
+      toast.warn("⚠️ Ingresa la contraseña.", { className: "toast-warn" });
       return;
     }
 
@@ -61,6 +66,7 @@ const Login = () => {
       const token = data?.token;
       if (!token) throw new Error("No se recibió token de autenticación");
       localStorage.setItem("token", token);
+      toast.success("Inicio de sesión exitoso", { className: "toast-success" });
 
       // 2) Empujar foto desde token inmediatamente (si existe)
       const claims = parseJwt(token);
@@ -132,7 +138,7 @@ const Login = () => {
         err?.response?.data?.message ||
         err?.response?.data?.error ||
         (err?.response?.status === 401 ? "Correo o contraseña inválidos" : null);
-      alert(backendMsg || "Error de login");
+      toast.error(backendMsg || "Error de login", { className: "toast-error" });
     } finally {
       setLoading(false);
     }

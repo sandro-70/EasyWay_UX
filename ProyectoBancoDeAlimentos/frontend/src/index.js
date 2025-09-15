@@ -3,6 +3,9 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import { BrowserRouter } from "react-router-dom";
 import { CartProvider } from "./utils/CartContext";
+import 'react-toastify/dist/ReactToastify.css';
+import { toast, ToastContainer } from "react-toastify";
+import {Zoom} from "react-toastify";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
@@ -10,6 +13,19 @@ root.render(
     <BrowserRouter>
       <CartProvider>
         <App />
+        <ToastContainer
+          position="top-center"
+          autoClose={7000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="colored"
+          transition={Zoom}
+        />
       </CartProvider>
     </BrowserRouter>
   </React.StrictMode>

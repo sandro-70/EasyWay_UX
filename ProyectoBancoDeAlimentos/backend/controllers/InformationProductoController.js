@@ -1,5 +1,4 @@
-// Usa los nombres reales de tus modelos en ../models/index.js
-const { valoracion_producto, producto, Usuario, favorito_producto, sequelize } = require('../models');
+const { valoracion_producto, producto, Usuario, lista_deseos, sequelize } = require('../models');
 const { fn, col, Op } = require("sequelize");
 
 // Helper para sacar el id del usuario autenticado desde el token
@@ -216,9 +215,9 @@ exports.addFavorito = async (req, res) => {
     const prod = await producto.findByPk(id_producto, { attributes: ['id_producto'] });
     if (!prod) return res.status(404).json({ error: 'Producto no encontrado' });
 
-    const [fav, created] = await favorito_producto.findOrCreate({
+    const [fav, created] = await lista_deseos.findOrCreate({
       where: { id_usuario, id_producto },
-      defaults: { id_usuario, id_producto, fecha_creacion: new Date() },
+      defaults: { id_usuario, id_producto },
     });
 
     return res.status(created ? 201 : 200).json({
@@ -245,7 +244,7 @@ exports.removeFavorito = async (req, res) => {
     const id_producto = Number(req.params.id);
     if (!id_producto) return res.status(400).json({ error: 'id de producto inválido' });
 
-    const deleted = await favorito_producto.destroy({ where: { id_usuario, id_producto } });
+    const deleted = await lista_deseos.destroy({ where: { id_usuario, id_producto } });
     return res.json({
       ok: true,
       message: deleted ? 'Eliminado de favoritos' : 'No estaba en favoritos',
@@ -266,13 +265,12 @@ exports.listMisFavoritos = async (req, res) => {
     const id_usuario = getAuthUserId(req);
     if (!id_usuario) return res.status(401).json({ error: 'No autenticado' });
 
-    const rows = await favorito_producto.findAll({
+    const rows = await lista_deseos.findAll({
       where: { id_usuario },
-      attributes: ['id_favorito', 'id_producto', 'fecha_creacion'],
+      attributes: ['id_usuario', 'id_producto'],
       include: [
         { model: producto, attributes: ['id_producto', 'nombre', 'precio_base', 'unidad_medida'] },
       ],
-      order: [['fecha_creacion', 'DESC']],
     });
 
     return res.json(rows);

@@ -147,3 +147,7 @@ export function addOrUpdateValoracion(id_producto, { puntuacion, comentario }) {
 export function AddProductoFav(id_producto) {
   return axiosInstance.post(`/api/producto/${id_producto}/favoritos`);
 }
+
+export function getProductosFav() {
+  return axiosInstance.get("/api/producto/favoritos");
+}

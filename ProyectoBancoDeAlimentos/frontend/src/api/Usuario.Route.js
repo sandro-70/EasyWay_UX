@@ -132,6 +132,27 @@ export const uploadProfilePhoto1 = async (file, desiredName) => {
   });
 };
 
+export function uploadProductPhotos(files) {
+  const form = new FormData();
+  for (let i = 0; i < files.length; i++) {
+    form.append("fotos", files[i], files[i].name);
+  }
+  return axiosInstance.post("/api/uploads/product-photos", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+}
+export async function uploadProductPhotos2(namedFiles) {
+  const form = new FormData();
+  namedFiles.forEach(({ file, desiredName }) => {
+    form.append("fotos", file, desiredName || file.name); // <- 'fotos' (plural)
+  });
+  return axiosInstance.post("/api/uploads/product-photos", form, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+}
+
+
+
 export function estadosUsuarios() {
   return axiosInstance.get("api/usuarios/estado-usuarios");
 }

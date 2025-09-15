@@ -6,9 +6,12 @@ const multer = require('multer');
 
 const router = express.Router();
 
+//foto de perfil
 const FOTO_DIR = path.resolve(__dirname, '..', 'public', 'images', 'fotoDePerfil');
 fs.mkdirSync(FOTO_DIR, { recursive: true });
 
+
+//porductos
 const PRODUCTO_DIR = path.resolve(__dirname, '..', 'public', 'images', 'productos');
 fs.mkdirSync(PRODUCTO_DIR, { recursive: true });
 

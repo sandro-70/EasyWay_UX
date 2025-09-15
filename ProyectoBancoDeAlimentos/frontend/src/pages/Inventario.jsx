@@ -1,3 +1,5 @@
+//sirve todo menos imágenes
+
 // src/pages/Inventario.jsx
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
@@ -448,41 +450,38 @@ export default function Inventario() {
     }
   }
 
-  async function handleCreateMarcaInline() {
-    const nombre = (newMarcaName || "").trim();
-    if (!nombre) {
-      alert("Escribe el nombre de la marca.");
-      return;
-    }
+  async function handleAddMarca() {
+    const nombre = newMarcaName.trim();
+    if (!nombre) return;
+
     try {
       setSavingMarca(true);
-      const res = await crearMarca(nombre); // <-- usa la API nueva
-      // Normaliza la respuesta (id y nombre)
-      const data = res?.data ?? res ?? {};
-      const nueva = {
-        id: String(
-          data.id_marca_producto ?? data.id ?? data.marca?.id ?? Date.now()
-        ),
-        nombre: data.nombre ?? data.marca?.nombre ?? nombre,
-      };
 
-      // agrega a catálogo de marcas y selecciona en el draft
-      setMarcas((prev) => [...prev, nueva]);
-      setModal((m) => ({
-        ...m,
-        draft: {
-          ...m.draft,
-          marcaId: nueva.id,
-          marca: nueva.id, // por compatibilidad con tu saveModal actual
-        },
-      }));
-      setShowNewMarca(false);
+      const resp = await crearMarca(nombre);
+      let creada = extractMarcaFromResponse(resp, nombre);
+
+      // Si la API no devolvió el id, refrescamos y buscaremos por nombre
+      await refreshMarcasAndSelect(creada.id || null, setMarcas, setModal);
+
+      if (!creada.id) {
+        // Buscar por nombre tras el refresh
+        setModal((m) => {
+          const found = (marcas || []).find(
+            (x) => x.nombre.toLowerCase() === nombre.toLowerCase()
+          );
+          return found
+            ? { ...m, draft: { ...m.draft, marcaId: String(found.id) } }
+            : m;
+        });
+      }
+
+      setShowAddMarca(false);
       setNewMarcaName("");
-    } catch (err) {
+    } catch (e) {
       const msg =
-        err?.response?.data?.message ||
-        err?.response?.data?.detail ||
-        err?.message ||
+        e?.response?.data?.message ||
+        e?.response?.data?.detail ||
+        e?.message ||
         "No se pudo crear la marca.";
       alert(msg);
     } finally {
@@ -969,6 +968,39 @@ export default function Inventario() {
     setModal((m) => ({ ...m, open: false }));
   }
 
+  //  MARCA
+  const [showAddMarca, setShowAddMarca] = useState(false);
+  const mapApiMarca = (m, idx) => ({
+    id: String(m.id_marca_producto ?? m.id ?? idx),
+    nombre: m.nombre ?? m.marca ?? `Marca ${idx + 1}`,
+  });
+
+  const extractMarcaFromResponse = (res, fallbackName = "") => {
+    const d = res?.data ?? res;
+    return {
+      id: String(
+        d?.id_marca_producto ?? d?.id ?? d?.marca?.id ?? d?.marca_id ?? ""
+      ),
+      nombre: d?.nombre ?? d?.marca?.nombre ?? fallbackName,
+    };
+  };
+
+  async function refreshMarcasAndSelect(idToSelect, setMarcas, setModal) {
+    const marcasRes = await getMarcas();
+    const marcasRaw = (marcasRes?.data ?? marcasRes) || [];
+    const mapped = Array.isArray(marcasRaw)
+      ? marcasRaw.map(mapApiMarca)
+      : (marcasRaw.marcas || []).map(mapApiMarca);
+    setMarcas(mapped);
+
+    if (idToSelect) {
+      setModal((m) => ({
+        ...m,
+        draft: { ...m.draft, marcaId: String(idToSelect) },
+      }));
+    }
+  }
+
   async function saveModal() {
     const d = modal.draft;
 
@@ -1013,6 +1045,82 @@ export default function Inventario() {
       );
       console.log("imagenesPayload →", imagenesPayload);
       console.groupEnd();
+
+      setRows((prev) =>
+        prev.map((row) => {
+          if (String(row.id) !== String(d.id)) return row;
+
+          // IDs finales (si no vienen en d, usa lo que ya tiene la fila)
+          const nextMarcaId = String(d.marcaId ?? d.marca ?? row.marcaId ?? "");
+          const nextCategoriaId = String(
+            d.categoriaId ?? d.categoria ?? row.categoriaId ?? ""
+          );
+          const nextSubcatId = String(
+            d.subcategoriaId ?? d.subcategoria ?? row.subcategoriaId ?? ""
+          );
+
+          // Nombres finales a partir de catálogos
+          const nextMarca = nameById(marcas, nextMarcaId) ?? row.marca;
+          const nextCategoria =
+            nameById(categorias, nextCategoriaId) ?? row.categoria;
+          const nextSubcategoria =
+            nameById(subcategorias, nextSubcatId) ?? row.subcategoria;
+
+          // Precio base y venta
+          const nextPrecioBase = Number.isFinite(Number(d.precioBase))
+            ? Number(d.precioBase)
+            : row.precioBase;
+
+          const porc = Number(d.porcentajeGanancia);
+          const nextPrecioVenta = Number.isFinite(porc)
+            ? round2(nextPrecioBase * (1 + porc / 100))
+            : row.precioVenta;
+
+          // Unidad y peso (si tienes estos campos en el draft)
+          const nextUnidadMedida = d.unidadMedida ?? row.unidadMedida; // ej. "kg", "g", "mg", "oz"
+          const nextPesoKg =
+            d.pesoValor !== undefined || d.pesoUnidad !== undefined
+              ? toKg(
+                  d.pesoValor ?? row.pesoValor,
+                  d.pesoUnidad ?? row.pesoUnidad
+                )
+              : row.pesoKg;
+
+          return {
+            ...row,
+
+            // básicos
+            producto: (d.producto ?? row.producto) || row.producto,
+            descripcion: d.descripcion ?? row.descripcion,
+
+            // relación marca/categoría/subcategoría
+            marcaId: nextMarcaId || row.marcaId,
+            marca: nextMarca,
+            categoriaId: nextCategoriaId || row.categoriaId,
+            categoria: nextCategoria,
+            subcategoriaId: nextSubcatId || row.subcategoriaId,
+            subcategoria: nextSubcategoria,
+
+            // precios
+            precioBase: nextPrecioBase,
+            precioVenta: nextPrecioVenta,
+
+            // peso / unidad (si usas estos en la tabla o en el row)
+            unidadMedida: nextUnidadMedida,
+            pesoKg: Number.isFinite(nextPesoKg) ? nextPesoKg : row.pesoKg,
+            pesoValor: d.pesoValor ?? row.pesoValor,
+            pesoUnidad: d.pesoUnidad ?? row.pesoUnidad,
+
+            // estado
+            activo: typeof d.activo === "boolean" ? d.activo : row.activo,
+
+            // opcional: etiquetas si las guardas en el row
+            etiquetas: Array.isArray(d.etiquetas)
+              ? d.etiquetas
+              : row.etiquetas ?? [],
+          };
+        })
+      );
 
       if (modal.mode === "edit") {
         // --- 1) Llamada al backend ---
@@ -1704,7 +1812,7 @@ export default function Inventario() {
               {/* Botón + para agregar marca */}
               <button
                 type="button"
-                onClick={() => setShowNewMarca((v) => !v)}
+                onClick={() => setShowAddMarca((v) => !v)}
                 className="px-3 py-2 rounded-xl border border-[#d8dadc] bg-gray-100 hover:bg-gray-200"
                 title="Agregar nueva marca"
               >
@@ -1713,7 +1821,7 @@ export default function Inventario() {
             </div>
 
             {/* Zona inline para escribir y crear la marca */}
-            {showNewMarca && (
+            {showAddMarca && (
               <div className="mt-2 flex gap-2">
                 <input
                   className="flex-1 px-3 py-2 rounded-xl border border-[#d8dadc] focus:outline-none focus:ring-2"
@@ -1721,11 +1829,15 @@ export default function Inventario() {
                   placeholder="Nombre de la nueva marca"
                   value={newMarcaName}
                   onChange={(e) => setNewMarcaName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleAddMarca();
+                    if (e.key === "Escape") setShowAddMarca(false);
+                  }}
                 />
                 <button
                   type="button"
                   disabled={savingMarca}
-                  onClick={handleCreateMarcaInline}
+                  onClick={handleAddMarca}
                   className="px-3 py-2 rounded-xl text-white disabled:opacity-60"
                   style={{ backgroundColor: "#2b6daf" }}
                 >
@@ -1734,7 +1846,7 @@ export default function Inventario() {
                 <button
                   type="button"
                   onClick={() => {
-                    setShowNewMarca(false);
+                    setShowAddMarca(false);
                     setNewMarcaName("");
                   }}
                   className="px-3 py-2 rounded-xl border border-[#d8dadc]"

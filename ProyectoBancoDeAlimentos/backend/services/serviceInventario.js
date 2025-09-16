@@ -1,4 +1,6 @@
 const { Op } = require("sequelize");
+const fs = require("fs");
+const path = require("path");
 const {
   sequelize,
   producto,
@@ -176,28 +178,28 @@ const UNIDADES_PERMITIDAS = ["unidad", "libra", "litro"];
 
 async function crearProductoConStockEnSucursales(payload = {}) {
   const {
-    nombre,
+    nombre = payload.producto, // <-- añade esto
     descripcion = null,
     precio_base,
-    id_subcategoria,
-    id_marca, // -> marca_producto.id_marca_producto
+    subcategoria_id,
+    marca_id, // -> marca_producto.id_marca_producto
     unidad_medida = "unidad",
     activo = true,
     peso,
     estrellas,
     etiquetas, // ARRAY(STRING) en Postgres; si usas MySQL => usar JSON
-    imagenes, // ARRAY de objetos { url_imagen: string, orden_imagen?: number }
     files, // Archivos subidos con multer (opcional)
+    imagenes_payload, // JSON string of the payload
   } = payload;
 
   // --- Validaciones básicas ---
-  if (!nombre || typeof nombre !== "string") throw new Error("nombre es requerido");
+  if (!nombre?.trim()) throw new Error("nombre o producto es requerido");
 
   const precio = Number(precio_base);
   if (!Number.isFinite(precio) || precio <= 0) throw new Error("precio_base inválido");
 
-  const subId   = toInt(id_subcategoria);
-  const marcaId = toInt(id_marca);
+  const subId   = toInt(subcategoria_id);
+  const marcaId = toInt(marca_id);
   if (Number.isNaN(subId)   || subId   <= 0) throw new Error("id_subcategoria inválido");
   if (Number.isNaN(marcaId) || marcaId <= 0) throw new Error("id_marca inválido");
 
@@ -218,23 +220,18 @@ async function crearProductoConStockEnSucursales(payload = {}) {
     }
   }
 
-  // --- Validar imagenes ---
-  let imagenesArr = [];
-  if (imagenes !== undefined && imagenes !== null) {
-    if (Array.isArray(imagenes)) {
-      imagenesArr = imagenes.filter(img => img && typeof img.url_imagen === "string" && img.url_imagen.trim());
-      imagenesArr.forEach((img, index) => {
-        if (img.orden_imagen !== undefined && !Number.isInteger(Number(img.orden_imagen))) {
-          throw new Error(`orden_imagen en imagen ${index + 1} debe ser un entero`);
-        }
-      });
-    } else {
-      throw new Error("imagenes debe ser un array de objetos con url_imagen");
-    }
-  }
+  // --- Parse imagenes_payload ---
+  const imagenesPayload = JSON.parse(imagenes_payload || '[]');
 
   // --- Transacción ---
   return await sequelize.transaction(async (t) => {
+    // Reset sequence for producto to avoid unique constraint errors
+    await sequelize.query("SELECT setval('producto_id_producto_seq', (SELECT COALESCE(MAX(id_producto), 0) FROM producto))", { transaction: t });
+
+    // Get next product id for file naming
+    const nextIdResult = await sequelize.query("SELECT nextval('producto_id_producto_seq') as next_id", { transaction: t });
+    const nextProductId = nextIdResult[0][0].next_id;
+
     // FK existentes
     const sub = await subcategoria.findByPk(subId, { transaction: t });
     if (!sub) throw new Error("La subcategoría no existe");
@@ -264,6 +261,9 @@ async function crearProductoConStockEnSucursales(payload = {}) {
       lock: t.LOCK.SHARE,
     });
 
+    // 3) Reset sequence for sucursal_producto to avoid unique constraint errors
+    await sequelize.query("SELECT setval('sucursal_producto_id_sucursal_producto_seq', (SELECT COALESCE(MAX(id_sucursal_producto), 0) FROM sucursal_producto))", { transaction: t });
+
     // 3) Crear sucursal_producto con stock = 0 para cada sucursal
     if (sucursales.length) {
       const filas = sucursales.map((s) => ({
@@ -274,48 +274,28 @@ async function crearProductoConStockEnSucursales(payload = {}) {
       await sucursal_producto.bulkCreate(filas, { transaction: t });
     }
 
-    // 4) Crear imagenes si se proporcionaron
-    let imagenesCreadas = 0;
-    if (imagenesArr.length) {
-      // Obtener el máximo orden_imagen actual para el producto (aunque sea nuevo, por si acaso)
-      const maxOrdenResult = await imagen_producto.findOne({
-        where: { id_producto: prod.id_producto },
-        attributes: [[sequelize.fn('MAX', sequelize.col('orden_imagen')), 'max_orden']],
-        raw: true,
-        transaction: t
-      });
-      const maxOrden = maxOrdenResult?.max_orden || -1;
-
-      const filasImagenes = imagenesArr.map((img, index) => ({
+    // 4) Crear imagenes
+    let fileIndex = 0;
+    for (const item of imagenesPayload) {
+      const { url_imagen, orden_imagen, is_file } = item;
+      let url;
+      if (is_file) {
+        const originalFilename = files[fileIndex].filename;
+        const ext = path.extname(originalFilename);
+        const newFilename = `product_${nextProductId}_${fileIndex}${ext}`;
+        const oldPath = path.join(__dirname, '../public/images/productos', originalFilename);
+        const newPath = path.join(__dirname, '../public/images/productos', newFilename);
+        fs.renameSync(oldPath, newPath);
+        url = `/images/productos/${newFilename}`;
+        fileIndex++;
+      } else {
+        url = url_imagen;
+      }
+      await imagen_producto.create({
         id_producto: prod.id_producto,
-        url_imagen: img.url_imagen.trim(),
-        orden_imagen: img.orden_imagen !== undefined ? img.orden_imagen : maxOrden + 1 + index,
-      }));
-      await imagen_producto.bulkCreate(filasImagenes, { transaction: t });
-      imagenesCreadas = filasImagenes.length;
-    }
-
-    // 4.1) Procesar archivos subidos si se proporcionaron
-    if (files && files.length > 0) {
-      // Obtener el máximo orden_imagen actual para el producto
-      const maxOrdenResult = await imagen_producto.findOne({
-        where: { id_producto: prod.id_producto },
-        attributes: [[sequelize.fn('MAX', sequelize.col('orden_imagen')), 'max_orden']],
-        raw: true,
-        transaction: t
-      });
-      const maxOrden = maxOrdenResult?.max_orden || -1;
-
-      // Procesar cada archivo subido
-      const imagenesData = files.map((file, index) => ({
-        id_producto: prod.id_producto,
-        url_imagen: `/images/productos/${file.filename}`, // URL relativa al archivo subido
-        orden_imagen: maxOrden + 1 + index, // Orden basado en el índice del array
-      }));
-
-      // Guardar en la base de datos
-      await imagen_producto.bulkCreate(imagenesData, { transaction: t });
-      imagenesCreadas += imagenesData.length;
+        url_imagen: url,
+        orden_imagen,
+      }, { transaction: t });
     }
 
     // 5) Devolver el producto con include usando ALIAS correctos
@@ -349,7 +329,7 @@ async function crearProductoConStockEnSucursales(payload = {}) {
       ok: true,
       producto: creado,
       sucursales_asignadas: sucursales.length,
-      imagenes_creadas: imagenesArr.length,
+      imagenes_creadas: imagenesPayload.length,
     };
   });
 }

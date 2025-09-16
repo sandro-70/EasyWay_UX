@@ -36,11 +36,11 @@ const upload = multer({ storage, fileFilter, limits: { fileSize: 10 * 1024 * 102
 const storageProducto = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, PRODUCTO_DIR),
   filename: (req, file, cb) => {
-    const desired = (file.originalname || '').trim();
-    if (desired) return cb(null, desired);
+    // Try to get product id from req.params, req.body, or unknown
+    const productId = req.params.id_producto || req.body.id || 'unknown';
     const ext = path.extname(file.originalname || '.png').toLowerCase() || '.png';
-    const timestamp = Date.now();
-    cb(null, `Producto_${timestamp}_${file.fieldname}${ext}`);
+    const filename = `product_${productId}${ext}`;
+    cb(null, filename);
   },
 });
 
@@ -56,17 +56,17 @@ router.post('/product-photos', uploadProducto.array('fotos', 10), async (req, re
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ ok: false, msg: 'Archivos requeridos (fotos)' });
   }
-  
+
   try {
     const { id_producto } = req.body; // Should be sent with the upload request
     const filenames = req.files.map(file => file.filename);
-    
+
     // Construct URLs for the uploaded files
     const imagenes = filenames.map((filename, index) => ({
       url_imagen: `/images/productos/${filename}`, // Adjust path as needed
       orden_imagen: index
     }));
-    
+
     // Save to database if id_producto is provided
     if (id_producto) {
       const imgs = imagenes.map(img => ({
@@ -76,10 +76,10 @@ router.post('/product-photos', uploadProducto.array('fotos', 10), async (req, re
       }));
       await imagen_producto.bulkCreate(imgs);
     }
-    
+
     console.log(' Fotos guardadas:', filenames);
-    return res.json({ 
-      ok: true, 
+    return res.json({
+      ok: true,
       filenames,
       imagenes: imagenes,
       message: id_producto ? 'Archivos subidos y guardados en BD' : 'Archivos subidos'
@@ -87,6 +87,36 @@ router.post('/product-photos', uploadProducto.array('fotos', 10), async (req, re
   } catch (error) {
     console.error('Error saving images to DB:', error);
     return res.status(500).json({ ok: false, msg: 'Error al guardar imágenes' });
+  }
+});
+
+router.delete('/product-photos/:id_imagen', async (req, res) => {
+  try {
+    const { id_imagen } = req.params;
+
+    // Find the image in the database
+    const imagen = await imagen_producto.findByPk(id_imagen);
+    if (!imagen) {
+      return res.status(404).json({ ok: false, msg: 'Imagen no encontrada' });
+    }
+
+    // Extract filename from url_imagen (assuming format /images/productos/filename)
+    const filename = path.basename(imagen.url_imagen);
+    const filePath = path.join(PRODUCTO_DIR, filename);
+
+    // Delete the file from filesystem
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    // Delete from database
+    await imagen.destroy();
+
+    console.log(' Imagen eliminada:', filename);
+    return res.json({ ok: true, msg: 'Imagen eliminada correctamente' });
+  } catch (error) {
+    console.error('Error deleting image:', error);
+    return res.status(500).json({ ok: false, msg: 'Error al eliminar imagen' });
   }
 });
 

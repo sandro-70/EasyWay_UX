@@ -1,3 +1,5 @@
+
+
 //sirve todo menos imágenes
 
 // src/pages/Inventario.jsx
@@ -17,9 +19,36 @@ import {
   getMarcas,
   listarProductosporsucursal,
   crearMarca,
+  eliminarImagenProducto,
 } from "../api/InventarioApi";
 import { ListarCategoria } from "../api/CategoriaApi";
 import { listarSubcategoria } from "../api/SubcategoriaApi";
+
+/* ===================== ORIGIN backend + helper URL imagen ===================== */
+const BACKEND_ORIGIN = (() => {
+  const base = axiosInstance?.defaults?.baseURL;
+  try {
+    const u = base
+      ? (base.startsWith("http") ? new URL(base) : new URL(base, window.location.origin))
+      : new URL(window.location.origin);
+    return `${u.protocol}//${u.host}`;
+  } catch {
+    return window.location.origin;
+  }
+})();
+
+const backendImageUrl = (fileName) =>
+  fileName ? `${BACKEND_ORIGIN}/images/productos/${encodeURIComponent(fileName)}` : "";
+
+const toPublicFotoSrc = (nameOrPath) => {
+  if (!nameOrPath) return "";
+  if (/^https?:\/\//i.test(nameOrPath)) return nameOrPath;
+  if (nameOrPath.startsWith("/api/images/")) return `${BACKEND_ORIGIN}${encodeURI(nameOrPath)}`;
+  if (nameOrPath.startsWith("/images/")) return `${BACKEND_ORIGIN}/api${encodeURI(nameOrPath)}`;
+  return backendImageUrl(nameOrPath);
+};
+
+const fileNameFromPath = (p) => (!p ? "" : String(p).split("/").pop() || "");
 
 /* ===================== Helpers / Const ===================== */
 const PageSize = 10;
@@ -45,10 +74,9 @@ function emptyDraft() {
     activo: true,
     imagePreviews: [],
     imageFiles: [],
-    imageUploadsNames: [], // <- aquí guardaremos SOLO los nombres para enviar a la BD
+    imageUploadsNames: [], // <- array of file names for new uploads
 
     peso: "", // 👈 nuevo
-    unidadMedida: "unidad", // 👈 default claro
     descuentoGeneral: false,
     tipoDescuento: "", // "porcentaje" | "monto"
     valorDescuento: "",
@@ -918,8 +946,7 @@ export default function Inventario() {
 
     try {
       // 1) Asegurar categorías
-      let cats = categorias;
-      if (!cats || !cats.length) {
+      const cats = categorias && categorias.length ? categorias : await (async () => {
         const catsRes = await ListarCategoria();
         const catsRaw = pickArrayPayload(catsRes, [
           "categorias",
@@ -927,12 +954,13 @@ export default function Inventario() {
           "results",
           "items",
         ]);
-        cats = catsRaw.map((c, i) => ({
+        const newCats = catsRaw.map((c, i) => ({
           id: String(c.id_categoria ?? c.id ?? i),
           nombre: c.nombre ?? `Categoría ${i + 1}`,
         }));
-        setCategorias(cats);
-      }
+        setCategorias(newCats);
+        return newCats;
+      })();
 
       // 2) Detalle del producto
       const detRes = await getProductoById(row.id);
@@ -952,7 +980,7 @@ export default function Inventario() {
       try {
         const imgsRes = await getImagenesProducto(row.id);
         const urls = ((imgsRes?.data ?? imgsRes) || [])
-          .map((i) => i.url_imagen ?? i.url ?? i.imagen_url ?? i.src)
+          .map((i) => toPublicFotoSrc(i.url_imagen))
           .filter(Boolean);
         if (urls.length) draftFromApi.imagePreviews = urls;
       } catch {}
@@ -1020,13 +1048,26 @@ export default function Inventario() {
         .split(",")
         .map((t) => t.trim())
         .filter(Boolean);
-      // 👇 NUEVO: arma el payload de imágenes con SOLO NOMBRE + ORDEN
-      const imagenesPayload = (modal?.draft?.imageUploadsNames || []).map(
-        (name, idx) => ({
-          url_imagen: name,
-          orden_imagen: idx,
-        })
-      );
+      // 👇 NUEVO: arma el payload de imágenes con NOMBRE + ORDEN + is_file para nuevos, y URL para existentes
+      const imagenesPayload = (d.imagePreviews || []).map((src, idx) => {
+        const isBlob = src.startsWith('blob:');
+        if (isBlob) {
+          // Nueva imagen subida
+          const fileName = d.imageUploadsNames?.[idx] || `image_${idx}.jpg`;
+          return {
+            url_imagen: fileName,
+            orden_imagen: idx,
+            is_file: true,
+          };
+        } else {
+          // Imagen existente
+          return {
+            url_imagen: src,
+            orden_imagen: idx,
+            is_file: false,
+          };
+        }
+      });
 
       console.debug("[DEBUG] imagenesPayload", imagenesPayload);
 
@@ -1134,9 +1175,9 @@ export default function Inventario() {
           Number(d.marcaId ?? d.marca ?? 0),
           etiquetas,
           d.unidadMedida ?? "unidad",
-          !!d.activo,
-          imagenesPayload,
-          pesoKg
+          pesoKg,
+          d.imageFiles,
+          imagenesPayload
         );
 
         // --- 2) Actualización optimista en la tabla (sin volver a pedir) ---
@@ -1221,7 +1262,7 @@ export default function Inventario() {
         // CREAR producto
         const etiquetas = ["Nuevo"];
         await crearProducto(
-          d.producto,
+          d.producto, // <-- aquí aseguras que se envía como 'nombre'
           d.descripcion ?? "",
           Number(d.precioBase ?? 0),
           Number(d.subcategoriaId ?? d.subcategoria ?? 0),
@@ -1229,8 +1270,9 @@ export default function Inventario() {
           Number(d.marcaId ?? d.marca ?? 0),
           etiquetas,
           d.unidadMedida ?? "unidad",
-          imagenesPayload,
-          pesoKg
+          pesoKg,
+          d.imageFiles,
+          []
         );
 
         // Recargar productos después de crear
@@ -1347,16 +1389,17 @@ export default function Inventario() {
       }
     }
 
+
     // Imágenes del producto
     try {
-      const imgRes = await getImagenesProducto(row.id);
-      const imgs = ((imgRes?.data ?? imgRes) || [])
-        .map(mapApiImagen)
-        .filter(Boolean);
-      setSupplyModal((m) => ({ ...m, images: imgs }));
-    } catch (e) {
-      console.warn("No se pudieron cargar imágenes del producto", e);
-    }
+        const imgsRes = await getImagenesProducto(row.id);
+        const urls = ((imgsRes?.data ?? imgsRes) || [])
+          .map((i) => toPublicFotoSrc(i.url_imagen))
+          .filter(Boolean);
+        if (urls.length) {
+          setSupplyModal((prev) => ({ ...prev, images: urls }));
+        }
+      } catch {}
   }
 
   function closeSupply() {
@@ -1931,6 +1974,14 @@ export default function Inventario() {
             value={modal.draft.precioBase}
             onChange={(v) =>
               setModal((m) => ({ ...m, draft: { ...m.draft, precioBase: v } }))
+            }
+          />
+          <Input
+            type="number"
+            label="Porcentaje de ganancia (%)"
+            value={modal.draft.porcentajeGanancia}
+            onChange={(v) =>
+              setModal((m) => ({ ...m, draft: { ...m.draft, porcentajeGanancia: v } }))
             }
           />
           {/* Unidad de medida */}

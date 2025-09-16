@@ -8,6 +8,8 @@ const {
   Sequelize,
 } = require("../models");
 const { Op } = Sequelize;
+const fs = require('fs');
+const path = require('path');
 // Productos destacados (últimos creados) con 1 imagen
 exports.destacados = async (req, res) => {
   try {
@@ -327,9 +329,11 @@ const { crearProductoConStockEnSucursales } = require('../services/serviceInvent
 // Crear producto con imágenes
 exports.addproducto = async (req, res) => {
   try {
+    const { imagenes_payload, ...body } = req.body;
     const payload = {
-      ...req.body,
-      files: req.files // archivos subidos por multer
+      ...body,
+      files: req.files, // archivos subidos por multer
+      imagenes_payload,
     };
     const data = await crearProductoConStockEnSucursales(payload);
     return res.status(201).json(data);
@@ -415,6 +419,14 @@ exports.eliminarImagenProducto = async (req, res) => {
     if (!img) {
       return res.status(404).json({ msg: "Imagen no encontrada" });
     }
+
+    // Delete the file from filesystem
+    const filename = path.basename(img.url_imagen);
+    const filePath = path.join(__dirname, '..', 'public', 'images', 'productos', filename);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
     await img.destroy();
     res.json({ msg: "Imagen eliminada" });
   }
@@ -427,13 +439,33 @@ exports.eliminarImagenProducto = async (req, res) => {
 exports.imagenesProducto = async (req, res) => {
   try {
     const { id } = req.params;
-    const images = await imagen_producto.findAll({
+
+    // Obtener imágenes desde la base de datos
+    const dbImages = await imagen_producto.findAll({
       where: { id_producto: id },
-      attributes: ["id_imagen", "url_imagen", "orden_imagen"],
-      order: [["orden_imagen", "ASC"]],
+      attributes: ['id_imagen', 'url_imagen', 'orden_imagen'],
+      order: [['orden_imagen', 'ASC']]
     });
+
+    // Leer imágenes desde la carpeta del producto
+    const productDir = path.join(__dirname, '..', 'public', 'images', 'productos');
+    const files = fs.readdirSync(productDir);
+
+    // Filtrar imágenes que estén en la BD y existan en el filesystem
+    const images = dbImages
+      .filter(dbImg => {
+        const filename = path.basename(dbImg.url_imagen);
+        return files.includes(filename) && fs.existsSync(path.join(productDir, filename));
+      })
+      .map((dbImg, index) => ({
+        id_imagen: dbImg.id_imagen,
+        url_imagen: dbImg.url_imagen,
+        orden_imagen: dbImg.orden_imagen
+      }));
+
     res.json(images);
   } catch (err) {
+    console.error('Error leyendo imágenes del producto:', err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -581,41 +613,42 @@ exports.crearMarca = async (req, res) => {
 
 exports.actualizarProducto = async (req, res) => {
   try {
-    const { id_producto } = req.params;
+    const id = req.params.id_producto;
     const {
       nombre,
       descripcion,
       precio_base,
-      id_subcategoria,
+      subcategoria_id,
       porcentaje_ganancia,
-      id_marca,
+      marca_id,
       etiquetas,
       unidad_medida,
       activo,
-      peso,
+      peso_kg,
+      imagenes_payload,
     } = req.body;
 
     const files = req.files; // Archivos subidos con multer
 
     // Validar que el ID del producto sea numérico
-    if (!id_producto || isNaN(parseInt(id_producto))) {
+    if (!id || isNaN(parseInt(id))) {
       return res.status(400).json({ message: "ID de producto inválido" });
     }
 
     // Buscar el producto
-    const product = await producto.findByPk(id_producto);
+    const product = await producto.findByPk(id);
     if (!product) {
       return res.status(404).json({ message: "Producto no encontrado" });
     }
 
     // Validar que la subcategoría existe
-    const subcat = await subcategoria.findByPk(id_subcategoria);
+    const subcat = await subcategoria.findByPk(subcategoria_id);
     if (!subcat) {
       return res.status(400).json({ message: "La subcategoría no existe" });
     }
 
     // Validar que la marca existe
-    const marca = await marca_producto.findByPk(id_marca);
+    const marca = await marca_producto.findByPk(marca_id);
     if (!marca) {
       return res.status(400).json({ message: "La marca no existe" });
     }
@@ -651,35 +684,33 @@ exports.actualizarProducto = async (req, res) => {
       nombre: nombre.trim(),
       descripcion: descripcion || "",
       precio_base: parseFloat(precio_base),
-      id_subcategoria: parseInt(id_subcategoria),
+      id_subcategoria: parseInt(subcategoria_id),
       porcentaje_ganancia: porcentaje_ganancia
         ? parseFloat(porcentaje_ganancia)
         : null,
-      id_marca: parseInt(id_marca),
+      id_marca: parseInt(marca_id),
       etiquetas: etiquetasArray,
       unidad_medida,
       activo: activo !== undefined ? Boolean(activo) : true,
-      peso: peso !== undefined ? parseFloat(peso) : null,
+      peso: peso_kg !== undefined ? parseFloat(peso_kg) : null,
     });
 
-    // Actualizar imagenes si se proporcionaron archivos
-    if (files && files.length > 0) {
-      // Eliminar imágenes existentes para este producto
-      await imagen_producto.destroy({ where: { id_producto: id_producto } });
-
-      // Procesar cada archivo subido
-      const imagenesData = files.map((file, index) => ({
-        id_producto: parseInt(id_producto),
-        url_imagen: `/images/productos/${file.filename}`, // URL relativa al archivo subido
-        orden_imagen: index, // Orden basado en el índice del array
-      }));
-
-      // Guardar en la base de datos
-      await imagen_producto.bulkCreate(imagenesData);
+    // Actualizar imagenes
+    const payload = JSON.parse(imagenes_payload || '[]');
+    await imagen_producto.destroy({ where: { id_producto: id } });
+    let fileIndex = 0;
+    for (const item of payload) {
+      const { url_imagen, orden_imagen, is_file } = item;
+      const url = is_file ? `/images/productos/${files[fileIndex++].filename}` : url_imagen;
+      await imagen_producto.create({
+        id_producto: id,
+        url_imagen: url,
+        orden_imagen,
+      });
     }
 
     // Obtener el producto actualizado con detalles
-    const updatedProduct = await producto.findByPk(id_producto, {
+    const updatedProduct = await producto.findByPk(id, {
       include: [
         {
           model: subcategoria,

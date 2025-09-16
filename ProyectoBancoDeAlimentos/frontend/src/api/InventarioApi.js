@@ -96,31 +96,35 @@ export function desactivarProducto(id_producto) {
 }
 
 export function actualizarProducto(
-  id_producto,
-  nombre,
+  id,
+  producto,
   descripcion,
-  precio_base,
-  id_subcategoria,
-  porcentaje_ganancia,
-  id_marca,
+  precioBase,
+  subcategoriaId,
+  porcentajeGanancia,
+  marcaId,
   etiquetas,
-  unidad_medida,
-  imagenes,
-  peso,
-  files = [] // Array de archivos para subir
+  unidadMedida,
+  pesoKg,
+  files = [],
+  imagenesPayload = []
 ) {
   const formData = new FormData();
 
   // Agregar datos del producto
-  formData.append('nombre', nombre);
+  formData.append('nombre', producto);
   formData.append('descripcion', descripcion || '');
-  formData.append('precio_base', precio_base);
-  formData.append('id_subcategoria', id_subcategoria);
-  if (porcentaje_ganancia !== undefined) formData.append('porcentaje_ganancia', porcentaje_ganancia);
-  formData.append('id_marca', id_marca);
+  formData.append('precio_base', precioBase);
+  formData.append('subcategoria_id', subcategoriaId);
+  if (porcentajeGanancia !== undefined) formData.append('porcentaje_ganancia', porcentajeGanancia);
+  formData.append('marca_id', marcaId);
   if (etiquetas) formData.append('etiquetas', Array.isArray(etiquetas) ? etiquetas.join(',') : etiquetas);
-  formData.append('unidad_medida', unidad_medida);
-  if (peso !== undefined) formData.append('peso', peso);
+  formData.append('unidad_medida', unidadMedida);
+  if (pesoKg !== undefined) formData.append('peso_kg', pesoKg);
+  formData.append('activo', true); // Default to true for updates
+
+  // Agregar payload de imágenes
+  formData.append('imagenes_payload', JSON.stringify(imagenesPayload));
 
   // Agregar archivos de imagen
   if (files && files.length > 0) {
@@ -129,37 +133,41 @@ export function actualizarProducto(
     });
   }
 
-  return axiosInstance.put(`/api/producto/actualizar-producto/${id_producto}`, formData, {
+  return axiosInstance.put(`/api/producto/actualizar-producto/${id}`, formData, {
     headers: { "Content-Type": "multipart/form-data" },
   });
 }
 
 
 export function crearProducto(
-  nombre,
+  producto,
   descripcion,
-  precio_base,
-  id_subcategoria,
-  porcentaje_ganancia,
-  id_marca,
+  precioBase,
+  subcategoriaId,
+  porcentajeGanancia,
+  marcaId,
   etiquetas,
-  unidad_medida,
-  imagenes,
-  peso,
-  files = [] // Array de archivos para subir
+  unidadMedida,
+  pesoKg,
+  files = [],
+  imagenesPayload = []
 ) {
   const formData = new FormData();
 
   // Agregar datos del producto
-  formData.append('nombre', nombre);
+  formData.append('nombre', producto);
   formData.append('descripcion', descripcion || '');
-  formData.append('precio_base', precio_base);
-  formData.append('id_subcategoria', id_subcategoria);
-  if (porcentaje_ganancia !== undefined) formData.append('porcentaje_ganancia', porcentaje_ganancia);
-  formData.append('id_marca', id_marca);
+  formData.append('precio_base', precioBase);
+  formData.append('subcategoria_id', subcategoriaId);
+  if (porcentajeGanancia !== undefined) formData.append('porcentaje_ganancia', porcentajeGanancia);
+  formData.append('marca_id', marcaId);
   if (etiquetas) formData.append('etiquetas', Array.isArray(etiquetas) ? etiquetas.join(',') : etiquetas);
-  formData.append('unidad_medida', unidad_medida);
-  if (peso !== undefined) formData.append('peso', peso);
+  formData.append('unidad_medida', unidadMedida);
+  if (pesoKg !== undefined) formData.append('peso_kg', pesoKg);
+  formData.append('activo', true); // Default to true for creates
+
+  // Agregar payload de imágenes
+  formData.append('imagenes_payload', JSON.stringify(imagenesPayload));
 
   // Agregar archivos de imagen
   if (files && files.length > 0) {

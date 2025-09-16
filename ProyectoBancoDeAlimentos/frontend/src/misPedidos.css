@@ -2,8 +2,23 @@
 .page-container {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+
+  /* Tamaño fijo igual a .cupones */
+  width: 1000px;
+  height: 700px;
+
+  /* Centrado horizontal */
+  margin: 0 auto;
+  margin-left: -80px; /* si quieres mantenerlo igual que .cupones */
+
+  /* Espaciado interno y separación entre hijos */
+  padding: 2rem;
+  gap: 20px;
+
+  /* Estilo visual igual a .cupones */
   background: #f5f7fa;
+  border-radius: 2rem;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
 }
 
 .mis-pedidos-container {

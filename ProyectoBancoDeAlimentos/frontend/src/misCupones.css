@@ -1,14 +1,20 @@
 .cupones {
-  height: 700px;
-  width: 1000px;
+  /* Usa el mismo fondo general */
+  background: #f5f7fa;
+
+  /* Estructura flexible como el layout general */
   display: flex;
   flex-direction: column;
+  height: 700px;
+  width: 1000px;
+  margin: 0 auto; /* Centrado horizontal */
+  padding: 2rem; /* Espaciado interno */
+  border-radius: 2rem; /* Bordes redondeados */
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1); /* Sombra ligera */
   gap: 20px;
-  border-radius: 2rem;
-  background: #fff;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+  margin-left: -120px;
   position: relative;
-  margin-top: 150px;
+  bottom: -13px; /* mueve 30px hacia arriba */
 }
 
 .titulo {

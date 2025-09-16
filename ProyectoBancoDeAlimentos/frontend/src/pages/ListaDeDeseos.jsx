@@ -7,6 +7,7 @@ import appleImage from "../images/appleImage.png";
 import carritoImage from "../images/ncarrito.png";
 import izqImage from "../images/izq.png";
 import derImage from "../images/der.png";
+import PerfilSidebar from "../components/perfilSidebar";
 
 export default function ListaDeDeseos({ id_usuario }) {
   const tabs = ["Ordenar Por:", "Más recientes", "En Oferta", "Disponibles"];
@@ -16,7 +17,13 @@ export default function ListaDeDeseos({ id_usuario }) {
   const [startIndex, setStartIndex] = useState(0);
 
   const recomendados = [
-    { id: 1, name: "Manzana Roja", price: "L. 14.00", img: appleImage, rating: 2 },
+    {
+      id: 1,
+      name: "Manzana Roja",
+      price: "L. 14.00",
+      img: appleImage,
+      rating: 2,
+    },
     { id: 2, name: "Banano", price: "L. 8.00", img: appleImage, rating: 3 },
     { id: 3, name: "Pera", price: "L. 12.00", img: appleImage, rating: 1 },
     { id: 4, name: "Uvas", price: "L. 20.00", img: appleImage, rating: 2 },
@@ -34,14 +41,14 @@ export default function ListaDeDeseos({ id_usuario }) {
     async function fetchFavs() {
       try {
         const res = await getProductosFav(id_usuario);
-        const favs = res.data.map(f => ({
+        const favs = res.data.map((f) => ({
           id: f.id_producto,
           name: f.Producto?.nombre || "Producto",
           price: `L. ${f.Producto?.precio_base || "0.00"}`,
           img: f.Producto?.imagen || appleImage,
           rating: f.Producto?.rating || 2,
           available: true,
-          onSale: false
+          onSale: false,
         }));
         setProducts(favs);
       } catch (error) {
@@ -59,7 +66,10 @@ export default function ListaDeDeseos({ id_usuario }) {
   });
 
   const handlePrev = () => setStartIndex((prev) => Math.max(prev - 1, 0));
-  const handleNext = () => setStartIndex((prev) => Math.min(prev + 1, recomendados.length - visibleCount));
+  const handleNext = () =>
+    setStartIndex((prev) =>
+      Math.min(prev + 1, recomendados.length - visibleCount)
+    );
 
   const agregarAlCarrito = async (id_producto) => {
     try {
@@ -83,7 +93,10 @@ export default function ListaDeDeseos({ id_usuario }) {
         alignItems: "center",
       }}
     >
-      <div className="max-w-6xl w-full px-6 font-sans">
+      <div className="max-w-6xl w-full px-6 font-sans -mt-12 ml-[130px]">
+        <section className="sidebar">
+          <PerfilSidebar />
+        </section>
         {/* Fondo unificado: título + ordenar por + productos */}
         <div className="w-full max-w-[1080px] bg-white rounded-xl shadow-lg p-6 mb-8 mx-auto">
           {/* Título */}
@@ -99,7 +112,9 @@ export default function ListaDeDeseos({ id_usuario }) {
 
           {/* Tabs */}
           <div className="flex items-center gap-4 mb-6 shadow-lg bg-gray-50 rounded-lg p-1">
-            <div className="text-sm text-gray-700 font-semibold px-3">Ordenar Por:</div>
+            <div className="text-sm text-gray-700 font-semibold px-3">
+              Ordenar Por:
+            </div>
             <div className="flex overflow-hidden flex-1 rounded-lg">
               {tabs.slice(1).map((t) => (
                 <button
@@ -119,7 +134,11 @@ export default function ListaDeDeseos({ id_usuario }) {
           <div className="overflow-y-auto h-[450px] w-full pb-4 scrollbar-thin scrollbar-thumb-orange-400 scrollbar-track-gray-200">
             <div className="grid grid-cols-5 gap-6 px-4 mt-8">
               {filteredProducts.map((p) => (
-                <ProductoCard key={p.id} p={p} agregarAlCarrito={agregarAlCarrito} />
+                <ProductoCard
+                  key={p.id}
+                  p={p}
+                  agregarAlCarrito={agregarAlCarrito}
+                />
               ))}
             </div>
           </div>
@@ -142,7 +161,11 @@ export default function ListaDeDeseos({ id_usuario }) {
               {recomendados
                 .slice(startIndex, startIndex + visibleCount)
                 .map((p) => (
-                  <ProductoCard key={`rec-${p.id}`} p={p} agregarAlCarrito={agregarAlCarrito} />
+                  <ProductoCard
+                    key={`rec-${p.id}`}
+                    p={p}
+                    agregarAlCarrito={agregarAlCarrito}
+                  />
                 ))}
             </div>
 
@@ -163,7 +186,11 @@ function ProductoCard({ p, agregarAlCarrito }) {
   return (
     <div className="relative bg-white rounded-2xl p-3 shadow-lg w-full">
       <div className="absolute top-2 left-2 w-5 h-5">
-        <img src={carritoImage} alt="Carrito" className="w-full h-full object-contain" />
+        <img
+          src={carritoImage}
+          alt="Carrito"
+          className="w-full h-full object-contain"
+        />
       </div>
       <div className="absolute top-2 right-2 flex items-center gap-1">
         {/* Ahora 5 estrellas */}

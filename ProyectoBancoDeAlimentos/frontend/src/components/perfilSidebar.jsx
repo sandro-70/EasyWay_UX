@@ -53,6 +53,14 @@ export default function PerfilSidebar() {
             Mis Facturas
           </Link>
         </li>
+        <li>
+          <Link
+            to="/ListaDeDeseos"
+            className="block p-2 rounded hover:bg-[#f0833e] text-gray-700"
+          >
+            Lista de Deseos
+          </Link>
+        </li>
       </ul>
     </div>
   );

@@ -1,6 +1,7 @@
 .mis-direcciones {
   padding: 20px;
-  
+  margin-bottom: -153px;
+  margin-right: -170px;
 }
 
 .titulo {
@@ -17,7 +18,6 @@
   margin: 0 auto 30px;
   width: 100%;
 }
-
 
 /* ---------- Formulario ---------- */
 .formulario-direccion {
@@ -151,7 +151,6 @@ tbody tr:hover {
   padding: 20px;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
   position: relative;
-  
 }
 
 .modal-header {

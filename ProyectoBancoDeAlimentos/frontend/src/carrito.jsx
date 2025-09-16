@@ -14,6 +14,7 @@ import {
   AddNewCarrito,
 } from "./api/CarritoApi";
 import { GetCupones, desactivarCupon } from "./api/CuponesApi";
+import { getPromociones } from "./api/PromocionesApi";
 import {
   getProductosRecomendados,
   getAllSucursales,
@@ -23,35 +24,15 @@ import { crearPedido } from "./api/PedidoApi";
 import { UserContext } from "./components/userContext";
 import { useCart } from "../src/utils/CartContext";
 
-//Agregar Parametro que diga cuantos productos en carrito?
 function Carrito() {
-  //Objeto de producto
   const { setCount, incrementCart, decrementCart } = useCart();
 
-  //Productos de pagina de inicio //necesita cantidad, imagen
   const [detalles, setDetalles] = useState([]);
   const [prodRec, setRec] = useState([]);
-
-  // Estado para el stock por sucursal
   const [stockPorSucursal, setStockPorSucursal] = useState({});
-
-  //Scroll
-  const scroll = (direction, ref, itemWidth) => {
-    if (ref.current) {
-      ref.current.scrollBy({
-        left: direction === "left" ? -itemWidth : itemWidth,
-        behavior: "smooth",
-      });
-    }
-  };
-  //carrito id
   const { id } = useParams();
-  //Referencia de los productos recomendados para scroll
   const prodRefRecomendados = useRef(null);
-
   const [hoveredProductDest, setHoveredProductDest] = React.useState(null);
-
-  //Saber si el carrito esta vacio o no
   const productosCarrito = useState(0);
   const [discount, setVisible] = useState(false);
   const [cupon, setCupon] = useState("EMPTY");
@@ -61,16 +42,17 @@ function Carrito() {
   const [total, setTotal] = useState(0);
   const { user } = useContext(UserContext);
   const navigate = useNavigate();
-  // cantidades en edición por id_carrito_detalle
   const [qtyDraft, setQtyDraft] = useState({});
 
-  console.log("Header user carrito", user);
-
-  // --- Sucursales (discreto) ---
   const [sucursales, setSucursales] = useState([]);
   const [idSucursal, setIdSucursal] = useState(null);
 
-  // helper estrellas (no invasivo)
+  const [promociones, setPromociones] = useState([]);
+  const [promocionAplicada, setPromocionAplicada] = useState(null);
+
+  console.log("Header user carrito", user);
+
+  // Helper estrellas
   const getStars = (obj) => {
     const n = Math.round(
       Number(obj?.estrellas ?? obj?.rating ?? obj?.valoracion ?? 0)
@@ -78,7 +60,6 @@ function Carrito() {
     return Math.max(0, Math.min(5, isNaN(n) ? 0 : n));
   };
 
-  // Función para obtener el stock de un producto específico en la sucursal seleccionada
   const getStockEnSucursal = (idProducto) => {
     if (!idSucursal || !stockPorSucursal[idSucursal]) return 0;
     const producto = stockPorSucursal[idSucursal].find(
@@ -87,7 +68,6 @@ function Carrito() {
     return producto ? producto.stock_en_sucursal : 0;
   };
 
-  // Función para cargar el stock de productos por sucursal
   const cargarStockPorSucursal = async (idSucursalParam) => {
     if (!idSucursalParam) return;
 
@@ -109,19 +89,107 @@ function Carrito() {
     }
   };
 
+  //validar si una promoción está activa
+  const validarFechaPromocion = (fechaInicio, fechaTermina) => {
+    const hoy = new Date();
+    const inicio = new Date(fechaInicio);
+    const termina = new Date(fechaTermina);
+
+    return hoy >= inicio && hoy <= termina;
+  };
+
+  //obtener promociones válidas
+  const obtenerPromocionesValidas = (promociones) => {
+    return promociones.filter(
+      (promo) =>
+        promo.activa &&
+        validarFechaPromocion(promo.fecha_inicio, promo.fecha_termina)
+    );
+  };
+
+  //encontrar mayor promoción aplicable
+  const encontrarMejorPromocion = (totalCarrito, promocionesDisponibles) => {
+    const promocionesValidas = obtenerPromocionesValidas(
+      promocionesDisponibles
+    );
+
+    //compra mínima
+    const promocionesAplicables = promocionesValidas.filter((promo) => {
+      if (promo.compra_min && totalCarrito < promo.compra_min) {
+        return false;
+      }
+      return true;
+    });
+
+    if (promocionesAplicables.length === 0) return null;
+
+    let mejorPromocion = null;
+    let mayorDescuento = 0;
+
+    promocionesAplicables.forEach((promo) => {
+      let descuento = 0;
+
+      switch (promo.id_tipo_promo) {
+        case 1: // Porcentual
+          descuento = totalCarrito * (parseFloat(promo.valor_porcentaje) / 100);
+          break;
+        case 2: // Fijo
+          descuento = Math.min(parseFloat(promo.valor_fijo), totalCarrito);
+          break;
+        default:
+          descuento = 0;
+      }
+
+      if (descuento > mayorDescuento) {
+        mayorDescuento = descuento;
+        mejorPromocion = promo;
+      }
+    });
+
+    return mejorPromocion;
+  };
+
+  const calcularDescuentoPromocion = () => {
+    if (!promocionAplicada) return 0;
+
+    switch (promocionAplicada.id_tipo_promo) {
+      case 1: // Descuento porcentual
+        const porcentaje = parseFloat(promocionAplicada.valor_porcentaje) || 0;
+        return total * (porcentaje / 100);
+
+      case 2: // Descuento fijo
+        const valorFijo = parseFloat(promocionAplicada.valor_fijo) || 0;
+        return Math.min(valorFijo, total); // No puede ser mayor al total
+
+      default:
+        return 0;
+    }
+  };
+
+  //(cupones + promociones)
+  const obtenerDescuentoTotal = () => {
+    const descuentoCupon = descCupon > 0 ? total * (descCupon / 100) : 0;
+    const descuentoPromocion = calcularDescuentoPromocion();
+
+    return descuentoCupon + descuentoPromocion;
+  };
+
   const obtenerTotal = () => {
-    return (total * (1 - descCupon / 100) * 1.15).toFixed(2);
+    const descuentoTotal = obtenerDescuentoTotal();
+    const subtotalConDescuentos = total - descuentoTotal;
+    const totalConImpuestos = subtotalConDescuentos * 1.15;
+
+    return Math.max(0, totalConImpuestos).toFixed(2);
   };
 
   const obtenerImpuesto = () => {
-    return (total * 0.15).toFixed(2);
+    const descuentoTotal = obtenerDescuentoTotal();
+    const subtotalConDescuentos = total - descuentoTotal;
+    return (subtotalConDescuentos * 0.15).toFixed(2);
   };
 
   const obtenerDescuento = () => {
-    if (!(descCupon === 0)) {
-      return (total * (descCupon / 100)).toFixed(2);
-    }
-    return 0;
+    return obtenerDescuentoTotal().toFixed(2);
   };
 
   const sumaCarrito = () => {
@@ -132,13 +200,14 @@ function Carrito() {
     setTotal(subtotal);
     return subtotal;
   };
+
   const SumarBackend = async (id, n) => {
     await SumarItem(id, n);
   };
+
   const updateQuantity = async (idDetalle, id, n) => {
     if (n < 1) return;
 
-    // Verificar stock disponible en la sucursal seleccionada
     const stockDisponible = getStockEnSucursal(id);
     if (n > stockDisponible) {
       alert(
@@ -165,7 +234,8 @@ function Carrito() {
       alert("No se pudo actualizar la cantidad");
     }
   };
-  //Verifica si el cupon es valido
+
+  // Verifica si el cupon es valido
   const checkCupon = async (e) => {
     e.preventDefault();
     try {
@@ -181,7 +251,7 @@ function Carrito() {
 
       if (cuponValido) {
         setVisible(true);
-        setDesc(cuponValido.valor); // usar el valor real del cupón
+        setDesc(cuponValido.valor);
         alert(
           `Cupón agregado: ${cuponValido.codigo}, ${cuponValido.valor}% de descuento`
         );
@@ -211,31 +281,30 @@ function Carrito() {
 
     try {
       const total_factura = obtenerTotal();
-      let desc = 0;
-      if (!(descCupon === 0)) {
-        desc = parseFloat(((descCupon / 100) * total).toFixed(2));
-      }
+      const desc = parseFloat(obtenerDescuento());
 
+      console.log("Total factura con promociones:", total_factura);
+      console.log("Descuento total aplicado:", desc);
       console.log(user.id_usuario);
       console.log(user.direccions[0].id_direccion);
       const id_direccion = user.direccions[0].id_direccion.toString();
-      console.log(cupon);
-      console.log(desc);
-      console.log(total_factura);
 
-      // usar sucursal seleccionada (fallback a primera / 2)
       const sucursalId = Number(idSucursal ?? sucursales[0]?.id_sucursal ?? 2);
 
       const response = await crearPedido(
-        user.id_usuario, // int
-        id_direccion, // string (o int si cambias el modelo)
-        sucursalId, // ✅ id_sucursal seleccionado
-        null, // id_cupon
-        desc // descuento
+        user.id_usuario,
+        id_direccion,
+        sucursalId,
+        promocionAplicada ? promocionAplicada.id_promocion : null,
+        desc
       );
 
       setCount(0);
       if (idCuponDesactivar !== 0) desactivarCupon(idCuponDesactivar);
+
+      // Limpiar promoción aplicada si había una
+      setPromocionAplicada(null);
+
       console.log("Pedido creado:", response.data);
       alert("Pedido creado correctamente!");
       setShowProd(false);
@@ -244,15 +313,14 @@ function Carrito() {
       alert("No se pudo crear el pedido");
     }
   };
+
   const eliminarEnBackend = async (idToDelete) => {
     await eliminarItem({ id_producto: idToDelete });
   };
+
   const eliminarProducto = async (idToDelete, idProd) => {
     try {
-      // 1. Eliminar en backend
       await eliminarEnBackend(idProd);
-
-      // 2. Eliminar en frontend
       setDetalles((prev) =>
         prev.filter((p) => p.id_carrito_detalle !== idToDelete)
       );
@@ -267,17 +335,14 @@ function Carrito() {
       return;
     }
 
-    // Verificar stock disponible en la sucursal seleccionada
     const stockDisponible = getStockEnSucursal(id_producto);
 
     try {
       console.log("Agregando producto:", id_producto);
 
-      // Obtener carrito actual
       const carritoActual = await ViewCar();
       const carritoDetalles = carritoActual.data.carrito_detalles ?? [];
 
-      // Buscar si el producto ya existe
       const productoExistente = carritoDetalles.find(
         (item) => item.producto.id_producto === id_producto
       );
@@ -286,7 +351,6 @@ function Carrito() {
         const cantidadActual = productoExistente.cantidad_unidad_medida || 0;
         const nuevaCantidad = cantidadActual + 1;
 
-        // Verificar que no exceda el stock
         if (nuevaCantidad > stockDisponible) {
           alert(
             `Solo hay ${stockDisponible} unidades disponibles en esta sucursal`
@@ -299,10 +363,8 @@ function Carrito() {
         );
         alert("Actualizando a " + nuevaCantidad);
 
-        // Actualizar en backend
         await SumarItem(id_producto, nuevaCantidad);
 
-        // Actualizar estado local del carrito (si lo tienes)
         setDetalles((prev) => {
           if (Array.isArray(prev)) {
             return prev.map((item) =>
@@ -320,10 +382,8 @@ function Carrito() {
       } else {
         console.log("Producto nuevo, agregando al carrito");
 
-        // Agregar nuevo producto
         await AddNewCarrito(id_producto, 1);
 
-        // Recargar carrito completo para obtener el nuevo producto
         const carritoActualizado = await ViewCar();
         const nuevosDetalles = carritoActualizado.data.carrito_detalles ?? [];
         setDetalles(nuevosDetalles);
@@ -333,12 +393,10 @@ function Carrito() {
     } catch (error) {
       console.error("Error:", error);
 
-      // Si el carrito está vacío, intentar crear uno nuevo
       if (error?.response?.status === 404) {
         try {
           await AddNewCarrito(id_producto, 1);
 
-          // Recargar carrito
           const carritoNuevo = await ViewCar();
           const nuevosDetalles = carritoNuevo.data.carrito_detalles ?? [];
           setDetalles(nuevosDetalles);
@@ -360,25 +418,20 @@ function Carrito() {
     }
   };
 
-  // Se escribe localmente sin tocar backend
   const handleQtyInputChange = (idDetalle, raw) => {
-    // sólo dígitos
     const clean = raw.replace(/[^\d]/g, "");
     setQtyDraft((prev) => ({ ...prev, [idDetalle]: clean }));
   };
 
-  // Se confirma a backend en blur o Enter
   const commitQtyChange = async (p, raw) => {
     let n = parseInt(raw, 10);
-    if (isNaN(n) || n < 1) n = 1; // mínimo 1
+    if (isNaN(n) || n < 1) n = 1;
 
-    // Verificar stock disponible en la sucursal seleccionada
     const stockDisponible = getStockEnSucursal(p.producto.id_producto);
     if (n > stockDisponible) {
       alert(
         `Solo hay ${stockDisponible} unidades disponibles en esta sucursal`
       );
-      // Restaurar valor anterior
       setQtyDraft((prev) => {
         const { [p.id_carrito_detalle]: _, ...rest } = prev;
         return rest;
@@ -386,7 +439,6 @@ function Carrito() {
       return;
     }
 
-    // ajustar el contador global del carrito (diff respecto a lo actual)
     const diff = n - p.cantidad_unidad_medida;
     try {
       await updateQuantity(p.id_carrito_detalle, p.producto.id_producto, n);
@@ -396,7 +448,6 @@ function Carrito() {
       console.error("Error confirmando cantidad:", err);
       alert("No se pudo actualizar la cantidad");
     } finally {
-      // limpiar el borrador para volver a mostrar el valor "oficial"
       setQtyDraft((prev) => {
         const { [p.id_carrito_detalle]: _, ...rest } = prev;
         return rest;
@@ -404,69 +455,14 @@ function Carrito() {
     }
   };
 
-  useEffect(() => {
-    setTotal(sumaCarrito());
-    if (detalles.length === 0) {
-      setShowProd(false);
-    } else {
-      setShowProd(true);
+  const scroll = (direction, ref, itemWidth) => {
+    if (ref.current) {
+      ref.current.scrollBy({
+        left: direction === "left" ? -itemWidth : itemWidth,
+        behavior: "smooth",
+      });
     }
-  }, [detalles]);
-
-  useEffect(() => {
-    const productos = async () => {
-      try {
-        const res = await ViewCar();
-        const rec = await getProductosRecomendados();
-        console.log("productos rec", rec.data);
-
-        console.log("productos carrito", res.data.carrito_detalles);
-
-        const carritoDetalles = res.data.carrito_detalles ?? [];
-        setDetalles(carritoDetalles);
-        setRec(rec.data);
-        if (carritoDetalles.length === 0) {
-          setShowProd(false);
-        }
-
-        // Hacer un único setProducts
-      } catch (err) {
-        console.error("[REGISTER] error:", err?.response?.data || err);
-        alert(err?.response?.data?.message || "Error");
-      }
-    };
-    productos();
-
-    return () => {};
-  }, []);
-
-  // Cargar sucursales (discreto, sin bloquear flujo)
-  useEffect(() => {
-    const fetchSucursales = async () => {
-      try {
-        const res = await getAllSucursales();
-        const arr = res?.data ?? [];
-        setSucursales(arr);
-        if (arr.length && !idSucursal) {
-          const primeraSucursal = arr[0].id_sucursal ?? arr[0].id;
-          setIdSucursal(primeraSucursal);
-          // Cargar stock de la primera sucursal
-          cargarStockPorSucursal(primeraSucursal);
-        }
-      } catch (err) {
-        console.error("Error cargando sucursales:", err);
-      }
-    };
-    fetchSucursales();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Efecto para cargar stock cuando cambia la sucursal seleccionada
-  useEffect(() => {
-    if (idSucursal) {
-      cargarStockPorSucursal(idSucursal);
-    }
-  }, [idSucursal]);
+  };
 
   const handleIncrement = async (p) => {
     const nuevaCantidad = p.cantidad_unidad_medida + 1;
@@ -508,6 +504,105 @@ function Carrito() {
     }
   };
 
+  //Automatico cuando cambie el total
+  useEffect(() => {
+    if (total > 0 && promociones.length > 0) {
+      const mejorPromocion = encontrarMejorPromocion(total, promociones);
+
+      // Solo actualizar si cambió la promoción
+      if (mejorPromocion?.id_promocion !== promocionAplicada?.id_promocion) {
+        setPromocionAplicada(mejorPromocion);
+
+        if (mejorPromocion) {
+          console.log(
+            `Promoción automática aplicada: ${mejorPromocion.nombre_promocion}`
+          );
+        } else {
+          console.log("No hay promociones aplicables");
+        }
+      }
+    } else {
+      if (promocionAplicada) {
+        setPromocionAplicada(null);
+      }
+    }
+  }, [total, promociones]);
+
+  // Effects existentes
+  useEffect(() => {
+    setTotal(sumaCarrito());
+    if (detalles.length === 0) {
+      setShowProd(false);
+    } else {
+      setShowProd(true);
+    }
+  }, [detalles]);
+
+  useEffect(() => {
+    const productos = async () => {
+      try {
+        const res = await ViewCar();
+        const rec = await getProductosRecomendados();
+        console.log("productos rec", rec.data);
+        console.log("productos carrito", res.data.carrito_detalles);
+
+        const carritoDetalles = res.data.carrito_detalles ?? [];
+        setDetalles(carritoDetalles);
+        setRec(rec.data);
+        if (carritoDetalles.length === 0) {
+          setShowProd(false);
+        }
+      } catch (err) {
+        console.error("[REGISTER] error:", err?.response?.data || err);
+        alert(err?.response?.data?.message || "Error");
+      }
+    };
+    productos();
+
+    return () => {};
+  }, []);
+
+  // Cargar promociones al inicio
+  useEffect(() => {
+    const cargarPromociones = async () => {
+      try {
+        const res = await getPromociones();
+        const promocionesData = res.data || [];
+        setPromociones(promocionesData);
+        console.log("Promociones cargadas:", promocionesData);
+      } catch (error) {
+        console.error("Error cargando promociones:", error);
+      }
+    };
+
+    cargarPromociones();
+  }, []);
+
+  // Cargar sucursales
+  useEffect(() => {
+    const fetchSucursales = async () => {
+      try {
+        const res = await getAllSucursales();
+        const arr = res?.data ?? [];
+        setSucursales(arr);
+        if (arr.length && !idSucursal) {
+          const primeraSucursal = arr[0].id_sucursal ?? arr[0].id;
+          setIdSucursal(primeraSucursal);
+          cargarStockPorSucursal(primeraSucursal);
+        }
+      } catch (err) {
+        console.error("Error cargando sucursales:", err);
+      }
+    };
+    fetchSucursales();
+  }, []);
+
+  useEffect(() => {
+    if (idSucursal) {
+      cargarStockPorSucursal(idSucursal);
+    }
+  }, [idSucursal]);
+
   return (
     <div
       className="bg-gray-100 w-screen min-h-screen py-4 overflow-x-hidden items-center"
@@ -522,226 +617,231 @@ function Carrito() {
         </div>
         <div className="grid grid-cols-3 gap-8 h-[350px]">
           <div className="col-span-2 w-full rounded-md border-gray-200 border-2 overflow-y-auto">
-            {
-              //se renderiza solo si productos es = 0
-              !showProducts && (
-                <div className="flex flex-row justify-center items-center gap-8">
-                  <img src={carrito} className="object-cover mt-16" />
+            {!showProducts && (
+              <div className="flex flex-row justify-center items-center gap-8">
+                <img src={carrito} className="object-cover mt-16" />
 
-                  <div className="mx-4 flex flex-col gap-y-6 font-medium">
-                    <p className="text-[24px] mt-8">Tu carrito esta vacio</p>
-                    <button
-                      onClick={() => {
-                        navigate("/");
-                      }}
-                      className="bg-[#2B6DAF] text-[28px] text-white rounded-[10px] p-3 px-6"
-                    >
-                      Explora articulos
-                    </button>
-                  </div>
+                <div className="mx-4 flex flex-col gap-y-6 font-medium">
+                  <p className="text-[24px] mt-8">Tu carrito esta vacio</p>
+                  <button
+                    onClick={() => {
+                      navigate("/");
+                    }}
+                    className="bg-[#2B6DAF] text-[28px] text-white rounded-[10px] p-3 px-6"
+                  >
+                    Explora articulos
+                  </button>
                 </div>
-              )
-            }
-            {
-              //Productos en carrito
-              showProducts && (
-                <div className="px-6 py-4">
-                  <ul className="flex flex-col space-y-4">
-                    {detalles.map((p, i) => {
-                      const stockDisponible = getStockEnSucursal(
-                        p.producto.id_producto
-                      );
-                      const sinStock = stockDisponible === 0;
+              </div>
+            )}
+            {showProducts && (
+              <div className="px-6 py-4">
+                <ul className="flex flex-col space-y-4">
+                  {detalles.map((p, i) => {
+                    const stockDisponible = getStockEnSucursal(
+                      p.producto.id_producto
+                    );
+                    const sinStock = stockDisponible === 0;
 
-                      return (
-                        <li key={i}>
-                          <div className="flex flex-row gap-8 justify-between ">
-                            {p.producto.imagenes &&
-                            p.producto.imagenes.length > 0 &&
-                            p.producto.imagenes[0].url_imagen ? (
-                              <img
-                                src={`/images/productos/${p.producto.imagenes[0].url_imagen}`}
-                                alt={p.producto.nombre}
-                                style={styles.productImg}
-                                onClick={() =>
-                                  navigate(
-                                    `/producto/${p.producto.id_producto}`
-                                  )
-                                }
-                                className="cursor-pointer"
-                                onError={(e) => {
-                                  e.target.src =
-                                    'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
-                                }}
-                              />
-                            ) : (
-                              <div
-                                style={styles.productImg}
-                                onClick={() =>
-                                  navigate(
-                                    `/producto/${p.producto.id_producto}`
-                                  )
-                                }
-                                className="cursor-pointer flex items-center justify-center text-xs text-gray-500"
-                              >
-                                Imagen no disponible
-                              </div>
-                            )}
+                    return (
+                      <li key={i}>
+                        <div className="flex flex-row gap-8 justify-between ">
+                          {p.producto.imagenes &&
+                          p.producto.imagenes.length > 0 &&
+                          p.producto.imagenes[0].url_imagen ? (
+                            <img
+                              src={`/images/productos/${p.producto.imagenes[0].url_imagen}`}
+                              alt={p.producto.nombre}
+                              style={styles.productImg}
+                              onClick={() =>
+                                navigate(`/producto/${p.producto.id_producto}`)
+                              }
+                              className="cursor-pointer"
+                              onError={(e) => {
+                                e.target.src =
+                                  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
+                              }}
+                            />
+                          ) : (
+                            <div
+                              style={styles.productImg}
+                              onClick={() =>
+                                navigate(`/producto/${p.producto.id_producto}`)
+                              }
+                              className="cursor-pointer flex items-center justify-center text-xs text-gray-500"
+                            >
+                              Imagen no disponible
+                            </div>
+                          )}
 
-                            <div className="flex flex-col w-full text-left font-medium">
-                              <p
-                                className="py-2 text-xl cursor-pointer"
-                                onClick={() =>
-                                  navigate(
-                                    `/producto/${p.producto.id_producto}`
-                                  )
-                                }
-                              >
-                                {p.producto.nombre}
-                              </p>
+                          <div className="flex flex-col w-full text-left font-medium">
+                            <p
+                              className="py-2 text-xl cursor-pointer"
+                              onClick={() =>
+                                navigate(`/producto/${p.producto.id_producto}`)
+                              }
+                            >
+                              {p.producto.nombre}
+                            </p>
 
-                              {/* Estrellas del producto */}
-                              <div className="flex -mt-1 mb-1">
-                                {Array.from({ length: 5 }).map((_, idx) => (
-                                  <span
-                                    key={idx}
-                                    className="text-xl"
-                                    style={{
-                                      color:
-                                        idx < getStars(p.producto)
-                                          ? "#2b6daf"
-                                          : "#ddd",
-                                    }}
-                                  >
-                                    ★
-                                  </span>
-                                ))}
-                              </div>
-
-                              {/* Indicador de stock */}
-                              <div className="mb-2">
-                                {sinStock ? (
-                                  <span className="text-red-600 font-semibold text-sm">
-                                    Sin stock en esta sucursal
-                                  </span>
-                                ) : (
-                                  <span className="text-green-600 text-sm">
-                                    {stockDisponible} disponibles
-                                  </span>
-                                )}
-                              </div>
-
-                              <div className="flex flex-row gap-1">
-                                <button
-                                  onClick={() => handleDecrement(p)}
-                                  className=" bg-[#114C87] text-white rounded-md h-9 px-1"
-                                  disabled={sinStock}
-                                >
-                                  <span className="material-symbols-outlined text-3xl">
-                                    check_indeterminate_small
-                                  </span>
-                                </button>
-
-                                <input
-                                  type="number"
-                                  min={1}
-                                  max={stockDisponible}
-                                  step={1}
-                                  inputMode="numeric"
-                                  pattern="[0-9]*"
-                                  className={`border-2 rounded-md text-center ${
-                                    sinStock
-                                      ? "border-red-400 bg-red-50"
-                                      : "border-black"
-                                  }`}
-                                  value={
-                                    qtyDraft[p.id_carrito_detalle] ??
-                                    p.cantidad_unidad_medida
-                                  }
-                                  onChange={(e) =>
-                                    handleQtyInputChange(
-                                      p.id_carrito_detalle,
-                                      e.target.value
-                                    )
-                                  }
-                                  onBlur={(e) =>
-                                    commitQtyChange(p, e.target.value)
-                                  }
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter")
-                                      e.currentTarget.blur(); // dispara onBlur => guarda
+                            <div className="flex -mt-1 mb-1">
+                              {Array.from({ length: 5 }).map((_, idx) => (
+                                <span
+                                  key={idx}
+                                  className="text-xl"
+                                  style={{
+                                    color:
+                                      idx < getStars(p.producto)
+                                        ? "#2b6daf"
+                                        : "#ddd",
                                   }}
-                                  onFocus={(e) => e.target.select()} // para seleccionar todo al hacer click
-                                  disabled={sinStock}
-                                />
-
-                                <button
-                                  onClick={() => handleIncrement(p)}
-                                  className="bg-[#114C87] text-white rounded-md h-9 px-1"
-                                  disabled={sinStock}
                                 >
-                                  <span className="material-symbols-outlined text-3xl">
-                                    add
-                                  </span>
-                                </button>
-                                <div className="flex  w-full h-full justify-center items-center ">
-                                  <p className="text-2xl pl-16 ">
-                                    L. {p.subtotal_detalle}
-                                  </p>
-                                </div>
+                                  ★
+                                </span>
+                              ))}
+                            </div>
+
+                            <div className="mb-2">
+                              {sinStock ? (
+                                <span className="text-red-600 font-semibold text-sm">
+                                  Sin stock en esta sucursal
+                                </span>
+                              ) : (
+                                <span className="text-green-600 text-sm">
+                                  {stockDisponible} disponibles
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex flex-row gap-1">
+                              <button
+                                onClick={() => handleDecrement(p)}
+                                className=" bg-[#114C87] text-white rounded-md h-9 px-1"
+                                disabled={sinStock}
+                              >
+                                <span className="material-symbols-outlined text-3xl">
+                                  check_indeterminate_small
+                                </span>
+                              </button>
+
+                              <input
+                                type="number"
+                                min={1}
+                                max={stockDisponible}
+                                step={1}
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                className={`border-2 rounded-md text-center ${
+                                  sinStock
+                                    ? "border-red-400 bg-red-50"
+                                    : "border-black"
+                                }`}
+                                value={
+                                  qtyDraft[p.id_carrito_detalle] ??
+                                  p.cantidad_unidad_medida
+                                }
+                                onChange={(e) =>
+                                  handleQtyInputChange(
+                                    p.id_carrito_detalle,
+                                    e.target.value
+                                  )
+                                }
+                                onBlur={(e) =>
+                                  commitQtyChange(p, e.target.value)
+                                }
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") e.currentTarget.blur();
+                                }}
+                                onFocus={(e) => e.target.select()}
+                                disabled={sinStock}
+                              />
+
+                              <button
+                                onClick={() => handleIncrement(p)}
+                                className="bg-[#114C87] text-white rounded-md h-9 px-1"
+                                disabled={sinStock}
+                              >
+                                <span className="material-symbols-outlined text-3xl">
+                                  add
+                                </span>
+                              </button>
+                              <div className="flex  w-full h-full justify-center items-center ">
+                                <p className="text-2xl pl-16 ">
+                                  L. {p.subtotal_detalle}
+                                </p>
                               </div>
                             </div>
-                            <button
-                              onClick={() => {
-                                eliminarProducto(
-                                  p.id_carrito_detalle,
-                                  p.producto.id_producto
-                                );
-                                decrementCart(p.cantidad_unidad_medida);
-                              }}
-                              className=" text-black hover:bg-red-500 hover:text-white rounded-md p-8"
-                            >
-                              <span className="material-symbols-outlined text-5xl ">
-                                delete
-                              </span>
-                            </button>
                           </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              )
-            }
+                          <button
+                            onClick={() => {
+                              eliminarProducto(
+                                p.id_carrito_detalle,
+                                p.producto.id_producto
+                              );
+                              decrementCart(p.cantidad_unidad_medida);
+                            }}
+                            className=" text-black hover:bg-red-500 hover:text-white rounded-md p-8"
+                          >
+                            <span className="material-symbols-outlined text-5xl ">
+                              delete
+                            </span>
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
           </div>
           <div className="flex flex-col col-span-1 w-full rounded-md border-gray-200 border-2 px-6 py-1 pb-2">
-            {
-              //CODIGO CUPON SOLO SE MUESTRA SI HAY PRODUCTOS EN CARRITO
-              showProducts && (
-                <div className="pb-2">
-                  <p className="text-left pb-2 font-medium">
-                    ¿Tienes un cupon?
-                  </p>
-                  <form className="flex gap-2" onSubmit={checkCupon}>
-                    <input
-                      type="text"
-                      placeholder="Codigo"
-                      value={cupon === "EMPTY" ? "" : cupon}
-                      onChange={(e) => setCupon(e.target.value)}
-                      className="input-field rounded-xl bg-gray-100 border-black border-2 pl-2"
-                    />
-                    <button
-                      type="submit"
-                      className="bg-[#114C87] rounded-md py-1 text-white px-12 text-xl"
-                    >
-                      Aplicar
-                    </button>
-                  </form>
-                </div>
-              )
-            }
+            {/* Solo formulario de cupones */}
+            {showProducts && (
+              <div className="pb-2">
+                <p className="text-left pb-2 font-medium">¿Tienes un cupón?</p>
 
-            {/* Sucursal (discreto, alineado a la izq y en negrita) */}
+                <form className="flex gap-2 mb-2" onSubmit={checkCupon}>
+                  <input
+                    type="text"
+                    placeholder="Código de cupón"
+                    value={cupon === "EMPTY" ? "" : cupon}
+                    onChange={(e) => setCupon(e.target.value)}
+                    className="input-field rounded-xl bg-gray-100 border-black border-2 pl-2 text-sm"
+                  />
+                  <button
+                    type="submit"
+                    className="bg-[#114C87] rounded-md py-1 text-white px-6 text-sm"
+                  >
+                    Aplicar Cupón
+                  </button>
+                </form>
+
+                {/* Mostrar promoción automática aplicada */}
+                {promocionAplicada && (
+                  <div className="mt-2 p-2 bg-green-50 border border-green-300 rounded-md">
+                    <div className="flex justify-between items-center text-left">
+                      <div>
+                        <p className="text-sm font-medium text-green-800">
+                          Promoción aplicada:{" "}
+                          {promocionAplicada.nombre_promocion}
+                        </p>
+                        <p className="text-xs text-green-600">
+                          Descuento:{" "}
+                          {promocionAplicada.id_tipo_promo === 1
+                            ? `${promocionAplicada.valor_porcentaje}%`
+                            : `L. ${promocionAplicada.valor_fijo}`}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          En compra mínima de: L. {promocionAplicada.compra_min}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Sucursal */}
             <div className="pb-2">
               <label
                 htmlFor="select-sucursal"
@@ -768,78 +868,85 @@ function Carrito() {
               </select>
             </div>
 
-            {
-              //RESUMEN DE PAGO SIEMPRE SE MUESTRA
-            }
             <div>
               <h1 className="font-roboto text-[#80838A] text-2xl font-medium justify-center pb-1 text-left">
                 Resumen de pago
               </h1>
               <hr className="bg-[#80838A] h-[2px] w-full mb-1"></hr>
-
-              {
-                //BOTON DE COMPRA
-              }
             </div>
-            {
-              //FACTURA SE MUESTRA SI HAY PRODUCTOS EN CARRITO
-              showProducts && (
-                <div>
-                  <ul className="text-left space-y-3 font-medium text-md">
-                    <li className="flex justify-between">
-                      <span>Subtotal</span>
-                      <span>L. {total}</span>
-                    </li>
-                    {discount && (
-                      <li className="flex justify-between">
-                        <span>Descuento {descCupon}%</span>
-                        <span>L. {obtenerDescuento()}</span>
-                      </li>
-                    )}
-                    <li className="flex justify-between">
-                      <span>Impuesto 15%</span>
-                      <span>L. {obtenerImpuesto()}</span>
-                    </li>
 
-                    <hr className="bg-black h-[3px] w-full" />
-                    <li className="text-lg font-bold flex justify-between">
-                      <span>Total</span>
-                      <span>L. {obtenerTotal()}</span>
-                    </li>
-                    <button
-                      onClick={realizarCompra}
-                      className="bg-[#F0833E] rounded-md text-white text-xl w-full p-1"
-                    >
-                      Efectuar Compra
-                    </button>
-                  </ul>
-                </div>
-              )
-            }
+            {showProducts && (
+              <div>
+                <ul className="text-left space-y-3 font-medium text-md">
+                  <li className="flex justify-between">
+                    <span>Subtotal</span>
+                    <span>L. {total.toFixed(2)}</span>
+                  </li>
 
-            {
-              //PROTECCION DEL COMPRADOR SE MUESTRA CUANDO NO HAY PRODUCTOS EN CARRITO
-              !showProducts && (
-                <div className="flex flex-col text-blue-950 justify-end h-full text-left">
-                  <div className="flex flex-row items-center">
-                    <span className="material-symbols-outlined text-4xl pr-2">
-                      verified_user
-                    </span>
-                    <h1 className="font-bold text-lg">
-                      Proteccion del comprador
-                    </h1>
-                  </div>
-                  <p className="text-md">
-                    Recibe un reembolso de tu dinero si el articulo
-                    <br />
-                    no llega o es diferente al de la descripcion.
-                  </p>
+                  {/* Descuento de cupón */}
+                  {discount && descCupon > 0 && (
+                    <li className="flex justify-between text-blue-600">
+                      <span>Descuento cupón ({descCupon}%)</span>
+                      <span>-L. {(total * (descCupon / 100)).toFixed(2)}</span>
+                    </li>
+                  )}
+
+                  {/* Descuento de promoción automática */}
+                  {promocionAplicada && (
+                    <li className="flex justify-between text-green-600">
+                      <span>
+                        Promoción (
+                        {promocionAplicada.id_tipo_promo === 1
+                          ? `${promocionAplicada.valor_porcentaje}%`
+                          : `L. ${promocionAplicada.valor_fijo} fijo`}
+                        )
+                      </span>
+                      <span>-L. {calcularDescuentoPromocion().toFixed(2)}</span>
+                    </li>
+                  )}
+
+                  <li className="flex justify-between">
+                    <span>Impuesto (15%)</span>
+                    <span>L. {obtenerImpuesto()}</span>
+                  </li>
+
+                  <hr className="bg-black h-[3px] w-full" />
+                  <li className="text-lg font-bold flex justify-between">
+                    <span>Total</span>
+                    <span>L. {obtenerTotal()}</span>
+                  </li>
+
+                  <button
+                    onClick={realizarCompra}
+                    className="bg-[#F0833E] rounded-md text-white text-xl w-full p-1"
+                  >
+                    Efectuar Compra
+                  </button>
+                </ul>
+              </div>
+            )}
+
+            {!showProducts && (
+              <div className="flex flex-col text-blue-950 justify-end h-full text-left">
+                <div className="flex flex-row items-center">
+                  <span className="material-symbols-outlined text-4xl pr-2">
+                    verified_user
+                  </span>
+                  <h1 className="font-bold text-lg">
+                    Proteccion del comprador
+                  </h1>
                 </div>
-              )
-            }
+                <p className="text-md">
+                  Recibe un reembolso de tu dinero si el articulo
+                  <br />
+                  no llega o es diferente al de la descripcion.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>
+
       <div
         className=""
         style={{ ...styles.fixedShell2, backgroundColor: "#f3f4f6" }}
@@ -911,7 +1018,7 @@ function Carrito() {
                     <div style={styles.productImg}>Imagen no disponible</div>
                   )}
                   <p style={styles.productName}>{p.nombre}</p>
-                  <p style={styles.productPrice}>{p.precio_base}</p>
+                  <p style={styles.productPrice}>L. {p.precio_base}</p>
                   <button
                     style={{
                       ...styles.addButton,
@@ -1034,7 +1141,6 @@ const styles = {
     objectFit: "contain",
     marginTop: "8px",
   },
-
   fixedShell: {
     position: "absolute",
     top: "145px",
@@ -1046,7 +1152,7 @@ const styles = {
   },
   fixedShell2: {
     position: "relative",
-    top: "24px",
+    top: "200px",
     left: 0,
     right: 0,
     width: "100%",

@@ -126,37 +126,61 @@ const InicioUsuario = () => {
   const [carrito, setCarrito] = useState([]);
 
   // Promociones
- useEffect(() => {
-   const fetchPromosOrden = async () => {
-     try {
+useEffect(() => {
+  const fetchPromosOrden = async () => {
+    try {
       const res = await getPromocionesOrden();
-       const ordered = (Array.isArray(res?.data) ? res.data : [])
-         .map((item) => ({
-           id_promocion: item.id_promocion,
-           id_tipo_promo: item.id_tipo_promo, // lo conservamos para tu handlePromoClick
-           orden: Number(item.orden) || 0,
-           name: item.nombre_promocion,
-           description: item.descripción || item.descripcion || "",
-           // aquí DB suele devolver solo el filename o una ruta relativa
-           banner_url: item.banner_url,
-           activa:
-             item.activa === true || item.activa === 1 || item.activa === "true",
-         }))
-         .filter((p) => p.activa)
-         .sort((a, b) => a.orden - b.orden); // ← orden ascendente
+      const ordered = (Array.isArray(res?.data) ? res.data : [])
+        .map((item) => {
+          const ordenNum = Number(item.orden);
+          return {
+            id_promocion: item.id_promocion,
+            id_tipo_promo: item.id_tipo_promo,
+            orden: Number.isFinite(ordenNum) ? ordenNum : NaN,
+            name: item.nombre_promocion,
+            description: item.descripción || item.descripcion || "",
+            banner_url: item.banner_url,
+            activa:
+              item.activa === true || item.activa === 1 || item.activa === "true",
+          };
+        })
+        // ✅ solo activas y con orden válido > 0
+        .filter((p) => p.activa && Number.isFinite(p.orden) && p.orden > 0)
+        // ✅ orden estable (por orden y luego por id para desempatar)
+        .sort((a, b) => {
+          if (a.orden !== b.orden) return a.orden - b.orden;
+          return (Number(a.id_promocion) || 0) - (Number(b.id_promocion) || 0);
+        });
 
-       setPromociones(ordered);
-       console.log("[PROMOS ORDENADAS]", ordered);
-     } catch (err) {
-       console.error("[PROMOS] error:", err?.response?.data || err);
-       toast.error(
-         err?.response?.data?.message || "Error al cargar promociones",
-         { className: "toast-error" }
-       );
-     }
-   };
-   fetchPromosOrden();
- }, []);
+      setPromociones(ordered);
+      console.log("[PROMOS ORDENADAS > 0]", ordered);
+    } catch (err) {
+      console.error("[PROMOS] error:", err?.response?.data || err);
+      toast.error(
+        err?.response?.data?.message || "Error al cargar promociones",
+        { className: "toast-error" }
+      );
+    }
+  };
+  fetchPromosOrden();
+}, []);
+
+
+useEffect(() => {
+  if (!swiperRef.current || promociones.length === 0) return;
+
+  // índice del menor orden (típicamente el que tiene orden === 1)
+  const idx = promociones.reduce((best, p, i) =>
+    (promociones[i].orden ?? Infinity) < (promociones[best].orden ?? Infinity)
+      ? i
+      : best
+  , 0);
+
+  // Asegura que Swiper renderice y luego muévete al slide correcto SIN animación
+  swiperRef.current.update?.();
+  swiperRef.current.slideTo(idx, 0, false);
+}, [promociones]);
+
 
   const handleAgregar = async (id_producto) => {
     if (!id_producto) {
@@ -399,6 +423,8 @@ const InicioUsuario = () => {
             slidesPerView={1}
             loop={false}
             autoplay={{ delay: 3000, disableOnInteraction: false }}
+            observer={true}
+ observeParents={true}
             coverflowEffect={{
               rotate: 0,
               stretch: 0,

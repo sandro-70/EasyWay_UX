@@ -2,8 +2,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { RegistrarUser } from "./api/Usuario.Route";
 import "./crear_cuenta.css";
-import { toast } from "react-toastify";
-import "./toast.css";
 
 const Crear_cuenta = () => {
   const navigate = useNavigate();
@@ -34,15 +32,11 @@ const Crear_cuenta = () => {
 
     try {
       if (!formData.nombre || !formData.correo || !formData.contraseña) {
-        toast.warn("Nombre, correo y contraseña son obligatorios", { className: "toast-warn" });
-        setLoading(false);
-        return;
+        throw new Error("Nombre, correo y contraseña son obligatorios");
       }
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(formData.correo)) {
-        toast.error("Por favor ingresa un correo electrónico válido", { className: "toast-error" });
-        setLoading(false);
-        return;
+        throw new Error("Por favor ingresa un correo electrónico válido");
       }
 
       const payload = {
@@ -55,7 +49,7 @@ const Crear_cuenta = () => {
       });
 
       if (res.status === 201) {
-        toast.success("¡Cuenta creada exitosamente! Ahora puedes Iniciar Sesión.", { className: "toast-success" });
+        alert("¡Cuenta creada exitosamente! Ahora puedes iniciar sesión.");
         navigate("/login");
         return;
       }
@@ -66,16 +60,16 @@ const Crear_cuenta = () => {
 
       if (res.status === 400 || res.status === 409) {
         // 400: validación / duplicado (si usas 409 para duplicado, también cae aquí)
-        toast.error(apiMsg || "El correo ya está registrado.", { className: "toast-error" });
+        setError(apiMsg || "El correo ya está registrado.");
       } else {
-        toast.error(apiMsg || "Ocurrió un problema. Intenta más tarde.", { className: "toast-error" });
+        setError(apiMsg || "Ocurrió un problema. Intenta más tarde.");
       }
     } catch (err) {
       const apiMsg =
         err?.response?.data?.msg ||
         err?.response?.data?.message ||
         err?.message;
-      toast.error(apiMsg || "Ocurrió un problema. Intenta más tarde.", { className: "toast-error" });
+      setError(apiMsg || "Ocurrió un problema. Intenta más tarde.");
       console.debug("Error en registro:", err);
     } finally {
       setLoading(false);

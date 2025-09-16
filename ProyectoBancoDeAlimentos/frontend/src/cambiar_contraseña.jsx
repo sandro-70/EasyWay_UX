@@ -2,8 +2,6 @@ import "./cambiar_contraseña.css";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { changePassword } from "./api/Usuario.Route";
-import { toast } from "react-toastify";
-import "./toast.css";
 
 const Cambiar_contraseña = () => {
   const navigate = useNavigate();
@@ -18,18 +16,18 @@ const Cambiar_contraseña = () => {
   async function handleChange(e) {
     e.preventDefault();
 
-    if (!correo) return toast.error("No se recibió el correo del usuario.", { className: "toast-error" });
-    if (!password1 || !password2) return toast.warn("Completa ambos campos de contraseña.", { className: "toast-warn" });
-    if (password1 !== password2) return toast.error("Las contraseñas no coinciden.", { className: "toast-error" });
-    if (password1.trim().length < 6) return toast.info("La contraseña debe tener al menos 6 caracteres.", { className: "toast-info" });
+    if (!correo) return alert("No se recibió el correo del usuario.");
+    if (!password1 || !password2) return alert("Completa ambos campos de contraseña.");
+    if (password1 !== password2) return alert("Las contraseñas no coinciden.");
+    if (password1.trim().length < 6) return alert("La contraseña debe tener al menos 6 caracteres.");
 
     try {
       setLoading(true);
       await changePassword(correo, password1); // { correo, new_password }
-      toast.success("Contraseña actualizada correctamente.", { className: "toast-success" });
+      alert("Contraseña actualizada correctamente.");
       navigate("/login");
     } catch (err) {
-      toast.error(err?.response?.data?.error || "No se pudo cambiar la contraseña.", { className: "toast-error" });
+      alert(err?.response?.data?.error || "No se pudo cambiar la contraseña.");
     } finally {
       setLoading(false);
     }

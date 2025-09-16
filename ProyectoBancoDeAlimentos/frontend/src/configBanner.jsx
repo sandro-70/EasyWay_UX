@@ -353,7 +353,7 @@ const ConfigBanner = () => {
                 )}
 
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Orden del Banner *</label>
+                  <label style={styles.label}>Orden del Banner</label>
                   <input
                     type="number"
                     value={editForm.orden}
@@ -381,7 +381,7 @@ const ConfigBanner = () => {
                 </div>
 
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Nombre del Banner *</label>
+                  <label style={styles.label}>Nombre del Banner</label>
                   <input
                     type="text"
                     value={editForm.name}
@@ -403,7 +403,7 @@ const ConfigBanner = () => {
                 </div>
 
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Descripción del Banner *</label>
+                  <label style={styles.label}>Descripción del Banner</label>
                   <textarea
                     value={editForm.description}
                     onChange={(e) =>
@@ -709,7 +709,7 @@ const styles = {
   modal: {
     backgroundColor: "white",
     borderRadius: "16px",
-    padding: "32px",
+    padding: "0px 0px 20px 0px",
     width: "90%",
     maxWidth: "500px",
     boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
@@ -721,18 +721,21 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: "24px",
+    backgroundColor: "#2b6daf",
+    padding: "10px 40px",
+    borderRadius: "16px 16px 0 0",
+    marginBottom: "10px",
   },
   modalTitle: {
     fontSize: "20px",
     fontWeight: "600",
-    color: "#111827",
+    color: "white",
   },
   closeButton: {
     background: "none",
     border: "none",
     fontSize: "24px",
-    color: "#6b7280",
+    color: "white",
     cursor: "pointer",
     padding: "0",
     width: "32px",
@@ -755,6 +758,7 @@ const styles = {
   },
   formGroup: {
     marginBottom: "20px",
+    padding: "0 20px",
   },
   label: {
     display: "block",
@@ -836,10 +840,11 @@ const styles = {
     display: "flex",
     gap: "12px",
     marginTop: "24px",
+    padding: "0 30px",
   },
   cancelButton: {
     flex: 1,
-    padding: "12px 24px",
+    padding: "12px",
     border: "1px solid #d1d5db",
     borderRadius: "8px",
     backgroundColor: "white",
@@ -851,7 +856,7 @@ const styles = {
   },
   saveButton: {
     flex: 1,
-    padding: "12px 24px",
+    padding: "12 px",
     border: "none",
     borderRadius: "8px",
     backgroundColor: "#d8572f",

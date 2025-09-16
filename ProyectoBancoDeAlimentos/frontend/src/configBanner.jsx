@@ -1,5 +1,33 @@
 import React, { useState, useEffect } from "react";
 import { getPromocionesOrden, actualizarPromocion } from "./api/PromocionesApi";
+import axiosInstance from "./api/axiosInstance";
+
+const BACKEND_ORIGIN = (() => {
+  const base = axiosInstance?.defaults?.baseURL;
+  try {
+    const u = base
+      ? (base.startsWith("http") ? new URL(base) : new URL(base, window.location.origin))
+      : new URL(window.location.origin);
+    return `${u.protocol}//${u.host}`;
+  } catch {
+    return window.location.origin;
+  }
+})();
+
+// para nombres de archivo tipo "foto.jpg"
+const backendImageUrl = (fileName) =>
+  fileName ? `${BACKEND_ORIGIN}/api/images/productos/${encodeURIComponent(fileName)}` : "";
+
+// adapta la ruta que venga en DB a una URL válida del backend
+const toPublicFotoSrc = (nameOrPath, defaultDir = "productos") => {
+   if (!nameOrPath) return "";
+   const s = String(nameOrPath).trim();
+   if (/^https?:\/\//i.test(s)) return s;                          // ya es absoluta
+   if (s.startsWith("/api/images/")) return `${BACKEND_ORIGIN}${encodeURI(s)}`;
+   if (s.startsWith("/images/"))      return `${BACKEND_ORIGIN}/api${encodeURI(s)}`;
+   // nombre suelto => /api/images/<defaultDir>/<archivo>
+   return `${BACKEND_ORIGIN}/api/images/${encodeURIComponent(defaultDir)}/${encodeURIComponent(s)}`;
+ };
 
 const ConfigBanner = () => {
   const [banners, setBanners] = useState([]);
@@ -282,7 +310,7 @@ const ConfigBanner = () => {
             <div style={styles.bannerCard} onClick={openEditModal}>
               <div style={styles.imageContainer}>
                 <img
-                  src={`/images/promotions/${currentBanner.backgroundImage}`}
+                  src={toPublicFotoSrc(currentBanner.backgroundImage,"fotoDePerfil")}
                   alt={currentBanner.name}
                   style={styles.bannerImage}
                   onError={(e) => {
@@ -290,6 +318,9 @@ const ConfigBanner = () => {
                     e.currentTarget.src = "/PlaceHolder.png";
                   }}
                 />
+                //
+
+                //
                 <div style={styles.imageOverlay}></div>
               </div>
               <div style={styles.bannerContent}>

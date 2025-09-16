@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { getAllProducts, getProductoById } from "../api/InventarioApi";
 import { ObtenerCategoria, ListarCategoria } from "../api/CategoriaApi";
 import { AddNewCarrito, ViewCar, SumarItem } from "../api/CarritoApi";
-import { getPromociones } from "../api/PromocionesApi";
+import { getPromocionesOrden } from "../api/PromocionesApi";
 import { useCart } from "../utils/CartContext";
 import { useSearch } from "../searchContext";
 import { toast } from "react-toastify";
@@ -61,14 +61,15 @@ const backendImageUrl = (fileName) =>
   fileName ? `${BACKEND_ORIGIN}/api/images/productos/${encodeURIComponent(fileName)}` : "";
 
 // adapta la ruta que venga en DB a una URL válida del backend
-const toPublicFotoSrc = (nameOrPath) => {
-  if (!nameOrPath) return "";
-  const s = String(nameOrPath);
-  if (/^https?:\/\//i.test(s)) return s; // ya es absoluta
-  if (s.startsWith("/api/images/")) return `${BACKEND_ORIGIN}${encodeURI(s)}`;
-  if (s.startsWith("/images/"))      return `${BACKEND_ORIGIN}/api${encodeURI(s)}`;
-  return backendImageUrl(s); // nombre suelto => /images/productos/<archivo>
-};
+const toPublicFotoSrc = (nameOrPath, defaultDir = "productos") => {
+   if (!nameOrPath) return "";
+   const s = String(nameOrPath).trim();
+   if (/^https?:\/\//i.test(s)) return s;                          // ya es absoluta
+   if (s.startsWith("/api/images/")) return `${BACKEND_ORIGIN}${encodeURI(s)}`;
+   if (s.startsWith("/images/"))      return `${BACKEND_ORIGIN}/api${encodeURI(s)}`;
+   // nombre suelto => /api/images/<defaultDir>/<archivo>
+   return `${BACKEND_ORIGIN}/api/images/${encodeURIComponent(defaultDir)}/${encodeURIComponent(s)}`;
+ };
 
 
 const InicioUsuario = () => {
@@ -125,19 +126,37 @@ const InicioUsuario = () => {
   const [carrito, setCarrito] = useState([]);
 
   // Promociones
-  useEffect(() => {
-    const fetchPromociones = async () => {
-      try {
-        const res = await getPromociones();
-        setPromociones(res.data);
-        console.log("[PROMOS]", res.data);
-      } catch (err) {
-        console.error("[PROMOS] error:", err?.response?.data || err);
-        toast.error(err?.response?.data?.message || "Error al cargar promociones", { className: "toast-error" });
-      }
-    };
-    fetchPromociones();
-  }, []);
+ useEffect(() => {
+   const fetchPromosOrden = async () => {
+     try {
+      const res = await getPromocionesOrden();
+       const ordered = (Array.isArray(res?.data) ? res.data : [])
+         .map((item) => ({
+           id_promocion: item.id_promocion,
+           id_tipo_promo: item.id_tipo_promo, // lo conservamos para tu handlePromoClick
+           orden: Number(item.orden) || 0,
+           name: item.nombre_promocion,
+           description: item.descripción || item.descripcion || "",
+           // aquí DB suele devolver solo el filename o una ruta relativa
+           banner_url: item.banner_url,
+           activa:
+             item.activa === true || item.activa === 1 || item.activa === "true",
+         }))
+         .filter((p) => p.activa)
+         .sort((a, b) => a.orden - b.orden); // ← orden ascendente
+
+       setPromociones(ordered);
+       console.log("[PROMOS ORDENADAS]", ordered);
+     } catch (err) {
+       console.error("[PROMOS] error:", err?.response?.data || err);
+       toast.error(
+         err?.response?.data?.message || "Error al cargar promociones",
+         { className: "toast-error" }
+       );
+     }
+   };
+   fetchPromosOrden();
+ }, []);
 
   const handleAgregar = async (id_producto) => {
     if (!id_producto) {
@@ -411,7 +430,7 @@ const InicioUsuario = () => {
                     }}
                   >
                     <img
-                      src={`/images/promotions/${promo.banner_url}`}
+                      src={toPublicFotoSrc(promo.banner_url, "fotoDePerfil") || "/PlaceHolder.png"}
                       alt={promo.nombre_promocion}
                       className="banner-img"
                       style={{

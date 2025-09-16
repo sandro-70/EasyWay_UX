@@ -727,14 +727,18 @@ export default function UserManagementViews() {
           />
         )}
         <div className="modal-actions">
+            <button className="btn-secondary" onClick={closeInfo}>
+            Cancelar
+          </button>
           <button className="btn-primary" onClick={closeInfo}>
             <Icon icon="mdi:check" /> Aceptar
           </button>
+        
         </div>
       </Modal>
 
       {/* EDITAR */}
-      <Modal open={editOpen} title="Editar usuario" onClose={closeEdit}>
+      <Modal open={editOpen} title="Editar usuario" onClose={closeEdit} >
         {editUser && (
           <Tabs
             active={editTab}
@@ -850,6 +854,10 @@ export default function UserManagementViews() {
           />
         )}
         <div className="modal-actions">
+          <button className="btn-secondary" onClick={closeEdit}>
+            Cancelar
+          </button>
+          
           <button className="btn-primary" onClick={saveEdit}>
             <Icon icon="mdi:content-save-outline" /> Guardar
           </button>

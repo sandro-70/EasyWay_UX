@@ -52,10 +52,10 @@ const Login = () => {
   const onSubmit = async (e) => {
     e.preventDefault();
     if (!correo) {
-      toast.warn("⚠️ Ingresa correo electrónico.", { className: "toast-warn" });
+      toast.warn("Ingresa correo electrónico.", { className: "toast-warn" });
       return;
     }else if(!contraseña){
-      toast.warn("⚠️ Ingresa la contraseña.", { className: "toast-warn" });
+      toast.warn("Ingresa la contraseña.", { className: "toast-warn" });
       return;
     }
 

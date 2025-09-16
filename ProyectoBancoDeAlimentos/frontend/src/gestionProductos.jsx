@@ -1,5 +1,5 @@
 // GestionProductos.jsx
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import {
   ListarCategoria,
@@ -14,9 +14,8 @@ import {
   desactivarSubcategoria,
 } from "./api/SubcategoriaApi";
 import "./gestionProductos.css";
-import Sidebar from "./sidebar";
 
-/* ------------------ Botón cuadrado con borde gris ------------------ */
+/* ===================== Iconos y botones reutilizables ===================== */
 const IconSquareButton = ({ children, className = "", ...props }) => (
   <button
     {...props}
@@ -32,7 +31,6 @@ const IconSquareButton = ({ children, className = "", ...props }) => (
   </button>
 );
 
-/* ------------------ Iconos SVG: lápiz y bote ------------------ */
 const PencilIcon = ({ className = "" }) => (
   <svg
     viewBox="0 0 24 24"
@@ -66,28 +64,78 @@ const TrashIcon = ({ className = "" }) => (
   </svg>
 );
 
-/* ------------------ Uploader reutilizable ------------------ */
-function ImageUploader({ label = "Imágenes", value = [], onChange }) {
+const MagnifierIcon = ({ className = "" }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden="true"
+  >
+    <circle cx="11" cy="11" r="7" />
+    <path d="M21 21l-3.8-3.8" />
+  </svg>
+);
+
+const PlusIcon = ({ className = "" }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden="true"
+  >
+    <path d="M12 5v14M5 12h14" />
+  </svg>
+);
+
+const ChevronLeftIcon = ({ className = "" }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M15 18l-6-6 6-6" />
+  </svg>
+);
+
+const ChevronRightIcon = ({ className = "" }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M9 6l6 6-6 6" />
+  </svg>
+);
+
+/* ===================== Uploader 1 imagen (si lo necesitas en modales) ===================== */
+function SingleImageUploader({ label = "Imagen", valueUrl = "", onFiles }) {
   const inputRef = useRef(null);
-  const [files, setFiles] = useState(value);
-  const [previews, setPreviews] = useState([]);
-
-  useEffect(() => {
-    return () => previews.forEach((u) => URL.revokeObjectURL(u));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
+  const [preview, setPreview] = useState(valueUrl || "");
+  useEffect(() => setPreview(valueUrl || ""), [valueUrl]);
   const openPicker = () => inputRef.current?.click();
-
   const handleSelect = (e) => {
-    const selected = Array.from(e.target.files || []);
-    const next = [...files, ...selected];
-    setFiles(next);
-    const nextPreviews = next.map((f) => URL.createObjectURL(f));
-    setPreviews(nextPreviews);
-    onChange?.(next); // entrega File[] al padre
+    const file = (e.target.files || [])[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    onFiles?.(file);
   };
-
   return (
     <div className="w-full">
       {label && (
@@ -95,69 +143,239 @@ function ImageUploader({ label = "Imágenes", value = [], onChange }) {
           {label}
         </h3>
       )}
-
       <div
-        onClick={openPicker}
-        className="border-2 border-dashed border-[#d8dadc] rounded-xl p-8 flex flex-col items-center justify-center text-center gap-3 hover:bg-gray-50 cursor-pointer"
+        className={
+          "rounded-2xl border " +
+          (preview
+            ? "border-[#d8dadc] p-3"
+            : "border-2 border-dashed border-[#d8dadc] p-8")
+        }
       >
-        <svg
-          viewBox="0 0 24 24"
-          className="w-10 h-10"
-          fill="none"
-          stroke="currentColor"
-        >
-          <path
-            d="M12 16V8m0 0l-3 3m3-3l3 3M4 17a4 4 0 01-4-4V7a4 4 0 014-4h12a4 4 0 014 4v6a4 4 0 01-4 4H4z"
-            strokeWidth="1.5"
-          />
-        </svg>
-        <p className="text-gray-500">Haz clic para cargar</p>
-        <button
-          type="button"
-          onClick={openPicker}
-          className="px-4 py-2 rounded-xl bg-[#2b6daf] text-white font-semibold hover:brightness-110 active:scale-[.99] shadow-sm"
-        >
-          Cargar imágenes
-        </button>
-
+        {preview ? (
+          <div className="relative">
+            <div className="aspect-video w-full overflow-hidden rounded-xl bg-gray-100">
+              <img
+                src={preview}
+                alt="preview"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="mt-3 flex justify-end">
+              <button
+                type="button"
+                onClick={openPicker}
+                className="px-4 py-2 rounded-xl bg-[#2b6daf] text-white font-semibold hover:brightness-110 shadow-sm"
+              >
+                Cambiar imagen
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div
+            onClick={openPicker}
+            className="flex flex-col items-center justify-center text-center gap-3 hover:bg-gray-50 cursor-pointer rounded-xl"
+          >
+            <MagnifierIcon className="w-10 h-10" />
+            <p className="text-gray-500">Haz clic para cargar</p>
+            <button
+              type="button"
+              onClick={openPicker}
+              className="px-4 py-2 rounded-xl bg-[#2b6daf] text-white font-semibold hover:brightness-110 shadow-sm"
+            >
+              Cargar imagen
+            </button>
+          </div>
+        )}
         <input
           ref={inputRef}
           type="file"
           accept="image/*"
-          multiple
           className="hidden"
           onChange={handleSelect}
         />
       </div>
-
-      {previews.length > 0 && (
-        <div className="mt-3 grid grid-cols-4 gap-2">
-          {previews.map((src, i) => (
-            <img
-              key={i}
-              src={src}
-              alt={`preview-${i}`}
-              className="w-full h-20 object-cover rounded-lg border"
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
 
+/* ===================== Tarjeta tipo tabla (header azul, filas, paginación) ===================== */
+function TableCard({
+  title = "Categoría",
+  items = [],
+  pageSize = 6,
+  onSelect,
+  onEdit,
+  onDelete,
+  onClickAdd,
+  height = 560, // <--- alto fijo para simetría (px)
+}) {
+  const [page, setPage] = useState(1);
+  const [q, setQ] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+  const searchRef = useRef(null);
+
+  // ancho fijo de la columna de iconos (coincide con el header "Opciones")
+  const ICON_COL_PX = 132;
+
+  useEffect(() => {
+    if (showSearch) setTimeout(() => searchRef.current?.focus(), 0);
+  }, [showSearch]);
+
+  const filtered = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    if (!s) return items;
+    return items.filter((it) =>
+      (it?.name || it?.nombre || "").toString().toLowerCase().includes(s)
+    );
+  }, [items, q]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  useEffect(() => {
+    if (page > totalPages) setPage(1);
+  }, [filtered, page, totalPages]);
+
+  const slice = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const label = (it) => it?.name ?? it?.nombre ?? "";
+
+  const PageBtn = ({ active, children, onClick, disabled }) => (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={
+        "w-9 h-9 rounded-full border flex items-center justify-center " +
+        (active
+          ? "border-[#e96803] text-[#e96803] font-semibold"
+          : "border-[#d8dadc] text-gray-700 hover:bg-gray-50") +
+        (disabled ? " opacity-50 cursor-not-allowed" : "")
+      }
+    >
+      {children}
+    </button>
+  );
+
+  return (
+    <div
+      className="rounded-[22px] overflow-hidden border border-[#d8dadc] bg-white flex flex-col min-h-0 shadow-sm"
+      style={{ height }} // <--- mismo alto en ambas tablas
+    >
+      {/* Header: 2 columnas -> izquierda (título + lupa), derecha (Opciones + +) */}
+      <div className="bg-[#2b6daf] text-white rounded-t-[22px]">
+        <div
+          className="px-4 py-3 grid items-center"
+          style={{ gridTemplateColumns: `1fr ${ICON_COL_PX}px` }}
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-lg font-semibold">{title}</span>
+            <button
+              type="button"
+              title="Buscar"
+              onClick={() => setShowSearch((s) => !s)}
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center"
+            >
+              <MagnifierIcon className="w-5 h-5 text-white" />
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="text-lg font-semibold">Opciones</span>
+            {onClickAdd && (
+              <button
+                type="button"
+                onClick={onClickAdd}
+                title={`Agregar ${title.toLowerCase()}`}
+                className="ml-2 w-7 h-7 rounded-full bg-white/90 hover:bg-white text-[#2b6daf] flex items-center justify-center"
+              >
+                <PlusIcon className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Buscador desplegable (por la lupa) */}
+      {showSearch && (
+        <div className="px-4 py-2 border-b border-[#e6e8ea] bg-white">
+          <input
+            ref={searchRef}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder={`Buscar ${title.toLowerCase()}…`}
+            className="w-full px-3 py-2 rounded-lg border border-[#d8dadc] focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      )}
+
+      {/* Lista */}
+      <div className="flex-1 overflow-y-auto divide-y divide-[#e6e8ea]">
+        {slice.map((it, i) => (
+          <div
+            key={it.id ?? it.id_categoria ?? it.id_subcategoria ?? i}
+            className="flex items-center justify-between px-4 py-5"
+          >
+            <button
+              type="button"
+              onClick={() => onSelect?.(it)}
+              className="text-[20px] font-normal text-gray-900 text-left hover:underline" // <--- SIN negrita
+            >
+              {label(it)}
+            </button>
+
+            {/* Columna fija de iconos, alineada bajo “Opciones” */}
+            <div
+              className="flex gap-3 justify-end"
+              style={{ width: ICON_COL_PX }}
+            >
+              <IconSquareButton title="Editar" onClick={() => onEdit?.(it)}>
+                <PencilIcon className="w-6 h-6 text-sky-500" />
+              </IconSquareButton>
+              <IconSquareButton title="Eliminar" onClick={() => onDelete?.(it)}>
+                <TrashIcon className="w-6 h-6 text-red-500" />
+              </IconSquareButton>
+            </div>
+          </div>
+        ))}
+        {slice.length === 0 && (
+          <div className="px-4 py-10 text-center text-gray-500">
+            Sin resultados
+          </div>
+        )}
+      </div>
+
+      {/* Paginación */}
+      <div className="px-4 py-3 border-t border-[#e6e8ea] flex justify-center gap-2">
+        <PageBtn
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          disabled={page === 1}
+        >
+          <ChevronLeftIcon className="w-5 h-5" />
+        </PageBtn>
+        {Array.from({ length: totalPages })
+          .slice(0, 5)
+          .map((_, idx) => {
+            const n = idx + 1;
+            return (
+              <PageBtn key={n} onClick={() => setPage(n)} active={page === n}>
+                {n}
+              </PageBtn>
+            );
+          })}
+        <PageBtn
+          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          disabled={page === totalPages}
+        >
+          <ChevronRightIcon className="w-5 h-5" />
+        </PageBtn>
+      </div>
+    </div>
+  );
+}
+
+/* ===================== Principal ===================== */
 function GestionProductos() {
-  // Sidebar
   const { moveButton } = useOutletContext();
-  const [showSidebar, setShowSidebar] = useState(false);
 
-  // Producto (placeholder)
-  const [producto, setNombre] = useState("");
-  const [precio, setPrecio] = useState("");
-  const [marca, setMarca] = useState("");
-  const [count, setCantidad] = useState(0);
-
-  // Categoría / Subcategoría seleccionadas
+  // Selecciones
   const [categoryName, setCategoria] = useState("Granos Basicos");
   const [subName, setSubcategoria] = useState("");
 
@@ -169,17 +387,17 @@ function GestionProductos() {
 
   // Inputs crear
   const [newCategory, setNew] = useState("");
+  const [newCatFile, setNewCatFile] = useState(null);
   const [newSub, setNewSub] = useState("");
-  const [newCatImages, setNewCatImages] = useState([]); // File[]
 
   // Inputs editar
   const [editCatName, setEditCatName] = useState("");
   const [editCatId, setEditCatId] = useState(null);
-  const [editCatImages, setEditCatImages] = useState([]); // File[]
+  const [editCatFile, setEditCatFile] = useState(null);
   const [editSubName, setEditSubName] = useState("");
   const [editSubId, setEditSubId] = useState(null);
 
-  // Estructura
+  // Datos
   const [categories, setCategories] = useState([]);
 
   /* ---------- Carga inicial ---------- */
@@ -191,15 +409,13 @@ function GestionProductos() {
         const mapped = data.map((c) => ({
           id_categoria: c.id_categoria,
           name: c.nombre,
-          icono_categoria: c.icono_categoria,
+          icono_categoria: c.icono_categoria || "",
           subcategories: [],
         }));
         setCategories(mapped);
 
         const selected =
-          mapped.find((c) => c.name === categoryName) ||
-          (mapped.length ? mapped[0] : null);
-
+          mapped.find((c) => c.name === categoryName) || mapped[0];
         if (selected) {
           setCategoria(selected.name);
           await loadSubcategories(selected.id_categoria);
@@ -241,7 +457,7 @@ function GestionProductos() {
         {
           id_categoria: undefined,
           name: category,
-          icono_categoria: "default",
+          icono_categoria: "",
           subcategories: [],
         },
       ]);
@@ -251,7 +467,7 @@ function GestionProductos() {
         {
           id_categoria: category.id_categoria,
           name: category.nombre,
-          icono_categoria: category.icono_categoria,
+          icono_categoria: category.icono_categoria || "",
           subcategories: [],
         },
       ]);
@@ -268,24 +484,21 @@ function GestionProductos() {
     );
   }
 
-  function updateCategoryLocal(id, newName, newIcon) {
+  function updateCategoryLocal(id, newName, newIconUrl) {
     setCategories((prev) =>
       prev.map((c) =>
         c.id_categoria === id
           ? {
               ...c,
-              name: newName,
-              icono_categoria: newIcon ?? c.icono_categoria,
+              name: newName ?? c.name,
+              icono_categoria: newIconUrl ?? c.icono_categoria,
             }
           : c
       )
     );
-    if (
-      categoryName &&
-      categories.find((c) => c.id_categoria === id)?.name === categoryName
-    ) {
-      setCategoria(newName);
-    }
+    const wasSelected =
+      categories.find((c) => c.id_categoria === id)?.name === categoryName;
+    if (wasSelected && newName) setCategoria(newName);
   }
 
   function removeCategoryLocal(id) {
@@ -315,12 +528,11 @@ function GestionProductos() {
           : c
       )
     );
+    const current = categories.find((c) => c.id_categoria === catId);
     if (
       subName &&
       subName ===
-        categories
-          .find((c) => c.id_categoria === catId)
-          ?.subcategories?.find((s) => s.id_subcategoria === subId)?.nombre
+        current?.subcategories?.find((s) => s.id_subcategoria === subId)?.nombre
     ) {
       setSubcategoria(newName);
     }
@@ -346,18 +558,12 @@ function GestionProductos() {
     if (removedName && removedName === subName) setSubcategoria("");
   }
 
-  /* ---------- Crear ---------- */
+  /* ---------- CRUD llamadas ---------- */
   async function addCat(e) {
     e.preventDefault();
     setShowCat(false);
     if (!newCategory?.trim()) return;
     try {
-      // Ejemplo si luego conectas imágenes:
-      // const fd = new FormData();
-      // fd.append("nombre", newCategory.trim());
-      // newCatImages.forEach(f => fd.append("imagenes", f));
-      // await axios.post("/api/categoria", fd, { headers: {'Content-Type':'multipart/form-data'} });
-
       const res = await CrearCategoria(newCategory.trim(), "default");
       const created = res?.data;
       if (created) {
@@ -369,7 +575,7 @@ function GestionProductos() {
         setCategoria(newCategory.trim());
       }
       setNew("");
-      setNewCatImages([]);
+      setNewCatFile(null);
     } catch (e) {
       console.error("Error creando categoría:", e);
       alert(
@@ -384,7 +590,6 @@ function GestionProductos() {
     e.preventDefault();
     setShowSub(false);
     if (!newSub?.trim()) return;
-
     try {
       const cat = categories.find((c) => c.name === categoryName);
       if (!cat?.id_categoria) {
@@ -395,7 +600,6 @@ function GestionProductos() {
         setNewSub("");
         return;
       }
-
       const res = await crearSubcategoria(newSub.trim(), cat.id_categoria);
       const createdId = res?.data?.id_subcategoria;
       addSubCategoryLocal({
@@ -413,20 +617,23 @@ function GestionProductos() {
     }
   }
 
-  /* ---------- Editar ---------- */
   function openEditCategory(cat) {
     setEditCatId(cat.id_categoria);
     setEditCatName(cat.name);
-    setEditCatImages([]);
+    setEditCatFile(null);
     setShowEditCat(true);
   }
 
   async function submitEditCategory(e) {
     e.preventDefault();
     try {
-      // Para subir imágenes: construir FormData como en addCat()
+      const before = categories.find((c) => c.id_categoria === editCatId);
       await ActualizarCategoria(editCatId, editCatName.trim(), "default");
-      updateCategoryLocal(editCatId, editCatName.trim(), "default");
+      updateCategoryLocal(
+        editCatId,
+        editCatName.trim(),
+        before?.icono_categoria
+      );
       setShowEditCat(false);
     } catch (e) {
       console.error("Error actualizando categoría:", e);
@@ -466,7 +673,6 @@ function GestionProductos() {
     }
   }
 
-  /* ---------- Eliminar ---------- */
   async function deleteCategory(cat) {
     if (
       !window.confirm(
@@ -510,264 +716,187 @@ function GestionProductos() {
     await loadSubcategories(cat.id_categoria);
   };
 
-  const addProducto = (e) => {
-    e?.preventDefault?.();
-    console.log("Agregar producto:", {
-      producto,
-      precio,
-      marca,
-      count,
-      categoria: categoryName,
-      subcategoria: subName,
-    });
-  };
+  const selectedCategory =
+    categories.find((c) => c.name === categoryName) || null;
 
-  /* ---------- UI ---------- */
+  /* ---------- Render ---------- */
   return (
     <div
       className="bg-gray-100 w-screen pb-8"
-      style={{ ...styles.fixedShell, backgroundColor: "#f3f4f6" }}
+      style={{ position: "absolute", top: "90px", left: 0, right: 0 }}
     >
       <div
         className={`transition-all duration-300 pt-4 ${
           moveButton ? "ml-[270px] mr-[70px]" : "ml-[70px] mr-[70px]"
         }`}
       >
-        <h1 className="font-roboto text-[#f0833e] text-5xl pb-1 text-left">
+        <h1 className="text-2xl font-semibold text-[#f0833e] text-4xl pb-1 text-left">
           Gestion de Productos
         </h1>
-        <hr className="h-[2px] border-0 bg-[#f0833e]" />
+        <hr className="h-[3px] border-0 bg-[#f0833e]" />
 
-        <div className="pt-5 grid grid-cols-2 grid-rows-2 h-[620px] items-stretch gap-4">
-          {/* Categorías */}
-          <div className="col-span-1 row-span-2 bg-white w-full rounded-md items-center text-xl overflow-y-auto p-2">
-            <h1 className="relative px-2 font-roboto text-black text-4xl pb-1 text-left">
-              Categorias
-              <button
-                onClick={() => setShowCat(true)}
-                className="absolute right-0"
-                title="Agregar categoría"
-              >
-                <span className="material-symbols-outlined text-5xl">add</span>
-              </button>
-            </h1>
-            <hr className="border-0 h-[2px] bg-black" />
-            <ul className="flex flex-col mt-4">
-              {categories.map((cat, i) => (
-                <li key={cat.id_categoria ?? i}>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleSelectCategory(cat)}
-                      className={`list-item ${
-                        categoryName === cat.name
-                          ? "bg-orange-100 border-orange-500"
-                          : "hover:bg-orange-100 hover:border-orange-500"
-                      }`}
-                    >
-                      {cat.name}
-                    </button>
-
-                    <IconSquareButton
-                      onClick={() => openEditCategory(cat)}
-                      title="Editar categoría"
-                      aria-label="Editar categoría"
-                    >
-                      <PencilIcon className="w-6 h-6 text-sky-500" />
-                    </IconSquareButton>
-
-                    <IconSquareButton
-                      onClick={() => deleteCategory(cat)}
-                      title="Eliminar categoría"
-                      aria-label="Eliminar categoría"
-                    >
-                      <TrashIcon className="w-6 h-6 text-red-500" />
-                    </IconSquareButton>
-                  </div>
-                </li>
-              ))}
-            </ul>
+        {/* Dos tarjetas lado a lado, como tu diseño */}
+        <div className="pt-5 grid grid-cols-2 gap-8">
+          <div>
+            <TableCard
+              title="Categoría"
+              items={categories.map((c) => ({
+                id: c.id_categoria,
+                name: c.name,
+              }))}
+              onSelect={(it) =>
+                handleSelectCategory({ id_categoria: it.id, name: it.name })
+              }
+              onEdit={(it) => {
+                const cat = categories.find((c) => c.id_categoria === it.id);
+                if (cat) openEditCategory(cat);
+              }}
+              onDelete={(it) => {
+                const cat = categories.find((c) => c.id_categoria === it.id);
+                if (cat) deleteCategory(cat);
+              }}
+              onClickAdd={() => setShowCat(true)} // <--- el botón "+" abre agregar categoría
+              pageSize={6}
+            />
           </div>
 
-          {/* Subcategorías */}
-          <div className="grid grid-cols-1 grid-rows-2 h-[600px] items-stretch gap-8">
-            <div className="col-span-1 row-span-2 bg-white w-full rounded-md items-center text-xl overflow-y-auto p-2">
-              <h1 className="relative px-2 font-roboto text-black text-4xl pb-1 text-left">
-                Subcategorias
-                <button
-                  onClick={() => setShowSub(true)}
-                  className="absolute right-0"
-                  title="Agregar subcategoría"
-                >
-                  <span className="material-symbols-outlined text-5xl">
-                    add
-                  </span>
-                </button>
-              </h1>
-              <hr className="border-0 h-[2px] bg-black" />
-              <ul className="flex flex-col mt-4">
-                {(
-                  categories.find((c) => c.name === categoryName)
-                    ?.subcategories || []
-                ).map((sub, i) => (
-                  <li key={sub.id_subcategoria ?? i}>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setSubcategoria(sub.nombre)}
-                        className={`list-item ${
-                          subName === sub.nombre
-                            ? "bg-orange-100 border-orange-500"
-                            : "hover:bg-orange-100 hover:border-orange-500"
-                        }`}
-                      >
-                        {sub.nombre}
-                      </button>
-
-                      <IconSquareButton
-                        onClick={() => openEditSubcategory(sub)}
-                        title="Editar subcategoría"
-                        aria-label="Editar subcategoría"
-                      >
-                        <PencilIcon className="w-6 h-6 text-sky-500" />
-                      </IconSquareButton>
-
-                      <IconSquareButton
-                        onClick={() => deleteSubcategory(sub)}
-                        title="Eliminar subcategoría"
-                        aria-label="Eliminar subcategoría"
-                      >
-                        <TrashIcon className="w-6 h-6 text-red-500" />
-                      </IconSquareButton>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
+          <div>
+            <TableCard
+              title="Subcategoría"
+              items={(selectedCategory?.subcategories || []).map((s) => ({
+                id: s.id_subcategoria,
+                name: s.nombre,
+              }))}
+              onSelect={(it) => setSubcategoria(it.name)}
+              onEdit={(it) =>
+                openEditSubcategory({ id_subcategoria: it.id, nombre: it.name })
+              }
+              onDelete={(it) =>
+                deleteSubcategory({ id_subcategoria: it.id, nombre: it.name })
+              }
+              onClickAdd={() => setShowSub(true)} // <--- el botón "+" abre agregar subcategoría
+              pageSize={6}
+            />
           </div>
         </div>
       </div>
 
-      {/* ------------------ Modales: Crear ------------------ */}
-      <div className="flex items-center justify-center">
-        {showCat && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-2xl shadow-lg w-[680px] relative animate-fadeIn overflow-hidden">
-              <div className="bg-[#2b6daf] px-5 py-3">
-                <h2 className="text-xl font-bold text-white">
-                  Agregar Categoria
-                </h2>
-              </div>
-
-              <form className="grid grid-cols-2 gap-6 p-6" onSubmit={addCat}>
-                {/* Uploader (reemplaza Icono) */}
-                <div className="col-span-2">
-                  <ImageUploader
-                    label="Imágenes / Icono de la categoría"
-                    value={[]}
-                    onChange={setNewCatImages}
-                  />
-                </div>
-
-                <div className="col-span-2">
-                  <label
-                    htmlFor="nombreCat"
-                    className="block text-sm font-medium text-gray-700 text-left"
-                  >
-                    Nombre
-                  </label>
-                  <input
-                    id="nombreCat"
-                    type="text"
-                    className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    onChange={(e) => setNew(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="col-span-2 mt-2 flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowCat(false)}
-                    className="px-4 py-2 rounded-xl border border-[#d8dadc] text-gray-700 bg-white hover:bg-gray-50"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 rounded-xl bg-[#e96803] text-white font-semibold hover:brightness-110 active:scale-[.99] shadow-sm"
-                  >
-                    Guardar
-                  </button>
-                </div>
-              </form>
+      {/* ------------------ Modal: Crear Categoría ------------------ */}
+      {showCat && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-lg w-[680px] overflow-hidden">
+            <div className="bg-[#2b6daf] px-5 py-3">
+              <h2 className="text-xl font-bold text-white">
+                Agregar Categoría
+              </h2>
             </div>
-          </div>
-        )}
-
-        {showSub && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-            <div className="bg-white rounded-2xl shadow-lg w-[520px] relative animate-fadeIn overflow-hidden">
-              <div className="bg-[#2b6daf] px-5 py-3">
-                <h2 className="text-xl font-bold text-white">
-                  Agregar Subcategoria
-                </h2>
+            <form className="grid grid-cols-2 gap-6 p-6" onSubmit={addCat}>
+              <div className="col-span-2">
+                <SingleImageUploader
+                  label="Imagen de la categoría (1)"
+                  valueUrl=""
+                  onFiles={(file) => setNewCatFile(file)}
+                />
               </div>
-
-              <form className="p-6" onSubmit={addSubcat}>
+              <div className="col-span-2">
                 <label
-                  htmlFor="nombreSub"
+                  htmlFor="nombreCat"
                   className="block text-sm font-medium text-gray-700 text-left"
                 >
                   Nombre
                 </label>
                 <input
-                  id="nombreSub"
+                  id="nombreCat"
                   type="text"
                   className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  onChange={(e) => setNewSub(e.target.value)}
+                  onChange={(e) => setNew(e.target.value)}
                   required
                 />
-
-                <div className="mt-6 flex justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowSub(false)}
-                    className="px-4 py-2 rounded-xl border border-[#d8dadc] text-gray-700 bg-white hover:bg-gray-50"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 rounded-xl bg-[#e96803] text-white font-semibold hover:brightness-110 active:scale-[.99] shadow-sm"
-                  >
-                    Guardar
-                  </button>
-                </div>
-              </form>
-            </div>
+              </div>
+              <div className="col-span-2 mt-2 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowCat(false)}
+                  className="px-4 py-2 rounded-xl border border-[#d8dadc] text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-[#e96803] text-white font-semibold hover:brightness-110 shadow-sm"
+                >
+                  Guardar
+                </button>
+              </div>
+            </form>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* ------------------ Modales: Editar ------------------ */}
+      {/* ------------------ Modal: Crear Subcategoría ------------------ */}
+      {showSub && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-lg w-[520px] overflow-hidden">
+            <div className="bg-[#2b6daf] px-5 py-3">
+              <h2 className="text-xl font-bold text-white">
+                Agregar Subcategoría
+              </h2>
+            </div>
+            <form className="p-6" onSubmit={addSubcat}>
+              <label
+                htmlFor="nombreSub"
+                className="block text-sm font-medium text-gray-700 text-left"
+              >
+                Nombre
+              </label>
+              <input
+                id="nombreSub"
+                type="text"
+                className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(e) => setNewSub(e.target.value)}
+                required
+              />
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowSub(false)}
+                  className="px-4 py-2 rounded-xl border border-[#d8dadc] text-gray-700 bg-white hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-[#e96803] text-white font-semibold hover:brightness-110 shadow-sm"
+                >
+                  Guardar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------ Modal: Editar Categoría ------------------ */}
       {showEditCat && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-lg w-[680px] relative animate-fadeIn overflow-hidden">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-lg w-[680px] overflow-hidden">
             <div className="bg-[#2b6daf] px-5 py-3">
               <h2 className="text-xl font-bold text-white">Editar Categoria</h2>
             </div>
-
             <form
               className="grid grid-cols-2 gap-6 p-6"
               onSubmit={submitEditCategory}
             >
               <div className="col-span-2">
-                <ImageUploader
-                  label="Imágenes / Icono de la categoría"
-                  value={[]}
-                  onChange={setEditCatImages}
+                <SingleImageUploader
+                  label="Imagen de la categoría (1)"
+                  valueUrl={
+                    categories.find((c) => c.id_categoria === editCatId)
+                      ?.icono_categoria || ""
+                  }
+                  onFiles={(file) => setEditCatFile(file)}
                 />
               </div>
-
               <div className="col-span-2">
                 <label
                   htmlFor="editNombreCat"
@@ -784,7 +913,6 @@ function GestionProductos() {
                   required
                 />
               </div>
-
               <div className="col-span-2 mt-2 flex justify-end gap-3">
                 <button
                   type="button"
@@ -795,7 +923,7 @@ function GestionProductos() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-[#e96803] text-white font-semibold hover:brightness-110 active:scale-[.99] shadow-sm"
+                  className="px-4 py-2 rounded-xl bg-[#e96803] text-white font-semibold hover:brightness-110 shadow-sm"
                 >
                   Guardar
                 </button>
@@ -805,15 +933,15 @@ function GestionProductos() {
         </div>
       )}
 
+      {/* ------------------ Modal: Editar Subcategoría ------------------ */}
       {showEditSub && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-lg w-[520px] relative animate-fadeIn overflow-hidden">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-lg w-[520px] overflow-hidden">
             <div className="bg-[#2b6daf] px-5 py-3">
               <h2 className="text-xl font-bold text-white">
                 Editar Subcategoria
               </h2>
             </div>
-
             <form className="p-6" onSubmit={submitEditSubcategory}>
               <label
                 htmlFor="editNombreSub"
@@ -829,7 +957,6 @@ function GestionProductos() {
                 onChange={(e) => setEditSubName(e.target.value)}
                 required
               />
-
               <div className="mt-6 flex justify-end gap-3">
                 <button
                   type="button"
@@ -840,7 +967,7 @@ function GestionProductos() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-[#e96803] text-white font-semibold hover:brightness-110 active:scale-[.99] shadow-sm"
+                  className="px-4 py-2 rounded-xl bg-[#e96803] text-white font-semibold hover:brightness-110 shadow-sm"
                 >
                   Guardar
                 </button>
@@ -852,17 +979,5 @@ function GestionProductos() {
     </div>
   );
 }
-
-const styles = {
-  fixedShell: {
-    position: "absolute",
-    top: "90px",
-    left: 0,
-    right: 0,
-    width: "100%",
-    display: "flex",
-    flexDirection: "column",
-  },
-};
 
 export default GestionProductos;

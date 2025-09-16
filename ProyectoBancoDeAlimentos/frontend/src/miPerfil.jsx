@@ -539,16 +539,16 @@ export default function MiPerfil() {
               <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Juan Javier" disabled={!editMode} />
             </Field>
 
+            <Field label="Apellidos" icon={<Icon name="user" />}>
+              <input value={apellidos} onChange={(e) => setApellidos(e.target.value)} placeholder="Perez Maldonado" disabled={!editMode} />
+            </Field>
+
             <Field label="Correo" icon={<Icon name="mail" />}>
               <input value={correo} onChange={(e) => setCorreo(e.target.value)} placeholder="ejemplo@gmail.com" disabled={!editMode} />
             </Field>
 
             <Field label="Telefono" icon={<Icon name="number" />}>
               <input value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="Telefono" disabled={!editMode} />
-            </Field>
-
-            <Field label="Apellidos" icon={<Icon name="user" />}>
-              <input value={apellidos} onChange={(e) => setApellidos(e.target.value)} placeholder="Perez Maldonado" disabled={!editMode} />
             </Field>
 
             <Field label="Género">

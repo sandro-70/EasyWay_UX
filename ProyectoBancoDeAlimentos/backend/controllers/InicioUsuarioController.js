@@ -51,7 +51,7 @@ exports.infoById = async (req, res) => {
 
 exports.infoRoleById = async (req, res) => {
   try {
-    const id = getAuthUserId(req);
+    const id = Number(req.params.id_role);
     if (!Number.isFinite(id) || id <= 0) {
       return res.status(400).json({ message: "id inválido" });
     }
@@ -124,37 +124,6 @@ exports.GetAllUser = async (req, res) => {
   }
 };
 
-exports.infoByIdd = async (req, res) => {
-  try {
-    // usar el id que viene en la URL (req.params.id)
-    const id = Number(req.params.id || req.params.id_usuario);
-    console.log("[infoById] requested id from URL:", id);
-    if (!Number.isInteger(id) || id <= 0) {
-      return res.status(400).json({ message: "id inválido en URL" });
-    }
-
-    const data = await getInformacionUsuario({ id_usuario: id });
-    try {
-      // intenta imprimir id del usuario obtenido para validar
-      const fetchedId =
-        data &&
-        (data.id_usuario ||
-          data.id ||
-          (data.get && data.get("id_usuario")) ||
-          null);
-      console.log("[infoById] fetched user id:", fetchedId);
-    } catch (e) {
-      console.log("[infoById] fetched user (no id available)");
-    }
-    return res.status(200).json(data);
-  } catch (e) {
-    const msg = String(e?.message || e);
-    if (msg.includes("Usuario no encontrado")) {
-      return res.status(404).json({ message: msg });
-    }
-    return res.status(400).json({ message: msg });
-  }
-};
 
 // Devuelve sólo nombre y apellido (útil para interfaces que requieren mostrar el nombre corto)
 exports.infoNombreApellidoById = async (req, res) => {

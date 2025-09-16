@@ -139,7 +139,7 @@ const ConfigBanner = () => {
       const updateData = {
         orden: parseInt(editForm.orden),
         nombre_promocion: editForm.name.trim(),
-        descripcion: editForm.description.trim(),
+        descripción: editForm.description.trim(),
         banner_url: currentBanner.backgroundImage,
         activa: editForm.status,
       };

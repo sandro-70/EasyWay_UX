@@ -502,7 +502,7 @@ exports.actualizarPromocion = async (req, res) => {
     // PROBLEMA CORREGIDO: Agregado el campo 'activa' en la destructuración
     const {
       nombre_promocion,
-      descripcion,
+      descripción,
       valor_fijo,
       valor_porcentaje,
       compra_min,
@@ -537,8 +537,8 @@ exports.actualizarPromocion = async (req, res) => {
 
     promocionToUpdate.nombre_promocion =
       nombre_promocion || promocionToUpdate.nombre_promocion;
-    promocionToUpdate.descripcion =
-      descripcion || promocionToUpdate.descripcion;
+    promocionToUpdate.descripción =
+      descripción || promocionToUpdate.descripción;
     promocionToUpdate.valor_fijo =
       valor_fijo !== undefined ? valor_fijo : promocionToUpdate.valor_fijo;
     promocionToUpdate.compra_min =

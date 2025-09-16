@@ -77,14 +77,7 @@
   font-weight: 600;
   cursor: pointer;
 }
-.btn-cancelar {
-   border-radius: 8px;
-  border: 1px solid var(--border);
-  background: #fff;
-  font-size: 14px;
-  cursor: pointer;
-  color: #000000;
-}
+
 .btn-primary:hover {
   filter: brightness(1.05);
 }

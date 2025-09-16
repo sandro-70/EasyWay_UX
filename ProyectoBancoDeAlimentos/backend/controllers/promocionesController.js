@@ -1,161 +1,179 @@
-const { promocion, Usuario, pedido, promocion_pedido, producto, estado_pedido, factura, promocion_producto, sequelize } = require("../models");
+const {
+  promocion,
+  Usuario,
+  pedido,
+  promocion_pedido,
+  producto,
+  estado_pedido,
+  factura,
+  promocion_producto,
+  sequelize,
+} = require("../models");
 
-const { Op } = require('sequelize');
+const { Op } = require("sequelize");
 
 exports.listar = async (req, res) => {
-    try {
-        const promos = await promocion.findAll({
-        where: { activa: { [Op.ne]: null } },
-        order: [['fecha_inicio', 'DESC']]
-        });
-        res.json(promos)
-    } catch (error) {
-        console.error('Error solicitando categories:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
+  try {
+    const promos = await promocion.findAll({
+      where: { activa: { [Op.ne]: null } },
+      order: [["fecha_inicio", "DESC"]],
+    });
+    res.json(promos);
+  } catch (error) {
+    console.error("Error solicitando categories:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 };
 
 exports.listarPorOrden = async (req, res) => {
   try {
-      const promos = await promocion.findAll({
+    const promos = await promocion.findAll({
       where: { activa: { [Op.ne]: null }, orden: { [Op.ne]: null } },
-      order: [['orden', 'ASC']]
-      });
-      res.json(promos)
+      order: [["orden", "ASC"]],
+    });
+    res.json(promos);
   } catch (error) {
-      console.error('Error solicitando categories:', error);
-      res.status(500).json({ error: 'Internal Server Error' });
+    console.error("Error solicitando categories:", error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
-
-
 exports.getpromocionById = async (req, res) => {
-    try {
-        const { id } = req.params;  
-        const promo = await promocion.findByPk(id);
-        if (!promo) {
-            return res.status(404).json({ error: 'Promoción no encontrada' });
-        }
-        res.json(promo);
-    } catch (error) {
-        console.error('Error solicitando promoción por ID:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+  try {
+    const { id } = req.params;
+    const promo = await promocion.findByPk(id);
+    if (!promo) {
+      return res.status(404).json({ error: "Promoción no encontrada" });
     }
+    res.json(promo);
+  } catch (error) {
+    console.error("Error solicitando promoción por ID:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 };
 
 exports.getpromocionbyusuario = async (req, res) => {
-    try {
-        const { id_usuario } = req.params;
-        const promos = await promocion.findAll({
-            where: { activa: true },
-            include: [{
-                model: pedido,
-                where: { id_usuario },
-                required: true,
-                attributes: [] // No necesitamos los atributos del pedido
-            }],
-            order: [['fecha_inicio', 'DESC']]
-        });
-        res.json(promos)
-    } catch (error) {
-        console.error('Error solicitando promociones por usuario:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
-    }
+  try {
+    const { id_usuario } = req.params;
+    const promos = await promocion.findAll({
+      where: { activa: true },
+      include: [
+        {
+          model: pedido,
+          where: { id_usuario },
+          required: true,
+          attributes: [], // No necesitamos los atributos del pedido
+        },
+      ],
+      order: [["fecha_inicio", "DESC"]],
+    });
+    res.json(promos);
+  } catch (error) {
+    console.error("Error solicitando promociones por usuario:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 };
 
-
-
 exports.getDescuentosPorUsuario = async (req, res) => {
-    try {
-        const { id_usuario } = req.params;
+  try {
+    const { id_usuario } = req.params;
 
-        // Consulta para obtener los descuentos aplicados por usuario
-        const descuentos = await promocion_pedido.findAll({
-            include: [
-                {
-                    model: promocion,
-                    where: { activa: true },
-                    required: true,
-                    attributes: ['id_promocion', 'nombre_promocion', 'descripcion', 'valor_fijo', 'valor_porcentaje', 'fecha_inicio', 'fecha_termina']
-                },
-                {
-                    model: pedido,
-                    where: { id_usuario },
-                    required: true,
-                    attributes: ['id_pedido', 'fecha_pedido']
-                }
-            ],
-            order: [['fecha_pedido', 'DESC']]
-        });
+    // Consulta para obtener los descuentos aplicados por usuario
+    const descuentos = await promocion_pedido.findAll({
+      include: [
+        {
+          model: promocion,
+          where: { activa: true },
+          required: true,
+          attributes: [
+            "id_promocion",
+            "nombre_promocion",
+            "descripcion",
+            "valor_fijo",
+            "valor_porcentaje",
+            "fecha_inicio",
+            "fecha_termina",
+          ],
+        },
+        {
+          model: pedido,
+          where: { id_usuario },
+          required: true,
+          attributes: ["id_pedido", "fecha_pedido"],
+        },
+      ],
+      order: [["fecha_pedido", "DESC"]],
+    });
 
-        console.log('Descuentos obtenidos:', descuentos);
+    console.log("Descuentos obtenidos:", descuentos);
 
-        // Verificar si se encontraron descuentos
-        if (!descuentos || descuentos.length === 0) {
-            return res.status(404).json({ error: 'No se encontraron descuentos para el usuario' });
-        }
-
-        // Formatear los datos para que cada descuento tenga la información necesaria
-        const descuentosFormateados = descuentos.map(descuento => {
-            if (!descuento.pedido || !descuento.promocion) {
-                throw new Error('Pedido o promoción no encontrados en el descuento');
-            }
-
-            return {
-                id_promocion: descuento.promocion.id_promocion,
-                nombre_promocion: descuento.promocion.nombre_promocion,
-                descripcion: descuento.promocion.descripcion,
-                valor_fijo: descuento.promocion.valor_fijo,
-                valor_porcentaje: descuento.promocion.valor_porcentaje,
-                fecha_inicio: descuento.promocion.fecha_inicio,
-                fecha_termina: descuento.promocion.fecha_termina,
-                id_pedido: descuento.pedido.id_pedido,
-                fecha_pedido: descuento.pedido.fecha_pedido,
-                monto_descuento: descuento.monto_descuento
-            };
-        });
-
-        res.json(descuentosFormateados);
-    } catch (error) {
-        console.error('Error al obtener descuentos por usuario:', error);
-        res.status(500).json({ error: 'Internal Server Error' });
+    // Verificar si se encontraron descuentos
+    if (!descuentos || descuentos.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "No se encontraron descuentos para el usuario" });
     }
+
+    // Formatear los datos para que cada descuento tenga la información necesaria
+    const descuentosFormateados = descuentos.map((descuento) => {
+      if (!descuento.pedido || !descuento.promocion) {
+        throw new Error("Pedido o promoción no encontrados en el descuento");
+      }
+
+      return {
+        id_promocion: descuento.promocion.id_promocion,
+        nombre_promocion: descuento.promocion.nombre_promocion,
+        descripcion: descuento.promocion.descripcion,
+        valor_fijo: descuento.promocion.valor_fijo,
+        valor_porcentaje: descuento.promocion.valor_porcentaje,
+        fecha_inicio: descuento.promocion.fecha_inicio,
+        fecha_termina: descuento.promocion.fecha_termina,
+        id_pedido: descuento.pedido.id_pedido,
+        fecha_pedido: descuento.pedido.fecha_pedido,
+        monto_descuento: descuento.monto_descuento,
+      };
+    });
+
+    res.json(descuentosFormateados);
+  } catch (error) {
+    console.error("Error al obtener descuentos por usuario:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 };
 
 exports.getAllPromotionsWithDetails = async (req, res) => {
   try {
     const promotions = await promocion.findAll({
-      attributes: ['id_promocion', 'banner_url'],
+      attributes: ["id_promocion", "banner_url"],
       include: [
         {
           model: tipo_promocion,
-          attributes: ['id_tipo_promo', 'nombre_tipo_promocion']
+          attributes: ["id_tipo_promo", "nombre_tipo_promocion"],
         },
         {
           model: promocion_producto,
           attributes: [],
           include: {
             model: producto,
-            attributes: ['id_producto', 'nombre']
-          }
-        }
+            attributes: ["id_producto", "nombre"],
+          },
+        },
       ],
-      order: [['fecha_inicio', 'DESC']]
+      order: [["fecha_inicio", "DESC"]],
     });
 
     if (promotions.length === 0) {
-      return res.status(404).json({ message: "No hay promociones disponibles" });
+      return res
+        .status(404)
+        .json({ message: "No hay promociones disponibles" });
     }
 
     res.json(promotions);
   } catch (error) {
-    console.error('Error al obtener promociones:', error);
-    res.status(500).json({ error: 'Error al obtener promociones' });
+    console.error("Error al obtener promociones:", error);
+    res.status(500).json({ error: "Error al obtener promociones" });
   }
 };
-
-
 
 exports.listarPromocionesConDetallesURL = async (req, res) => {
   try {
@@ -165,34 +183,29 @@ exports.listarPromocionesConDetallesURL = async (req, res) => {
         {
           model: producto,
           through: promocion_producto,
-          as: 'productos', // Asegúrate de que el alias 'productos' coincida con el alias definido en las asociaciones
-          attributes: ['id_producto'], // Solo seleccionamos el id del producto
-        }
+          as: "productos", // Asegúrate de que el alias 'productos' coincida con el alias definido en las asociaciones
+          attributes: ["id_producto"], // Solo seleccionamos el id del producto
+        },
       ],
-      attributes: ['id_promocion', 'id_tipo_promo', 'banner_url'] // Campos que queremos de la promoción
+      attributes: ["id_promocion", "id_tipo_promo", "banner_url"], // Campos que queremos de la promoción
     });
 
     // Formatear los datos para que cada promoción tenga un array de productos
-    const promocionesConDetalles = promociones.map(promocion => ({
+    const promocionesConDetalles = promociones.map((promocion) => ({
       id_promocion: promocion.id_promocion,
       id_tipo_promo: promocion.id_tipo_promo,
       banner_url: promocion.banner_url,
-      productos: promocion.productos.map(producto => producto.id_producto)
+      productos: promocion.productos.map((producto) => producto.id_producto),
     }));
 
     res.json(promocionesConDetalles);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Error al obtener las promociones' });
+    res.status(500).json({ error: "Error al obtener las promociones" });
   }
 };
 
-
-
-
-
 // controllers/promocionesController.js
-
 
 exports.getDescuentosAplicadosPorUsuario = async (req, res) => {
   try {
@@ -206,7 +219,9 @@ exports.getDescuentosAplicadosPorUsuario = async (req, res) => {
     });
 
     if (!pedidosUsuario || pedidosUsuario.length === 0) {
-      return res.status(404).json({ message: "No hay pedidos para este usuario" });
+      return res
+        .status(404)
+        .json({ message: "No hay pedidos para este usuario" });
     }
 
     // 2) Para cada pedido, traer factura y promociones
@@ -221,14 +236,20 @@ exports.getDescuentosAplicadosPorUsuario = async (req, res) => {
         // Varias promociones pueden aplicar a un pedido
         const promosPedido = await promocion_pedido.findAll({
           where: { id_pedido: p.id_pedido },
-          attributes: ["id_promocion_pedido", "id_promocion", "monto_descuento"],
+          attributes: [
+            "id_promocion_pedido",
+            "id_promocion",
+            "monto_descuento",
+          ],
         });
 
         let promocionesInfo = [];
         let descuentoTotal = 0;
 
         if (promosPedido && promosPedido.length > 0) {
-          const idsPromos = promosPedido.map((pp) => pp.id_promocion).filter(Boolean);
+          const idsPromos = promosPedido
+            .map((pp) => pp.id_promocion)
+            .filter(Boolean);
 
           // Traer nombres de las promociones en bloque
           let promosCatalogo = [];
@@ -240,13 +261,17 @@ exports.getDescuentosAplicadosPorUsuario = async (req, res) => {
           }
 
           const mapaPromos = new Map(
-            promosCatalogo.map((row) => [row.id_promocion, row.nombre_promocion])
+            promosCatalogo.map((row) => [
+              row.id_promocion,
+              row.nombre_promocion,
+            ])
           );
 
           promocionesInfo = promosPedido.map((pp) => ({
             id_promocion_pedido: pp.id_promocion_pedido,
             id_promocion: pp.id_promocion,
-            nombre_promocion: mapaPromos.get(pp.id_promocion) || "Sin promoción",
+            nombre_promocion:
+              mapaPromos.get(pp.id_promocion) || "Sin promoción",
             monto_descuento: Number(pp.monto_descuento) || 0,
           }));
 
@@ -274,26 +299,29 @@ exports.getDescuentosAplicadosPorUsuario = async (req, res) => {
   }
 };
 
-
 exports.aplicarDescuentoseleccionados = async (req, res) => {
   try {
     const { selectedProductIds, discountType, discountValue } = req.body;
     if (!req.user || !req.user.id_usuario) {
-      return res.status(401).json({ message: 'Usuario no autenticado' });
+      return res.status(401).json({ message: "Usuario no autenticado" });
     }
     const currentUserId = req.user.id_usuario;
 
     // Verificar si el usuario es administrador
     const user = await Usuario.findByPk(currentUserId, {
-      attributes: ['id_rol'],
+      attributes: ["id_rol"],
     });
 
     if (!user || user.id_rol !== 1) {
-      return res.status(403).json({ message: 'Solo los administradores pueden aplicar descuentos' });
+      return res.status(403).json({
+        message: "Solo los administradores pueden aplicar descuentos",
+      });
     }
 
     // Resetear la secuencia de id_promocion para evitar conflictos
-    await sequelize.query('SELECT setval(\'promocion_id_promocion_seq\', (SELECT COALESCE(MAX(id_promocion), 0) + 1 FROM promocion), false);');
+    await sequelize.query(
+      "SELECT setval('promocion_id_promocion_seq', (SELECT COALESCE(MAX(id_promocion), 0) + 1 FROM promocion), false);"
+    );
 
     // Aplicar el descuento a los productos seleccionados
     for (const id_producto of selectedProductIds) {
@@ -303,12 +331,14 @@ exports.aplicarDescuentoseleccionados = async (req, res) => {
       }
 
       let promocionExistente = await promocion.findOne({
-        include: [{
-          model: producto,
-          where: { id_producto: id_producto },
-          through: { attributes: [] },
-          required: true
-        }]
+        include: [
+          {
+            model: producto,
+            where: { id_producto: id_producto },
+            through: { attributes: [] },
+            required: true,
+          },
+        ],
       });
 
       if (!promocionExistente) {
@@ -318,14 +348,14 @@ exports.aplicarDescuentoseleccionados = async (req, res) => {
         // Crear la asociación en la tabla promocion_producto
         await promocion_producto.create({
           id_promocion: promocionExistente.id_promocion,
-          id_producto: id_producto
+          id_producto: id_producto,
         });
       }
 
-      if (discountType === 'percent') {
+      if (discountType === "percent") {
         promocionExistente.valor_porcentaje = parseFloat(discountValue);
         promocionExistente.valor_fijo = null;
-      } else if (discountType === 'fixed') {
+      } else if (discountType === "fixed") {
         promocionExistente.valor_porcentaje = null;
         promocionExistente.valor_fijo = parseFloat(discountValue);
       }
@@ -333,41 +363,55 @@ exports.aplicarDescuentoseleccionados = async (req, res) => {
       await promocionExistente.save();
     }
 
-    res.json({ message: 'Descuentos aplicados correctamente' });
+    res.json({ message: "Descuentos aplicados correctamente" });
   } catch (error) {
-    console.error('Error al aplicar descuentos:', error);
-    res.status(500).json({ error: 'Error al aplicar descuentos' });
+    console.error("Error al aplicar descuentos:", error);
+    res.status(500).json({ error: "Error al aplicar descuentos" });
   }
 };
 
 exports.crearPromocion = async (req, res) => {
   try {
-    const { nombre_promocion, descripción, valor_fijo, valor_porcentaje,compra_min, fecha_inicio, fecha_termina, id_tipo_promo, banner_url, productos,orden, } = req.body;
+    const {
+      nombre_promocion,
+      descripción,
+      valor_fijo,
+      valor_porcentaje,
+      compra_min,
+      fecha_inicio,
+      fecha_termina,
+      id_tipo_promo,
+      banner_url,
+      productos,
+      orden,
+    } = req.body;
     if (!req.user || !req.user.id_usuario) {
-      return res.status(401).json({ message: 'Usuario no autenticado' });
+      return res.status(401).json({ message: "Usuario no autenticado" });
     }
     const currentUserId = req.user.id_usuario;
 
     // Verificar si el usuario es administrador
     const user = await Usuario.findByPk(currentUserId, {
-      attributes: ['id_rol'],
+      attributes: ["id_rol"],
     });
     if (!user || user.id_rol !== 1) {
-      return res.status(403).json({ message: 'Solo los administradores pueden crear promociones' });
+      return res
+        .status(403)
+        .json({ message: "Solo los administradores pueden crear promociones" });
     }
-    
+
     const newPromocion = await promocion.create({
       nombre_promocion,
       descripción,
       valor_fijo: valor_fijo || null,
       valor_porcentaje: valor_porcentaje || null,
-      compra_min: compra_min ||null,
+      compra_min: compra_min || null,
       fecha_inicio,
       fecha_termina,
       id_tipo_promo,
       banner_url,
       orden: orden || null,
-      activa: true
+      activa: true,
     });
     if (productos && Array.isArray(productos)) {
       for (const id_producto of productos) {
@@ -375,47 +419,51 @@ exports.crearPromocion = async (req, res) => {
         if (product) {
           await promocion_producto.create({
             id_promocion: newPromocion.id_promocion,
-            id_producto: id_producto
+            id_producto: id_producto,
           });
         }
       }
     }
-    res.status(201).json({ message: 'Promoción creada correctamente', promocion: newPromocion });
+    res.status(201).json({
+      message: "Promoción creada correctamente",
+      promocion: newPromocion,
+    });
   } catch (error) {
-    console.error('Error al crear la promoción:', error?.original || error);
+    console.error("Error al crear la promoción:", error?.original || error);
 
-    res.status(500).json({ error: 'Error al crear la promoción' });
+    res.status(500).json({ error: "Error al crear la promoción" });
   }
 };
-
 
 exports.desactivarPromocion = async (req, res) => {
   try {
     const { id } = req.params;
     if (!req.user || !req.user.id_usuario) {
-      return res.status(401).json({ message: 'Usuario no autenticado' });
+      return res.status(401).json({ message: "Usuario no autenticado" });
     }
     const currentUserId = req.user.id_usuario;
 
     // Verificar si el usuario es administrador
     const user = await Usuario.findByPk(currentUserId, {
-      attributes: ['id_rol'],
+      attributes: ["id_rol"],
     });
     if (!user || user.id_rol !== 1) {
-      return res.status(403).json({ message: 'Solo los administradores pueden desactivar promociones' });
+      return res.status(403).json({
+        message: "Solo los administradores pueden desactivar promociones",
+      });
     }
 
     const promocionToDeactivate = await promocion.findByPk(id);
     if (!promocionToDeactivate) {
-      return res.status(404).json({ message: 'Promoción no encontrada' });
+      return res.status(404).json({ message: "Promoción no encontrada" });
     }
 
     promocionToDeactivate.activa = false;
     await promocionToDeactivate.save();
-    res.json({ message: 'Promoción desactivada correctamente' });
+    res.json({ message: "Promoción desactivada correctamente" });
   } catch (error) {
-    console.error('Error al desactivar la promoción:', error);
-    res.status(500).json({ error: 'Error al desactivar la promoción' });
+    console.error("Error al desactivar la promoción:", error);
+    res.status(500).json({ error: "Error al desactivar la promoción" });
   }
 };
 
@@ -423,61 +471,94 @@ exports.activarPromocion = async (req, res) => {
   try {
     const { id } = req.params;
     if (!req.user || !req.user.id_usuario) {
-      return res.status(401).json({ message: 'Usuario no autenticado' });
+      return res.status(401).json({ message: "Usuario no autenticado" });
     }
     const currentUserId = req.user.id_usuario;
     // Verificar si el usuario es administrador
     const user = await Usuario.findByPk(currentUserId, {
-      attributes: ['id_rol'],
+      attributes: ["id_rol"],
     });
     if (!user || user.id_rol !== 1) {
-      return res.status(403).json({ message: 'Solo los administradores pueden activar promociones' });
+      return res.status(403).json({
+        message: "Solo los administradores pueden activar promociones",
+      });
     }
 
     const promocionToActivate = await promocion.findByPk(id);
     if (!promocionToActivate) {
-      return res.status(404).json({ message: 'Promoción no encontrada' });
+      return res.status(404).json({ message: "Promoción no encontrada" });
     }
     promocionToActivate.activa = true;
     await promocionToActivate.save();
-    res.json({ message: 'Promoción activada correctamente' });
+    res.json({ message: "Promoción activada correctamente" });
   } catch (error) {
-    console.error('Error al activar la promoción:', error);
-    res.status(500).json({ error: 'Error al activar la promoción' });
+    console.error("Error al activar la promoción:", error);
+    res.status(500).json({ error: "Error al activar la promoción" });
   }
 };
-
 exports.actualizarPromocion = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre_promocion, descripcion, valor_fijo, valor_porcentaje, compra_min,fecha_inicio, fecha_termina, id_tipo_promo, banner_url, productos,orden } = req.body;
+    // PROBLEMA CORREGIDO: Agregado el campo 'activa' en la destructuración
+    const {
+      nombre_promocion,
+      descripcion,
+      valor_fijo,
+      valor_porcentaje,
+      compra_min,
+      fecha_inicio,
+      fecha_termina,
+      id_tipo_promo,
+      banner_url,
+      productos,
+      orden,
+      activa, // <-- ESTE CAMPO FALTABA
+    } = req.body;
+
     if (!req.user || !req.user.id_usuario) {
-      return res.status(401).json({ message: 'Usuario no autenticado' });
+      return res.status(401).json({ message: "Usuario no autenticado" });
     }
     const currentUserId = req.user.id_usuario;
 
-    // Verificar si el usuario es administrador 
+    // Verificar si el usuario es administrador
     const user = await Usuario.findByPk(currentUserId, {
-      attributes: ['id_rol'],
+      attributes: ["id_rol"],
     });
     if (!user || user.id_rol !== 1) {
-      return res.status(403).json({ message: 'Solo los administradores pueden actualizar promociones' });
+      return res.status(403).json({
+        message: "Solo los administradores pueden actualizar promociones",
+      });
     }
 
     const promocionToUpdate = await promocion.findByPk(id);
     if (!promocionToUpdate) {
-      return res.status(404).json({ message: 'Promoción no encontrada' });
+      return res.status(404).json({ message: "Promoción no encontrada" });
     }
-    promocionToUpdate.nombre_promocion = nombre_promocion || promocionToUpdate.nombre_promocion;
-    promocionToUpdate.descripcion = descripcion || promocionToUpdate.descripcion;
-    promocionToUpdate.valor_fijo = valor_fijo !== undefined ? valor_fijo : promocionToUpdate.valor_fijo;
-    promocionToUpdate.compra_min = compra_min !== undefined ? compra_min : promocionToUpdate.compra_min;
-    promocionToUpdate.valor_porcentaje = valor_porcentaje !== undefined ? valor_porcentaje : promocionToUpdate.valor_porcentaje;
-    promocionToUpdate.fecha_inicio = fecha_inicio || promocionToUpdate.fecha_inicio;
-    promocionToUpdate.fecha_termina = fecha_termina || promocionToUpdate.fecha_termina;
-    promocionToUpdate.id_tipo_promo = id_tipo_promo || promocionToUpdate.id_tipo_promo;
-    promocionToUpdate.orden = orden !== undefined ? orden : promocionToUpdate.orden;
+
+    promocionToUpdate.nombre_promocion =
+      nombre_promocion || promocionToUpdate.nombre_promocion;
+    promocionToUpdate.descripcion =
+      descripcion || promocionToUpdate.descripcion;
+    promocionToUpdate.valor_fijo =
+      valor_fijo !== undefined ? valor_fijo : promocionToUpdate.valor_fijo;
+    promocionToUpdate.compra_min =
+      compra_min !== undefined ? compra_min : promocionToUpdate.compra_min;
+    promocionToUpdate.valor_porcentaje =
+      valor_porcentaje !== undefined
+        ? valor_porcentaje
+        : promocionToUpdate.valor_porcentaje;
+    promocionToUpdate.fecha_inicio =
+      fecha_inicio || promocionToUpdate.fecha_inicio;
+    promocionToUpdate.fecha_termina =
+      fecha_termina || promocionToUpdate.fecha_termina;
+    promocionToUpdate.id_tipo_promo =
+      id_tipo_promo || promocionToUpdate.id_tipo_promo;
+    promocionToUpdate.orden =
+      orden !== undefined ? orden : promocionToUpdate.orden;
     promocionToUpdate.banner_url = banner_url || promocionToUpdate.banner_url;
+    promocionToUpdate.activa =
+      activa !== undefined ? activa : promocionToUpdate.activa;
+
     await promocionToUpdate.save();
 
     if (productos && Array.isArray(productos)) {
@@ -489,17 +570,26 @@ exports.actualizarPromocion = async (req, res) => {
         if (product) {
           await promocion_producto.create({
             id_promocion: id,
-            id_producto: id_producto
+            id_producto: id_producto,
           });
         }
       }
     }
 
-    res.json({ message: 'Promoción actualizada correctamente', promocion: promocionToUpdate });
+    // OPCIONAL: Agregar logs para debugging
+    console.log("Promoción actualizada:", {
+      id: promocionToUpdate.id_promocion,
+      nombre: promocionToUpdate.nombre_promocion,
+      activa: promocionToUpdate.activa,
+      orden: promocionToUpdate.orden,
+    });
+
+    res.json({
+      message: "Promoción actualizada correctamente",
+      promocion: promocionToUpdate,
+    });
   } catch (error) {
-    console.error('Error al actualizar la promoción:', error);
-    res.status(500).json({ error: 'Error al actualizar la promoción' });
+    console.error("Error al actualizar la promoción:", error);
+    res.status(500).json({ error: "Error al actualizar la promoción" });
   }
 };
-
-

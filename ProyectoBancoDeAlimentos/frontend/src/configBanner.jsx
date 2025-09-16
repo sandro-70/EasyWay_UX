@@ -29,15 +29,16 @@ const ConfigBanner = () => {
           id_promocion: item.id_promocion,
           orden: item.orden,
           name: item.nombre_promocion,
-          description: item.descripción || item.descripcion, //tilde
+          description: item.descripción || item.descripcion,
           backgroundImage: item.banner_url,
           textColor: "white",
           statusColor: "statusOrange",
+          status:
+            item.activa === true || item.activa === 1 || item.activa === "true",
         };
       });
       setBanners(mappedBanners);
 
-      // Si no hay banners, resetear el índice
       if (mappedBanners.length === 0) {
         setCurrentIndex(0);
       } else if (currentIndex >= mappedBanners.length) {
@@ -53,7 +54,6 @@ const ConfigBanner = () => {
     }
   };
 
-  // Cargar datos al inicializar
   useEffect(() => {
     fetchBanners();
   }, []);
@@ -69,10 +69,10 @@ const ConfigBanner = () => {
   const openEditModal = () => {
     const current = banners[currentIndex];
     setEditForm({
-      orden: current.orden,
-      name: current.name,
-      description: current.description,
-      status: current.status,
+      orden: current.orden || 1,
+      name: current.name || "",
+      description: current.description || "",
+      status: current.status || false,
     });
     setValidationError("");
     setIsEditModalOpen(true);
@@ -100,7 +100,6 @@ const ConfigBanner = () => {
       return true;
     }
 
-    // orden ya existe en otro banner
     const ordenExiste = banners.some(
       (banner) =>
         banner.orden === nuevoOrden &&
@@ -118,7 +117,6 @@ const ConfigBanner = () => {
   };
 
   const saveChanges = async () => {
-    // Validaciones básicas
     if (!editForm.name.trim() || !editForm.description.trim()) {
       setValidationError("Por favor completa todos los campos requeridos");
       return;
@@ -129,7 +127,6 @@ const ConfigBanner = () => {
       return;
     }
 
-    // duplicado
     if (!validateOrden(editForm.orden)) {
       return;
     }
@@ -139,11 +136,10 @@ const ConfigBanner = () => {
       setValidationError("");
       const currentBanner = banners[currentIndex];
 
-      //  datos para enviar a la API
       const updateData = {
-        orden: editForm.orden,
+        orden: parseInt(editForm.orden),
         nombre_promocion: editForm.name.trim(),
-        descripción: editForm.description.trim(),
+        descripcion: editForm.description.trim(),
         banner_url: currentBanner.backgroundImage,
         activa: editForm.status,
       };
@@ -160,10 +156,26 @@ const ConfigBanner = () => {
       );
       console.log("Respuesta de actualización:", response);
 
-      await fetchBanners();
+      // Actualizar el banner local inmediatamente para reflejar el cambio
+      setBanners((prevBanners) =>
+        prevBanners.map((banner, index) =>
+          index === currentIndex
+            ? {
+                ...banner,
+                orden: parseInt(editForm.orden),
+                name: editForm.name.trim(),
+                description: editForm.description.trim(),
+                status: editForm.status,
+              }
+            : banner
+        )
+      );
 
       alert("Banner actualizado exitosamente");
       closeEditModal();
+
+      // Recargar datos para confirmar
+      await fetchBanners();
     } catch (err) {
       console.error("Error completo al guardar:", err);
       console.error("Respuesta del servidor:", err.response);
@@ -184,7 +196,6 @@ const ConfigBanner = () => {
     }
   };
 
-  // Función para recargar datos manualmente
   const handleRefresh = () => {
     fetchBanners();
   };
@@ -347,7 +358,6 @@ const ConfigBanner = () => {
                   </button>
                 </div>
 
-                {/* Mostrar errores de validación */}
                 {validationError && (
                   <div style={styles.errorMessage}>{validationError}</div>
                 )}
@@ -369,7 +379,6 @@ const ConfigBanner = () => {
                     onBlur={(e) => {
                       e.target.style.borderColor = "#d1d5db";
                       e.target.style.boxShadow = "none";
-                      // Validar cuando pierde el foco
                       if (e.target.value) {
                         validateOrden(parseInt(e.target.value));
                       }
@@ -454,6 +463,9 @@ const ConfigBanner = () => {
                           }}
                         ></div>
                       </div>
+                      <span style={styles.toggleLabel}>
+                        {editForm.status ? "Activa" : "Inactiva"}
+                      </span>
                     </label>
                   </div>
                 </div>
@@ -693,7 +705,6 @@ const styles = {
     color: "#9ca3af",
     fontWeight: "500",
   },
-  // Modal styles
   modalOverlay: {
     position: "fixed",
     top: 0,
@@ -788,13 +799,6 @@ const styles = {
     borderColor: "#d8572f",
     boxShadow: "0 0 0 3px rgba(216, 87, 47, 0.1)",
   },
-  helpText: {
-    fontSize: "12px",
-    color: "#6b7280",
-    marginTop: "4px",
-    fontStyle: "italic",
-  },
-  // Toggle styles
   statusToggleContainer: {
     marginTop: "4px",
   },
@@ -856,7 +860,7 @@ const styles = {
   },
   saveButton: {
     flex: 1,
-    padding: "12 px",
+    padding: "12px",
     border: "none",
     borderRadius: "8px",
     backgroundColor: "#d8572f",

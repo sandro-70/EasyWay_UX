@@ -731,7 +731,7 @@ function GestionProductos() {
         }`}
       >
         <h1 className="text-2xl font-semibold text-[#f0833e] text-4xl pb-1 text-left">
-          Gestion de Productos
+          Gestión de Categorias
         </h1>
         <hr className="h-[3px] border-0 bg-[#f0833e]" />
 

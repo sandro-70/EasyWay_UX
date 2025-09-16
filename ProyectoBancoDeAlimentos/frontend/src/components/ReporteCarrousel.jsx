@@ -61,7 +61,7 @@ const ReporteCarrousel = () => {
           ))}
         </div>
 
-        <div style={{ background: "#fff", borderRadius: 8, padding: 8 }}>
+        <div>
           {tabs.find((t) => t.id === active)?.node}
         </div>
       </div>

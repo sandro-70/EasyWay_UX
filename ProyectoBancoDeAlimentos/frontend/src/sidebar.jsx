@@ -103,7 +103,7 @@ const Sidebar = ({ moveButton, showSidebar }) => {
                     onClick={closeIfMobile}
                   >
                     <span className="material-symbols-outlined text-[42px] text-white">inventory_2</span>
-                    Gestión de Productos
+                    Gestión de Categorias
                   </NavLink>
                 </li>
               )}

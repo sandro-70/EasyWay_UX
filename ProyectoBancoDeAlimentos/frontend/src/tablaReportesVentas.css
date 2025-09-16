@@ -8,38 +8,91 @@
   width: 1200px;
   margin: 0 auto;
   margin-top: 10px;
+  background-color: #ffff;
 }
 
 .ventas-title {
-  border-bottom: #f0833e 4px solid;
-  color: #f0833e;
+  color: #d8572f;
   font-weight: bold;
-  margin-bottom: 1rem;
   font-size: 30px;
   text-align: left;
-  display: inline-block;
+  display: block; /* Cambiado de inline-block */
+  width: auto; /* para que no ocupe 100% */
+  margin: 0;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   width: 100%;
+  max-width: 1200px;
+  margin-bottom: 10px;
+}
+
+.ventas-export-btn {
+  background-color: #f0833e;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  transition: 0.3s;
+  margin-left: 0; /* eliminar márgenes fijos */
+}
+
+.ventas-export-btn:hover {
+  background-color: #ea6b1c;
+}
+
+.divider {
+  height: 0.25rem;
+  width: 100%;
+  border-radius: 0.375rem;
+  background-color: #f0833e;
+  margin-top: 0.15rem;
+}
+
+.ventas-table-wrap {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  overflow-x: auto;
+  overflow-y: hidden;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .ventas-table {
-  width: 95%;
+  width: 100%;
   max-width: 1200px;
   border-collapse: collapse;
-  border-radius: 8px;
-  overflow: hidden;
+  font-size: .875rem;
+  margin: 0;
 }
 
 .ventas-thead th {
-  background-color: #2b6daf;
-  color: #fff;
-  padding: 12px 25px;
+  background-color:  #2B6DAF;
+  color: #ffffff ;
+  font-weight: 700;
   text-align: center;
+  padding: 16px 12px;
+  font-size: 15px;
+  white-space: nowrap;
 }
 
 .ventas-table td {
-  background: #fff;
-  padding: 8px 20px;
+  background: transparent; /* cambia a transparente */
+  padding: .75rem .75rem;
+  vertical-align: middle;
   text-align: center;
+}
+
+.ventas-table tbody tr:hover td {
+  background: #f6f9fe; /* aplica hover a todas las celdas */
 }
 
 .ventas-table tbody tr {
@@ -66,59 +119,65 @@
   margin-top: 1rem;
 }
 
+/* ====== Paginación estilo “outline” ====== */
 .ventas-pagination {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-}
-
-.ventas-pagination-btn {
-  background: #fff;
-  border: 1px solid #d8dadc;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.ventas-pagination-btn:hover {
-  background: #f5f5f5;
-}
-
-.ventas-pagination-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  gap: 0.25rem;
+  flex-wrap: wrap; 
 }
 
 .ventas-page-btn {
+  height: 40px;
+  width: 40px;
+  border-radius: 999px;
+  border: 1px solid #e5e7eb;
   background-color: #fff;
-  border: 1px solid #d8dadc;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
+  color: #1f2937;
+  font-size: 14px;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.06s ease;
+}
+
+.ventas-page-btn:hover {
+  background: #f9fafb;
+  border-color: #b0b0b0;
 }
 
 .ventas-page-btn-active {
-  background-color: #f0833e;
-  color: #fff;
-  border-color: #f0833e;
-  box-shadow: 0 0 0 2px #d8572f;
+  background: #fff;          /* fondo blanco */
+  border: 2px solid #d8572f; /* borde naranja */
+  color: #d8572f;            /* texto naranja */
+  font-weight: 600;
 }
 
-.ventas-search-icon {
-  display: inline-block;
-  margin-left: 4px;
-  cursor: pointer;
+.ventas-pagination button:hover {
+  background-color: #f9fafb;
+  border-color: #b0b0b0;
+}
+
+.ventas-pagination button:active {
+  background: #fff;          /* fondo blanco */
+  border: 2px solid #d8572f; /* borde naranja */
+  color: #d8572f;            /* texto naranja */
+  font-weight: 600;
+  box-shadow: none;           /* opcional: quita sombra */
+}
+
+.ventas-pagination button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ventas-pagination button svg {
+  width: 18px;
+  height: 18px;
 }
 
 .mini-modal {
@@ -193,22 +252,6 @@
   background: #aaa;
 }
 
-.ventas-export-btn {
-  background-color: #f0833e;
-  font-size: 15px;
-  color: white;
-  border: none;
-  padding: 8px 14px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: 0.3s;
-}
-
-.ventas-export-btn:hover {
-  background-color: #ea6b1c;
-}
-
 .excel-fixed {
   position: fixed;
   bottom: 30px;
@@ -233,17 +276,4 @@
     opacity: 1;
     transform: scale(1);
   }
-}
-
-.ventas-export-btn {
-  background-color: #f0833e;
-  color: #fff;
-  padding: 6px 12px;
-  border-radius: 4px;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: right;
-  gap: 5px;
-  margin-left: 1020px;
 }

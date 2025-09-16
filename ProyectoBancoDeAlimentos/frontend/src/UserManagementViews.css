@@ -343,27 +343,20 @@
   align-items: center;
   justify-content: center;
   padding: .75rem 1rem;
-  /* py-3 px-4 */
   background: #fff;
   border-top: 1px solid var(--border);
   border-bottom-left-radius: 1.25rem;
-  /* misma curva que la tarjeta (rounded-2xl) */
   border-bottom-right-radius: 1.25rem;
   gap: .25rem;
-
 }
 
 .pagination button {
   height: 40px;
-  /* más grande que 36px */
   width: 40px;
   border-radius: 999px;
   border: 1px solid #e5e7eb;
-  /* borde gris claro (outline) */
   background: #fff;
-  /* blanco, no gris */
   color: #1f2937;
-  /* gris oscuro para texto/icono */
   font-size: 14px;
   cursor: pointer;
   display: inline-flex;
@@ -374,7 +367,6 @@
 
 .pagination button:hover {
   background: #f9fafb;
-  /* hover sutil */
 }
 
 .pagination button:active {
@@ -385,24 +377,20 @@
 .pagination button.active {
   background: #fff;
   border: 2px solid #d8572f;
-  /* mismo naranja que usas */
   color: #d8572f;
   font-weight: 600;
 }
 
-/* Deshabilitado (flechas al límite) */
 .pagination button:disabled {
   opacity: .6;
   cursor: not-allowed;
 }
 
-/* Asegura tamaño de chevrons */
 .pagination button svg {
   width: 18px;
   height: 18px;
 }
 
-/* ====== Modal General ====== */
 .modal-overlay {
   position: fixed;
   inset: 0;

@@ -1,29 +1,26 @@
-// ReportesInventario.jsx
 import React, { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import FiltroIcon from "../images/filtro.png";
-import MonedaIcon from "../images/moneda.png";
 import axios from "axios";
+import { saveAs } from "file-saver";
+import * as XLSX from "xlsx";
+import "./ReportesInventario.css";
 
 export default function ReportesInventario() {
   const [filas, setFilas] = useState([]);
   const [valorInventario, setValorInventario] = useState(0);
   const [filtro, setFiltro] = useState("Todos");
-  const [paginaActual, setPaginaActual] = useState(0);
-  const filasPorPagina = 7;
+  const [paginaActual, setPaginaActual] = useState(1);
+  const filasPorPagina = 8;
 
   // Traer auditorías según filtro
   const fetchAuditorias = async () => {
     try {
       let url = "/api/auditorias";
-      if (filtro === "Más vendidos")
-        url = "/api/auditorias/filtrarCantidadMayor";
-      if (filtro === "Menos vendidos")
-        url = "/api/auditorias/filtrarCantidadMenor";
+      if (filtro === "Más vendidos") url = "/api/auditorias/filtrarCantidadMayor";
+      if (filtro === "Menos vendidos") url = "/api/auditorias/filtrarCantidadMenor";
 
       const { data } = await axios.get(url);
       setFilas(data);
-      setPaginaActual(0); // reset paginación al cambiar filtro
+      setPaginaActual(1); // reset paginación al cambiar filtro
     } catch (error) {
       console.error("Error al traer auditorías:", error);
     }
@@ -45,131 +42,130 @@ export default function ReportesInventario() {
   }, [filtro]);
 
   // Paginación
-  const paginas = [];
-  for (let i = 0; i < filas.length; i += filasPorPagina) {
-    paginas.push(filas.slice(i, i + filasPorPagina));
+  const totalPaginas = Math.ceil(filas.length / filasPorPagina);
+  const indiceInicio = (paginaActual - 1) * filasPorPagina;
+  const filasFiltradas = filas.slice(indiceInicio, indiceInicio + filasPorPagina);
+
+  const Icon = {
+    ChevronLeft: (props) => (
+      <svg viewBox="0 0 24 24" className={"w-6 h-6 " + (props.className || "")}>
+        <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
+      </svg>
+    ),
+    ChevronRight: (props) => (
+      <svg viewBox="0 0 24 24" className={"w-6 h-6 " + (props.className || "")}>
+        <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none" />
+      </svg>
+    ),
+  };
+
+  function Pagination({ page, pageCount, onPage }) {
+    const pages = Array.from({ length: pageCount }, (_, i) => i + 1);
+    const handlePage = (p) => {
+      if (p < 1 || p > pageCount) return;
+      onPage(p);
+    };
+
+    return (
+      <div className="pedido-pagination">
+        <button onClick={() => handlePage(page - 1)} className="pedido-pagination-btn" disabled={page === 1}>
+          <Icon.ChevronLeft />
+        </button>
+        {pages.map((p) => (
+          <button
+            key={p}
+            onClick={() => handlePage(p)}
+            className={`w-9 h-9 rounded-full border border-[#d8dadc] ${p === page ? "ring-2 ring-[#d8572f] text-[#d8572f]" : ""}`}
+          >
+            {p}
+          </button>
+        ))}
+        <button onClick={() => handlePage(page + 1)} className="pedido-pagination-btn" disabled={page === pageCount}>
+          <Icon.ChevronRight />
+        </button>
+      </div>
+    );
   }
-  const filasFiltradas = paginas[paginaActual] || [];
-
-  const handleIzquierda = () => {
-    setPaginaActual((prev) => (prev === 0 ? paginas.length - 1 : prev - 1));
-  };
-
-  const handleDerecha = () => {
-    setPaginaActual((prev) => (prev === paginas.length - 1 ? 0 : prev + 1));
-  };
 
   return (
-    <div className="px-4 flex flex-col items-center absolute left-0 right-0 w-full">
-      <div className="flex flex-col justify-start items-center pt-10 w-full max-w-[900px]">
-        {/* Título */}
-        <div className="mb-6 w-full">
-          <h1 className="text-3xl font-semibold text-orange-500 pb-2 text-left">
-            Reportes de Inventario
-          </h1>
-          <div className="h-0.5 w-[128%] bg-orange-500 mt-1 rounded mx-[-1%]"></div>
-        </div>
+    <div
+      className="px-4 "
+      style={{
+        position: "absolute",
+        left: 0,
+        right: 0,
+        width: "100%",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+      }}
+    >
+    <div className="inventario-container">
+      <header className="page-header">
+        <h1 className="inventario-title">Reportes de Inventario</h1>
+      </header>
+      <div className="divider" />
 
-        {/* Controles */}
-        <div className="flex items-center justify-between mt-6 mb-6 flex-wrap gap-4">
-          <div className="flex items-center gap-4">
-            <div className="bg-white border border-gray-200 rounded-md px-2 py-2 flex items-center gap-2 shadow-sm">
-              <img src={FiltroIcon} alt="Filtro" className="w-5 h-5" />
-              <span className="font-bold text-sm">Filtro</span>
-              <select
-                className="appearance-none border-l border-gray-200 pl-2 pr-4 py-1 text-sm bg-white"
-                value={filtro}
-                onChange={(e) => setFiltro(e.target.value)}
-              >
-                <option>Todos</option>
-                <option>Más vendidos</option>
-                <option>Menos vendidos</option>
-              </select>
-            </div>
-
-            <div className="bg-white border border-gray-200 rounded-md px-3 py-3 flex items-center gap-2 shadow-sm h-full">
-              <img src={MonedaIcon} alt="Moneda" className="w-5 h-5" />
-              <div className="text-sm flex-1 flex items-center">
-                Valor total de inventario:{" "}
-                <span className="font-semibold text-green-600 ml-1">
-                  ${valorInventario.toLocaleString()}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Flechas de paginación */}
-        <button
-          className="absolute left-[-40px] top-[315px] transform -translate-y-1/2"
-          onClick={handleIzquierda}
+      <div className="filtros-container">
+        <label>Filtro</label>
+        <select
+          className="font-14px border rounded px-3 py-1 bg-[#E6E6E6]"
+          value={filtro}
+          onChange={(e) => setFiltro(e.target.value)}
         >
-          <ChevronLeft size={30} color="#2B6DAF" />
-        </button>
-        <button
-          className="absolute right-[-200px] top-[315px] transform -translate-y-1/2"
-          onClick={handleDerecha}
-        >
-          <ChevronRight size={30} color="#2B6DAF" />
-        </button>
+          <option>Todos</option>
+          <option>Más vendidos</option>
+          <option>Menos vendidos</option>
+        </select>
 
-        {/* Tabla */}
-        <table className="table-auto w-full border border-black rounded-lg border-collapse text-center">
+        <div className="inventario-count">
+          <span>Valor total de inventario: L.</span>
+          <span className="count-bubble ml-1">{valorInventario.toLocaleString()}</span>
+        </div>
+      </div>
+
+      {/* Tabla */}
+      <div className="inventario-table-wrap">
+        <table className="inventario-table">
           <thead>
-            <tr className="border-b border-black">
-              <th className="px-4 py-2 bg-[#2B6DAF] text-white border-r border-white rounded-tl-lg">
-                ID de producto
-              </th>
-              <th className="px-4 py-2 bg-[#2B6DAF] text-white border-r border-white">
-                Producto
-              </th>
-              <th className="px-4 py-2 bg-[#2B6DAF] text-white border-r border-white">
-                Categoría
-              </th>
-              <th className="px-4 py-2 bg-[#2B6DAF] text-white border-r border-white">
-                Subcategoría
-              </th>
-              <th className="px-4 py-2 bg-[#2B6DAF] text-white border-r border-white">
-                Cantidad
-              </th>
-              <th className="px-4 py-2 bg-[#2B6DAF] text-white border-r border-white">
-                Entrada/Salida
-              </th>
-              <th className="px-4 py-2 bg-[#2B6DAF] text-white rounded-tr-lg">
-                Estado
-              </th>
+            <tr>
+              {[
+                "ID de producto",
+                "Producto",
+                "Categoría",
+                "Subcategoría",
+                "Cantidad",
+                "Entrada/Salida",
+                "Estado",
+              ].map((title, idx) => (
+                <th
+                  key={idx}
+                  className={`px-4 py-3 text-white text-center bg-[#2B6DAF] ${
+                    idx === 0 ? "rounded-tl-lg" : ""
+                  } ${idx === 6 ? "rounded-tr-lg" : ""}`}
+                >
+                  {title}
+                </th>
+              ))}
             </tr>
           </thead>
+
           <tbody>
             {filasFiltradas.length > 0 ? (
               filasFiltradas.map((r, idx) => (
-                <tr key={idx} className="border-b border-black last:border-b-0">
-                  <td className="px-4 py-2 text-center border-black rounded-bl-lg">
-                    {r.id_producto}
-                  </td>
-                  <td className="px-4 py-2 text-center border-black">
-                    {r.nombre_producto}
-                  </td>
-                  <td className="px-4 py-2 text-center border-black">
-                    {r.categoria}
-                  </td>
-                  <td className="px-4 py-2 text-center border-black">
-                    {r.subcategoria}
-                  </td>
-                  <td className="px-4 py-2 text-center border-black">
-                    {r.cantidad}
-                  </td>
-                  <td className="px-4 py-2 text-center border-black">
-                    {r.operacion}
-                  </td>
-                  <td className="px-4 py-2 text-center border-black rounded-br-lg">
-                    {r.estado_producto}
-                  </td>
+                <tr key={idx} className="text-center border-b border-gray-300 last:border-b-0">
+                  <td>{r.id_producto}</td>
+                  <td>{r.nombre_producto}</td>
+                  <td>{r.categoria}</td>
+                  <td>{r.subcategoria}</td>
+                  <td>{r.cantidad}</td>
+                  <td>{r.operacion}</td>
+                  <td>{r.estado_producto}</td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan="7" className="text-center py-4 text-gray-500">
+                <td colSpan="7" className="py-4 text-black text-center">
                   No hay registros de auditoría
                 </td>
               </tr>
@@ -177,6 +173,15 @@ export default function ReportesInventario() {
           </tbody>
         </table>
       </div>
+
+      <div className="pedido-pagination-wrapper">
+        <Pagination
+          page={paginaActual}
+          pageCount={totalPaginas}
+          onPage={setPaginaActual}
+        />
+      </div>
+    </div>
     </div>
   );
 }

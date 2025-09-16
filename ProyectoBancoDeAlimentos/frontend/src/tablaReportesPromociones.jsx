@@ -216,7 +216,7 @@ function TablaReportesPromociones() {
   const [categoriaFilter, setCategoriaFilter] = useState("");
   const [showCategoria, setShowCategoria] = useState(false);
 
-  const itemsPerPage = 10;
+  const itemsPerPage = 8;
 
   const filteredData = mockData.filter((item) =>
     categoriaFilter ? item.categoria === categoriaFilter : true
@@ -283,7 +283,7 @@ function TablaReportesPromociones() {
 
   return (
     <div
-      className="promocion-container"
+      className="px-4"
       style={{
         position: "absolute",
         left: 0,
@@ -291,11 +291,22 @@ function TablaReportesPromociones() {
         width: "100%",
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
       }}
     >
-      <h1 className="promocion-title">Reporte de Promociones y Descuentos</h1>
+      <div className="promocion-container">
+      <header className="page-header">
+        <h1 className="promocion-title"><span>Reporte de Promociones y Descuentos</span></h1>
 
+        <button onClick={exportToExcel} className="ventas-export-btn">
+              📊 Exportar a Excel
+        </button>
+      </header>
+      <div className="divider" />
+      <div className="promocion-count">
+        <span>Total Promociones: </span>
+        <span className="count-bubble">{filteredData.length}</span>
+      </div>
+      <div className="promocion-table-wrap">
       <table className="promocion-table">
         <thead className="promocion-thead">
           <tr>
@@ -359,17 +370,10 @@ function TablaReportesPromociones() {
           )}
         </tbody>
       </table>
-
-      <div className="promocion-footer">
-        <span>Total Promociones:</span>
-        <p>{filteredData.length}</p>
-        <button onClick={exportToExcel} className="promocion-export-btn-green">
-          📊 Exportar a Excel
-        </button>
       </div>
-
       <div className="promocion-pagination mt-4">
         <Pagination page={page} pageCount={totalPages} onPage={setPage} />
+      </div>
       </div>
     </div>
   );

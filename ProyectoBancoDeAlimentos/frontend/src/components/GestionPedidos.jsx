@@ -322,535 +322,548 @@ const GestionPedidos = () => {
   };
 
   return (
-    <div
-      className="px-4"
-      style={{
-        position: "fixed",
-        left: 0,
-        right: 0,
-        bottom: "300px",
-        width: "100%",
-        flexDirection: "column",
-        alignItems: "center",
-      }}
-    >
-      <div className="pedido-container">
-        <h2 className="pedido-title">Gestión de Pedidos</h2>
-
-        <div className="pedido-table-wrap">
-          <table className="pedido-table">
-            <thead className="pedido-thead">
-              <tr>
-                <th
-                  style={{ cursor: "pointer" }}
-                  onClick={() => {
-                    setOrderDesc(!orderDesc);
-                    setCurrentPage(1); // reset paginación al cambiar orden
-                  }}
-                  title="Ordenar por ID"
-                >
-                  ID de Producto {orderDesc ? "↓" : "↑"}
-                </th>
-                <th>Usuario</th>
-                <th>Fecha</th>
-                <th>Estado</th>
-                <th>Sucursal</th>
-                <th>Más información</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan="6" className="pedido-table-empty">
-                    Cargando pedidos...
-                  </td>
-                </tr>
-              ) : error ? (
-                <tr>
-                  <td colSpan="6" className="pedido-table-empty">
-                    {error}
-                  </td>
-                </tr>
-              ) : visible.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="pedido-table-empty">
-                    No hay pedidos para mostrar
-                  </td>
-                </tr>
-              ) : (
-                visible.map((p) => (
-                  <tr key={p.id}>
-                    <td>{p.id}</td>
-                    <td>{formatField(p.usuario)}</td>
-                    <td>{formatDate(p.fecha)}</td>
-                    <td>{formatField(p.estado)}</td>
-                    <td>{formatField(p.sucursal)}</td>
-                    <td>
-                      <button
-                        className="pedido-export-btn"
-                        onClick={async () => {
-                          try {
-                            // pedir detalle actualizado del pedido
-                            const id = p.id || p.id_pedido;
-                            const resp = await listarPedido(id);
-                            const detalle = resp && resp.data ? resp.data : {};
-                            // combinar sin perder datos ya mapeados en la tabla
-                            const combinado = { ...p, ...detalle };
-
-                            // calcular subtotal/total si vienen dentro de factura
-                            // Nota: la respuesta original (getPedidosConDetalles) se guarda en combinado.raw
-                            // y puede contener `factura`. Buscar en ambas ubicaciones.
-                            const facturaObj =
-                              combinado.factura ||
-                              combinado.Factura ||
-                              combinado.raw?.factura ||
-                              combinado.raw?.Factura ||
-                              null;
-                            const detallesFactura =
-                              facturaObj?.factura_detalles ||
-                              facturaObj?.factura_detalle ||
-                              [];
-                            let subtotalCalc =
-                              combinado.subtotal || combinado.sub_total || 0;
-                            let totalCalc = combinado.total || 0;
-                            if (
-                              Array.isArray(detallesFactura) &&
-                              detallesFactura.length > 0
-                            ) {
-                              subtotalCalc = detallesFactura.reduce(
-                                (s, d) => s + Number(d.subtotal_producto || 0),
-                                0
-                              );
-                            }
-                            if (facturaObj && facturaObj.total !== undefined) {
-                              totalCalc = Number(facturaObj.total);
-                              console.log(
-                                "Total que viene de facturaObj.total:",
-                                totalCalc
-                              );
-
-                              console.log("Objeto obj", facturaObj);
-                              // Calcular subtotal a partir de los detalles de factura si existen
-                              if (
-                                Array.isArray(facturaObj.factura_detalles) &&
-                                facturaObj.factura_detalles.length > 0
-                              ) {
-                                subtotalCalc =
-                                  facturaObj.factura_detalles.reduce(
-                                    (s, d) => Number(d.subtotal_producto || 0),
-                                    0
-                                  );
-                                console.log(
-                                  "Lo que trae objetoObj.factura_Detalles... SUbtotalCalc =  ",
-                                  subtotalCalc
-                                );
-                              } else if (
-                                Array.isArray(facturaObj.factura_detalle) &&
-                                facturaObj.factura_detalle.length > 0
-                              ) {
-                                subtotalCalc =
-                                  facturaObj.factura_detalle.reduce(
-                                    (s, d) => Number(d.subtotal_producto || 0),
-                                    0
-                                  );
-                              }
-                              console.log(
-                                "Subtotal calculado desde detalles:",
-                                subtotalCalc
-                              );
-                            }
-                            combinado.subtotal = subtotalCalc;
-                            combinado.total = totalCalc;
-
-                            // obtener direcciones del usuario y metodo de pago
-                            const userId =
-                              combinado.id_usuario ||
-                              combinado.idUsuario ||
-                              null;
-
-                            // si falta nombre en el combinado, intentar traerlo por id
-                            if (
-                              userId &&
-                              (!combinado.usuario ||
-                                combinado.usuario === "-" ||
-                                combinado.usuario === null)
-                            ) {
-                              try {
-                                const userResp = await InformacionUserNombre(
-                                  userId
-                                );
-
-                                const udata =
-                                  userResp && userResp.data
-                                    ? userResp.data
-                                    : null;
-                                if (udata) {
-                                  combinado.usuario = udata.nombre
-                                    ? udata.apellido
-                                      ? `${udata.nombre} ${udata.apellido}`
-                                      : udata.nombre
-                                    : udata.nombre_completo ||
-                                      udata.correo ||
-                                      combinado.usuario;
-                                }
-                              } catch (e) {
-                                console.warn(
-                                  "No se pudo obtener nombre de usuario:",
-                                  e
-                                );
-                              }
-                            }
-
-                            if (userId) {
-                              try {
-                                const dirResp = await getDirecciones(userId);
-                                const direcciones =
-                                  dirResp && dirResp.data ? dirResp.data : [];
-                                // buscar predeterminada o la primera
-                                const pred =
-                                  direcciones.find((d) => d.predeterminada) ||
-                                  direcciones[0] ||
-                                  null;
-                                setDireccionEntrega(
-                                  pred
-                                    ? `${pred.calle || ""} ${
-                                        pred.ciudad || ""
-                                      }`.trim()
-                                    : null
-                                );
-                                // si existe id_municipio en la direccion, buscar sucursal
-                                if (pred && pred.id_municipio) {
-                                  try {
-                                    const sucResp = await getAllSucursales();
-                                    const sucursales =
-                                      sucResp && sucResp.data
-                                        ? sucResp.data
-                                        : [];
-                                    const match = sucursales.find(
-                                      (s) =>
-                                        String(s.id_municipio) ===
-                                        String(pred.id_municipio)
-                                    );
-                                    const resolvedSucursal = match
-                                      ? match.nombre ||
-                                        match.nombre_sucursal ||
-                                        null
-                                      : null;
-                                    setSucursalNombre(resolvedSucursal);
-                                    // actualizar la fila de la tabla para mostrar sucursal
-                                    if (resolvedSucursal) {
-                                      setPedidos((prev) =>
-                                        prev.map((it) =>
-                                          String(it.id) === String(combinado.id)
-                                            ? {
-                                                ...it,
-                                                sucursal: resolvedSucursal,
-                                              }
-                                            : it
-                                        )
-                                      );
-                                    }
-                                  } catch (e) {
-                                    console.warn(
-                                      "Error al obtener sucursales:",
-                                      e
-                                    );
-                                    setSucursalNombre(null);
-                                  }
-                                } else {
-                                  setSucursalNombre(null);
-                                }
-                              } catch (e) {
-                                console.warn(
-                                  "Error al obtener direcciones:",
-                                  e
-                                );
-                                setDireccionEntrega(null);
-                              }
-
-                              try {
-                                const mpResp = await getAllMetodoPago();
-                                const metodos =
-                                  mpResp && mpResp.data ? mpResp.data : [];
-                                // filtrar por id_usuario si el API devuelve todos los metodos
-                                let mpUsuario = metodos.find(
-                                  (m) => String(m.id_usuario) === String(userId)
-                                );
-                                // buscar predeterminado si no hay uno por usuario
-                                if (!mpUsuario) {
-                                  mpUsuario =
-                                    metodos.find(
-                                      (m) => m.metodo_predeterminado
-                                    ) ||
-                                    metodos[0] ||
-                                    null;
-                                }
-                                const formatted = formatPayment(mpUsuario);
-                                setMetodoPagoUsuario(formatted);
-                                console.log(
-                                  "Método de Pago del Usuario:",
-                                  formatted
-                                );
-                              } catch (e) {
-                                console.warn(
-                                  "Error al obtener metodos de pago:",
-                                  e
-                                );
-                                setMetodoPagoUsuario(null);
-                              }
-                            } else {
-                              setDireccionEntrega(null);
-                              setMetodoPagoUsuario(null);
-                            }
-
-                            setPedidoSeleccionado(combinado);
-                            // inicializar estados (usar formatField para evitar objects)
-                            setEstadoActual(
-                              formatField(combinado.estado || p.estado)
-                            );
-                            console.log(
-                              "Estado actual inicial: en el modal",
-                              formatField(combinado.estado || p.estado)
-                            );
-                            setNuevoEstado(
-                              formatField(combinado.estado || p.estado)
-                            );
-                            setDetalleOpen(true);
-                          } catch (e) {
-                            console.error(
-                              "Error al obtener detalle del pedido:",
-                              e
-                            );
-                            // fallback local
-                            setPedidoSeleccionado(p);
-                            setEstadoActual(formatField(p.estado));
-                            setNuevoEstado(formatField(p.estado));
-                            setDetalleOpen(true);
-                          }
-                        }}
-                      >
-                        Ver
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+    <div className="page-container">
+      <main className="main-content">
+        <header className="page-header">
+          <h1><span className="accent">Gestión De Pedidos</span></h1>
+        </header>
+        <div className="divider" />
+        
+        <div className="search-bar">
+          <div className="user-count">
+            <span>Total pedidos: </span>
+            <span className="count-bubble">{pedidos.length}</span>
+          </div>
         </div>
 
-        {/* Paginación */}
-        <div className="pedido-footer">
-          <span>
-            {loading ? "Cargando total..." : `Total Pedidos: `}{" "}
-            <p>{pedidos.length}</p>
-          </span>
-          <PaginationSmall
-            page={currentPage}
-            pageCount={totalPages}
-            onPage={setCurrentPage}
-          />
+        <div className="table-container">
+          <div className="table-scroll">
+            <table className="users-table">
+              <colgroup>
+                <col className="col-id" />
+                <col className="col-name" />
+                <col className="col-date" />
+                <col className="col-status" />
+                <col className="col-branch" />
+                <col className="col-actions" />
+              </colgroup>
+
+              <thead>
+                <tr>
+                  <th
+                    style={{ cursor: "pointer" }}
+                    onClick={() => {
+                      setOrderDesc(!orderDesc);
+                      setCurrentPage(1); // reset paginación al cambiar orden
+                    }}
+                    title="Ordenar por ID"
+                  >
+                    ID de Producto {orderDesc ? "↓" : "↑"}
+                  </th>
+                  <th>Usuario</th>
+                  <th>Fecha</th>
+                  <th>Estado</th>
+                  <th>Sucursal</th>
+                  <th>Más información</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan="6" className="cell-center">
+                      Cargando pedidos...
+                    </td>
+                  </tr>
+                ) : error ? (
+                  <tr>
+                    <td colSpan="6" className="cell-center">
+                      {error}
+                    </td>
+                  </tr>
+                ) : visible.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="cell-center">
+                      No hay pedidos para mostrar
+                    </td>
+                  </tr>
+                ) : (
+                  visible.map((p) => (
+                    <tr key={p.id}>
+                      <td className="cell-center">{p.id}</td>
+                      <td className="cell-left">{formatField(p.usuario)}</td>
+                      <td className="cell-center">{formatDate(p.fecha)}</td>
+                      <td className="cell-center">{formatField(p.estado)}</td>
+                      <td className="cell-center">{formatField(p.sucursal)}</td>
+                      <td className="cell-center">
+                        <button
+                          className="btn-primary"
+                          onClick={async () => {
+                            try {
+                              // pedir detalle actualizado del pedido
+                              const id = p.id || p.id_pedido;
+                              const resp = await listarPedido(id);
+                              const detalle = resp && resp.data ? resp.data : {};
+                              // combinar sin perder datos ya mapeados en la tabla
+                              const combinado = { ...p, ...detalle };
+
+                              // calcular subtotal/total si vienen dentro de factura
+                              // Nota: la respuesta original (getPedidosConDetalles) se guarda en combinado.raw
+                              // y puede contener `factura`. Buscar en ambas ubicaciones.
+                              const facturaObj =
+                                combinado.factura ||
+                                combinado.Factura ||
+                                combinado.raw?.factura ||
+                                combinado.raw?.Factura ||
+                                null;
+                              const detallesFactura =
+                                facturaObj?.factura_detalles ||
+                                facturaObj?.factura_detalle ||
+                                [];
+                              let subtotalCalc =
+                                combinado.subtotal || combinado.sub_total || 0;
+                              let totalCalc = combinado.total || 0;
+                              if (
+                                Array.isArray(detallesFactura) &&
+                                detallesFactura.length > 0
+                              ) {
+                                subtotalCalc = detallesFactura.reduce(
+                                  (s, d) => s + Number(d.subtotal_producto || 0),
+                                  0
+                                );
+                              }
+                              if (facturaObj && facturaObj.total !== undefined) {
+                                totalCalc = Number(facturaObj.total);
+                                console.log(
+                                  "Total que viene de facturaObj.total:",
+                                  totalCalc
+                                );
+
+                                console.log("Objeto obj", facturaObj);
+                                // Calcular subtotal a partir de los detalles de factura si existen
+                                if (
+                                  Array.isArray(facturaObj.factura_detalles) &&
+                                  facturaObj.factura_detalles.length > 0
+                                ) {
+                                  subtotalCalc =
+                                    facturaObj.factura_detalles.reduce(
+                                      (s, d) => Number(d.subtotal_producto || 0),
+                                      0
+                                    );
+                                  console.log(
+                                    "Lo que trae objetoObj.factura_Detalles... SUbtotalCalc =  ",
+                                    subtotalCalc
+                                  );
+                                } else if (
+                                  Array.isArray(facturaObj.factura_detalle) &&
+                                  facturaObj.factura_detalle.length > 0
+                                ) {
+                                  subtotalCalc =
+                                    facturaObj.factura_detalle.reduce(
+                                      (s, d) => Number(d.subtotal_producto || 0),
+                                      0
+                                    );
+                                }
+                                console.log(
+                                  "Subtotal calculado desde detalles:",
+                                  subtotalCalc
+                                );
+                              }
+                              combinado.subtotal = subtotalCalc;
+                              combinado.total = totalCalc;
+
+                              // obtener direcciones del usuario y metodo de pago
+                              const userId =
+                                combinado.id_usuario ||
+                                combinado.idUsuario ||
+                                null;
+
+                              // si falta nombre en el combinado, intentar traerlo por id
+                              if (
+                                userId &&
+                                (!combinado.usuario ||
+                                  combinado.usuario === "-" ||
+                                  combinado.usuario === null)
+                              ) {
+                                try {
+                                  const userResp = await InformacionUserNombre(
+                                    userId
+                                  );
+
+                                  const udata =
+                                    userResp && userResp.data
+                                      ? userResp.data
+                                      : null;
+                                  if (udata) {
+                                    combinado.usuario = udata.nombre
+                                      ? udata.apellido
+                                        ? `${udata.nombre} ${udata.apellido}`
+                                        : udata.nombre
+                                      : udata.nombre_completo ||
+                                        udata.correo ||
+                                        combinado.usuario;
+                                  }
+                                } catch (e) {
+                                  console.warn(
+                                    "No se pudo obtener nombre de usuario:",
+                                    e
+                                  );
+                                }
+                              }
+
+                              if (userId) {
+                                try {
+                                  const dirResp = await getDirecciones(userId);
+                                  const direcciones =
+                                    dirResp && dirResp.data ? dirResp.data : [];
+                                  // buscar predeterminada o la primera
+                                  const pred =
+                                    direcciones.find((d) => d.predeterminada) ||
+                                    direcciones[0] ||
+                                    null;
+                                  setDireccionEntrega(
+                                    pred
+                                      ? `${pred.calle || ""} ${
+                                          pred.ciudad || ""
+                                        }`.trim()
+                                      : null
+                                  );
+                                  // si existe id_municipio en la direccion, buscar sucursal
+                                  if (pred && pred.id_municipio) {
+                                    try {
+                                      const sucResp = await getAllSucursales();
+                                      const sucursales =
+                                        sucResp && sucResp.data
+                                          ? sucResp.data
+                                          : [];
+                                      const match = sucursales.find(
+                                        (s) =>
+                                          String(s.id_municipio) ===
+                                          String(pred.id_municipio)
+                                      );
+                                      const resolvedSucursal = match
+                                        ? match.nombre ||
+                                          match.nombre_sucursal ||
+                                          null
+                                        : null;
+                                      setSucursalNombre(resolvedSucursal);
+                                      // actualizar la fila de la tabla para mostrar sucursal
+                                      if (resolvedSucursal) {
+                                        setPedidos((prev) =>
+                                          prev.map((it) =>
+                                            String(it.id) === String(combinado.id)
+                                              ? {
+                                                  ...it,
+                                                  sucursal: resolvedSucursal,
+                                                }
+                                              : it
+                                          )
+                                        );
+                                      }
+                                    } catch (e) {
+                                      console.warn(
+                                        "Error al obtener sucursales:",
+                                        e
+                                      );
+                                      setSucursalNombre(null);
+                                    }
+                                  } else {
+                                    setSucursalNombre(null);
+                                  }
+                                } catch (e) {
+                                  console.warn(
+                                    "Error al obtener direcciones:",
+                                    e
+                                  );
+                                  setDireccionEntrega(null);
+                                }
+
+                                try {
+                                  const mpResp = await getAllMetodoPago();
+                                  const metodos =
+                                    mpResp && mpResp.data ? mpResp.data : [];
+                                  // filtrar por id_usuario si el API devuelve todos los metodos
+                                  let mpUsuario = metodos.find(
+                                    (m) => String(m.id_usuario) === String(userId)
+                                  );
+                                  // buscar predeterminado si no hay uno por usuario
+                                  if (!mpUsuario) {
+                                    mpUsuario =
+                                      metodos.find(
+                                        (m) => m.metodo_predeterminado
+                                      ) ||
+                                      metodos[0] ||
+                                      null;
+                                  }
+                                  const formatted = formatPayment(mpUsuario);
+                                  setMetodoPagoUsuario(formatted);
+                                  console.log(
+                                    "Método de Pago del Usuario:",
+                                    formatted
+                                  );
+                                } catch (e) {
+                                  console.warn(
+                                    "Error al obtener metodos de pago:",
+                                    e
+                                  );
+                                  setMetodoPagoUsuario(null);
+                                }
+                              } else {
+                                setDireccionEntrega(null);
+                                setMetodoPagoUsuario(null);
+                              }
+
+                              setPedidoSeleccionado(combinado);
+                              // inicializar estados (usar formatField para evitar objects)
+                              setEstadoActual(
+                                formatField(combinado.estado || p.estado)
+                              );
+                              console.log(
+                                "Estado actual inicial: en el modal",
+                                formatField(combinado.estado || p.estado)
+                              );
+                              setNuevoEstado(
+                                formatField(combinado.estado || p.estado)
+                              );
+                              setDetalleOpen(true);
+                            } catch (e) {
+                              console.error(
+                                "Error al obtener detalle del pedido:",
+                                e
+                              );
+                              // fallback local
+                              setPedidoSeleccionado(p);
+                              setEstadoActual(formatField(p.estado));
+                              setNuevoEstado(formatField(p.estado));
+                              setDetalleOpen(true);
+                            }
+                          }}
+                        >
+                          Ver
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Paginación */}
+          <div className="pagination">
+            <PaginationSmall
+              page={currentPage}
+              pageCount={totalPages}
+              onPage={setCurrentPage}
+            />
+          </div>
         </div>
 
         {/* Modal de detalle */}
         {detalleOpen && pedidoSeleccionado && (
           <div className="modal-overlay">
-            <div className="modal-content">
+            <div className="modal-container">
               <div className="modal-header">
-                <h3>Detalle del Pedido</h3>
+                <h2 className="modal-title">Detalle del Pedido</h2>
                 <button
                   className="modal-close"
                   onClick={() => setDetalleOpen(false)}
+                  aria-label="Cerrar"
                 >
                   ✕
                 </button>
               </div>
 
-              {/* Productos */}
-              <div className="productos-lista">
-                {Array.isArray(pedidoSeleccionado.productos)
-                  ? pedidoSeleccionado.productos.map((prod, i) => (
-                      <div className="producto-card" key={i}>
-                        <img src={prod.img} alt={formatField(prod.nombre)} />
-                        <p>{formatField(prod.nombre)}</p>
-                        <span>{formatField(prod.cantidad)}</span>
-                      </div>
-                    ))
-                  : null}
-              </div>
+              <div className="modal-body">
+                {/* Productos */}
+                <div className="productos-lista">
+                  <h3>Productos</h3>
+                  {Array.isArray(pedidoSeleccionado.productos)
+                    ? pedidoSeleccionado.productos.map((prod, i) => (
+                        <div className="producto-card" key={i}>
+                          <img src={prod.img} alt={formatField(prod.nombre)} />
+                          <p>{formatField(prod.nombre)}</p>
+                          <span>Cantidad: {formatField(prod.cantidad)}</span>
+                        </div>
+                      ))
+                    : null}
+                </div>
 
-              {/* Info del pedido */}
-              <div className="pedido-info">
-                <label>Descuento</label>
-                <input
-                  value={`L. ${formatField(pedidoSeleccionado.descuento)}`}
-                  readOnly
-                />
-                <label>Subtotal</label>
-                <input
-                  value={`L. ${formatField(pedidoSeleccionado.subtotal)}`}
-                  readOnly
-                />
-                <label>Total</label>
-                <input
-                  value={`L. ${formatField(pedidoSeleccionado.total)}`}
-                  readOnly
-                />
-                <label>Dirección de entrega</label>
-                <input
-                  value={
-                    direccionEntrega ||
-                    formatField(pedidoSeleccionado.direccion)
-                  }
-                  readOnly
-                />
-                <label>Sucursal asignada</label>
-                <input
-                  value={
-                    sucursalNombre || formatField(pedidoSeleccionado.sucursal)
-                  }
-                  readOnly
-                />
-                <label>Método de Pago</label>
-                <input
-                  value={
-                    metodoPagoUsuario ||
-                    formatField(pedidoSeleccionado.metodoPago)
-                  }
-                  readOnly
-                />
-              </div>
+                {/* Info del pedido */}
+                <div className="pedido-info">
+                  <h3>Información del Pedido</h3>
+                  <div className="modal-grid-2">
+                    <Field label="Descuento" value={`L. ${formatField(pedidoSeleccionado.descuento)}`} readOnly />
+                    <Field label="Subtotal" value={`L. ${formatField(pedidoSeleccionado.subtotal)}`} readOnly />
+                    <Field label="Total" value={`L. ${formatField(pedidoSeleccionado.total)}`} readOnly />
+                    <Field label="Dirección de entrega" value={
+                      direccionEntrega ||
+                      formatField(pedidoSeleccionado.direccion)
+                    } readOnly />
+                    <Field label="Sucursal asignada" value={
+                      sucursalNombre || formatField(pedidoSeleccionado.sucursal)
+                    } readOnly />
+                    <Field label="Método de Pago" value={
+                      metodoPagoUsuario ||
+                      formatField(pedidoSeleccionado.metodoPago)
+                    } readOnly />
+                  </div>
+                </div>
 
-              {/* Estado actual y cambio */}
-              <div className="estado-pedido">
-                <label>Estado actual</label>
-                <input type="text" value={estadoActual} readOnly disabled />
+                {/* Estado actual y cambio */}
+                <div className="estado-pedido">
+                  <h3>Estado del Pedido</h3>
+                  <div className="modal-grid-2">
+                    <Field label="Estado actual" value={estadoActual} readOnly disabled />
+                    <Field 
+                      label="Nuevo estado" 
+                      as="select"
+                      value={nuevoEstado}
+                      onChange={(e) => setNuevoEstado(e.target.value)}
+                    >
+                      <option value="Pendiente">Pendiente</option>
+                      <option value="En Preparación">En Preparación</option>
+                      <option value="En Camino">En Camino</option>
+                      <option value="Entregado">Entregado</option>
+                    </Field>
+                  </div>
+                </div>
 
-                <label>Nuevo estado</label>
-                <select
-                  value={nuevoEstado}
-                  onChange={(e) => setNuevoEstado(e.target.value)}
-                >
-                  <option value="Pendiente">Pendiente</option>
-                  <option value="En Preparación">En Preparación</option>
-                  <option value="En Camino">En Camino</option>
-                  <option value="Entregado">Entregado</option>
-                </select>
-              </div>
-
-              {/* Acciones */}
-              <div className="acciones">
-                {/* Cambiar Estado: solo actualiza vista localmente (preview). Persist on Guardar. */}
-                <button
-                  type="button"
-                  className="btn-cambiar"
-                  onClick={() => {
-                    // actualizar preview local
-                    setEstadoActual(nuevoEstado);
-                    setPedidoSeleccionado((prev) => ({
-                      ...prev,
-                      estado: nuevoEstado,
-                    }));
-                    const pedidoId = pedidoSeleccionado
-                      ? pedidoSeleccionado.id || pedidoSeleccionado.id_pedido
-                      : null;
-                    if (pedidoId) {
-                      setPedidos((prev) =>
-                        prev.map((it) =>
-                          String(it.id) === String(pedidoId)
-                            ? { ...it, estado: nuevoEstado }
-                            : it
-                        )
-                      );
-                    }
-                    console.log("Estado cambiado localmente a:", nuevoEstado);
-                  }}
-                >
-                  Cambiar Estado
-                </button>
-
-                {/* Cancelar Pedido: marca localmente como Cancelado. Persist on Guardar. */}
-                <button
-                  type="button"
-                  className="btn-cancelar"
-                  onClick={() => {
-                    const cancelar = "Cancelado";
-                    setNuevoEstado(cancelar);
-                    setEstadoActual(cancelar);
-                    setPedidoSeleccionado((prev) => ({
-                      ...prev,
-                      estado: cancelar,
-                    }));
-                    const pedidoId = pedidoSeleccionado
-                      ? pedidoSeleccionado.id || pedidoSeleccionado.id_pedido
-                      : null;
-                    if (pedidoId) {
-                      setPedidos((prev) =>
-                        prev.map((it) =>
-                          String(it.id) === String(pedidoId)
-                            ? { ...it, estado: cancelar }
-                            : it
-                        )
-                      );
-                    }
-                    console.log("Pedido marcado localmente como Cancelado");
-                  }}
-                >
-                  Cancelar Pedido
-                </button>
-
-                {/* Guardar: persistir el nuevo estado en la base de datos */}
-                <button
-                  type="button"
-                  className="btn-guardar"
-                  onClick={async () => {
-                    try {
-                      const pedidoId =
-                        pedidoSeleccionado &&
-                        (pedidoSeleccionado.id || pedidoSeleccionado.id_pedido);
-                      if (!pedidoId) {
-                        alert("No se encontró el ID del pedido para guardar");
-                        return;
-                      }
-                      const idEstado = estadoNameToId[nuevoEstado] || null;
-                      if (!idEstado) {
-                        alert("Estado no válido para guardar");
-                        return;
-                      }
-
-                      await actualizarEstadoPedido(pedidoId, idEstado);
-
-                      // confirmar en UI
+                {/* Acciones */}
+                <div className="modal-actions">
+                  {/* Cambiar Estado: solo actualiza vista localmente (preview). Persist on Guardar. */}
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => {
+                      // actualizar preview local
                       setEstadoActual(nuevoEstado);
                       setPedidoSeleccionado((prev) => ({
                         ...prev,
                         estado: nuevoEstado,
                       }));
-                      setPedidos((prev) =>
-                        prev.map((it) =>
-                          String(it.id) === String(pedidoId)
-                            ? { ...it, estado: nuevoEstado }
-                            : it
-                        )
-                      );
+                      const pedidoId = pedidoSeleccionado
+                        ? pedidoSeleccionado.id || pedidoSeleccionado.id_pedido
+                        : null;
+                      if (pedidoId) {
+                        setPedidos((prev) =>
+                          prev.map((it) =>
+                            String(it.id) === String(pedidoId)
+                              ? { ...it, estado: nuevoEstado }
+                              : it
+                          )
+                        );
+                      }
+                      console.log("Estado cambiado localmente a:", nuevoEstado);
+                    }}
+                  >
+                    Cambiar Estado
+                  </button>
 
-                      alert("Cambios guardados correctamente");
-                      setDetalleOpen(false);
-                    } catch (e) {
-                      console.error("Error guardando estado:", e);
-                      alert("No se pudo guardar el cambio de estado");
-                    }
-                  }}
-                >
-                  Guardar
-                </button>
+                  {/* Cancelar Pedido: marca localmente como Cancelado. Persist on Guardar. */}
+                  <button
+                    type="button"
+                    className="btn-danger"
+                    onClick={() => {
+                      const cancelar = "Cancelado";
+                      setNuevoEstado(cancelar);
+                      setEstadoActual(cancelar);
+                      setPedidoSeleccionado((prev) => ({
+                        ...prev,
+                        estado: cancelar,
+                      }));
+                      const pedidoId = pedidoSeleccionado
+                        ? pedidoSeleccionado.id || pedidoSeleccionado.id_pedido
+                        : null;
+                      if (pedidoId) {
+                        setPedidos((prev) =>
+                          prev.map((it) =>
+                            String(it.id) === String(pedidoId)
+                              ? { ...it, estado: cancelar }
+                              : it
+                          )
+                        );
+                      }
+                      console.log("Pedido marcado localmente como Cancelado");
+                    }}
+                  >
+                    Cancelar Pedido
+                  </button>
+
+                  {/* Guardar: persistir el nuevo estado en la base de datos */}
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={async () => {
+                      try {
+                        const pedidoId =
+                          pedidoSeleccionado &&
+                          (pedidoSeleccionado.id || pedidoSeleccionado.id_pedido);
+                        if (!pedidoId) {
+                          alert("No se encontró el ID del pedido para guardar");
+                          return;
+                        }
+                        const idEstado = estadoNameToId[nuevoEstado] || null;
+                        if (!idEstado) {
+                          alert("Estado no válido para guardar");
+                          return;
+                        }
+
+                        await actualizarEstadoPedido(pedidoId, idEstado);
+
+                        // confirmar en UI
+                        setEstadoActual(nuevoEstado);
+                        setPedidoSeleccionado((prev) => ({
+                          ...prev,
+                          estado: nuevoEstado,
+                        }));
+                        setPedidos((prev) =>
+                          prev.map((it) =>
+                            String(it.id) === String(pedidoId)
+                              ? { ...it, estado: nuevoEstado }
+                              : it
+                          )
+                        );
+
+                        alert("Cambios guardados correctamente");
+                        setDetalleOpen(false);
+                      } catch (e) {
+                        console.error("Error guardando estado:", e);
+                        alert("No se pudo guardar el cambio de estado");
+                      }
+                    }}
+                  >
+                    Guardar
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 };
+
+// Componente Field para reutilizar en el modal
+function Field({ label, value, onChange, readOnly, as = "input", children, placeholder, type = "text" }) {
+  return (
+    <label>
+      <span>{label}</span>
+      {as === "select" ? (
+        <select value={value} onChange={onChange} disabled={readOnly}>
+          {children}
+        </select>
+      ) : (
+        <input
+          readOnly={readOnly}
+          value={value}
+          onChange={onChange || (() => { })}
+          placeholder={placeholder}
+          type={type}
+        />
+      )}
+    </label>
+  );
+}
 
 export default GestionPedidos;

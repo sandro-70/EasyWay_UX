@@ -9,6 +9,7 @@ import DetallePedido from "../components/DetallePedido";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import "./ReportesPedidos.css"
 
 // 📌 Generamos 49 registros de ejemplo
 const ordersData = Array.from({ length: 49 }, (_, i) => {
@@ -39,7 +40,7 @@ const ReportesPedidos = () => {
   const [mes, setMes] = useState("");
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
   const [paginaActual, setPaginaActual] = useState(1);
-  const pedidosPorPagina = 7;
+  const pedidosPorPagina = 8;
 
   const meses = [
     "Enero",
@@ -88,6 +89,68 @@ const ReportesPedidos = () => {
     );
   };
 
+  const Icon = {
+    ChevronLeft: (props) => (
+      <svg viewBox="0 0 24 24" className={"w-6 h-6 " + (props.className || "")}>
+        <path
+          d="M15 6l-6 6 6 6"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          fill="none"
+        />
+      </svg>
+    ),
+    ChevronRight: (props) => (
+      <svg viewBox="0 0 24 24" className={"w-6 h-6 " + (props.className || "")}>
+        <path
+          d="M9 6l6 6-6 6"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          fill="none"
+        />
+      </svg>
+    ),
+  };
+
+  function Pagination({ page, pageCount, onPage }) {
+    const pages = Array.from({ length: pageCount }, (_, i) => i + 1);
+    const handlePage = (p) => {
+      if (p < 1 || p > pageCount) return;
+      onPage(p);
+    };
+
+    return (
+      <div className="pedido-pagination">
+        <button
+          onClick={() => handlePage(page - 1)}
+          className="pedido-pagination-btn"
+          disabled={page === 1}
+        >
+          <Icon.ChevronLeft />
+        </button>
+        {pages.map((p) => (
+          <button
+            key={p}
+            onClick={() => handlePage(p)}
+            className={`w-9 h-9 rounded-full border border-[#d8dadc] ${
+              p === page ? "ring-2 ring-[#d8572f] text-[#d8572f]" : ""
+            }`}
+          >
+            {p}
+          </button>
+        ))}
+        <button
+          onClick={() => handlePage(page + 1)}
+          className="pedido-pagination-btn"
+          disabled={page === pageCount}
+        >
+          <Icon.ChevronRight />
+        </button>
+      </div>
+    );
+  }
   return (
     <div
       className="px-4 "
@@ -101,210 +164,133 @@ const ReportesPedidos = () => {
         alignItems: "center",
       }}
     >
-      <div className="w-full max-w-6xl mt-7 mb-10">
-        <h1 className="border-b-4 border-[#f0833e] text-[#f0833e] font-bold text-[30px] mb-4 text-left ml-10">
-          Reportes de Pedidos
-        </h1>
+      <div className="pedido-container">
+        <header className="page-header">
+          <h1 className="pedido-title"><span>Reportes de Pedidos</span></h1>
+
+          <button onClick={exportToExcel} className="ventas-export-btn">
+                📊 Exportar a Excel
+          </button>
+        </header>
+        <div className="divider" />
 
         {/* Filtros y número de pedidos */}
-        <div className="flex items-center mb-4 flex-wrap w-full">
-          <div className="flex items-center space-x-2 ml-11">
-            <label className="font-medium">Filtrar Mes de Pedido:</label>
-            <select
-              value={mes}
-              onChange={(e) => {
-                setMes(e.target.value);
-                setPaginaActual(1);
-              }}
-              className="border rounded px-3 py-1 bg-[#E6E6E6]"
-            >
-              <option value="">Todos</option>
-              {meses.map((m) => (
-                <option key={m}>{m}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center space-x-2 ml-6 font-medium">
-            <span>N° de pedidos:</span>
-            <div className="w-8 h-8 rounded-full bg-[#2B6DAF] text-white flex items-center justify-center">
-              {pedidosFiltrados.length}
-            </div>
+        <div className="filtros-container">
+          <label>Filtrar Mes de Pedido:</label>
+          <select
+            value={mes}
+            onChange={(e) => {
+              setMes(e.target.value);
+              setPaginaActual(1);
+            }}
+            className="font-14px border rounded px-3 py-1 bg-[#E6E6E6]"
+          >
+            <option value="">Todos</option>
+            {meses.map((m) => (
+              <option key={m}>{m}</option>
+            ))}
+          </select>
+          <div className="pedido-count">
+            <span>Total de pedidos: </span>
+            <span className="count-bubble">{pedidosFiltrados.length}</span>
           </div>
         </div>
 
         {/* Tabla de pedidos */}
-        <div className="w-full flex items-center justify-between">
-          <button
-            className="p-2 disabled:opacity-50"
-            onClick={(e) => {
-              e.stopPropagation();
-              setPaginaActual((prev) => Math.max(prev - 1, 1));
-            }}
-            disabled={paginaActual === 1}
-          >
-            <ChevronLeft size={28} className="text-[#2B6DAF]" />
-          </button>
-
-          <div className="w-full overflow-x-auto">
-            <table
-              className="table-auto w-full border border-black rounded-lg border-separate"
-              style={{ borderSpacing: "0" }}
-            >
-              <thead>
-                <tr>
-                  {/** Encabezados con líneas verticales blancas separadas */}
-                  {[
-                    { title: "ID de\nPedido" }, //icon: LupaIcon
-                    { title: "Estado" }, //icon: AbajoIcon
-                    { title: "Fecha de\nPedido" },
-                    { title: "Fecha de\nEntrega" },
-                    { title: "Tiempo promedio\n de entrega (días)" },
-                    { title: "Método\n de Pago" },
-                  ].map((col, idx) => (
-                    <th
-                      key={idx}
-                      className="px-4 py-3 text-white text-center bg-[#2B6DAF] relative"
-                    >
-                      <div className="flex items-center justify-center">
-                        <span className="whitespace-pre-line">{col.title}</span>
-                        {col.icon && (
-                          <img
-                            src={col.icon}
-                            alt="icono"
-                            className="w-4 h-4 ml-2"
-                          />
-                        )}
-                      </div>
-                      <div className="absolute inset-y-0 right-0 w-[1px] bg-white"></div>
-                    </th>
-                  ))}
-                  <th className="px-4 py-3 text-white text-center bg-[#2B6DAF]">
-                    Más Información
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {pedidosPaginados.map((order) => (
-                  <tr
-                    key={order.id}
-                    className="border-b border-black text-center"
+        <div className="promocion-table-wrap">
+          <table className="promocion-table">
+            <thead>
+              <tr>
+                {/** Encabezados con líneas verticales blancas separadas */}
+                {[
+                  { title: "ID" }, //icon: LupaIcon
+                  { title: "Estado" }, //icon: AbajoIcon
+                  { title: "Fecha de\nPedido" },
+                  { title: "Fecha de\nEntrega" },
+                  { title: "Tiempo promedio\n de entrega (días)" },
+                  { title: "Método\n de Pago" },
+                ].map((col, idx) => (
+                  <th
+                    key={idx}
+                    className="px-4 py-3 text-white text-center bg-[#2B6DAF] relative"
                   >
-                    <td className="px-4 py-2 border-black text-center">
-                      {order.id}
-                    </td>
-                    <td className="px-4 py-2 border-black text-center">
-                      {order.estado}
-                    </td>
-                    <td className="px-4 py-2 border-black text-center">
-                      {order.fechaPedido}
-                    </td>
-                    <td className="px-4 py-2 border-black text-center">
-                      {order.fechaEntrega}
-                    </td>
-                    <td className="px-4 py-2 border-black text-center">
-                      {order.tiempoPromedio}
-                    </td>
-                    <td className="px-4 py-2 border-black text-center">
-                      {order.metodoPago}
-                    </td>
-                    <td className="px-4 py-2 border-black text-center">
-                      <button
-                        className="flex items-center justify-center w-6 h-6 mx-auto"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPedidoSeleccionado(order);
-                        }}
-                      >
-                        <img src={InfoIcon} alt="info" className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
+                    <div className="flex items-center justify-center">
+                      <span className="whitespace-pre-line">{col.title}</span>
+                      {col.icon && (
+                        <img
+                          src={col.icon}
+                          alt="icono"
+                          className="w-4 h-4 ml-2"
+                        />
+                      )}
+                    </div>
+                    <div className="absolute inset-y-0 right-0 w-[1px]"></div>
+                  </th>
                 ))}
-                {pedidosPaginados.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan="7"
-                      className="py-4 text-black border-black text-center"
-                    >
-                      No hay pedidos
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                <th className="px-4 py-3 text-white text-center bg-[#2B6DAF]">
+                  Más Información
+                </th>
+              </tr>
+            </thead>
 
-          <button
-            className="p-2 disabled:opacity-50"
-            onClick={() =>
-              setPaginaActual((prev) => Math.min(prev + 1, totalPaginas))
-            }
-            disabled={paginaActual === totalPaginas || totalPaginas === 0}
-          >
-            <ChevronRight size={28} className="text-[#2B6DAF]" />
-          </button>
+            <tbody>
+              {pedidosPaginados.map((order) => (
+                <tr
+                  key={order.id}
+                  className="text-center"
+                >
+                  <td className="text-center">
+                    {order.id}
+                  </td>
+                  <td className="text-center">
+                    {order.estado}
+                  </td>
+                  <td className="text-center">
+                    {order.fechaPedido}
+                  </td>
+                  <td className="text-center">
+                    {order.fechaEntrega}
+                  </td>
+                  <td className="text-center">
+                    {order.tiempoPromedio}
+                  </td>
+                  <td className="text-center">
+                    {order.metodoPago}
+                  </td>
+                  <td className="text-center">
+                    <button
+                      className="flex items-center justify-center w-6 h-6 mx-auto"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPedidoSeleccionado(order);
+                      }}
+                    >
+                      <img src={InfoIcon} alt="info" className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {pedidosPaginados.length === 0 && (
+                <tr>
+                  <td
+                    colSpan="7"
+                    className="py-4 text-black border-black text-center"
+                  >
+                    No hay pedidos
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
 
         {/* Paginación centrada con íconos funcionales */}
-        <div className="flex flex-col items-center mt-4 w-full reportes-pagination-wrapper">
-          <div className="flex justify-center items-center space-x-3 mb-3 reportes-pagination">
-            {Array.from({ length: totalPaginas }, (_, i) => {
-              const page = i + 1;
-              return (
-                <React.Fragment key={page}>
-                  {/* Genera un desbordamiento
-                  {page === 1 && (
-                    <img
-                      src={IzqIcon}
-                      alt="izq"
-                      className="page-arrow-icon mr-2 cursor-pointer"
-                      onClick={() =>
-                        setPaginaActual((prev) => Math.max(prev - 1, 1))
-                      }
-                    />
-                  )}
-                  */}
-
-                  <button
-                    onClick={() => setPaginaActual(page)}
-                    className={`page-number-btn flex items-center justify-center rounded-full border px-2 py-1 text-sm select-none 
-                      ${page === paginaActual ? "active-page" : "inactive-page"}
-                    `}
-                  >
-                    {page}
-                  </button>
-
-                  {/* Genera un desbordamiento 
-                  {page === totalPaginas && (
-                    <img
-                      src={DerIcon}
-                      alt="der"
-                      className="page-arrow-icon ml-2 cursor-pointer"
-                      onClick={() =>
-                        setPaginaActual((prev) =>
-                          Math.min(prev + 1, totalPaginas)
-                        )
-                      }
-                    />
-                    
-                  )}
-                    */}
-                </React.Fragment>
-              );
-            })}
-          </div>
-
-          {/* Botón exportar alineado debajo de la tabla */}
-          <div className="w-full flex justify-end mt-2 pr-6 reportes-export-wrapper">
-            <button
-              onClick={exportToExcel}
-              className="bg-[#009900] text-white px-4 py-2 rounded flex items-center space-x-2"
-            >
-              <img src={ExcelIcon} alt="Excel" className="w-5 h-5" />
-              <span>EXPORTAR</span>
-            </button>
-          </div>
+        <div className="pedido-pagination-wrapper">
+          <Pagination
+            page={paginaActual}
+            pageCount={totalPaginas}
+            onPage={setPaginaActual}
+          />
         </div>
       </div>
 

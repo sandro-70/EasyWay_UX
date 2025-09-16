@@ -196,7 +196,7 @@ function TablaReportesVentas() {
   const [appliedFilter, setAppliedFilter] = useState("");
   const [orderDesc, setOrderDesc] = useState(true);
 
-  const itemsPerPage = 6;
+  const itemsPerPage = 8;
 
   // Ordenar por ID
   const sortedData = [...mockData].sort((a, b) =>
@@ -274,8 +274,14 @@ function TablaReportesVentas() {
       }}
     >
       <div className="ventas-container" style={{ maxWidth: "1200px" }}>
-        <h1 className="ventas-title">Tabla de Reportes De Ventas</h1>
-
+        <header className="page-header">
+          <h1 className="ventas-title">Reportes De Ventas</h1>
+          <button onClick={exportToExcel} className="ventas-export-btn">
+              📊 Exportar a Excel
+          </button>
+        </header>
+        <div className="divider" />
+        <div className="ventas-table-wrap">
         <table className="ventas-table">
           <thead className="ventas-thead">
             <tr>
@@ -287,13 +293,16 @@ function TablaReportesVentas() {
                 ID de Producto {orderDesc ? "↓" : "↑"}
               </th>
               <th>
-                Producto{" "}
-                <span
-                  className="ventas-search-icon"
-                  onClick={() => setShowFilter(true)}
-                >
-                  <Icon.Search />
-                </span>
+                <div className="flex items-center justify-center">
+                  <span>Producto</span>
+                  <span
+                    className="ventas-search-icon ml-1 cursor-pointer"
+                    onClick={() => setShowFilter(true)}
+                    title="Filtrar producto"
+                  >
+                    <Icon.Search />
+                  </span>
+                </div>
               </th>
               <th>Categoría</th>
               <th>Subcategoría</th>
@@ -328,16 +337,13 @@ function TablaReportesVentas() {
             )}
           </tbody>
         </table>
+        </div>
 
         {/* Botón Excel */}
         <div
           className="ventas-footer"
           style={{ textAlign: "right", marginTop: "10px" }}
-        >
-          <button onClick={exportToExcel} className="ventas-export-btn">
-            📊 Exportar a Excel
-          </button>
-        </div>
+        ></div>
 
         <Pagination page={page} pageCount={totalPages} onPage={setPage} />
 

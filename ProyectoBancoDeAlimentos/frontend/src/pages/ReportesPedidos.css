@@ -1,4 +1,4 @@
-.promocion-container {
+.pedido-container {
   padding: 10px;
   display: flex;
   justify-content: center;
@@ -12,7 +12,7 @@
   align-items: self-start;
 }
 
-.promocion-title {
+.pedido-title {
   color: #d8572f;
   font-weight: bold;
   font-size: 30px;
@@ -37,21 +37,6 @@
   border-radius: 0.375rem;
   background-color: #f0833e;
   margin-top: 0.15rem;
-}
-
-.promocion-count {
-  display: inline-flex;       /* ocupa solo lo necesario */
-  justify-content: flex-start;/* alinear contenido al inicio */
-  align-items: center;        /* centra verticalmente */
-  background: var(--ink-500);
-  padding: 8px 16px;
-  border-radius: 999px;
-  font-size: 14px;
-  color: var(--card);
-  gap: 6px;
-  max-width: fit-content;     /* se adapta al contenido */
-  margin-left: 0;             /* pegado a la izquierda */
-  margin-bottom: 15px;
 }
 
 .promocion-table-wrap {
@@ -110,68 +95,26 @@
   color: #888;
 }
 
-.categoria-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  z-index: 10;
-}
-
-.categoria-select-inline {
-  margin-left: 5px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  padding: 2px 6px;
-  background-color: #fff;
-  color: #000;
-  cursor: pointer;
-  vertical-align: middle;
-}
-
-.categoria-select {
-  min-width: 140px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  padding: 3px 6px;
-  background-color: #fff;
-  color: #000;
-  cursor: pointer;
-}
-
-.promocion-pagination {
+.pedido-pagination-wrapper {
   display: flex;
-  justify-content: center;
-  align-items: center;
+  justify-content: center;  /* centra horizontalmente */
+  width: 100%;
+  margin-top: 20px;         /* espacio con la tabla */
+}
+
+.pedido-pagination {
+  display: flex;
+  justify-content: center;   /* centra horizontalmente los botones */
+  align-items: center;       /* centra verticalmente */
   gap: 5px;
-  margin: 15px auto 0 auto; /* centers horizontally */
-  width: 100%;
+  width: auto;
+  border-top: none;
 }
 
-.promocion-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 10px;
-  width: 100%;
-}
-.promocion-footer span {
-  font-size: 17px;
-  font-weight: bold;
-  color: #555;
-  text-transform: uppercase;
-}
-.promocion-footer p {
-  margin-right: 780px;
-  color: #f0833e;
-  font-size: 19px;
-  font-weight: bold;
-}
-
-.promocion-pagination-btn,
-.promocion-pagination button.w-9 {
+.pedido-pagination-btn {
   background-color: #fff;
   border: 1px solid #d8dadc;
-  padding: 5px 8px;
+  padding: 5px;
   cursor: pointer;
   width: 36px;
   height: 36px;
@@ -181,24 +124,35 @@
   justify-content: center;
 }
 
-.promocion-pagination button.w-9.ring-2 {
+.pedido-pagination button.w-9.ring-2 {
   background-color: #fff;
-  border-color: #f0833e;
-  color: #f0833e;
+  border-color: #d8572f;
+  color: #d8572f;
 }
 
-.promocion-export-btn-green {
-  background-color: #f0833e;
-  color: #fff;
-  padding: 6px 12px;
-  border-radius: 4px;
-  border: none;
-  cursor: pointer;
+.filtros-container {
   display: flex;
-  align-items: right;
-  gap: 5px;
+  align-items: center;  /* centra verticalmente todos los elementos */
+  justify-content: flex-start; /* alinea todo a la izquierda */
+  gap: 12px;             /* espacio entre label, select y total */
+  flex-wrap: wrap;       /* permite que baje a la siguiente línea si es necesario */
+  margin-left: 0;        /* elimina desplazamiento extra */
+  margin-bottom: 10px;
 }
 
-.promocion-export-btn-green:hover {
-  background-color: #ea6b1c;
+.filtros-container label {
+  line-height: 1.75rem; /* ajusta altura para que coincida con select */
+  flex-shrink: 0;       /* evita que se reduzca de tamaño */
+}
+
+.pedido-count {
+  display: flex;
+  align-items: center;  /* centra verticalmente el texto y el número */
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 14px;
+  color: var(--card);
+  gap: 6px;
+  background: var(--ink-500);
+  margin: 0;            /* sin margen extra */
 }

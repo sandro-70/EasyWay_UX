@@ -571,7 +571,6 @@ export default function UserManagementViews() {
             <Icon icon="mdi:account-plus" />
             <span>Crear Usuario</span>
           </button>
-
         </header>
         <div className="divider" />
         <div className="search-bar">

@@ -6,17 +6,6 @@
   top: -13px; /* mueve 30px hacia arriba */
 }
 
-.sidebar {
-  position: fixed; /* se saca del flujo del contenedor */
-  top: 0;
-  left: 0;
-  width: 250px; /* ancho deseado */
-  height: 100vh; /* altura completa */
-  background: #f0f0f0;
-  z-index: 1000; /* sobre otros elementos */
-  top: 147px;
-}
-
 .editar-boton {
   margin-left: 10px;
 }

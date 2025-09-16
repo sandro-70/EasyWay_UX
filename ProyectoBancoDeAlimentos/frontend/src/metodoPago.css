@@ -1,11 +1,24 @@
 .agregar-tarjeta-container {
   display: flex;
   border-radius: 1rem;
+  height: 600px;
   width: 700px;
   background: white;
   flex-direction: column;
   align-items: center;
-  margin-bottom: -74px;
+  margin-top: 0;
+  margin-bottom: 0; /* opcional */
+}
+
+.sidebar {
+  position: fixed; /* se saca del flujo del contenedor */
+  top: 0;
+  left: 0;
+  width: 250px; /* ancho deseado */
+  height: 100vh; /* altura completa */
+  background: #f0f0f0;
+  z-index: 1000; /* sobre otros elementos */
+  top: 147px;
 }
 
 .titulo-pago {
@@ -281,11 +294,12 @@
   margin: 20px auto 0;
   font-size: 13px;
   color: #444;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+
   padding: 20px;
   border-radius: 1rem;
   width: 700px;
   background: white;
+  margin-top: -200px;
 }
 
 .info-seguridad h3 {

@@ -1,7 +1,25 @@
 .mis-direcciones {
-  padding: 20px;
-  margin-bottom: -153px;
-  margin-right: -170px;
+  position: sticky; /* se queda pegado al top */
+  top: 64px; /* altura del header */
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 50;
+  padding: 24px; /* p-6 en Tailwind */
+  margin-top: -12px; /* -mt-12 */
+  margin-left: 130px; /* ml-[130px] */
+  box-sizing: border-box;
+}
+.sidebar {
+  position: fixed; /* se saca del flujo del contenedor */
+  top: 0;
+  left: 0;
+  width: 250px; /* ancho deseado */
+  height: 100vh; /* altura completa */
+  background: #f0f0f0;
+  z-index: 1000; /* sobre otros elementos */
+  top: 147px;
 }
 
 .titulo {

@@ -185,7 +185,7 @@ const InicioUsuario = () => {
         incrementCart(1);
       } else {
         console.log("Producto nuevo, agregando al carrito");
-
+        toast(`Producto agregado al carrito`, { className: "toast-default" });
         // Agregar nuevo producto
         await AddNewCarrito(id_producto, 1);
 
@@ -195,7 +195,6 @@ const InicioUsuario = () => {
         setCarrito(nuevosDetalles);
 
         incrementCart(1);
-        toast(`Producto agregado al carrito`, { className: "toast-default" });
       }
     } catch (error) {
       console.error("Error:", error);

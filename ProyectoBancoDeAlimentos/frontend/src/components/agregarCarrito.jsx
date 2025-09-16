@@ -20,7 +20,9 @@ const BACKEND_ORIGIN = (() => {
   const base = axiosInstance?.defaults?.baseURL;
   try {
     const u = base
-      ? (base.startsWith("http") ? new URL(base) : new URL(base, window.location.origin))
+      ? base.startsWith("http")
+        ? new URL(base)
+        : new URL(base, window.location.origin)
       : new URL(window.location.origin);
     return `${u.protocol}//${u.host}`;
   } catch {
@@ -30,7 +32,9 @@ const BACKEND_ORIGIN = (() => {
 
 // para nombres de archivo tipo "foto.jpg"
 const backendImageUrl = (fileName) =>
-  fileName ? `${BACKEND_ORIGIN}/api/images/productos/${encodeURIComponent(fileName)}` : "";
+  fileName
+    ? `${BACKEND_ORIGIN}/api/images/productos/${encodeURIComponent(fileName)}`
+    : "";
 
 // adapta la ruta que venga en DB a una URL válida del backend
 const toPublicFotoSrc = (nameOrPath) => {
@@ -38,10 +42,9 @@ const toPublicFotoSrc = (nameOrPath) => {
   const s = String(nameOrPath);
   if (/^https?:\/\//i.test(s)) return s; // ya es absoluta
   if (s.startsWith("/api/images/")) return `${BACKEND_ORIGIN}${encodeURI(s)}`;
-  if (s.startsWith("/images/"))      return `${BACKEND_ORIGIN}/api${encodeURI(s)}`;
+  if (s.startsWith("/images/")) return `${BACKEND_ORIGIN}/api${encodeURI(s)}`;
   return backendImageUrl(s); // nombre suelto => /images/productos/<archivo>
 };
-
 
 function AgregarCarrito() {
   const { id } = useParams();
@@ -123,7 +126,10 @@ function AgregarCarrito() {
         await fetchReviews(found.id_producto);
       } catch (err) {
         console.error("[PRODUCTS] error:", err?.response?.data || err);
-        toast.error(err?.response?.data?.message || "Error al cargar productos", { className: "toast-error" });
+        toast.error(
+          err?.response?.data?.message || "Error al cargar productos",
+          { className: "toast-error" }
+        );
       }
     };
 
@@ -191,11 +197,15 @@ function AgregarCarrito() {
 
     const token = localStorage.getItem("token");
     if (!token) {
-      toast.info("Inicia sesión para dejar un comentario.", { className: "toast-info" });
+      toast.info("Inicia sesión para dejar un comentario.", {
+        className: "toast-info",
+      });
       return navigate("/login");
     }
     if (myRating < 1 || myRating > 5) {
-      return toast.info("Selecciona una calificación válida (1–5).", { className: "toast-info" });
+      return toast.info("Selecciona una calificación válida (1–5).", {
+        className: "toast-info",
+      });
     }
 
     try {
@@ -216,7 +226,8 @@ function AgregarCarrito() {
       toast.error(
         e?.response?.data?.error ||
           e?.response?.data?.message ||
-          "No se pudo enviar tu opinión", { className: "toast-error" }
+          "No se pudo enviar tu opinión",
+        { className: "toast-error" }
       );
     } finally {
       setSubmitting(false);
@@ -270,12 +281,20 @@ function AgregarCarrito() {
         // Usar SumarItem con la cantidad TOTAL que debe quedar
         await SumarItem(id_producto, nuevaCantidad);
         incrementCart(q);
-        toast(`Cantidad actualizada a ${nuevaCantidad} unidades`, { className: "toast-default" });
+        toast(`Cantidad actualizada a ${nuevaCantidad} unidades`, {
+          className: "toast-default",
+        });
       } else {
         console.log("Producto nuevo, agregando al carrito");
-        incrementCart(q);
-        // Agregar nuevo producto con la cantidad especificada
+        console.log("Producto nuevo, agregando al carrito");
         await AddNewCarrito(id_producto, q);
+        incrementCart(q);
+        toast(
+          `Producto agregado al carrito (${q} ${
+            q === 1 ? "unidad" : "unidades"
+          })`,
+          { className: "toast-default" }
+        );
       }
 
       // Recargar carrito para verificar cambios
@@ -301,11 +320,14 @@ function AgregarCarrito() {
           toast(
             `Producto agregado al carrito (${q} ${
               q === 1 ? "unidad" : "unidades"
-            })`, { className: "toast-default" }
+            })`,
+            { className: "toast-default" }
           );
         } catch (err) {
           console.error("Error creando carrito:", err);
-          toast.error("No se pudo agregar el producto al carrito", { className: "toast-error" });
+          toast.error("No se pudo agregar el producto al carrito", {
+            className: "toast-error",
+          });
         }
       } else {
         const errorMessage =
@@ -325,7 +347,9 @@ function AgregarCarrito() {
 
     const token = localStorage.getItem("token");
     if (!token) {
-      toast.info("Inicia sesión para usar Favoritos.", { className: "toast-info" });
+      toast.info("Inicia sesión para usar Favoritos.", {
+        className: "toast-info",
+      });
       return navigate("/login");
     }
 
@@ -338,7 +362,8 @@ function AgregarCarrito() {
       toast.error(
         e?.response?.data?.error ||
           e?.response?.data?.message ||
-          "No se pudo agregar a favoritos", { className: "toast-error" }
+          "No se pudo agregar a favoritos",
+        { className: "toast-error" }
       );
     } finally {
       setFavLoading(false);
@@ -427,15 +452,18 @@ function AgregarCarrito() {
                   p.imagenes.length > 0 &&
                   p.imagenes[0].url_imagen ? (
                     <img
-  src={toPublicFotoSrc(p.imagenes[0].url_imagen) || "/PlaceHolder.png"}
-  alt={p.nombre}
-  style={styles.productImg}
-  onError={(e) => {
-    e.currentTarget.onerror = null;
-    e.currentTarget.src =
-      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
-  }}
-/>
+                      src={
+                        toPublicFotoSrc(p.imagenes[0].url_imagen) ||
+                        "/PlaceHolder.png"
+                      }
+                      alt={p.nombre}
+                      style={styles.productImg}
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src =
+                          'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
+                      }}
+                    />
                   ) : (
                     <div style={styles.productImg}>Imagen no disponible</div>
                   )}
@@ -469,15 +497,19 @@ function AgregarCarrito() {
                   {productImages[selectedImageIndex] &&
                   productImages[selectedImageIndex].url_imagen ? (
                     <img
-  src={toPublicFotoSrc(productImages[selectedImageIndex].url_imagen) || "/PlaceHolder.png"}
-  alt={product.nombre}
-  style={styles.mainImage}
-  onError={(e) => {
-    e.currentTarget.onerror = null;
-    e.currentTarget.src =
-      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
-  }}
-/>
+                      src={
+                        toPublicFotoSrc(
+                          productImages[selectedImageIndex].url_imagen
+                        ) || "/PlaceHolder.png"
+                      }
+                      alt={product.nombre}
+                      style={styles.mainImage}
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src =
+                          'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
+                      }}
+                    />
                   ) : (
                     <div style={styles.mainImagePlaceholder}>
                       <span>Imagen no disponible</span>
@@ -500,15 +532,18 @@ function AgregarCarrito() {
                       >
                         {image && image.url_imagen ? (
                           <img
-  src={toPublicFotoSrc(image.url_imagen) || "/PlaceHolder.png"}
-  alt={`mini-${index}`}
-  style={styles.smallerImage}
-  onError={(e) => {
-    e.currentTarget.onerror = null;
-    e.currentTarget.src =
-      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
-  }}
-/>
+                            src={
+                              toPublicFotoSrc(image.url_imagen) ||
+                              "/PlaceHolder.png"
+                            }
+                            alt={`mini-${index}`}
+                            style={styles.smallerImage}
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src =
+                                'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
+                            }}
+                          />
                         ) : (
                           <div style={styles.smallerPlaceholder}>
                             Imagen no disponible
@@ -637,12 +672,15 @@ function AgregarCarrito() {
                       e.preventDefault();
                       if (myRating < 1) {
                         toast.info(
-                          "Debes seleccionar al menos 1 estrella para tu calificación.", { className: "toast-info" }
+                          "Debes seleccionar al menos 1 estrella para tu calificación.",
+                          { className: "toast-info" }
                         );
                         return;
                       }
                       if (!myComment.trim()) {
-                        toast.info("Escribe tu comentario.", { className: "toast-info" });
+                        toast.info("Escribe tu comentario.", {
+                          className: "toast-info",
+                        });
                         return;
                       }
                       submitReview(e);

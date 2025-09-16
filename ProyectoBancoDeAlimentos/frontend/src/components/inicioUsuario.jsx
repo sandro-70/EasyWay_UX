@@ -8,6 +8,8 @@ import { AddNewCarrito, ViewCar, SumarItem } from "../api/CarritoApi";
 import { getPromociones } from "../api/PromocionesApi";
 import { useCart } from "../utils/CartContext";
 import { useSearch } from "../searchContext";
+import { toast } from "react-toastify";
+import "../toast.css";
 
 import "swiper/css";
 import "swiper/css/effect-coverflow";
@@ -67,7 +69,7 @@ const InicioUsuario = () => {
         setProducts(res.data);
       } catch (err) {
         console.error("[PRODUCTS] error:", err?.response?.data || err);
-        alert(err?.response?.data?.message || "Error al cargar productos");
+        toast.error(err?.response?.data?.message || "Error al cargar productos", { className: "toast-error" });
       }
     };
 
@@ -84,7 +86,7 @@ const InicioUsuario = () => {
         console.log(res.data);
       } catch (err) {
         console.error("[CATEGORIES] error:", err?.response?.data || err);
-        alert(err?.response?.data?.message || "Error al cargar categorías");
+        toast.error(err?.response?.data?.message || "Error al cargar categorías", { className: "toast-error" });
       }
     };
     fetchCategories();
@@ -101,7 +103,7 @@ const InicioUsuario = () => {
         console.log("[PROMOS]", res.data);
       } catch (err) {
         console.error("[PROMOS] error:", err?.response?.data || err);
-        alert(err?.response?.data?.message || "Error al cargar promociones");
+        toast.error(err?.response?.data?.message || "Error al cargar promociones", { className: "toast-error" });
       }
     };
     fetchPromociones();
@@ -109,7 +111,7 @@ const InicioUsuario = () => {
 
   const handleAgregar = async (id_producto) => {
     if (!id_producto) {
-      alert("ID de producto no válido");
+      toast.error("ID de producto no válido", { className: "toast-error" });
       return;
     }
 
@@ -130,7 +132,7 @@ const InicioUsuario = () => {
         const nuevaCantidad = cantidadActual + 1;
 
         console.log(`Actualizando de ${cantidadActual} a ${nuevaCantidad}`);
-        alert(`Actualizando a ${nuevaCantidad}`);
+        toast(`Se han agregado ${nuevaCantidad} cantidades del producto`, { className: "toast-default" });
 
         // Actualizar en backend
         await SumarItem(id_producto, nuevaCantidad);
@@ -163,7 +165,7 @@ const InicioUsuario = () => {
         setCarrito(nuevosDetalles);
 
         incrementCart(1);
-        alert(`Producto agregado al carrito`);
+        toast(`Producto agregado al carrito`, { className: "toast-default" });
       }
     } catch (error) {
       console.error("Error:", error);
@@ -178,10 +180,10 @@ const InicioUsuario = () => {
           const nuevosDetalles = carritoNuevo.data.carrito_detalles ?? [];
           setCarrito(nuevosDetalles);
 
-          alert(`Producto agregado al carrito`);
+          toast(`Producto agregado al carrito`, { className: "toast-default" });
         } catch (err) {
           console.error("Error creando carrito:", err);
-          alert("No se pudo agregar el producto al carrito");
+          toast.error("No se pudo agregar el producto al carrito", { className: "toast-error" });
         }
       } else {
         const errorMessage =
@@ -190,7 +192,7 @@ const InicioUsuario = () => {
           error?.message ||
           "No se pudo procesar el carrito";
 
-        alert(errorMessage);
+        toast.error(errorMessage, { className: "toast-error" });
       }
     }
   };
@@ -212,11 +214,11 @@ const InicioUsuario = () => {
       if (categoria) {
         navigate(`/promocion/${categoria.id_categoria}`);
       } else {
-        alert("No se encontró la categoría del producto");
+        toast.error("No se encontró la categoría del producto", { className: "toast-error" });
       }
     } catch (error) {
       console.error("Error obteniendo categoría:", error);
-      alert("Hubo un error al obtener la categoría del producto");
+      toast.error("Hubo un error al obtener la categoría del producto", { className: "toast-error" });
     }
   };
 

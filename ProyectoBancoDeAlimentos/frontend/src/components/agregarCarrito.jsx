@@ -12,6 +12,8 @@ import { AddNewCarrito, ViewCar, SumarItem } from "../api/CarritoApi";
 import axiosInstance from "../api/axiosInstance"; // valoraciones
 import { useCart } from "../utils/CartContext";
 import { height } from "@mui/system";
+import { toast } from "react-toastify";
+import "../toast.css";
 
 function AgregarCarrito() {
   const { id } = useParams();
@@ -93,7 +95,7 @@ function AgregarCarrito() {
         await fetchReviews(found.id_producto);
       } catch (err) {
         console.error("[PRODUCTS] error:", err?.response?.data || err);
-        alert(err?.response?.data?.message || "Error al cargar productos");
+        toast.error(err?.response?.data?.message || "Error al cargar productos", { className: "toast-error" });
       }
     };
 
@@ -161,11 +163,11 @@ function AgregarCarrito() {
 
     const token = localStorage.getItem("token");
     if (!token) {
-      alert("Inicia sesión para dejar un comentario.");
+      toast.info("Inicia sesión para dejar un comentario.", { className: "toast-info" });
       return navigate("/login");
     }
     if (myRating < 1 || myRating > 5) {
-      return alert("Selecciona una calificación válida (1–5).");
+      return toast.info("Selecciona una calificación válida (1–5).", { className: "toast-info" });
     }
 
     try {
@@ -183,10 +185,10 @@ function AgregarCarrito() {
       await fetchReviews(product.id_producto);
     } catch (e) {
       console.error("[REVIEWS POST] error:", e?.response?.data || e);
-      alert(
+      toast.error(
         e?.response?.data?.error ||
           e?.response?.data?.message ||
-          "No se pudo enviar tu opinión"
+          "No se pudo enviar tu opinión", { className: "toast-error" }
       );
     } finally {
       setSubmitting(false);
@@ -196,7 +198,7 @@ function AgregarCarrito() {
   // ======= Carrito: agregar/sumar =======
   const handleAgregar = async (id_producto, q = quantity) => {
     if (!id_producto) {
-      alert("ID de producto no válido");
+      toast.error("ID de producto no válido", { className: "toast-error" });
       return;
     }
 
@@ -240,7 +242,7 @@ function AgregarCarrito() {
         // Usar SumarItem con la cantidad TOTAL que debe quedar
         await SumarItem(id_producto, nuevaCantidad);
         incrementCart(q);
-        alert(`Cantidad actualizada a ${nuevaCantidad} unidades`);
+        toast(`Cantidad actualizada a ${nuevaCantidad} unidades`, { className: "toast-default" });
       } else {
         console.log("Producto nuevo, agregando al carrito");
         incrementCart(q);
@@ -268,14 +270,14 @@ function AgregarCarrito() {
           const carritoNuevo = await ViewCar();
           setCarrito(carritoNuevo.data);
 
-          alert(
+          toast(
             `Producto agregado al carrito (${q} ${
               q === 1 ? "unidad" : "unidades"
-            })`
+            })`, { className: "toast-default" }
           );
         } catch (err) {
           console.error("Error creando carrito:", err);
-          alert("No se pudo agregar el producto al carrito");
+          toast.error("No se pudo agregar el producto al carrito", { className: "toast-error" });
         }
       } else {
         const errorMessage =
@@ -284,7 +286,7 @@ function AgregarCarrito() {
           error?.message ||
           "No se pudo procesar el carrito";
 
-        alert(errorMessage);
+        toast.error(errorMessage, { className: "toast-error" });
       }
     }
   };
@@ -295,7 +297,7 @@ function AgregarCarrito() {
 
     const token = localStorage.getItem("token");
     if (!token) {
-      alert("Inicia sesión para usar Favoritos.");
+      toast.info("Inicia sesión para usar Favoritos.", { className: "toast-info" });
       return navigate("/login");
     }
 
@@ -305,10 +307,10 @@ function AgregarCarrito() {
       // alert("Producto agregado a tus favoritos.");
     } catch (e) {
       console.error("[FAVORITOS] error:", e?.response?.data || e);
-      alert(
+      toast.error(
         e?.response?.data?.error ||
           e?.response?.data?.message ||
-          "No se pudo agregar a favoritos"
+          "No se pudo agregar a favoritos", { className: "toast-error" }
       );
     } finally {
       setFavLoading(false);
@@ -603,13 +605,13 @@ function AgregarCarrito() {
                     onSubmit={(e) => {
                       e.preventDefault();
                       if (myRating < 1) {
-                        alert(
-                          "Debes seleccionar al menos 1 estrella para tu calificación."
+                        toast.info(
+                          "Debes seleccionar al menos 1 estrella para tu calificación.", { className: "toast-info" }
                         );
                         return;
                       }
                       if (!myComment.trim()) {
-                        alert("Escribe tu comentario.");
+                        toast.info("Escribe tu comentario.", { className: "toast-info" });
                         return;
                       }
                       submitReview(e);

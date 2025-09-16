@@ -9,22 +9,22 @@
 /* Personalizar ERROR */
 .toast-error {
   background-color: #dc3545 !important;
-  color: #fff !important;
+  color: white !important;
   font-size: 18px;
   font-weight: bold;
 }
 
 /* Personalizar WARN */
 .toast-warn {
-  background-color: #ffc107 !important;
-  color: black !important;
+  background-color: #f0833e !important;
+  color: white !important;
   font-size: 18px;
   font-weight: bold;
 }
 
 /* Personalizar INFO */
 .toast-info {
-  background-color: #17a2b8 !important;
+  background-color: #2b6daf !important;
   color: white !important;
   font-size: 18px;
   font-weight: bold;
@@ -32,7 +32,7 @@
 
 /*Personalizar DEFAUULT*/
 .toast-default{
-    background-color: #b81793 !important;
+    background-color: #f0833e !important;
     color: white !important;
     font-size: 18px;
     font-weight: bold;

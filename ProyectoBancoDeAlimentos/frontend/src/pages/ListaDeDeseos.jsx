@@ -94,7 +94,7 @@ export default function ListaDeDeseos({ id_usuario }) {
       }}
     >
       <div className="max-w-6xl w-full px-6 font-sans -mt-12 ml-[130px]">
-        <section className="sidebar">
+        <section className="sidebar fixed top-35 left-0 w-64 h-[calc(100vh-64px)] bg-gray-100">
           <PerfilSidebar />
         </section>
         {/* Fondo unificado: título + ordenar por + productos */}

@@ -21,6 +21,17 @@
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
 }
 
+.sidebar {
+  position: fixed; /* se saca del flujo del contenedor */
+  top: 0;
+  left: 0;
+  width: 250px; /* ancho deseado */
+  height: 100vh; /* altura completa */
+  background: #f0f0f0;
+  z-index: 1000; /* sobre otros elementos */
+  top: 147px;
+}
+
 .mis-pedidos-container {
   display: flex;
   flex-direction: column;

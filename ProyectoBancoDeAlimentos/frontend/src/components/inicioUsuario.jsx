@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
+import axiosInstance from "../api/axiosInstance"; // ⬅️ nuevo
 import { EffectCoverflow, Autoplay } from "swiper/modules";
 import { useNavigate } from "react-router-dom";
 import { getAllProducts, getProductoById } from "../api/InventarioApi";
@@ -40,6 +41,35 @@ const banners = [
   { idCategoriaEnDescuento: 2, imagen: banner2 },
   { idCategoriaEnDescuento: 3, imagen: banner3 },
 ];
+
+
+// ====== helpers para construir la URL absoluta desde el backend ======
+const BACKEND_ORIGIN = (() => {
+  const base = axiosInstance?.defaults?.baseURL;
+  try {
+    const u = base
+      ? (base.startsWith("http") ? new URL(base) : new URL(base, window.location.origin))
+      : new URL(window.location.origin);
+    return `${u.protocol}//${u.host}`;
+  } catch {
+    return window.location.origin;
+  }
+})();
+
+// para nombres de archivo tipo "foto.jpg"
+const backendImageUrl = (fileName) =>
+  fileName ? `${BACKEND_ORIGIN}/api/images/productos/${encodeURIComponent(fileName)}` : "";
+
+// adapta la ruta que venga en DB a una URL válida del backend
+const toPublicFotoSrc = (nameOrPath) => {
+  if (!nameOrPath) return "";
+  const s = String(nameOrPath);
+  if (/^https?:\/\//i.test(s)) return s; // ya es absoluta
+  if (s.startsWith("/api/images/")) return `${BACKEND_ORIGIN}${encodeURI(s)}`;
+  if (s.startsWith("/images/"))      return `${BACKEND_ORIGIN}/api${encodeURI(s)}`;
+  return backendImageUrl(s); // nombre suelto => /images/productos/<archivo>
+};
+
 
 const InicioUsuario = () => {
   const { searchText } = useSearch();
@@ -484,14 +514,15 @@ const InicioUsuario = () => {
               p.imagenes.length > 0 &&
               p.imagenes[0].url_imagen ? (
                 <img
-                  src={`/images/productos/${p.imagenes[0].url_imagen}`}
-                  alt={p.nombre}
-                  style={styles.productImg}
-                  onError={(e) => {
-                    e.target.src =
-                      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
-                  }}
-                />
+  src={toPublicFotoSrc(p?.imagenes?.[0]?.url_imagen) || "/PlaceHolder.png"}
+  alt={p.nombre}
+  style={styles.productImg}
+  onError={(e) => {
+    e.currentTarget.onerror = null;
+    e.currentTarget.src =
+      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
+  }}
+/>
               ) : (
                 <div style={styles.productImg}>Imagen no disponible</div>
               )}
@@ -581,14 +612,15 @@ const InicioUsuario = () => {
               p.imagenes.length > 0 &&
               p.imagenes[0].url_imagen ? (
                 <img
-                  src={`/images/productos/${p.imagenes[0].url_imagen}`}
-                  alt={p.nombre}
-                  style={styles.productImg}
-                  onError={(e) => {
-                    e.target.src =
-                      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
-                  }}
-                />
+  src={toPublicFotoSrc(p?.imagenes?.[0]?.url_imagen) || "/PlaceHolder.png"}
+  alt={p.nombre}
+  style={styles.productImg}
+  onError={(e) => {
+    e.currentTarget.onerror = null;
+    e.currentTarget.src =
+      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
+  }}
+/>
               ) : (
                 <div style={styles.productImg}>Imagen no disponible</div>
               )}

@@ -15,6 +15,34 @@ import { height } from "@mui/system";
 import { toast } from "react-toastify";
 import "../toast.css";
 
+// ====== helpers para construir la URL absoluta desde el backend ======
+const BACKEND_ORIGIN = (() => {
+  const base = axiosInstance?.defaults?.baseURL;
+  try {
+    const u = base
+      ? (base.startsWith("http") ? new URL(base) : new URL(base, window.location.origin))
+      : new URL(window.location.origin);
+    return `${u.protocol}//${u.host}`;
+  } catch {
+    return window.location.origin;
+  }
+})();
+
+// para nombres de archivo tipo "foto.jpg"
+const backendImageUrl = (fileName) =>
+  fileName ? `${BACKEND_ORIGIN}/api/images/productos/${encodeURIComponent(fileName)}` : "";
+
+// adapta la ruta que venga en DB a una URL válida del backend
+const toPublicFotoSrc = (nameOrPath) => {
+  if (!nameOrPath) return "";
+  const s = String(nameOrPath);
+  if (/^https?:\/\//i.test(s)) return s; // ya es absoluta
+  if (s.startsWith("/api/images/")) return `${BACKEND_ORIGIN}${encodeURI(s)}`;
+  if (s.startsWith("/images/"))      return `${BACKEND_ORIGIN}/api${encodeURI(s)}`;
+  return backendImageUrl(s); // nombre suelto => /images/productos/<archivo>
+};
+
+
 function AgregarCarrito() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -399,14 +427,15 @@ function AgregarCarrito() {
                   p.imagenes.length > 0 &&
                   p.imagenes[0].url_imagen ? (
                     <img
-                      src={`/images/productos/${p.imagenes[0].url_imagen}`}
-                      alt={p.nombre}
-                      style={styles.productImg}
-                      onError={(e) => {
-                        e.target.src =
-                          'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
-                      }}
-                    />
+  src={toPublicFotoSrc(p.imagenes[0].url_imagen) || "/PlaceHolder.png"}
+  alt={p.nombre}
+  style={styles.productImg}
+  onError={(e) => {
+    e.currentTarget.onerror = null;
+    e.currentTarget.src =
+      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
+  }}
+/>
                   ) : (
                     <div style={styles.productImg}>Imagen no disponible</div>
                   )}
@@ -440,14 +469,15 @@ function AgregarCarrito() {
                   {productImages[selectedImageIndex] &&
                   productImages[selectedImageIndex].url_imagen ? (
                     <img
-                      src={`/images/productos/${productImages[selectedImageIndex].url_imagen}`}
-                      style={styles.mainImage}
-                      alt={product.nombre}
-                      onError={(e) => {
-                        e.target.src =
-                          'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="350" viewBox="0 0 400 350"><rect width="400" height="350" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="16" fill="%23999">Imagen no disponible</text></svg>';
-                      }}
-                    />
+  src={toPublicFotoSrc(productImages[selectedImageIndex].url_imagen) || "/PlaceHolder.png"}
+  alt={product.nombre}
+  style={styles.mainImage}
+  onError={(e) => {
+    e.currentTarget.onerror = null;
+    e.currentTarget.src =
+      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
+  }}
+/>
                   ) : (
                     <div style={styles.mainImagePlaceholder}>
                       <span>Imagen no disponible</span>
@@ -470,14 +500,15 @@ function AgregarCarrito() {
                       >
                         {image && image.url_imagen ? (
                           <img
-                            src={`/images/productos/${image.url_imagen}`}
-                            style={styles.smallerImage}
-                            alt={`mini-${index}`}
-                            onError={(e) => {
-                              e.target.src =
-                                'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60"><rect width="60" height="60" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="10" fill="%23999">Imagen no disponible</text></svg>';
-                            }}
-                          />
+  src={toPublicFotoSrc(image.url_imagen) || "/PlaceHolder.png"}
+  alt={`mini-${index}`}
+  style={styles.smallerImage}
+  onError={(e) => {
+    e.currentTarget.onerror = null;
+    e.currentTarget.src =
+      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
+  }}
+/>
                         ) : (
                           <div style={styles.smallerPlaceholder}>
                             Imagen no disponible

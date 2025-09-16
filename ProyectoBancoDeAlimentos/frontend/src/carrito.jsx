@@ -1,4 +1,5 @@
 // src/Carrito.jsx
+import axiosInstance from "../src/api/axiosInstance"; // ⬅️ nuevo
 import { useState, useEffect, useContext } from "react";
 import carrito from "./images/carrito_icon.png";
 
@@ -23,6 +24,33 @@ import {
 import { crearPedido } from "./api/PedidoApi";
 import { UserContext } from "./components/userContext";
 import { useCart } from "../src/utils/CartContext";
+
+// ====== helpers para construir la URL absoluta desde el backend ======
+const BACKEND_ORIGIN = (() => {
+  const base = axiosInstance?.defaults?.baseURL;
+  try {
+    const u = base
+      ? (base.startsWith("http") ? new URL(base) : new URL(base, window.location.origin))
+      : new URL(window.location.origin);
+    return `${u.protocol}//${u.host}`;
+  } catch {
+    return window.location.origin;
+  }
+})();
+
+// para nombres de archivo tipo "foto.jpg"
+const backendImageUrl = (fileName) =>
+  fileName ? `${BACKEND_ORIGIN}/api/images/productos/${encodeURIComponent(fileName)}` : "";
+
+// adapta la ruta que venga en DB a una URL válida del backend
+const toPublicFotoSrc = (nameOrPath) => {
+  if (!nameOrPath) return "";
+  const s = String(nameOrPath);
+  if (/^https?:\/\//i.test(s)) return s; // ya es absoluta
+  if (s.startsWith("/api/images/")) return `${BACKEND_ORIGIN}${encodeURI(s)}`;
+  if (s.startsWith("/images/"))      return `${BACKEND_ORIGIN}/api${encodeURI(s)}`;
+  return backendImageUrl(s); // nombre suelto => /images/productos/<archivo>
+};
 
 function Carrito() {
   const { setCount, incrementCart, decrementCart } = useCart();
@@ -650,7 +678,7 @@ function Carrito() {
                           p.producto.imagenes.length > 0 &&
                           p.producto.imagenes[0].url_imagen ? (
                             <img
-                              src={`/images/productos/${p.producto.imagenes[0].url_imagen}`}
+                              src={toPublicFotoSrc(p.producto.imagenes[0].url_imagen)}
                               alt={p.producto.nombre}
                               style={styles.productImg}
                               onClick={() =>
@@ -662,6 +690,7 @@ function Carrito() {
                                   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
                               }}
                             />
+                            //
                           ) : (
                             <div
                               style={styles.productImg}
@@ -1006,7 +1035,7 @@ function Carrito() {
                   p.imagenes.length > 0 &&
                   p.imagenes[0].url_imagen ? (
                     <img
-                      src={`/images/productos/${p.imagenes[0].url_imagen}`}
+                      src={toPublicFotoSrc(p.imagenes[0].url_imagen)}
                       alt={p.nombre}
                       style={styles.productImg}
                       onError={(e) => {

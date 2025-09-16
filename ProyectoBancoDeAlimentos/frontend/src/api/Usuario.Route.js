@@ -36,8 +36,14 @@ export function InformacionUser(id) {
 export function InformacionUserNombre(id) {
   return axiosInstance.get(`/api/MiPerfil/info/nombre/${id}`);
 }
-export function InformacionRole(id_role) {
-  return axiosInstance.get(`/api/MiPerfil/info/role/${id_role}`);
+export function InformacionRole(idRol) {
+  return axiosInstance.get(`/api/MiPerfil/info/role/${idRol}`, {
+    params: { _ts: Date.now() }, // cache-bust
+    headers: {
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
+    },
+  });
 }
 export function EditProfile(payload) {
   return axiosInstance.put("/api/MiPerfil/perfil", payload);

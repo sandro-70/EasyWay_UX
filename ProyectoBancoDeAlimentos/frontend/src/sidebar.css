@@ -4,13 +4,76 @@
 
 .sidebar {
   @apply w-60 bg-[#2b6daf] text-white rounded fixed left-0 z-10;
+  /* 👇 habilita layout para poder scrollear la lista y dejar el footer fijo */
+  display: flex;
+  flex-direction: column;
+  height: 100vh;         /* ocupa toda la altura de la ventana */
 }
+
+/* contenedor que SÍ hace scroll */
+.sidebar-scroll {
+  flex: 1 1 auto;        /* ocupa el espacio disponible */
+  min-height: 0;         /* importante para que el overflow funcione dentro de flex */
+  overflow-y: auto;      /* 👈 aquí el scroll */
+  overscroll-behavior: contain;
+  padding-right: 2px;    /* evita que el scrollbar tape el texto */
+}
+
+/* el item de abajo permanece visible (no scrollea) */
+.sidebar-footer {
+  /* no cambiamos colores ni bordes; solo aseguramos que quede fuera del área scroll */
+  padding-top: 0.25rem;  /* opcional, separa un poquito del scroll */
+}
+
 .sidebar_item {
   @apply block hover:bg-[#f0833e] pl-6 py-2 rounded-tl-full rounded-bl-full rounded-tr-none rounded-br-none transition flex flex-row text-[18px] items-center text-left gap-4;
 }
+
 .perfil {
-  @apply block bg-[#2ca9e3] pl-6 py-2 flex flex-row text-[18px]  items-center gap-6;
+  @apply block bg-[#2ca9e3] pl-6 py-2 flex flex-row text-[18px] items-center gap-6;
 }
+
 .btn_sidebar {
-  @apply flex  bg-[#2b6daf]  items-center gap-2 fixed z-20 mt-5 hover:bg-[#2ca9e3] rounded-md transition-all duration-300;
+  @apply flex bg-[#2b6daf] items-center gap-2 fixed z-20 mt-5 hover:bg-[#2ca9e3] rounded-md transition-all duration-300;
 }
+
+/* (opcional) si quieres que el sidebar arranque debajo del header fijo:
+.sidebar { top: 90px; height: calc(100vh - 90px); }
+*/
+
+:root{
+  /* alto aproximado del footer: ajusta si tu item es más alto/bajo */
+  --sidebar-footer-h: 64px;
+}
+
+.sidebar{
+  /* ya tienes flex column; solo hacemos el alto más robusto */
+  height: 100dvh;       /* viewport real (mejor con zoom) */
+  height: 100vh;        /* fallback */
+  box-sizing: border-box;
+  overflow: hidden;     /* evita doble scroll en el contenedor */
+}
+
+.sidebar-scroll{
+  /* ya los tienes: flex:1, min-height:0, overflow-y:auto... */
+  padding-bottom: calc(
+    var(--sidebar-footer-h) + max(8px, env(safe-area-inset-bottom))
+  );                    /* 👈 deja “aire” para que no se tape con el footer */
+  scrollbar-gutter: stable; /* opcional: evita saltos cuando aparece el scroll */
+}
+
+/* asegura que el footer siempre se vea (aunque “bailen” px con el zoom) */
+.sidebar-footer{
+  position: sticky;
+  bottom: 0;
+  background: #2b6daf;  /* mismo fondo que tu sidebar */
+  padding: 4px 0 8px;
+}
+
+/* Si tu header es FIXED y mide 90px, activa además esto: */
+/*
+.sidebar{
+  top: 90px;
+  height: calc(100dvh - 90px);
+}
+*/

@@ -1,7 +1,6 @@
 // src/App.jsx
 import "./App.css";
 import { Routes, Route } from "react-router-dom";
-import { BrowserRouter as Router } from "react-router-dom";
 
 import Dashboard from "./dashboard.jsx";
 import Login from "./login.jsx";
@@ -54,219 +53,72 @@ import ReporteUsuarioAdmin from "./reporteUsuariosAdmin.jsx";
 import "./i18n.js";
 import Vista from "./components/VistaTranslate.jsx";
 import Reportes from "./components/ReporteCarrousel.jsx";
-import DetallePedidos from "../src/pages/DetallesPedido.jsx";
+import DetallePedidos from "./pages/DetallesPedido.jsx";
 import GestionDePedido from "./components/GestionPedidos.jsx";
 import ConfigBanner from "./configBanner.jsx";
-import ListaDeDeseos from "./pages/ListaDeDeseos.jsx";
 import { SearchProvider } from "./searchContext.jsx";
+
+// Mejora compatible (tu compañerx): mantenida bajo tu esquema
+import ListaDeDeseos from "./pages/ListaDeDeseos.jsx";
 
 const HEADER_HEIGHT = 60; // px
 
 function App() {
   return (
     <UserProvider>
-      <SearchProvider>
-        <div className="App">
-          <Headerr />
+       <SearchProvider> 
+      <div className="App">
+        <Headerr />
 
-          <div style={{ marginTop: `${HEADER_HEIGHT}px` }}>
-            <Routes>
-              {/* ---------- PÚBLICAS ---------- */}
-              <Route path="/" element={<InicioUsuario />} />
-              <Route path="/crear_cuenta" element={<Crear_cuenta />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/forgot_password" element={<ForgotPassword />} />
-              <Route
-                path="/cambiar_contraseña"
-                element={<Cambiar_contraseña />}
-              />
+        <div style={{ marginTop: `${HEADER_HEIGHT}px` }}>
+          <Routes>
+            {/* ---------- PÚBLICAS ---------- */}
+            <Route path="/" element={<InicioUsuario />} />
+            <Route path="/crear_cuenta" element={<Crear_cuenta />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/forgot_password" element={<ForgotPassword />} />
+            <Route path="/cambiar_contraseña" element={<Cambiar_contraseña />} />
+            <Route path="/facturas" element={<Facturas />} />
+            <Route path="/factura/:id" element={<DetalleFactura />} />
+            <Route path="/verificar-codigo" element={<VerificarCodigo />} />
+            <Route path="/verificar-codigoAuth" element={<VerificarCodigoAuth />} />
+            <Route path="/verificacion" element={<Verificacion />} />
+            <Route path="/producto/:id" element={<AgregarCarrito />} />
+            <Route path="/compararProductos/:id1/:id2" element={<CompararProducto />} />
+            <Route path="/categoria/:id" element={<Categoria />} />
+            <Route path="/promocion/:id" element={<Promocion />} />
 
-              <Route path="/facturas" element={<Facturas />} />
-              <Route path="/factura/:id" element={<DetalleFactura />} />
-              <Route path="/verificar-codigo" element={<VerificarCodigo />} />
+            {/*
+              =========================================================
+              ADMIN + CONSULTOR (con sidebar)
+              - Admin entra a todo (bypass de privilegios).
+              - Consultor pasa solo si tiene el privilegio indicado.
+              =========================================================
+            */}
+            <Route
+              element={
+                <ProtectedRoute rolesPermitidos={["administrador", "consultor"]}>
+                  <LayoutSidebar />
+                </ProtectedRoute>
+              }
+            >
+              {/* --- Accesibles a ambos según privilegios del consultor --- */}
               <Route
-                path="/verificar-codigoAuth"
-                element={<VerificarCodigoAuth />}
-              />
-              <Route path="/verificacion" element={<Verificacion />} />
-              <Route path="/producto/:id" element={<AgregarCarrito />} />
-              <Route
-                path="/compararProductos/:id1/:id2"
-                element={<CompararProducto />}
-              />
-              <Route path="/categoria/:id" element={<Categoria />} />
-              <Route path="/promocion/:id" element={<Promocion />} />
-
-              {/* ---------- CON SIDEBAR + PROTEGIDAS ADMIN ---------- */}
-              <Route
+                path="/dashboard"
                 element={
-                  <ProtectedRoute rolesPermitidos={["administrador"]}>
-                    <LayoutSidebar />
-                  </ProtectedRoute>
-                }
-              >
-                <Route path="/reportes" element={<Reportes />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/MenuPromociones" element={<MenuPromociones />} />
-                <Route path="/inventario" element={<Inventario />} />
-                <Route
-                  path="/tablaPromociones"
-                  element={<TablaPromociones />}
-                />
-                <Route
-                  path="/personalizacionReportes"
-                  element={<PersonalizacionReportes />}
-                />
-                <Route path="/detallePedido/:id" element={<DetallePedidos />} />
-                <Route path="/gestionPedidos" element={<GestionDePedido />} />
-                <Route
-                  path="/EditarPerfilAdmin"
-                  element={<EditarPerfilAdmin />}
-                />
-                <Route
-                  path="/asignarDescuento"
-                  element={<AsignarDescuentos />}
-                />
-                <Route
-                  path="/userManagementViews"
-                  element={<UserManagementViews />}
-                />
-                <Route
-                  path="/campanaPromocional"
-                  element={<CampanaPromocional />}
-                />
-                <Route path="/tablaUsuarios" element={<TablaUsuarios />} />
-                <Route path="/tablaVentas" element={<TablaVentas />} />
-                <Route path="/reportesPedidos" element={<ReportesPedidos />} />
-                <Route path="/detallePedidos" element={<DetallePedido />} />
-                <Route
-                  path="/gestionProductos"
-                  element={<GestionProductos />}
-                />
-                <Route path="ConfigBanner" element={<ConfigBanner />} />
-
-                <Route
-                  path="/reporteUsuariosAdmin"
-                  element={<ReporteUsuarioAdmin />}
-                />
-                <Route
-                  path="/reportesInventario"
-                  element={<ReportesInventario />}
-                />
-              </Route>
-
-              {/* ---------- CLIENTE LOGUEADO ---------- */}
-              <Route
-                path="/miPerfil"
-                element={
-                  <ProtectedRoute rolesPermitidos={["cliente"]}>
-                    <MiPerfil />
+                  <ProtectedRoute
+                    rolesPermitidos={["administrador", "consultor"]}
+                    privilegiosNecesarios={["ver_dashboard"]}
+                  >
+                    <Dashboard />
                   </ProtectedRoute>
                 }
               />
-              <Route
-                path="/idioma"
-                element={
-                  <ProtectedRoute rolesPermitidos={["cliente"]}>
-                    <Vista />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/SistemaValoracion"
-                element={
-                  <ProtectedRoute rolesPermitidos={["cliente"]}>
-                    <SistemaValoracion />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/pedidoEmergente"
-                element={
-                  <ProtectedRoute rolesPermitidos={["cliente"]}>
-                    <PedidoEmergente />
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/descuentos_aplicados"
-                element={<DescuentosAplicados />}
-              />
-
-              <Route
-                path="/misDirecciones"
-                element={
-                  <ProtectedRoute rolesPermitidos={["cliente"]}>
-                    <MisDirecciones />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/metodoPago"
-                element={
-                  <ProtectedRoute rolesPermitidos={["cliente"]}>
-                    <MetodoPago />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/historialPedidos"
-                element={
-                  <ProtectedRoute rolesPermitidos={["cliente"]}>
-                    <HistorialPedido />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/misCupones"
-                element={
-                  <ProtectedRoute rolesPermitidos={["cliente"]}>
-                    <MisCupones />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/carrito"
-                element={
-                  <ProtectedRoute rolesPermitidos={["cliente"]}>
-                    <Carrito />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/historialCompras"
-                element={
-                  <ProtectedRoute rolesPermitidos={["cliente"]}>
-                    <HistorialCompras />
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/misPedidos"
-                element={
-                  <ProtectedRoute rolesPermitidos={["cliente"]}>
-                    <MisPedidos />
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/listadedeseos"
-                element={
-                  <ProtectedRoute rolesPermitidos={["cliente"]}>
-                    <ListaDeDeseos />
-                  </ProtectedRoute>
-                }
-              />
-
-              {/* ---------- CONSULTOR SEGÚN PRIVILEGIOS ---------- */}
               <Route
                 path="/inventario"
                 element={
                   <ProtectedRoute
-                    rolesPermitidos={["consultor"]}
+                    rolesPermitidos={["administrador", "consultor"]}
                     privilegiosNecesarios={["gestionar_inventario"]}
                   >
                     <Inventario />
@@ -274,21 +126,10 @@ function App() {
                 }
               />
               <Route
-                path="/reportesInventario"
-                element={
-                  <ProtectedRoute
-                    rolesPermitidos={["consultor"]}
-                    privilegiosNecesarios={["ver_reportes"]}
-                  >
-                    <ReportesInventario />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
                 path="/tablaVentas"
                 element={
                   <ProtectedRoute
-                    rolesPermitidos={["consultor"]}
+                    rolesPermitidos={["administrador", "consultor"]}
                     privilegiosNecesarios={["ver_reportes"]}
                   >
                     <TablaVentas />
@@ -299,7 +140,7 @@ function App() {
                 path="/personalizacionReportes"
                 element={
                   <ProtectedRoute
-                    rolesPermitidos={["consultor"]}
+                    rolesPermitidos={["administrador", "consultor"]}
                     privilegiosNecesarios={["personalizacion_reportes"]}
                   >
                     <PersonalizacionReportes />
@@ -310,7 +151,7 @@ function App() {
                 path="/reportesPedidos"
                 element={
                   <ProtectedRoute
-                    rolesPermitidos={["consultor"]}
+                    rolesPermitidos={["administrador", "consultor"]}
                     privilegiosNecesarios={["ver_reportes_pedidos"]}
                   >
                     <ReportesPedidos />
@@ -318,26 +159,263 @@ function App() {
                 }
               />
               <Route
-                path="/descuentos_aplicados"
+                path="/reportesInventario"
                 element={
                   <ProtectedRoute
-                    rolesPermitidos={["consultor"]}
-                    privilegiosNecesarios={["ver_descuentos"]}
+                    rolesPermitidos={["administrador", "consultor"]}
+                    privilegiosNecesarios={["ver_reportes"]}
                   >
-                    <DescuentosAplicados />
+                    <ReportesInventario />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/reportes"
+                element={
+                  <ProtectedRoute
+                    rolesPermitidos={["administrador", "consultor"]}
+                    privilegiosNecesarios={["ver_reportes"]}
+                  >
+                    <Reportes />
                   </ProtectedRoute>
                 }
               />
 
-              {/* ---------- OTROS ---------- */}
-              <Route path="/inicio" element={<InicioAdmin />} />
-              <Route path="/Prueba" element={<TestAuth />} />
+              {/* --- Solo ADMIN (según tu lógica) --- */}
+              <Route
+                path="/gestionProductos"
+                element={
+                  <ProtectedRoute
+                    rolesPermitidos={["administrador", "consultor"]}
+                    privilegiosNecesarios={["gestionar_productos"]}
+                  >
+                    <GestionProductos />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/userManagementViews"
+                element={
+                  <ProtectedRoute rolesPermitidos={["administrador"]}>
+                    <UserManagementViews />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/campanaPromocional"
+                element={
+                  <ProtectedRoute rolesPermitidos={["administrador"]}>
+                    <CampanaPromocional />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/tablaUsuarios"
+                element={
+                  <ProtectedRoute rolesPermitidos={["administrador"]}>
+                    <TablaUsuarios />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/tablaPromociones"
+                element={
+                  <ProtectedRoute rolesPermitidos={["administrador"]}>
+                    <TablaPromociones />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/asignarDescuento"
+                element={
+                  <ProtectedRoute rolesPermitidos={["administrador"]}>
+                    <AsignarDescuentos />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/reporteUsuariosAdmin"
+                element={
+                  <ProtectedRoute rolesPermitidos={["administrador"]}>
+                    <ReporteUsuarioAdmin />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/detallePedidos"
+                element={
+                  <ProtectedRoute
+                    rolesPermitidos={["administrador", "consultor"]}
+                    privilegiosNecesarios={["ver_reportes_pedidos"]}
+                  >
+                    <DetallePedido />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/detallePedido/:id"
+                element={
+                  <ProtectedRoute
+                    rolesPermitidos={["administrador", "consultor"]}
+                    privilegiosNecesarios={["ver_reportes_pedidos"]}
+                  >
+                    <DetallePedidos />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/gestionPedidos"
+                element={
+                  <ProtectedRoute
+                    rolesPermitidos={["administrador", "consultor"]}
+                    privilegiosNecesarios={["ver_reportes_pedidos"]}
+                  >
+                    <GestionDePedido />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/ConfigBanner"
+                element={
+                  <ProtectedRoute rolesPermitidos={["administrador"]}>
+                    <ConfigBanner />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/EditarPerfilAdmin"
+                element={
+                  <ProtectedRoute rolesPermitidos={["administrador", "consultor"]}>
+                    <EditarPerfilAdmin />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/MenuPromociones"
+                element={
+                  <ProtectedRoute rolesPermitidos={["administrador"]}>
+                    <MenuPromociones />
+                  </ProtectedRoute>
+                }
+              />
+            </Route>
 
-              {/* ---------- NOT FOUND ---------- */}
-              <Route path="*" element={<NotFoundpage />} />
-            </Routes>
-          </div>
+            {/* ---------- CLIENTE LOGUEADO ---------- */}
+            <Route
+              path="/miPerfil"
+              element={
+                <ProtectedRoute rolesPermitidos={["cliente"]}>
+                  <MiPerfil />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/idioma"
+              element={
+                <ProtectedRoute rolesPermitidos={["cliente"]}>
+                  <Vista />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/SistemaValoracion"
+              element={
+                <ProtectedRoute rolesPermitidos={["cliente"]}>
+                  <SistemaValoracion />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/pedidoEmergente"
+              element={
+                <ProtectedRoute rolesPermitidos={["cliente"]}>
+                  <PedidoEmergente />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/descuentos_aplicados"
+              element={
+                <ProtectedRoute rolesPermitidos={["cliente"]}>
+                  <DescuentosAplicados />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/misDirecciones"
+              element={
+                <ProtectedRoute rolesPermitidos={["cliente"]}>
+                  <MisDirecciones />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/metodoPago"
+              element={
+                <ProtectedRoute rolesPermitidos={["cliente"]}>
+                  <MetodoPago />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/historialPedidos"
+              element={
+                <ProtectedRoute rolesPermitidos={["cliente"]}>
+                  <HistorialPedido />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/misCupones"
+              element={
+                <ProtectedRoute rolesPermitidos={["cliente"]}>
+                  <MisCupones />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/carrito"
+              element={
+                <ProtectedRoute rolesPermitidos={["cliente"]}>
+                  <Carrito />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/historialCompras"
+              element={
+                <ProtectedRoute rolesPermitidos={["cliente"]}>
+                  <HistorialCompras />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/misPedidos"
+              element={
+                <ProtectedRoute rolesPermitidos={["cliente"]}>
+                  <MisPedidos />
+                </ProtectedRoute>
+              }
+            />
+            {/* NUEVO compatible */}
+            <Route
+              path="/listadedeseos"
+              element={
+                <ProtectedRoute rolesPermitidos={["cliente"]}>
+                  <ListaDeDeseos />
+                </ProtectedRoute>
+              }
+            />
+
+            {/* ---------- OTROS ---------- */}
+            <Route path="/inicio" element={<InicioAdmin />} />
+            <Route path="/Prueba" element={<TestAuth />} />
+
+            {/* ---------- NOT FOUND ---------- */}
+            <Route path="*" element={<NotFoundpage />} />
+          </Routes>
         </div>
+      </div>
       </SearchProvider>
     </UserProvider>
   );

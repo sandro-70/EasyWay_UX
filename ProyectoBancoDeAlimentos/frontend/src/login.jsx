@@ -102,36 +102,33 @@ const Login = () => {
         await enviarCodigo(correo, navigate, setLoading);
         return;
       }
+// 6) rol y privilegios
+const mapRoleNameById = (id) => {
+  switch (Number(id)) {
+    case 1: return "administrador";
+    case 2: return "cliente";
+    case 3: return "consultor";
+    default: return "";
+  }
+};
 
-      // 6) rol y privilegios
-      const roleName =
-        me?.rol?.nombre_rol ||
-        me?.rol ||
-        (typeof me?.id_rol === "number" ? (me.id_rol === 1 ? "administrador" : "cliente") : "cliente");
-      localStorage.setItem("rol", String(roleName || "").toLowerCase());
-      if (String(roleName || "").toLowerCase() === "consultor") {
-        const privilegios = me?.privilegios || [];
-        localStorage.setItem("privilegios", JSON.stringify(privilegios));
-      }
+const roleId = Number(me?.rol?.id_rol ?? me?.id_rol);
+let roleName = (me?.rol?.nombre_rol || me?.rol || mapRoleNameById(roleId) || "").toLowerCase();
 
-      // 7) reforzar foto con lo que diga la API (si trae algo)
-      const apiFotoName = fileNameFromPath(me?.foto_perfil_url || me?.foto_perfil || me?.foto || "");
-      if (apiFotoName) {
-        setUser((prev) => ({
-          ...(prev || {}),
-          ...(me || {}),
-          foto_perfil_url: apiFotoName,
-          avatar_rev: Date.now(),
-        }));
-      } else if (me) {
-        setUser((prev) => ({ ...(prev || {}), ...me }));
-      }
+localStorage.setItem("rol", roleName);
 
-      // 8) navegación
-      const r = String(roleName || "").toLowerCase();
-      if (r === "administrador") navigate("/dashboard");
-      else if (r === "consultor") navigate("/consultor/dashboard");
-      else navigate("/");
+// si quieres guardar privilegios del consultor (opcional, tu ProtectedRoute ya consulta al backend)
+if (roleName === "consultor" && Array.isArray(me?.privilegios)) {
+  localStorage.setItem("privilegios", JSON.stringify(me.privilegios));
+}
+
+// 8) navegación
+if (roleName === "administrador" || roleName === "consultor") {
+  navigate("/dashboard");
+} else {
+  navigate("/");
+}
+
     } catch (err) {
       console.error("Error en login:", err?.response?.data || err);
       const backendMsg =

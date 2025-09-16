@@ -1,8 +1,14 @@
 // src/components/ProtectedRoute.jsx
-import { useEffect, useMemo, useState, useContext } from "react";
+import { useEffect, useMemo, useRef, useState, useContext } from "react";
 import { Navigate } from "react-router-dom";
 import { UserContext } from "./userContext";
 import { InformacionRole } from "../api/Usuario.Route";
+
+const PRIV_CACHE = new Map();
+
+const norm = (s) => String(s ?? "").trim().toLowerCase();
+const normSlug = (s) => norm(s).replace(/\s+/g, "_").replace(/-+/g, "_");
+const roleIdFromName = (n) => (n==="administrador"?1:n==="cliente"?2:n==="consultor"?3:null);
 
 export default function ProtectedRoute({
   children,
@@ -12,132 +18,98 @@ export default function ProtectedRoute({
   redirectTo = "/login",
   loadingFallback = null,
 }) {
-  const { user, loading: userLoading } = useContext(UserContext);
+  const { user, userRole, loading: userLoading } = useContext(UserContext);
+
   const [loadingPrivs, setLoadingPrivs] = useState(false);
   const [rolePrivs, setRolePrivs] = useState(null);
+  const lastPrivsRef = useRef(null);
 
-  const norm = (s) => String(s ?? "").trim().toLowerCase();
-  const normSlug = (s) =>
-    norm(s).replace(/\s+/g, "_").replace(/-+/g, "_"); // "Gestionar Inventario" -> "gestionar_inventario"
-
-  const needPrivCheck =
-    Array.isArray(privilegiosNecesarios) && privilegiosNecesarios.length > 0;
-
-  const mapRoleNameById = (id) => {
-    switch (Number(id)) {
-      case 1:
-        return "administrador";
-      case 2:
-        return "cliente";
-      case 3:
-        return "consultor";
-      default:
-        return "";
-    }
-  };
-
-  const userRoleId = useMemo(
+  const userRoleIdRaw = useMemo(
     () => user?.rol?.id_rol ?? user?.id_rol ?? user?.role_id ?? null,
     [user]
   );
-
   const userRoleName = useMemo(
-    () =>
-      norm(user?.rol?.nombre_rol) ||
-      norm(user?.rol?.role_name) ||
-      norm(user?.role) ||
-      mapRoleNameById(userRoleId),
-    [user, userRoleId]
+    () => norm(userRole) || norm(user?.rol?.nombre_rol) || norm(user?.role),
+    [userRole, user]
   );
+  const userRoleId = userRoleIdRaw ?? roleIdFromName(userRoleName); // ⬅️ fallback por nombre
+  const isAdmin = userRoleName === "administrador" || Number(userRoleId) === 1;
+  const needPrivCheck = Array.isArray(privilegiosNecesarios) && privilegiosNecesarios.length > 0;
 
-  // Carga privilegios del rol si la ruta los exige
   useEffect(() => {
     let alive = true;
-    const fetchPrivs = async () => {
-      if (!needPrivCheck || !userRoleId) {
-        setRolePrivs([]); // estado estable
+    const load = async () => {
+      if (!needPrivCheck) { setRolePrivs([]); return; }
+      if (isAdmin) { setRolePrivs(["*"]); lastPrivsRef.current = ["*"]; return; }
+
+      if (!userRoleId) {
+        setLoadingPrivs(true);
+        setRolePrivs(null);
         return;
       }
+
+      if (PRIV_CACHE.has(userRoleId)) {
+        const cached = PRIV_CACHE.get(userRoleId);
+        if (alive) { setRolePrivs(cached); lastPrivsRef.current = cached; }
+        return;
+      }
+
       try {
         setLoadingPrivs(true);
         const res = await InformacionRole(userRoleId);
-        const flat = Array.isArray(res?.data) ? res.data : [];
-
-        // normaliza TODOS a slug
-        const names = flat.map((p) =>
-          normSlug(p?.nombre_privilegio ?? p?.nombre ?? p?.slug ?? p?.codigo ?? p)
-        );
-
-        if (alive) setRolePrivs(names);
-
-        // DEBUG: quita esto en producción
-        console.debug("[ProtectedRoute] rolePrivs=", names);
+        if (res?.status === 304) {
+          if (alive) setRolePrivs(prev => prev ?? lastPrivsRef.current ?? null);
+          return;
+        }
+        const payload = res?.data;
+        const list = Array.isArray(payload?.privilegios) ? payload.privilegios
+                   : Array.isArray(payload) ? payload : [];
+        const names = list.map((p) => p?.nombre_privilegio ?? p?.nombre ?? p)
+                          .filter(Boolean)
+                          .map(normSlug);
+        if (!alive) return;
+        PRIV_CACHE.set(userRoleId, names);
+        lastPrivsRef.current = names;
+        setRolePrivs(names);
       } catch (e) {
-        console.error("Error cargando privilegios del rol:", e);
-        if (alive) setRolePrivs([]);
+        console.error("[PR] error cargando privilegios:", e);
+        if (!alive) return;
+        if (lastPrivsRef.current) setRolePrivs(lastPrivsRef.current);
+        else setRolePrivs(null);
       } finally {
         if (alive) setLoadingPrivs(false);
       }
     };
-    fetchPrivs();
-    return () => {
-      alive = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [needPrivCheck, userRoleId]);
+    load();
+    return () => { alive = false; };
+  }, [needPrivCheck, userRoleId, isAdmin]);
 
-  // Espera user
   if (userLoading) return loadingFallback ?? null;
+  if (!userRoleName) return <Navigate to={redirectTo} replace />;
 
-  // No autenticado
-  if (!user) return <Navigate to={redirectTo} replace />;
-
-  // ---- BYPASS PARA ADMIN ----
-  const isAdmin =
-    userRoleName === "administrador" || Number(userRoleId) === 1;
   if (isAdmin) {
-    // Admin entra con rol permitido (si lo configuraste) y además ignora privilegios faltantes
-    if (rolesPermitidos?.length > 0) {
-      const names = rolesPermitidos.filter((x) => typeof x === "string").map(norm);
-      const ids = new Set(rolesPermitidos.filter((x) => typeof x === "number").map(Number));
-      const okByName = names.includes("administrador");
-      const okById = ids.has(1);
-      if (okByName || okById) return children;
-      // si la ruta no permite admin explícitamente, sigue el flujo normal (raro en tu caso)
-    } else {
-      return children;
-    }
+    if (!rolesPermitidos?.length) return children;
+    const names = rolesPermitidos.filter((x) => typeof x === "string").map(norm);
+    const ids = new Set(rolesPermitidos.filter((x) => typeof x === "number").map(Number));
+    if (names.includes("administrador") || ids.has(1)) return children;
   }
 
-  // Validación por privilegios (si se pide y no es admin)
   if (needPrivCheck) {
     if (loadingPrivs || rolePrivs === null) return loadingFallback ?? null;
-
     const requeridos = privilegiosNecesarios.map(normSlug);
-    const setUser = new Set(rolePrivs);
-
-    // DEBUG: quita esto en producción
-    console.debug("[ProtectedRoute] requeridos=", requeridos);
-
-    const hasAll = requeridos.every((p) => setUser.has(p));
-    const hasAny = requeridos.some((p) => setUser.has(p));
+    const owned = new Set(rolePrivs);
+    const hasAll = requeridos.every((p) => owned.has(p));
+    const hasAny = requeridos.some((p) => owned.has(p));
     const allowed = requireAll ? hasAll : hasAny;
-
     return allowed ? children : <Navigate to="/" replace />;
   }
 
-  // Validación por rol (acepta id o nombre)
   if (rolesPermitidos && rolesPermitidos.length > 0) {
-    const permitidosNames = rolesPermitidos
-      .filter((x) => typeof x === "string")
-      .map(norm);
-    const permitidosIds = new Set(
-      rolesPermitidos.filter((x) => typeof x === "number").map(Number)
-    );
-    const okByName = userRoleName && permitidosNames.includes(userRoleName);
-    const okById = userRoleId != null && permitidosIds.has(Number(userRoleId));
-    const ok = okByName || okById;
-    return ok ? children : <Navigate to="/" replace />;
+    const names = rolesPermitidos.filter((x) => typeof x === "string").map(norm);
+    const ids = new Set(rolesPermitidos.filter((x) => typeof x === "number").map(Number));
+    const okByName = userRoleName && names.includes(userRoleName);
+    const okById = userRoleId != null && ids.has(Number(userRoleId));
+    return okByName || okById ? children : <Navigate to="/" replace />;
   }
 
   return children;

@@ -10,16 +10,17 @@ import UserIcon from "../images/UserIcon.png";
 import historialAct from "../images/historialAct.png";
 import sistemaVal from "../images/sistemaVal.png";
 import reportesPer from "../images/reportesPer.png";
-import checkout from "../images/checkout.png";
+// import checkout from "../images/checkout.png"; // no se usa
 import soporte from "../images/soporte.png";
 import idioma from "../images/idioma.png";
 import { ViewCar } from "../api/CarritoApi";
 import { UserContext } from "./userContext";
 import { useCart } from "../utils/CartContext";
 import axiosInstance from "../api/axiosInstance";
+import { InformacionRole } from "../api/Usuario.Route";
 import { useSearch } from "../searchContext";
 
-/* =================== Helpers de URL para foto (alineados con MiPerfil) =================== */
+/* =================== Helpers de URL para foto =================== */
 const BACKEND_ORIGIN = (() => {
   const base = axiosInstance?.defaults?.baseURL;
   try {
@@ -35,11 +36,7 @@ const BACKEND_ORIGIN = (() => {
 })();
 
 const backendImageUrl = (fileName) =>
-  fileName
-    ? `${BACKEND_ORIGIN}/api/images/fotoDePerfil/${encodeURIComponent(
-        fileName
-      )}`
-    : "";
+  fileName ? `${BACKEND_ORIGIN}/api/images/fotoDePerfil/${encodeURIComponent(fileName)}` : "";
 
 const toPublicFotoSrc = (nameOrPath) => {
   if (!nameOrPath) return "";
@@ -52,15 +49,10 @@ const toPublicFotoSrc = (nameOrPath) => {
 };
 
 const withBuster = (url, rev) =>
-  !url || !rev
-    ? url || ""
-    : url.includes("?")
-    ? `${url}&t=${rev}`
-    : `${url}?t=${rev}`;
+  !url || !rev ? url || "" : url.includes("?") ? `${url}&t=${rev}` : `${url}?t=${rev}`;
 
 const fileNameFromPath = (p) => (!p ? "" : String(p).split("/").pop());
-const getUserId = (u) =>
-  u?.id_usuario ?? u?.id ?? u?.usuario_id ?? u?.userId ?? null;
+const getUserId = (u) => u?.id_usuario ?? u?.id ?? u?.usuario_id ?? u?.userId ?? null;
 
 function AvatarImg({ user, size = 40 }) {
   const [idx, setIdx] = useState(0);
@@ -69,11 +61,7 @@ function AvatarImg({ user, size = 40 }) {
     const raw = user?.foto_perfil_url || user?.foto_perfil || user?.foto || "";
     if (raw) list.push(toPublicFotoSrc(fileNameFromPath(raw)));
     const id = getUserId(user);
-    if (id) {
-      ["png", "jpg", "jpeg", "webp"].forEach((ext) =>
-        list.push(backendImageUrl(`user_${id}.${ext}`))
-      );
-    }
+    if (id) ["png", "jpg", "jpeg", "webp"].forEach((ext) => list.push(backendImageUrl(`user_${id}.${ext}`)));
     return [...new Set(list.filter(Boolean))];
   }, [user]);
 
@@ -82,26 +70,14 @@ function AvatarImg({ user, size = 40 }) {
     return withBuster(candidates[idx] || "", rev);
   }, [candidates, idx, user?.avatar_rev, user?.updated_at, user?.updatedAt]);
 
-  useEffect(() => {
-    setIdx(0);
-  }, [
-    user?.foto_perfil_url,
-    user?.avatar_rev,
-    user?.updated_at,
-    user?.updatedAt,
-  ]);
+  useEffect(() => { setIdx(0); }, [user?.foto_perfil_url, user?.avatar_rev, user?.updated_at, user?.updatedAt]);
 
   if (!candidates.length) {
     return (
       <img
         src={UserIcon}
         alt="User"
-        style={{
-          width: size,
-          height: size,
-          borderRadius: "50%",
-          objectFit: "cover",
-        }}
+        style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover" }}
       />
     );
   }
@@ -110,80 +86,91 @@ function AvatarImg({ user, size = 40 }) {
     <img
       src={src || UserIcon}
       alt="User"
-      style={{
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        objectFit: "cover",
-      }}
-      onError={() => {
-        setIdx((i) => (i + 1 < candidates.length ? i + 1 : i));
-      }}
+      style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover" }}
+      onError={() => { setIdx((i) => (i + 1 < candidates.length ? i + 1 : i)); }}
     />
   );
 }
 
-/* ========================================================================================== */
+/* =================== Helpers de privilegios (consultor) =================== */
+const _norm = (s) => String(s ?? "").trim().toLowerCase();
+const _slug = (s) => _norm(s).replace(/\s+/g, "_").replace(/-+/g, "_");
 
 const Headerr = () => {
-  const { searchText, setSearchText } = useSearch();
   const [reportesMenu, setReportesMenu] = useState(false);
   const [logMenu, setLogOpen] = useState(false);
+  const [privs, setPrivs] = useState(null); // null=cargando | Set<string>
   const navigate = useNavigate();
   const reportesMenuRef = useRef(null);
+  const userMenuRef = useRef(null);
+  const { searchText, setSearchText } = useSearch();
 
   const { t } = useTranslation();
   const { cartCount, setCount } = useCart();
-  const { user, userRole, loading, isAuthenticated, isAdmin, logout } =
-    useContext(UserContext);
+  const {
+    user,
+    userRole,
+    loading,
+    isAuthenticated,
+    isAdmin,
+    logout,
+    isConsultor,
+  } = useContext(UserContext);
 
-  const isCliente = isAuthenticated && !isAdmin;
+  const isCliente = isAuthenticated && !isAdmin && !isConsultor;
 
-  const userMenuRef = useRef(null);
-
+  // Cerrar dropdown user al click fuera
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (
-        logMenu &&
-        userMenuRef.current &&
-        !userMenuRef.current.contains(event.target)
-      ) {
+      if (logMenu && userMenuRef.current && !userMenuRef.current.contains(event.target)) {
         setLogOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [logMenu]);
 
+  // Cerrar menú reportes al click fuera
   useEffect(() => {
     const handleClickOutsideReportes = (event) => {
-      if (
-        reportesMenu &&
-        reportesMenuRef.current &&
-        !reportesMenuRef.current.contains(event.target)
-      ) {
+      if (reportesMenu && reportesMenuRef.current && !reportesMenuRef.current.contains(event.target)) {
         setReportesMenu(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutsideReportes);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutsideReportes);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutsideReportes);
   }, [reportesMenu]);
 
+  // Cargar privilegios SOLO si es consultor
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (!isConsultor || !user?.rol?.id_rol) { setPrivs(null); return; }
+      try {
+        const r = await InformacionRole(user.rol.id_rol);
+        const lista = Array.isArray(r?.data?.privilegios)
+          ? r.data.privilegios
+          : Array.isArray(r?.data)
+          ? r.data
+          : [];
+        const names = lista.map((p) => p?.nombre_privilegio ?? p?.nombre ?? p).filter(Boolean).map(_slug);
+        if (alive) setPrivs(new Set(names));
+      } catch {
+        if (alive) setPrivs(new Set());
+      }
+    })();
+    return () => { alive = false; };
+  }, [isConsultor, user?.rol?.id_rol]);
+
+  // Contador carrito (solo cliente)
   useEffect(() => {
     const fetchCartCount = async () => {
-      if (!isAuthenticated || isAdmin) return setCount(0);
+      if (!isAuthenticated || isAdmin || isConsultor) return setCount(0);
       try {
         const response = await ViewCar();
         const cart = response.data;
         if (!cart || !cart.carrito_detalles) return setCount(0);
-        const total = cart.carrito_detalles.reduce(
-          (acc, item) => acc + item.cantidad_unidad_medida,
-          0
-        );
+        const total = cart.carrito_detalles.reduce((acc, item) => acc + item.cantidad_unidad_medida, 0);
         setCount(total);
       } catch (err) {
         console.error("Error obteniendo carrito:", err);
@@ -191,13 +178,36 @@ const Headerr = () => {
       }
     };
     if (!loading) fetchCartCount();
-  }, [isAuthenticated, isAdmin, loading, setCount]);
+  }, [isAuthenticated, isAdmin, isConsultor, loading, setCount]);
 
   const handleLogout = () => {
     logout();
     localStorage.removeItem("token");
     localStorage.removeItem("rol");
     navigate("/login");
+  };
+
+  const hasPriv = (p) => {
+    if (isAdmin) return true;
+    if (!isConsultor) return false;
+    if (!(privs instanceof Set)) return false;
+    return privs.has(_slug(p));
+  };
+
+  // Destino del logo según rol/privilegios (mantiene tus reglas)
+  const homeForUser = () => {
+    if (!isAuthenticated) return "/";
+    if (isAdmin) return "/dashboard";
+    if (isConsultor) {
+      if (hasPriv("ver_dashboard")) return "/dashboard";
+      if (hasPriv("gestionar_inventario")) return "/inventario";
+      if (hasPriv("ver_reportes")) return "/reportes";
+      if (hasPriv("ver_reportes_pedidos")) return "/gestionPedidos";
+      if (hasPriv("gestionar_productos")) return "/gestionProductos";
+      if (hasPriv("personalizacion_reportes")) return "/personalizacionReportes";
+      return "/EditarPerfilAdmin";
+    }
+    return "/";
   };
 
   if (loading) return null;
@@ -209,18 +219,11 @@ const Headerr = () => {
           src={logo}
           alt="Logo"
           style={styles.logo}
-          onClick={() => {
-            if (isAuthenticated) {
-              if (isAdmin) navigate("/dashboard");
-              else navigate("/");
-            } else {
-              navigate("/");
-            }
-          }}
+          onClick={() => navigate(homeForUser())}
         />
 
         <div style={styles.divBar}>
-          {/* La barra de búsqueda solo se muestra si NO es un administrador */}
+          {/* La barra de búsqueda solo se muestra si NO es admin */}
           {!isAdmin && (
             <div style={styles.searchWrapper}>
               <button style={styles.iconBtn}>
@@ -256,11 +259,7 @@ const Headerr = () => {
               }}
               onClick={() => navigate("/carrito")}
             >
-              <img
-                src={CartIcon}
-                alt="Carrito"
-                style={{ width: 28, height: 28, objectFit: "contain" }}
-              />
+              <img src={CartIcon} alt="Carrito" style={{ width: 28, height: 28, objectFit: "contain" }} />
               {cartCount > 0 && (
                 <span
                   style={{
@@ -288,16 +287,11 @@ const Headerr = () => {
         </div>
 
         <div style={styles.user} ref={userMenuRef}>
-          <button
-            style={styles.SmallWrapperUser}
-            onClick={() => setLogOpen((prev) => !prev)}
-          >
+          <button style={styles.SmallWrapperUser} onClick={() => setLogOpen((prev) => !prev)}>
             <AvatarImg user={user} size={40} />
           </button>
           <span>
-            {isAuthenticated
-              ? `${user?.nombre || t("user") || "Usuario"}`
-              : t("guest") || "Invitado"}
+            {isAuthenticated ? `${user?.nombre || t("user") || "Usuario"}` : t("guest") || "Invitado"}
           </span>
           {logMenu && (
             <div style={styles.dropdown}>
@@ -306,19 +300,17 @@ const Headerr = () => {
                 <>
                   <div style={styles.userHeader}>
                     <span style={styles.hello}>{t("hello") || "Hola,"}</span>
-                    <span style={styles.fullName}>{user?.nombre || ""}</span>
+                    <span style={styles.fullName}>
+                      {user?.nombre || ""} {user?.apellido || ""}
+                    </span>
                   </div>
                   <div style={styles.headerDivider} />
                   <Link
-                    to={isAdmin ? "/EditarPerfilAdmin" : "/miPerfil"}
+                    to={isAdmin || isConsultor ? "/EditarPerfilAdmin" : "/miPerfil"}
                     style={styles.actionItem}
-                    onClick={() => setLogOpen(false)} // Nuevo: Cierra el menú al hacer clic en este enlace
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.backgroundColor = "#f8fafc")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.backgroundColor = "transparent")
-                    }
+                    onClick={() => setLogOpen(false)}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8fafc")}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                   >
                     {t("view_profile") || "Ver mi Perfil"}
                   </Link>
@@ -327,14 +319,10 @@ const Headerr = () => {
                     style={{ ...styles.actionItem, textAlign: "left" }}
                     onClick={() => {
                       handleLogout();
-                      setLogOpen(false); // Asegura que el menú se cierra
+                      setLogOpen(false);
                     }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.backgroundColor = "#f8fafc")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.backgroundColor = "transparent")
-                    }
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8fafc")}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                   >
                     {t("logout") || "Cerrar Sesión"}
                   </button>
@@ -343,13 +331,9 @@ const Headerr = () => {
                 <Link
                   to="/login"
                   style={styles.actionItem}
-                  onClick={() => setLogOpen(false)} // Nuevo: Cierra el menú al hacer clic en este enlace
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.backgroundColor = "#f8fafc")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.backgroundColor = "transparent")
-                  }
+                  onClick={() => setLogOpen(false)}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8fafc")}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                 >
                   {t("login") || "Iniciar Sesión"}
                 </Link>
@@ -372,11 +356,7 @@ const Headerr = () => {
             </a>
             <div style={{ position: "relative" }} ref={reportesMenuRef}>
               <button
-                style={{
-                  ...styles.navLink,
-                  background: "none",
-                  border: "none",
-                }}
+                style={{ ...styles.navLink, background: "none", border: "none" }}
                 onClick={() => setReportesMenu((prev) => !prev)}
               >
                 <img src={reportesPer} alt="" style={styles.navIcon} />
@@ -385,25 +365,13 @@ const Headerr = () => {
 
               {reportesMenu && (
                 <div style={styles.dropdownReportes}>
-                  <Link
-                    to="/HistorialCompras"
-                    style={styles.dropdownLink}
-                    onClick={() => setReportesMenu(false)} // **NUEVO:** Cierra el menú
-                  >
+                  <Link to="/HistorialCompras" style={styles.dropdownLink} onClick={() => setReportesMenu(false)}>
                     Historial de Compras
                   </Link>
-                  <Link
-                    to="/descuentos_aplicados"
-                    style={styles.dropdownLink}
-                    onClick={() => setReportesMenu(false)} // **NUEVO:** Cierra el menú
-                  >
+                  <Link to="/descuentos_aplicados" style={styles.dropdownLink} onClick={() => setReportesMenu(false)}>
                     Descuentos aplicados
                   </Link>
-                  <Link
-                    to="/SistemaValoracion"
-                    style={styles.dropdownLink}
-                    onClick={() => setReportesMenu(false)} // **NUEVO:** Cierra el menú
-                  >
+                  <Link to="/SistemaValoracion" style={styles.dropdownLink} onClick={() => setReportesMenu(false)}>
                     Resumen de Actividad
                   </Link>
                 </div>
@@ -476,16 +444,8 @@ const styles = {
     padding: "5px 10px",
     fontSize: "14px",
   },
-  iconBtn: {
-    background: "none",
-    border: "none",
-    padding: "0 5px",
-    cursor: "pointer",
-  },
-  icon: {
-    height: "20px",
-    width: "20px",
-  },
+  iconBtn: { background: "none", border: "none", padding: "0 5px", cursor: "pointer" },
+  icon: { height: "20px", width: "20px" },
   SmallWrapperUser: {
     backgroundColor: "transparent",
     width: 44,
@@ -583,11 +543,7 @@ const styles = {
     width: "100%",
     transition: "background 0.3s, color 0.3s",
   },
-  navIcon: {
-    width: "40px",
-    height: "40px",
-    objectFit: "contain",
-  },
+  navIcon: { width: "40px", height: "40px", objectFit: "contain" },
   userHeader: {
     display: "flex",
     flexDirection: "column",
@@ -595,10 +551,7 @@ const styles = {
     padding: "6px 8px",
     gap: 6,
   },
-  hello: {
-    color: "#64748b",
-    fontWeight: 600,
-  },
+  hello: { color: "#64748b", fontWeight: 600 },
   fullName: {
     fontSize: 16,
     fontWeight: 800,
@@ -610,8 +563,7 @@ const styles = {
   },
   headerDivider: {
     height: 1,
-    background:
-      "linear-gradient(to right, transparent, #e5e7eb 15%, #e5e7eb 85%, transparent)",
+    background: "linear-gradient(to right, transparent, #e5e7eb 15%, #e5e7eb 85%, transparent)",
     margin: "4px 0 6px",
   },
   actionItem: {

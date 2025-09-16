@@ -1,29 +1,17 @@
-import React, { useState } from "react";
+//frontend/pages/ListaDeDeseos.jsx
+import React, { useState, useEffect } from "react";
+import { toast } from "react-toastify";
+import { getProductosFav } from "../api/lista_deseos"; // API que conecta con backend
+import { AddNewCarrito } from "../api/CarritoApi"; // ❗ Este archivo debe existir
 import appleImage from "../images/appleImage.png";
 import carritoImage from "../images/ncarrito.png";
 import izqImage from "../images/izq.png";
 import derImage from "../images/der.png";
 
-export default function ListaDeDeseos() {
+export default function ListaDeDeseos({ id_usuario }) {
   const tabs = ["Ordenar Por:", "Más recientes", "En Oferta", "Disponibles"];
   const [activeTab, setActiveTab] = useState("Más recientes");
-
-  const products = Array.from({ length: 12 }).map((_, i) => ({
-    id: i + 1,
-    name: "Manzana",
-    price: "L. 14.00",
-    img: appleImage,
-    rating: 2,
-    available: i % 2 === 0,
-    onSale: i % 3 === 0,
-  }));
-
-  const filteredProducts = products.filter((p) => {
-    if (activeTab === "Más recientes") return true;
-    if (activeTab === "En Oferta") return p.onSale;
-    if (activeTab === "Disponibles") return p.available;
-    return true;
-  });
+  const [products, setProducts] = useState([]);
 
   const [startIndex, setStartIndex] = useState(0);
 
@@ -42,8 +30,45 @@ export default function ListaDeDeseos() {
 
   const visibleCount = 5;
 
+  useEffect(() => {
+    async function fetchFavs() {
+      try {
+        const res = await getProductosFav(id_usuario);
+        const favs = res.data.map(f => ({
+          id: f.id_producto,
+          name: f.Producto?.nombre || "Producto",
+          price: `L. ${f.Producto?.precio_base || "0.00"}`,
+          img: f.Producto?.imagen || appleImage,
+          rating: f.Producto?.rating || 2,
+          available: true,
+          onSale: false
+        }));
+        setProducts(favs);
+      } catch (error) {
+        console.error("Error al cargar favoritos:", error);
+      }
+    }
+    fetchFavs();
+  }, [id_usuario]);
+
+  const filteredProducts = products.filter((p) => {
+    if (activeTab === "Más recientes") return true;
+    if (activeTab === "En Oferta") return p.onSale;
+    if (activeTab === "Disponibles") return p.available;
+    return true;
+  });
+
   const handlePrev = () => setStartIndex((prev) => Math.max(prev - 1, 0));
   const handleNext = () => setStartIndex((prev) => Math.min(prev + 1, recomendados.length - visibleCount));
+
+  const agregarAlCarrito = async (id_producto) => {
+    try {
+      await AddNewCarrito(id_producto, 1);
+      toast.success("Producto agregado al carrito", { position: "top-right" });
+    } catch (error) {
+      toast.error("Error al agregar al carrito", { position: "top-right" });
+    }
+  };
 
   return (
     <div
@@ -68,7 +93,7 @@ export default function ListaDeDeseos() {
             </h1>
             <div
               className="mt-2 h-1 bg-orange-400 mx-auto rounded-full"
-           style={{ width: "100%", maxWidth: "1080px" }}
+              style={{ width: "100%", maxWidth: "1080px" }}
             ></div>
           </div>
 
@@ -94,7 +119,7 @@ export default function ListaDeDeseos() {
           <div className="overflow-y-auto h-[450px] w-full pb-4 scrollbar-thin scrollbar-thumb-orange-400 scrollbar-track-gray-200">
             <div className="grid grid-cols-5 gap-6 px-4 mt-8">
               {filteredProducts.map((p) => (
-                <ProductoCard key={p.id} p={p} />
+                <ProductoCard key={p.id} p={p} agregarAlCarrito={agregarAlCarrito} />
               ))}
             </div>
           </div>
@@ -106,36 +131,35 @@ export default function ListaDeDeseos() {
             Productos que podrían interesarte
           </h2>
           <div className="relative flex items-center">
-  <button
-    onClick={handlePrev}
-  className="absolute left-[-18px] z-10 bg-white rounded-full p-3 shadow-md"
-  >
-    <img src={izqImage} alt="Izquierda" className="w-6 h-6" />
-  </button>
+            <button
+              onClick={handlePrev}
+              className="absolute left-[-18px] z-10 bg-white rounded-full p-3 shadow-md"
+            >
+              <img src={izqImage} alt="Izquierda" className="w-6 h-6" />
+            </button>
 
-  <div className="flex gap-6 overflow-hidden w-full px-10">
-    {recomendados
-      .slice(startIndex, startIndex + visibleCount)
-      .map((p) => (
-        <ProductoCard key={`rec-${p.id}`} p={p} />
-      ))}
-  </div>
+            <div className="flex gap-6 overflow-hidden w-full px-10">
+              {recomendados
+                .slice(startIndex, startIndex + visibleCount)
+                .map((p) => (
+                  <ProductoCard key={`rec-${p.id}`} p={p} agregarAlCarrito={agregarAlCarrito} />
+                ))}
+            </div>
 
-  <button
-    onClick={handleNext}
-  className="absolute right-[-18px] z-10 bg-white rounded-full p-3 shadow-md"
-  >
-    <img src={derImage} alt="Derecha" className="w-6 h-6" />
-  </button>
-</div>
-
+            <button
+              onClick={handleNext}
+              className="absolute right-[-18px] z-10 bg-white rounded-full p-3 shadow-md"
+            >
+              <img src={derImage} alt="Derecha" className="w-6 h-6" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-function ProductoCard({ p }) {
+function ProductoCard({ p, agregarAlCarrito }) {
   return (
     <div className="relative bg-white rounded-2xl p-3 shadow-lg w-full">
       <div className="absolute top-2 left-2 w-5 h-5">
@@ -170,12 +194,15 @@ function ProductoCard({ p }) {
         <div className="mt-1">{p.name}</div>
       </div>
       <div className="mt-3 pt-1">
-  <div className="h-10 rounded-full bg-orange-400 w-11/12 mx-auto flex items-center justify-center cursor-pointer hover:bg-orange-500 shadow-md">
-    <span className="text-white font-semibold text-xs text-center">
-      AGREGAR AL CARRITO
-    </span>
-  </div>
-</div>
+        <div
+          onClick={() => agregarAlCarrito(p.id)}
+          className="h-10 rounded-full bg-orange-400 w-11/12 mx-auto flex items-center justify-center cursor-pointer hover:bg-orange-500 shadow-md"
+        >
+          <span className="text-white font-semibold text-xs text-center">
+            AGREGAR AL CARRITO
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

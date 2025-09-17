@@ -4,7 +4,57 @@ import { withRouter } from "../utils/withRouter";
 import Logo from "../images/logo2.png";
 import LogoExport from "../images/logo3.png";
 import PerfilSidebar from "../components/perfilSidebar";
+import { getAllFacturasByUserwithDetails } from "../api/FacturaApi";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 class DetalleFactura extends Component {
+    state = {
+    factura: null,
+    cargando: false,
+  };
+  componentDidMount() {
+    this.fetchFactura();
+  }
+  fetchFactura = async () => {
+    const { params } = this.props;
+    const { id } = params || {};
+    if (!id) return;
+    this.setState({ cargando: true });
+    try {
+      const res = await getAllFacturasByUserwithDetails();
+      const f = res.data.find(fact => fact.id_factura === parseInt(id));
+      if (!f) return;
+      const factura = {
+        id: f.id_factura,
+        numero: f.id_factura,
+        fecha: new Date(f.fecha_emision).toLocaleDateString("es-ES"),
+        metodo_pago: f.metodo_pago?.nombre || "Sin especificar",
+        productos: f.factura_detalles.map(fd => ({
+          codigo: fd.id_producto,
+          nombre: fd.producto.nombre,
+          cantidad: fd.cantidad_unidad_medida,
+          precio: parseFloat(fd.producto.precio_base),
+        })),
+      };
+      this.setState({ factura });
+    } catch (error) {
+      console.error("Error al cargar la factura:", error);
+    } finally {
+      this.setState({ cargando: false });
+    }
+  };
+  getBase64Image = (url) =>
+    new Promise((resolve, reject) => {
+      fetch(url)
+        .then(res => res.blob())
+        .then(blob => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        })
+        .catch(reject);
+    });
   handleExportar = () => {
     alert("Exportando factura...");
   };

@@ -32,6 +32,7 @@ class Facturas extends Component {
         id: f.id_factura,
         numero: f.id_factura,
         fecha: new Date(f.fecha_emision).toLocaleDateString("es-ES"),
+        metodo_pago: f.metodo_pago?.nombre || "Sin especificar",
         productos: f.factura_detalles.map(fd => ({
           codigo: fd.id_producto,
           nombre: fd.producto.nombre,
@@ -107,14 +108,14 @@ class Facturas extends Component {
     doc.text("Supermercado:", 14, 30);
     doc.text("No. Factura:", 14, 36);
     doc.text("Fecha:", 14, 42);
-
+    doc.text("Método de pago:", 14, 48);
     doc.setFont(undefined, "normal");
     doc.text("Easy Way", 45, 30);
     doc.text(`#${facturaSeleccionada.numero}`, 45, 36);
     doc.text(this.formatFecha(facturaSeleccionada.fecha), 35, 42);
-
+    doc.text(facturaSeleccionada.metodo_pago, 50, 48);
     // Resumen
-    doc.setFontSize(13).setFont(undefined, "bold").text("Resumen de la Orden", 14, 52);
+    doc.setFontSize(13).setFont(undefined, "bold").text("Resumen de la Orden", 14, 58);
 
     const tableColumn = ["Código", "Producto", "Cantidad", "Precio Unitario", "Subtotal"];
     const tableRows = productos.map(prod => [
@@ -126,7 +127,7 @@ class Facturas extends Component {
     ]);
 
     autoTable(doc, {
-      startY: 56,
+      startY: 62,
       head: [tableColumn],
       body: tableRows,
       styles: { fontSize: 11, textColor: [0, 0, 0], halign: "center" },
@@ -210,7 +211,7 @@ class Facturas extends Component {
                     >
                       <div className="flex flex-col text-left">
                         <p className="text-gray-800 font-bold">Pedido #{f.numero}</p>
-                        <p className="text-gray-500 text-sm">{f.fecha}</p>
+                        <p className="text-gray-500 text-sm">{f.fecha}- {f.metodo_pago}</p>
                       </div>
                     </div>
                   ))}
@@ -242,6 +243,7 @@ class Facturas extends Component {
                 <div className="flex flex-col items-start mb-3">
                   <p className="mb-0.5"><span className="font-bold">Supermercado:</span> Easy Way</p>
                   <p className="mb-0.5"><span className="font-bold">No. Factura:</span> #{facturaSeleccionada.numero}</p>
+                  <p className="mb-0.5"><span className="font-bold">Método de Pago:</span> {facturaSeleccionada.metodo_pago}</p>
                   <p className="mb-2"><span className="font-bold">Fecha:</span> {this.formatFecha(facturaSeleccionada.fecha)}</p>
                   <h2 className="text-base font-bold mb-1">Resumen de la Orden</h2>
                 </div>

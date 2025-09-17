@@ -14,7 +14,8 @@ import { useCart } from "../utils/CartContext";
 import { height } from "@mui/system";
 import { toast } from "react-toastify";
 import "../toast.css";
-
+import 'react-toastify/dist/ReactToastify.css';
+import { AddProductoFav } from "../api/lista_deseos";
 // ====== helpers para construir la URL absoluta desde el backend ======
 const BACKEND_ORIGIN = (() => {
   const base = axiosInstance?.defaults?.baseURL;
@@ -369,6 +370,7 @@ function AgregarCarrito() {
     }
   }
 
+  
   // ======= Utilidades UI =======
   const incrementQuantity = () => setQuantity((n) => n + 1);
   const decrementQuantity = () => setQuantity((n) => (n > 1 ? n - 1 : 1));

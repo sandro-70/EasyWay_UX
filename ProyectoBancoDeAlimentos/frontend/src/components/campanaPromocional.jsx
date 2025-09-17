@@ -229,15 +229,14 @@ const esCompraMin = formData.tipo === "compra_min";
 // Mapeo local: % => 1, fijo => 2, compra mínima => 3
 const id_tipo_promo =
   esPct ? 1 :
-  esFijo ? 2 :
-  esCompraMin ? 3 : null;
+  esFijo ? 2 : null;
 
 const payload = {
   nombre_promocion: String(formData.nombre).trim(),
   descripción: String(formData.descripcion).trim(),
   valor_fijo: esFijo ? Number(formData.valorFijo) : null,
   valor_porcentaje: esPct ? Number(formData.valorPorcentual) : null,
-  compra_min: esCompraMin ? Number(formData.compraMin) : null,
+  compra_min: Number(formData.compraMin) ,
   fecha_inicio: formData.validoDesde,
   fecha_termina: formData.hasta,
   id_tipo_promo, 
@@ -359,7 +358,6 @@ const payload = {
                   <option value="">Seleccionar</option>
                   <option value="porcentaje">Descuento porcentual</option>
                   <option value="fijo">Descuento fijo</option>
-                  <option value="compra_min">Compra mínima</option>
                 </select>
                 <ChevronDown size={16} className="selectIcon" />
               </div>
@@ -402,7 +400,7 @@ const payload = {
               </div>
             )}
 
-            {formData.tipo === "compra_min" && (
+            {(
               <div className="ui-field">
                 <label className="ui-label" htmlFor="compraMin">Compra mínima</label>
                 <input

@@ -93,6 +93,7 @@ exports.contarPedidosUsuario = async (req, res) => {
 exports.editarPerfil = async (req, res) => {
   try {
     const { id_usuario } = req.params;
+    console.log("Editar perfil para usuario:", id_usuario);
     const {
       nombre,
       apellido,
@@ -110,6 +111,7 @@ exports.editarPerfil = async (req, res) => {
     // Buscar usuario
     const user = await Usuario.findOne({ where: { id_usuario } });
     if (!user) {
+      console.log("Usuario no encontrado:", id_usuario);
       return res.status(404).json({ message: "Usuario no encontrado" });
     }
 

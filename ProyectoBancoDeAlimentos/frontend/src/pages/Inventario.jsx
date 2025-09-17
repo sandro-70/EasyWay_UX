@@ -1269,7 +1269,7 @@ export default function Inventario() {
           d.unidadMedida ?? "unidad",
           pesoKg,
           d.imageFiles,
-          []
+          imagenesPayload
         );
 
         // Recargar productos después de crear

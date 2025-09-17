@@ -52,7 +52,8 @@ const storageProducto = multer.diskStorage({
     // Try to get product id from req.params, req.body, or unknown
     const productId = req.params.id_producto || req.body.id || 'unknown';
     const ext = path.extname(file.originalname || '.png').toLowerCase() || '.png';
-    const filename = `product_${productId}${ext}`;
+    const unique = Date.now() + Math.random().toString(36).substr(2, 9);
+    const filename = `product_${productId}_${unique}${ext}`;
     cb(null, filename);
   },
 });

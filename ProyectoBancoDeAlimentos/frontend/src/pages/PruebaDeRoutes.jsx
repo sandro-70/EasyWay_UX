@@ -7,6 +7,8 @@ import {
   listarProductosporsucursal,
   listarProductosl
 } from "../api/InventarioApi";
+
+import { agregarAListaDeseos } from "../api/listaDeseosApi";
 import { getStock } from "../api/reporteusuarioApi";
 import {
   uploadProductPhotos,
@@ -61,7 +63,7 @@ export default function TestAuth() {
   const fetchProductos = async () => {
     try {
       setLoading(true);
-      const res = await listarProductosl(); // axios response
+      const res = await agregarAListaDeseos(1,1); // axios response
       setRawResponse(res?.data ?? null);
       const arr = extractArray(res?.data);
       setProducts(arr);

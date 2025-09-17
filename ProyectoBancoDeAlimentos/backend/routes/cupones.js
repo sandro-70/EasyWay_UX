@@ -3,7 +3,8 @@ const router = express.Router();
 
 const cuponController = require('../controllers/cuponController');
 
-router.post('/agregar/:id_usuario', cuponController.addCupon);
+// Usar la función que realmente existe en tu controlador
+router.post('/agregar/:id_usuario', cuponController.addCuponUsuario);
 router.get('/cupones', cuponController.getAllCupones);
 router.get('/usuario/:id_usuario', cuponController.allCupones);
 router.patch('/desactivar-cupon/:id_cupon', cuponController.desactivarCupon);

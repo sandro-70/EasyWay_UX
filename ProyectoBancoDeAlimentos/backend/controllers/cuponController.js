@@ -1,7 +1,8 @@
 const sequelize = require("../config/db");
 const { DataTypes } = require("sequelize");
-const { historial_cupon, cupon } = require("../models");
+const { historial_cupon, cupon, Usuario } = require("../models");
 const { Op, fn, col } = require("sequelize");
+
 
 exports.allCupones = async (req, res) => {
     try {
@@ -46,35 +47,83 @@ exports.allCupones = async (req, res) => {
     }
 };
 
-exports.addCupon = async (req, res) => {
-    const { codigo, descripcion, tipo, valor, uso_por_usuario, termina_en, activo } = req.body;
+exports.crearCupon = async (req, res) => {
+  const { nombre, codigo, tipo, descripcion, valor, termina_en, uso_por_usuario } = req.body;
+  const { id_usuario } = req.params;
 
-    try {
-        // Verificar si ya existe un cupón con el mismo código
-        const cuponExistente = await cupon.findOne({ where: { codigo } });
-        if (cuponExistente) {
-            return res.status(400).json({ message: 'Ya existe un cupón con ese código' });
-        }
+  try {
+    const user = await Usuario.findOne({ where: { id_usuario } });
 
-        // Crear nuevo cupón
-        const nuevoCupon = await cupon.create({
-            codigo,
-            descripcion,
-            tipo,
-            valor,
-            uso_por_usuario,
-            termina_en,
-            activo: activo !== undefined ? activo : true
-        });
-
-        return res.status(201).json({
-            message: 'Cupón agregado correctamente',
-            cupon: nuevoCupon
-        });
-    } catch (error) {
-        console.error('Error agregando cupón:', error);
-        return res.status(500).json({ message: 'Error interno del servidor' });
+    if (!user) {
+      return res.status(404).json({ message: "Usuario no encontrado!" });
     }
+
+    if (user.id_rol !== 1) {
+      return res.status(403).json({ message: "No tienes permiso para crear un cupon!" });
+    }
+
+    const existe = await cupon.findOne({ where: { codigo } });
+    if (existe) {
+      return res.status(400).json({ message: "El código de cupón ya existe!" });
+    }
+
+    const cupon_creado = await cupon.create({
+      nombre,
+      codigo,
+      tipo,
+      descripcion,
+      valor,
+      termina_en,
+      uso_por_usuario,
+      activo: true
+    });
+
+    return res.status(201).json({
+      message: "Cupón creado correctamente!",
+      cupon: cupon_creado
+    });
+
+    
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Error al intentar crear un cupón!" });
+  }
+};
+
+
+exports.addCuponUsuario = async (req, res) => {
+  const { codigo } = req.body;
+  const { id_usuario } = req.params;
+
+  try {
+    const cuponEncontrado = await cupon.findOne({ where: { codigo, activo: true } });
+    if (!cuponEncontrado) {
+      return res.status(404).json({ message: 'Cupón no encontrado o inactivo' });
+    }
+
+    const yaUsado = await historial_cupon.findOne({
+      where: { id_usuario, id_cupon: cuponEncontrado.id_cupon }
+    });
+
+    if (yaUsado) {
+      return res.status(400).json({ message: 'Ya usaste este cupón' });
+    }
+
+    const registro = await historial_cupon.create({
+      id_usuario,
+      id_cupon: cuponEncontrado.id_cupon,
+      fecha_uso: new Date()
+    });
+
+    return res.status(201).json({
+      message: 'Cupón agregado al usuario correctamente',
+      cupon: cuponEncontrado,
+      historial: registro
+    });
+  } catch (error) {
+    console.error('Error agregando cupón al usuario:', error);
+    return res.status(500).json({ message: 'Error interno del servidor' });
+  }
 };
 
 exports.getAllCupones = async (req, res) => {

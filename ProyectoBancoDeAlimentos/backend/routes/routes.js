@@ -45,6 +45,8 @@ router.use('/usuarios', require('./userRoute'));
 
 router.use('/auditorias', require('./auditorias'));
 
+router.use('/lista-deseos', require('./listaDeseos'));
+
 // 1) Estáticos públicos (para ver /images/fotoDePerfil/...)
 router.use("/images", express.static(path.join(process.cwd(), "public", "images")));
 

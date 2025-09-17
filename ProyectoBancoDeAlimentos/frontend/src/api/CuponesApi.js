@@ -11,3 +11,7 @@ export function GetCupones() {
 export function desactivarCupon(id_cupon){
     return axiosInstance.patch(`/api/cupones/desactivar-cupon/${id_cupon}`);
 }
+
+export function addCupon(id_usuario){
+    return axiosInstance.patch(`/api/cupones/agregar/${id_usuario}`);
+}

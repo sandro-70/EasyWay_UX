@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 export default function PerfilSidebar() {
   return (
-    <div className="w-64 bg-white shadow-md p-4 rounded-xl fixed h-screen ">
+    <div className="w-64 bg-white shadow-md p-4 rounded-xl fixed top-32 left-0 h-[calc(100vh-64px)] z-20">
       <h2 className="text-lg font-semibold mb-4">Mi cuenta</h2>
       <ul className="space-y-2">
         <li>

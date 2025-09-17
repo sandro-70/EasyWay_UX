@@ -71,19 +71,42 @@ function Dashboard() {
   useEffect(() => {
     const fetchAll = async () => {
       // Stock
-      try {
-        const res = await getStock();
-        const arr = Array.isArray(res?.data) ? res.data : [];
-        setInventory(
-          arr.map((r) => ({
-            producto: r?.nombre_producto ?? "-",
-            stock: Number(r?.stock ?? 0),
-          }))
-        );
-      } catch (e) {
-        console.error("[getStock] error:", e);
-        setInventory([]);
-      }
+      const res = await getStock();
+  const arr = Array.isArray(res?.data) ? res.data : [];
+
+  // normaliza
+  const norm = arr.map(r => ({
+    id_producto: r?.id_producto,
+    producto: r?.nombre_producto ?? "-",
+    stock: Number(r?.stock ?? r?.stock_disponible ?? 0),
+    unidad: r?.unidad_medida ?? "",
+  }));
+
+  // 🔧 agrupa por producto (elige SUM o MIN según tu necesidad)
+  const groupedMap = new Map();
+  for (const row of norm) {
+    const k = row.id_producto ?? row.producto;
+    const prev = groupedMap.get(k);
+    if (!prev) {
+      groupedMap.set(k, { ...row });
+    } else {
+      // SUMA total por producto (→ una fila por producto)
+      prev.stock += row.stock;
+
+      // Si prefieres el valor más crítico por sucursal, usa MIN:
+      // prev.stock = Math.min(prev.stock, row.stock);
+    }
+  }
+
+  const grouped = Array.from(groupedMap.values())
+    .sort((a, b) => a.stock - b.stock);
+
+  // Si quieres mostrar solo críticos (ej. <= 5), descomenta:
+  // const grouped = Array.from(groupedMap.values())
+  //   .filter(x => x.stock <= 5)
+  //   .sort((a, b) => a.stock - b.stock);
+
+  setInventory(grouped);
 
       // Ventas 4 meses
       try {

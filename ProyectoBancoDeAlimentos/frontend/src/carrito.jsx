@@ -24,6 +24,8 @@ import {
 import { crearPedido } from "./api/PedidoApi";
 import { UserContext } from "./components/userContext";
 import { useCart } from "../src/utils/CartContext";
+import { toast } from "react-toastify";
+import "./toast.css";
 
 // ====== helpers para construir la URL absoluta desde el backend ======
 const BACKEND_ORIGIN = (() => {

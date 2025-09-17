@@ -8,8 +8,8 @@ const {
   Sequelize,
 } = require("../models");
 const { Op } = Sequelize;
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 // Productos destacados (últimos creados) con 1 imagen
 exports.destacados = async (req, res) => {
   try {
@@ -284,6 +284,7 @@ exports.obtenerProductoPorId = async (req, res) => {
         "estrellas",
         "etiquetas",
         "porcentaje_ganancia",
+        "peso",
         [
           Sequelize.literal("precio_base * (1 + porcentaje_ganancia / 100)"),
           "precio_venta",
@@ -324,7 +325,9 @@ exports.obtenerProductoPorId = async (req, res) => {
   }
 };
 
-const { crearProductoConStockEnSucursales } = require('../services/serviceInventario');
+const {
+  crearProductoConStockEnSucursales,
+} = require("../services/serviceInventario");
 
 // Crear producto con imágenes
 exports.addproducto = async (req, res) => {
@@ -338,30 +341,30 @@ exports.addproducto = async (req, res) => {
     const data = await crearProductoConStockEnSucursales(payload);
     return res.status(201).json(data);
   } catch (e) {
-    console.error('❌ Crear producto error:', e);
+    console.error("❌ Crear producto error:", e);
 
     if (
-      e.name === 'SequelizeValidationError' ||
-      e.name === 'SequelizeUniqueConstraintError'
+      e.name === "SequelizeValidationError" ||
+      e.name === "SequelizeUniqueConstraintError"
     ) {
       return res.status(400).json({
         name: e.name,
-        errors: (e.errors || []).map(err => ({
+        errors: (e.errors || []).map((err) => ({
           message: err.message,
           path: err.path,
           value: err.value,
-          validatorKey: err.validatorKey
-        }))
+          validatorKey: err.validatorKey,
+        })),
       });
     }
 
-    if (e.name === 'SequelizeForeignKeyConstraintError') {
+    if (e.name === "SequelizeForeignKeyConstraintError") {
       return res.status(400).json({
         name: e.name,
         index: e.index,
         fields: e.fields,
         table: e.table,
-        message: e.parent?.detail || e.message
+        message: e.parent?.detail || e.message,
       });
     }
 
@@ -404,10 +407,10 @@ exports.subirImagenesProducto = async (req, res) => {
     res.status(201).json({
       msg: "Imágenes subidas y guardadas",
       imagenes: createdImages,
-      archivos: files.map(f => f.filename)
+      archivos: files.map((f) => f.filename),
     });
   } catch (err) {
-    console.error('Error en subirImagenesProducto:', err);
+    console.error("Error en subirImagenesProducto:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -422,15 +425,21 @@ exports.eliminarImagenProducto = async (req, res) => {
 
     // Delete the file from filesystem
     const filename = path.basename(img.url_imagen);
-    const filePath = path.join(__dirname, '..', 'public', 'images', 'productos', filename);
+    const filePath = path.join(
+      __dirname,
+      "..",
+      "public",
+      "images",
+      "productos",
+      filename
+    );
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
     }
 
     await img.destroy();
     res.json({ msg: "Imagen eliminada" });
-  }
-  catch (err) {
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
@@ -443,33 +452,41 @@ exports.imagenesProducto = async (req, res) => {
     // Obtener imágenes desde la base de datos
     const dbImages = await imagen_producto.findAll({
       where: { id_producto: id },
-      attributes: ['id_imagen', 'url_imagen', 'orden_imagen'],
-      order: [['orden_imagen', 'ASC']]
+      attributes: ["id_imagen", "url_imagen", "orden_imagen"],
+      order: [["orden_imagen", "ASC"]],
     });
 
     // Leer imágenes desde la carpeta del producto
-    const productDir = path.join(__dirname, '..', 'public', 'images', 'productos');
+    const productDir = path.join(
+      __dirname,
+      "..",
+      "public",
+      "images",
+      "productos"
+    );
     const files = fs.readdirSync(productDir);
 
     // Filtrar imágenes que estén en la BD y existan en el filesystem
     const images = dbImages
-      .filter(dbImg => {
+      .filter((dbImg) => {
         const filename = path.basename(dbImg.url_imagen);
-        return files.includes(filename) && fs.existsSync(path.join(productDir, filename));
+        return (
+          files.includes(filename) &&
+          fs.existsSync(path.join(productDir, filename))
+        );
       })
       .map((dbImg, index) => ({
         id_imagen: dbImg.id_imagen,
         url_imagen: dbImg.url_imagen,
-        orden_imagen: dbImg.orden_imagen
+        orden_imagen: dbImg.orden_imagen,
       }));
 
     res.json(images);
   } catch (err) {
-    console.error('Error leyendo imágenes del producto:', err);
+    console.error("Error leyendo imágenes del producto:", err);
     res.status(500).json({ error: err.message });
   }
 };
-
 
 // PUT /api/productos/:id/porcentaje-ganancia
 exports.putPorcentajeGanancia = async (req, res) => {
@@ -585,16 +602,20 @@ exports.crearMarca = async (req, res) => {
   try {
     const { nombre_marca } = req.body;
 
-    if (!nombre_marca || typeof nombre_marca !== "string" || nombre_marca.trim() === "") {
-      return res
-        .status(400)
-        .json({
-          message: "El nombre de la marca es requerido y debe ser válido",
-        });
+    if (
+      !nombre_marca ||
+      typeof nombre_marca !== "string" ||
+      nombre_marca.trim() === ""
+    ) {
+      return res.status(400).json({
+        message: "El nombre de la marca es requerido y debe ser válido",
+      });
     }
 
     // Verificar si la marca ya existe
-    const existingMarca = await marca_producto.findOne({ where: { nombre: nombre_marca } });
+    const existingMarca = await marca_producto.findOne({
+      where: { nombre: nombre_marca },
+    });
     if (existingMarca) {
       return res.status(409).json({ message: "La marca ya existe" });
     }
@@ -696,12 +717,14 @@ exports.actualizarProducto = async (req, res) => {
     });
 
     // Actualizar imagenes
-    const payload = JSON.parse(imagenes_payload || '[]');
+    const payload = JSON.parse(imagenes_payload || "[]");
     await imagen_producto.destroy({ where: { id_producto: id } });
     let fileIndex = 0;
     for (const item of payload) {
       const { url_imagen, orden_imagen, is_file } = item;
-      const url = is_file ? `/images/productos/${files[fileIndex++].filename}` : url_imagen;
+      const url = is_file
+        ? `/images/productos/${files[fileIndex++].filename}`
+        : url_imagen;
       await imagen_producto.create({
         id_producto: id,
         url_imagen: url,
@@ -762,38 +785,38 @@ exports.actualizarProducto = async (req, res) => {
 exports.getStock = async (req, res) => {
   try {
     const data = await sucursal_producto.findAll({
-      attributes: ['id_sucursal', 'id_producto', 'stock_disponible'],
+      attributes: ["id_sucursal", "id_producto", "stock_disponible"],
       include: [
         {
           model: producto,
-          attributes: ['nombre', 'unidad_medida'],
+          attributes: ["nombre", "unidad_medida"],
           include: [
             {
               model: subcategoria,
-              as: 'subcategoria',
-              attributes: ['nombre'],
+              as: "subcategoria",
+              attributes: ["nombre"],
               include: [
                 {
                   model: categoria,
-                  as: 'categoria',
-                  attributes: ['nombre']
-                }
-              ]
-            }
-          ]
-        }
+                  as: "categoria",
+                  attributes: ["nombre"],
+                },
+              ],
+            },
+          ],
+        },
       ],
-      order: [['stock_disponible', 'ASC']] // de menor a mayor stock
+      order: [["stock_disponible", "ASC"]], // de menor a mayor stock
     });
 
-    const result = data.map(item => ({
+    const result = data.map((item) => ({
       id_sucursal: item.id_sucursal,
       id_producto: item.id_producto,
       nombre_producto: item.producto?.nombre,
       categoria: item.producto?.subcategoria?.categoria?.nombre || null,
       subcategoria: item.producto?.subcategoria?.nombre || null,
       stock: item.stock_disponible,
-      unidad_medida: item.producto?.unidad_medida
+      unidad_medida: item.producto?.unidad_medida,
     }));
 
     return res.status(200).json(result);

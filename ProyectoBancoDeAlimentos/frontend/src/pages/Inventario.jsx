@@ -1,3 +1,5 @@
+//sirve imágenes
+
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import axiosInstance from "../api/axiosInstance";
@@ -26,7 +28,9 @@ const BACKEND_ORIGIN = (() => {
   const base = axiosInstance?.defaults?.baseURL;
   try {
     const u = base
-      ? (base.startsWith("http") ? new URL(base) : new URL(base, window.location.origin))
+      ? base.startsWith("http")
+        ? new URL(base)
+        : new URL(base, window.location.origin)
       : new URL(window.location.origin);
     return `${u.protocol}//${u.host}`;
   } catch {
@@ -35,13 +39,17 @@ const BACKEND_ORIGIN = (() => {
 })();
 
 const backendImageUrl = (fileName) =>
-  fileName ? `${BACKEND_ORIGIN}/images/productos/${encodeURIComponent(fileName)}` : "";
+  fileName
+    ? `${BACKEND_ORIGIN}/images/productos/${encodeURIComponent(fileName)}`
+    : "";
 
 const toPublicFotoSrc = (nameOrPath) => {
   if (!nameOrPath) return "";
   if (/^https?:\/\//i.test(nameOrPath)) return nameOrPath;
-  if (nameOrPath.startsWith("/api/images/")) return `${BACKEND_ORIGIN}${encodeURI(nameOrPath)}`;
-  if (nameOrPath.startsWith("/images/")) return `${BACKEND_ORIGIN}/api${encodeURI(nameOrPath)}`;
+  if (nameOrPath.startsWith("/api/images/"))
+    return `${BACKEND_ORIGIN}${encodeURI(nameOrPath)}`;
+  if (nameOrPath.startsWith("/images/"))
+    return `${BACKEND_ORIGIN}/api${encodeURI(nameOrPath)}`;
   return backendImageUrl(nameOrPath);
 };
 
@@ -365,7 +373,9 @@ export default function Inventario() {
         setCategorias(mappedCategorias);
       } catch (err) {
         console.error("Error cargando inventario:", err);
-        toast.error("No se pudo cargar el inventario. Revisa la conexión.", { className: "toast-error" });
+        toast.error("No se pudo cargar el inventario. Revisa la conexión.", {
+          className: "toast-error",
+        });
       } finally {
         mounted && setLoading(false);
       }
@@ -469,7 +479,9 @@ export default function Inventario() {
       });
     } catch (e) {
       console.error("Error cargando productos por sucursal:", e);
-      toast.error("No se pudo cargar productos. Revisa la conexión.", { className: "toast-error" });
+      toast.error("No se pudo cargar productos. Revisa la conexión.", {
+        className: "toast-error",
+      });
     } finally {
       setLoading(false);
     }
@@ -543,7 +555,8 @@ export default function Inventario() {
     } catch (e) {
       console.error("Error cargando productos:", e);
       toast.error(
-        "No se pudo cargar productos. Verifica la conexión o la URL del API.", { className: "toast-error" }
+        "No se pudo cargar productos. Verifica la conexión o la URL del API.",
+        { className: "toast-error" }
       );
     } finally {
       setLoading(false);
@@ -759,7 +772,9 @@ export default function Inventario() {
       setSubcategorias(mapped);
     } catch (err) {
       console.error("Error cargando subcategorías", err);
-      toast.error("No se pudo cargar las subcategorías.", { className: "toast-error" });
+      toast.error("No se pudo cargar las subcategorías.", {
+        className: "toast-error",
+      });
     }
   }
 
@@ -943,21 +958,24 @@ export default function Inventario() {
 
     try {
       // 1) Asegurar categorías
-      const cats = categorias && categorias.length ? categorias : await (async () => {
-        const catsRes = await ListarCategoria();
-        const catsRaw = pickArrayPayload(catsRes, [
-          "categorias",
-          "data",
-          "results",
-          "items",
-        ]);
-        const newCats = catsRaw.map((c, i) => ({
-          id: String(c.id_categoria ?? c.id ?? i),
-          nombre: c.nombre ?? `Categoría ${i + 1}`,
-        }));
-        setCategorias(newCats);
-        return newCats;
-      })();
+      const cats =
+        categorias && categorias.length
+          ? categorias
+          : await (async () => {
+              const catsRes = await ListarCategoria();
+              const catsRaw = pickArrayPayload(catsRes, [
+                "categorias",
+                "data",
+                "results",
+                "items",
+              ]);
+              const newCats = catsRaw.map((c, i) => ({
+                id: String(c.id_categoria ?? c.id ?? i),
+                nombre: c.nombre ?? `Categoría ${i + 1}`,
+              }));
+              setCategorias(newCats);
+              return newCats;
+            })();
 
       // 2) Detalle del producto
       const detRes = await getProductoById(row.id);
@@ -1031,10 +1049,15 @@ export default function Inventario() {
 
     // Validaciones mínimas
     if (!d.producto?.trim())
-      return toast.info("El nombre del producto es obligatorio.", { className: "toast-info" });
-    if (!d.marcaId && !d.marca) return toast.info("Selecciona una marca.", { className: "toast-error" });
+      return toast.info("El nombre del producto es obligatorio.", {
+        className: "toast-info",
+      });
+    if (!d.marcaId && !d.marca)
+      return toast.info("Selecciona una marca.", { className: "toast-error" });
     if (!d.subcategoriaId && !d.subcategoria)
-      return toast.info("Selecciona una subcategoría.", { className: "toast-info" });
+      return toast.info("Selecciona una subcategoría.", {
+        className: "toast-info",
+      });
 
     try {
       setSavingProduct(true);
@@ -1047,7 +1070,7 @@ export default function Inventario() {
         .filter(Boolean);
       // 👇 NUEVO: arma el payload de imágenes con NOMBRE + ORDEN + is_file para nuevos, y URL para existentes
       const imagenesPayload = (d.imagePreviews || []).map((src, idx) => {
-        const isBlob = src.startsWith('blob:');
+        const isBlob = src.startsWith("blob:");
         if (isBlob) {
           // Nueva imagen subida
           const fileName = d.imageUploadsNames?.[idx] || `image_${idx}.jpg`;
@@ -1176,8 +1199,6 @@ export default function Inventario() {
           d.imageFiles,
           imagenesPayload
         );
-
-
       } else {
         // CREAR producto
         const etiquetas = ["Nuevo"];
@@ -1208,7 +1229,8 @@ export default function Inventario() {
       toast.error(
         `Error ${status ?? ""}: ${
           data?.message || data?.detail || data?.error || err.message
-        }`, { className: "toast-error" }
+        }`,
+        { className: "toast-error" }
       );
     } finally {
       setSavingProduct(false);
@@ -1234,7 +1256,8 @@ export default function Inventario() {
       toast.error(
         "No se pudo desactivar. " +
           (s ? `HTTP ${s}. ` : "") +
-          (typeof d === "string" ? d : d?.message || d?.detail || "Error"), { className: "toast-error" }
+          (typeof d === "string" ? d : d?.message || d?.detail || "Error"),
+        { className: "toast-error" }
       );
     } finally {
       setDeletingId(null);
@@ -1265,7 +1288,8 @@ export default function Inventario() {
       toast.error(
         "No se pudo desactivar. " +
           (s ? `HTTP ${s}. ` : "") +
-          (typeof d === "string" ? d : d?.message || d?.detail || "Error"), { className: "toast-error" }
+          (typeof d === "string" ? d : d?.message || d?.detail || "Error"),
+        { className: "toast-error" }
       );
     } finally {
       setDeletingId(null);
@@ -1309,17 +1333,16 @@ export default function Inventario() {
       }
     }
 
-
     // Imágenes del producto
     try {
-        const imgsRes = await getImagenesProducto(row.id);
-        const urls = ((imgsRes?.data ?? imgsRes) || [])
-          .map((i) => toPublicFotoSrc(i.url_imagen))
-          .filter(Boolean);
-        if (urls.length) {
-          setSupplyModal((prev) => ({ ...prev, images: urls }));
-        }
-      } catch {}
+      const imgsRes = await getImagenesProducto(row.id);
+      const urls = ((imgsRes?.data ?? imgsRes) || [])
+        .map((i) => toPublicFotoSrc(i.url_imagen))
+        .filter(Boolean);
+      if (urls.length) {
+        setSupplyModal((prev) => ({ ...prev, images: urls }));
+      }
+    } catch {}
   }
 
   function closeSupply() {
@@ -1332,11 +1355,17 @@ export default function Inventario() {
     const sucId = Number(String(sucursalId).trim());
     const qty = Number(String(cantidad).trim());
     if (!Number.isFinite(prodId) || prodId <= 0)
-      return toast.error("ID de producto inválido.", { className: "toast-error" });
+      return toast.error("ID de producto inválido.", {
+        className: "toast-error",
+      });
     if (!Number.isFinite(sucId) || sucId <= 0)
-      return toast.warn("Selecciona una sucursal válida.", { className: "toast-warn" });
+      return toast.warn("Selecciona una sucursal válida.", {
+        className: "toast-warn",
+      });
     if (!Number.isFinite(qty) || qty <= 0)
-      return toast.warn("Ingresa una cantidad válida (> 0).", { className: "toast-warn" });
+      return toast.warn("Ingresa una cantidad válida (> 0).", {
+        className: "toast-warn",
+      });
 
     try {
       setSavingSupply(true);
@@ -1353,7 +1382,8 @@ export default function Inventario() {
           (status ? `HTTP ${status}. ` : "") +
           (typeof data === "string"
             ? data
-            : data?.message || data?.detalle || "Error"), { className: "toast-error" }
+            : data?.message || data?.detalle || "Error"),
+        { className: "toast-error" }
       );
     } finally {
       setSavingSupply(false);
@@ -1366,7 +1396,7 @@ export default function Inventario() {
       className="w-screen px-4 bg-[#f9fafb]"
       style={{
         position: "absolute",
-        top: "165px",
+        top: "90px",
         left: 0,
         right: 0,
         width: "100%",
@@ -1394,7 +1424,7 @@ export default function Inventario() {
         </div>
         <div className="h-1 w-full rounded-md bg-[#f0833e] mt-2" />
 
-        <div className="mt-4 overflow-hidden rounded-2xl shadow-sm border border-[#d8dadc] bg-white">
+        <div className="mt-4 overflow-visible rounded-2xl shadow-sm border border-[#d8dadc] bg-white">
           <div className="overflow-x-auto">
             <table className="w-full text-sm table-auto min-w-[900px]">
               <thead>
@@ -1582,7 +1612,7 @@ export default function Inventario() {
                               className="p-2 rounded-xl border border-[#d8dadc] text-gray-400 cursor-not-allowed"
                               title="Producto inactivo"
                             >
-                              Inactivo
+                              <Icon.Trash className="text-red-500" />
                             </button>
                           )}
                         </div>
@@ -1704,16 +1734,6 @@ export default function Inventario() {
                     </button>
                   </div>
                 ))}
-
-                {/* Tile para añadir más (también usa label) */}
-                <label
-                  htmlFor="imgPicker"
-                  className="aspect-[4/3] w-full rounded-lg border border-dashed border-[#d8dadc] flex flex-col items-center justify-center hover:bg-gray-50 cursor-pointer"
-                  title="Añadir más imágenes"
-                >
-                  <Icon.Plus />
-                  <span className="text-sm text-gray-600 mt-1">Añadir</span>
-                </label>
               </div>
 
               <div className="col-span-2 flex justify-end">
@@ -1891,18 +1911,17 @@ export default function Inventario() {
           <Input
             type="number"
             label="Precio Base (L.)"
-            value={modal.draft.precioBase}
-            onChange={(v) =>
-              setModal((m) => ({ ...m, draft: { ...m.draft, precioBase: v } }))
-            }
-          />
-          <Input
-            type="number"
-            label="Porcentaje de ganancia (%)"
-            value={modal.draft.porcentajeGanancia}
-            onChange={(v) =>
-              setModal((m) => ({ ...m, draft: { ...m.draft, porcentajeGanancia: v } }))
-            }
+            min={0}
+            step="0.001"
+            value={modal.draft.precioBase ?? ""}
+            onChange={(v) => {
+              const n = v === "" ? "" : Math.max(0, Number(v));
+              setModal((m) => ({ ...m, draft: { ...m.draft, precioBase: n } }));
+            }}
+            onKeyDown={(e) => {
+              // opcional: bloquea teclear el signo -
+              if (e.key === "-") e.preventDefault();
+            }}
           />
           {/* Unidad de medida */}
           <label className="flex flex-col gap-1 col-span-2 sm:col-span-1">
@@ -1936,10 +1955,18 @@ export default function Inventario() {
           <Input
             type="number"
             label="Peso"
-            value={modal.draft.pesoValor}
-            onChange={(v) =>
-              setModal((m) => ({ ...m, draft: { ...m.draft, pesoValor: v } }))
-            }
+            min={0}
+            step="0.001"
+            value={modal.draft.pesoValor ?? ""}
+            onChange={(v) => {
+              // v suele llegar como string desde el input controlado
+              const n = v === "" ? "" : Math.max(0, Number(v));
+              setModal((m) => ({ ...m, draft: { ...m.draft, pesoValor: n } }));
+            }}
+            onKeyDown={(e) => {
+              // opcional: bloquea teclear el signo -
+              if (e.key === "-") e.preventDefault();
+            }}
           />
 
           {/* Unidad de peso */}
@@ -1994,8 +2021,9 @@ export default function Inventario() {
             </label>
           )}
 
-          <label className="col-span-2 inline-flex items-center gap-2">
+          <label className="col-span-2 flex flex-row items-center gap-2 whitespace-nowrap">
             <input
+              id="chk-activo"
               type="checkbox"
               className="w-5 h-5 accent-[#2b6daf]"
               checked={!!modal.draft.activo}

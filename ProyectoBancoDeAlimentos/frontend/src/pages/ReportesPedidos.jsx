@@ -9,7 +9,7 @@ import DetallePedido from "../components/DetallePedido";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import "./ReportesPedidos.css"
+import "./ReportesPedidos.css";
 
 // 📌 Generamos 49 registros de ejemplo
 const ordersData = Array.from({ length: 49 }, (_, i) => {
@@ -153,7 +153,7 @@ const ReportesPedidos = () => {
   }
   return (
     <div
-      className="px-4 "
+      className="content"
       style={{
         position: "absolute",
         left: 0,
@@ -162,9 +162,8 @@ const ReportesPedidos = () => {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-      }}
-    >
-      <div className="pedido-container">
+      }}>
+      <div className="content-container">
         <header className="page-header">
           <h1 className="pedido-title"><span>Reportes de Pedidos</span></h1>
 

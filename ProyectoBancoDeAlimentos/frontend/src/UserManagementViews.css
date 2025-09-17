@@ -25,13 +25,13 @@
 
 
 .page-container {
-  background: #f7f7f7;
-  color: var(--ink-900);
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
   width: 1120px;
+  height: 100%;
+  background: transparent;
   display: flex;
   position: relative;
-  margin-left: -260px;
+  margin-left: -260px; 
+  box-shadow: none;
 }
 
 .main-content {

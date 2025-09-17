@@ -1,7 +1,11 @@
 .mis-direcciones {
   padding: 20px;
-  margin-bottom: -153px;
-  margin-right: -170px;
+  position: absolute; /* Posicionamiento absoluto respecto al contenedor padre */
+  top: 100px; /* Altura del header */
+  left: 0;
+  right: 0;
+  margin-left: auto; /* Centrado horizontal */
+  margin-right: auto;
 }
 
 .titulo {

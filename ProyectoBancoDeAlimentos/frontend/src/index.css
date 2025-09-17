@@ -19,3 +19,13 @@ code {
 .btn_sidebar {
   @apply flex  bg-[#2b6daf]  items-center gap-2 fixed z-20 mt-5 hover:bg-[#2ca9e3] rounded-md transition-all duration-300;
 }
+
+.agregar-tarjeta-container,
+.cupones {
+  position: absolute; /* Posicionamiento absoluto respecto al contenedor padre */
+  top: 180px; /* Altura del header */
+  left: 0;
+  right: 0;
+  margin-left: auto; /* Centrado horizontal */
+  margin-right: auto;
+}

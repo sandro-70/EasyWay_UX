@@ -1,35 +1,17 @@
-/* === Layout general === */
-.page-container {
-  display: flex;
-  flex-direction: column;
-
-  /* Tamaño fijo igual a .cupones */
-  width: 1000px;
-  height: 700px;
-
-  /* Centrado horizontal */
-  margin: 0 auto;
-  margin-left: -80px; /* si quieres mantenerlo igual que .cupones */
-
-  /* Espaciado interno y separación entre hijos */
-  padding: 2rem;
-  gap: 20px;
-
-  /* Estilo visual igual a .cupones */
-  background: #f5f7fa;
-  border-radius: 2rem;
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-}
-
 .mis-pedidos-container {
+  position: absolute;
+  top: 100px; /* offset desde header */
+  left: 0;
+  right: 0;
   display: flex;
+  justify-content: center; /* centro horizontal */
   flex-direction: column;
-  min-height: 100vh;
+  align-items: center; /* opcional, centra hijos verticalmente si quieres */
+  min-height: calc(100vh - 120px);
   background: #f5f7fa;
-  /* ✨ Aquí está la corrección: Usamos las variables directamente. */
-  margin-top: calc(var(--topbar-h) + var(--bottombar-h) + var(--perfil-gap));
+  padding: 20px;
+  box-sizing: border-box;
 }
-
 .historial-box {
   width: 700px;
 }
@@ -47,45 +29,45 @@
 
 /* === Título naranja === */
 .historial-title {
-  font-size: 22px;
   color: #f0833e;
-  /* naranja */
-  margin-bottom: 15px;
   font-size: 1.5rem;
+  text-align: center;
+  margin-bottom: 10px;
 }
 
 .perfil-separator {
+  width: 50%;
   border: none;
   border-top: 2px solid #f0833e;
-  margin: 0 auto 30px;
-  width: 60%;
+  margin: 0 auto 15px auto;
 }
 
 /* === Caja central === */
 .historial-box {
-  background: hsl(0, 0%, 100%);
+  width: 700px;
+  max-width: 90%;
+  background: white;
   border-radius: 10px;
-  padding: 15px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-left: 190px;
 }
 
 /* === Encabezado azul con filtro === */
 .historial-header {
-  margin-top: -15px;
-  margin-right: -15px;
-  margin-left: -15px;
   display: flex;
   justify-content: space-between;
-  /* Empuja el h3 a la izquierda y el contenedor de filtros a la derecha */
   align-items: center;
   background: #2b6daf;
-  /* azul */
-  color: #fff;
-  padding: 20px 15px;
-  margin-bottom: 15px;
+  color: white;
+  padding: 15px 20px;
+  border-radius: 10px 10px 0 0;
   font-weight: bold;
-  border-top-left-radius: 10px;
-  border-top-right-radius: 10px; /* Asegura el redondeo en ambos lados */
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .historial-header h3 {
@@ -96,9 +78,8 @@
 /* Contenedor para agrupar los filtros y el icono */
 .filtro-container {
   display: flex;
-  align-items: center;
   gap: 10px;
-  /* Espacio entre los elementos de filtro */
+  align-items: center;
 }
 
 .filtro-fecha {

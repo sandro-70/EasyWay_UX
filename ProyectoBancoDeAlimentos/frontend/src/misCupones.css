@@ -6,7 +6,7 @@
   display: flex;
   flex-direction: column;
   height: 700px;
-  width: 1000px;
+  width: 800px;
   margin: 0 auto; /* Centrado horizontal */
   padding: 2rem; /* Espaciado interno */
   border-radius: 2rem; /* Bordes redondeados */
@@ -15,6 +15,12 @@
   margin-left: -120px;
   position: relative;
   bottom: -13px; /* mueve 30px hacia arriba */
+  position: absolute; /* Posicionamiento absoluto respecto al contenedor padre */
+  top: 95px; /* Altura del header */
+  left: 0;
+  right: 0;
+  margin-left: auto; /* Centrado horizontal */
+  margin-right: auto;
 }
 
 .titulo {
@@ -53,7 +59,7 @@
 
 .cupones_reporte {
   height: 480px;
-  width: 850px;
+  width: 740px;
   display: flex;
   justify-content: center;
   align-items: flex-start;

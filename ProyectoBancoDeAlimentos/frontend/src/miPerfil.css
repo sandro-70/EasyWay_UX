@@ -1,9 +1,12 @@
 .perfil-container {
   width: 700px;
-  margin: 40px auto;
-  padding: 20px;
-  position: relative;
-  top: -13px; /* mueve 30px hacia arriba */
+
+  position: absolute; /* Posicionamiento absoluto respecto al contenedor padre */
+  top: 40px; /* Altura del header */
+  left: 0;
+  right: 0;
+  margin-left: auto; /* Centrado horizontal */
+  margin-right: auto;
 }
 
 .editar-boton {

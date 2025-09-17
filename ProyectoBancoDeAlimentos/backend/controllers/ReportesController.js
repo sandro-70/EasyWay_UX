@@ -1,5 +1,5 @@
 const { Sequelize,Op, fn, col, literal  } = require('sequelize');
-const { factura_detalle, producto, factura, pedido, estado_pedido, promocion, promocion_pedido, Usuario } = require("../models");
+const { factura_detalle, producto, factura, pedido, estado_pedido, promocion, promocion_pedido, Usuario, categoria, subcategoria, promocion_producto } = require("../models");
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 
@@ -378,3 +378,76 @@ exports.usuariosMasGastos = async (req, res) => {
   }
 };
 
+exports.getReportePromociones = async (req, res) => {
+  try {
+    const report = await promocion.findAll({
+    attributes: [
+      ["id_promocion", "id_promocion"],
+      ["nombre_promocion", "nombre_promocion"],
+      [
+        literal(`
+          CASE
+            WHEN "promocion"."valor_porcentaje" IS NOT NULL THEN 'PORCENTAJE'
+            WHEN "promocion"."valor_fijo" IS NOT NULL THEN 'FIJO'
+            ELSE 'SIN_TIPO'
+          END
+        `),
+        "tipo_promocion"
+      ],
+      [
+        literal(`
+          COALESCE(
+            CASE WHEN "promocion"."valor_porcentaje" IS NOT NULL 
+                THEN CONCAT("promocion"."valor_porcentaje", '%') END,
+            CAST("promocion"."valor_fijo" AS TEXT)
+          )
+        `),
+        "descuento"
+      ],
+      [fn("COUNT", literal(`DISTINCT("pedidos"."id_pedido")`)), "cupones_usados"]
+    ],
+    include: [
+      {
+        model: producto,
+        through: { attributes: [] },
+        attributes: [],
+        include: [
+          {
+            model: subcategoria,
+            as: "subcategoria",
+            attributes: [],
+            include: [
+              {
+                model: categoria,
+                as: "categoria",
+                attributes: ["id_categoria", "nombre"]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        model: pedido,
+        through: { attributes: [] },
+        attributes: [],
+        required: false
+      }
+    ],
+    group: [
+      "promocion.id_promocion",
+      "promocion.nombre_promocion",
+      "promocion.valor_porcentaje",
+      "promocion.valor_fijo",
+      "productos->subcategoria->categoria.id_categoria",
+      "productos->subcategoria->categoria.nombre"
+    ],
+    order: [["id_promocion", "ASC"]]
+  });
+
+
+    res.json(report);
+  } catch (error) {
+    console.error("Error al generar reporte de promociones:", error);
+    res.status(500).json({ error: "Error al generar reporte de promociones" });
+  }
+};

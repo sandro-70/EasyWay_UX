@@ -9,6 +9,7 @@ router.get('/reporte-4meses', reportesController.getPromedioVentas4Meses);
 router.get('/pedido-mes', reportesController.getPedidosPorMes);
 router.get('/ingresos-promocion', reportesController.ingresosPromocionesUltimos4Meses);
 router.get('/usuarios-gastos', reportesController.usuariosMasGastos);
+router.get('/promociones', reportesController.getReportePromociones);
 
 module.exports = router;
 

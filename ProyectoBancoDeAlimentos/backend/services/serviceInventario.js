@@ -23,6 +23,10 @@ async function GetAllProductos() {
       "precio_base",
       "unidad_medida",
       "estrellas",
+      "etiquetas",
+      "peso",
+      "porcentaje_ganancia",
+      "marca_id",
       "activo",
     ],
     include: [
@@ -62,6 +66,13 @@ async function GetAllProductos() {
           },
         ],
       },
+    ],
+    include: [
+      {
+        model : marca_producto,
+        as    : "marca",
+        attributes: ["id_marca_producto", "nombre"],
+      }
     ],
     order: [["id_producto", "ASC"]],
   });

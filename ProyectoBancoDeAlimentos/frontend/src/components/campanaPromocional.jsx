@@ -57,6 +57,7 @@ const CampanaPromocional = () => {
           ? data.map((p) => ({
               id: String(p.id_producto),
               name: String(p.nombre),
+              marca: String(p.marca.nombre),
             }))
           : [];
         setCatalogo(mapped);
@@ -474,7 +475,7 @@ const payload = {
                           onClick={() => addProducto(p)}
                         >
                           <span className="comboItemName">{p.name}</span>
-                          <span className="comboItemId">{p.id}</span>
+                          <span className="comboItemMaraca">{p.marca}</span>
                           <Check className="comboCheck" size={16} />
                         </li>
                       ))}
@@ -487,7 +488,7 @@ const payload = {
                   <div className="chips">
                     {formData.productos.map((p) => (
                       <span key={p.id} className="chip chip--green">
-                        {p.name} <em className="chip-id">({p.id})</em>
+                        {p.name} <em className="chip-id">({p.marca})</em>
                         <button
                           type="button"
                           className="chip-x"

@@ -225,13 +225,6 @@ async function crearProductoConStockEnSucursales(payload = {}) {
 
   // --- Transacción ---
   return await sequelize.transaction(async (t) => {
-    // Reset sequence for producto to avoid unique constraint errors
-    await sequelize.query("SELECT setval('producto_id_producto_seq', (SELECT COALESCE(MAX(id_producto), 0) FROM producto))", { transaction: t });
-
-    // Get next product id for file naming
-    const nextIdResult = await sequelize.query("SELECT nextval('producto_id_producto_seq') as next_id", { transaction: t });
-    const nextProductId = nextIdResult[0][0].next_id;
-
     // FK existentes
     const sub = await subcategoria.findByPk(subId, { transaction: t });
     if (!sub) throw new Error("La subcategoría no existe");
@@ -261,9 +254,6 @@ async function crearProductoConStockEnSucursales(payload = {}) {
       lock: t.LOCK.SHARE,
     });
 
-    // 3) Reset sequence for sucursal_producto to avoid unique constraint errors
-    await sequelize.query("SELECT setval('sucursal_producto_id_sucursal_producto_seq', (SELECT COALESCE(MAX(id_sucursal_producto), 0) FROM sucursal_producto))", { transaction: t });
-
     // 3) Crear sucursal_producto con stock = 0 para cada sucursal
     if (sucursales.length) {
       const filas = sucursales.map((s) => ({
@@ -274,7 +264,7 @@ async function crearProductoConStockEnSucursales(payload = {}) {
       await sucursal_producto.bulkCreate(filas, { transaction: t });
     }
 
-    // 4) Crear imagenes
+    // 4) Crear imagenes usando el ID del producto creado
     let fileIndex = 0;
     for (const item of imagenesPayload) {
       const { url_imagen, orden_imagen, is_file } = item;
@@ -282,7 +272,7 @@ async function crearProductoConStockEnSucursales(payload = {}) {
       if (is_file) {
         const originalFilename = files[fileIndex].filename;
         const ext = path.extname(originalFilename);
-        const newFilename = `product_${nextProductId}_${fileIndex}${ext}`;
+        const newFilename = `product_${prod.id_producto}_${fileIndex}${ext}`;
         const oldPath = path.join(__dirname, '../public/images/productos', originalFilename);
         const newPath = path.join(__dirname, '../public/images/productos', newFilename);
         fs.renameSync(oldPath, newPath);

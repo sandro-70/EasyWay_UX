@@ -1,6 +1,6 @@
 import "./dashboard.css";
 import Sidebar from "./sidebar";
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import MiniChart from "./components/miniChart";
@@ -19,6 +19,15 @@ import {
 } from "chart.js";
 import { Line, Bar, Pie } from "react-chartjs-2";
 
+// ⬇️ IMPORTA TUS APIS
+import {
+  getPromedioVentas4Meses,
+  getPedidosPorMes,
+  ingresosPromocionesUltimos4Meses,
+  usuariosMasGastos,
+  getStock,
+} from "./api/reporteusuarioApi"; // <-- ajusta la ruta si difiere
+
 function Dashboard() {
   const { moveButton } = useOutletContext();
 
@@ -33,89 +42,187 @@ function Dashboard() {
     Tooltip,
     Legend
   );
-  const inventory = [
-    { producto: "Leche", stock: 2 },
-    { producto: "Huevos", stock: 8 },
-    { producto: "Pan", stock: 5 },
-    { producto: "Cafe", stock: 4 },
-    { producto: "Azúcar", stock: 10 },
-    { producto: "Mantequilla", stock: 3 },
-  ];
-  const activeUsers = [
-    { nombre: "Juan Pérez", compras: 5, gastosTotales: 1200 },
-    { nombre: "María López", compras: 3, gastosTotales: 800 },
-    { nombre: "Carlos Gómez", compras: 7, gastosTotales: 1950 },
-    { nombre: "Ana Rodríguez", compras: 10, gastosTotales: 3200 },
-    { nombre: "Luis Hernández", compras: 2, gastosTotales: 4500 },
-    { nombre: "Camila Morales", compras: 8, gastosTotales: 2750 },
-    { nombre: "Pedro Castillo", compras: 6, gastosTotales: 1500 },
-    { nombre: "Laura Torres", compras: 4, gastosTotales: 980 },
-    { nombre: "Diego Ramírez", compras: 9, gastosTotales: 800 },
-    { nombre: "Fernanda Díaz", compras: 1, gastosTotales: 200 },
-  ];
 
-  const data = {
-    labels: ["Ene", "Feb", "Mar", "Abr"],
-    datasets: [
-      {
-        label: "Ingresos",
-        data: [3200, 8900, 5000, 4700],
-        borderColor: "#f0833e",
-        backgroundColor: "#ffac77",
-      },
-      {
-        label: "Gastos",
-        data: [2200, 2500, 2400, 2600],
-        borderColor: "#2b6daf",
-        backgroundColor: "#2ca9e3",
-      },
-    ],
-  };
-  const data2 = [
-    {
-      id: "Ingresos Brutos",
-      data: [
-        { x: "Ene", y: 3200 },
-        { x: "Feb", y: 8900 },
-        { x: "Mar", y: 5000 },
-        { x: "Abr", y: 4700 },
-      ],
-    },
-    {
-      id: "Ingresos Netos",
-      data: [
-        { x: "Ene", y: 2200 },
-        { x: "Feb", y: 2500 },
-        { x: "Mar", y: 2400 },
-        { x: "Abr", y: 2600 },
-      ],
-    },
-  ];
-  const data3 = [
-    { year: "2025", DescuentoVIP: 50 },
-    { year: "2026", BlackFriday: 120 },
-    { year: "2027", PromoVerano: 75 },
-  ];
+  // ======= STATE =======
+  const [inventory, setInventory] = useState([]); // [{producto, stock}]
+  const [activeUsers, setActiveUsers] = useState([]); // [{nombre, compras, gastosTotales}]
+  const [ventasMeses, setVentasMeses] = useState([]); // [{mes:'YYYY-MM', ventas_totales:number}]
+  const [promedio4, setPromedio4] = useState(0);
+  const [pedidosMeses, setPedidosMeses] = useState([]); // [{mes:'YYYY-MM', total_pedidos:number}]
+  const [promoIngresos, setPromoIngresos] = useState([]); // [{mes:'YYYY-MM', ingreso_con_promocion:number}]
+  const [kpis, setKpis] = useState({ hoy: null, semana: null, mes: null, anio: null });
 
-  // Datos para el gráfico de pastel bien definido
-  const pieData = {
-    labels: ["Ene", "Feb", "Mar", "Abr"],
-    datasets: [
-      {
-        label: "Ingresos Totales",
-        data: data.datasets[0].data,
-        backgroundColor: ["#f0833e", "#ffac77", "#2b6daf", "#2ca9e3"],
-        borderColor: ["#f0833e", "#ffac77", "#2b6daf", "#2ca9e3"],
-        borderWidth: 1,
-      },
-    ],
+  // ======= HELPERS =======
+  const monthLabel = (ym) => {
+    try {
+      const d = new Date(`${ym}-01T00:00:00`);
+      return d.toLocaleString("es-ES", { month: "short" }).replace(".", "");
+    } catch {
+      return ym;
+    }
   };
+
+  const lastNMonthsAsc = (rows, n) =>
+    [...rows]
+      .sort((a, b) => (a.mes < b.mes ? -1 : 1))
+      .slice(Math.max(0, rows.length - n));
+
+  // ======= FETCH =======
+  useEffect(() => {
+    const fetchAll = async () => {
+      // Stock
+      try {
+        const res = await getStock();
+        const arr = Array.isArray(res?.data) ? res.data : [];
+        setInventory(
+          arr.map((r) => ({
+            producto: r?.nombre_producto ?? "-",
+            stock: Number(r?.stock ?? 0),
+          }))
+        );
+      } catch (e) {
+        console.error("[getStock] error:", e);
+        setInventory([]);
+      }
+
+      // Ventas 4 meses
+      try {
+        const res = await getPromedioVentas4Meses();
+        const ventas = Array.isArray(res?.data?.ventas_por_mes)
+          ? res.data.ventas_por_mes
+          : [];
+        setVentasMeses(ventas);
+        setPromedio4(Number(res?.data?.promedio_4_meses ?? 0));
+      } catch (e) {
+        console.error("[getPromedioVentas4Meses] error:", e);
+        setVentasMeses([]);
+        setPromedio4(0);
+      }
+
+      // Pedidos por mes (todos) -> tomamos últimos 4
+      try {
+        const res = await getPedidosPorMes();
+        const pedidos = Array.isArray(res?.data?.pedidos_por_mes)
+          ? res.data.pedidos_por_mes
+          : [];
+        setPedidosMeses(pedidos);
+      } catch (e) {
+        console.error("[getPedidosPorMes] error:", e);
+        setPedidosMeses([]);
+      }
+
+      // Ingresos por promociones últimos 4 meses
+      try {
+        const res = await ingresosPromocionesUltimos4Meses();
+        const rows = Array.isArray(res?.data?.ingresos_por_promociones)
+          ? res.data.ingresos_por_promociones
+          : [];
+        setPromoIngresos(rows);
+      } catch (e) {
+        console.error("[ingresosPromocionesUltimos4Meses] error:", e);
+        setPromoIngresos([]);
+      }
+
+      // Usuarios más gastos
+      try {
+        const res = await usuariosMasGastos();
+        const rows = Array.isArray(res?.data) ? res.data : [];
+        setActiveUsers(
+          rows.map((u) => ({
+            nombre: u?.nombre_usuario ?? "-",
+            compras: Number(u?.cantidad_compras ?? 0),
+            gastosTotales: Number(u?.total_gastado ?? 0),
+          }))
+        );
+      } catch (e) {
+        console.error("[usuariosMasGastos] error:", e);
+        setActiveUsers([]);
+      }
+    };
+
+    fetchAll();
+  }, []);
+
+  // ======= KPIs derivados de ventas (Mes / Año) =======
+  useEffect(() => {
+    const now = new Date();
+    const ymNow = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const ventasMes = ventasMeses.find((v) => v.mes === ymNow)?.ventas_totales ?? null;
+    const ventasAnio = ventasMeses
+      .filter((v) => v.mes.startsWith(String(now.getFullYear())))
+      .reduce((acc, v) => acc + Number(v.ventas_totales || 0), 0);
+
+    setKpis({
+      hoy: null, // no hay endpoint para hoy
+      semana: null, // no hay endpoint para semana
+      mes: ventasMes,
+      anio: ventasAnio || (ventasMes === null ? null : ventasMes), // fallback bobo
+    });
+  }, [ventasMeses]);
+
+  // ======= DATASETS CHART.JS =======
+  // Línea: Ventas últimos 4 meses (garantizamos 4 puntos si el backend ya lo hace)
+  const lineData = useMemo(() => {
+    const rows = lastNMonthsAsc(ventasMeses, 4);
+    return {
+      labels: rows.map((r) => monthLabel(r.mes)),
+      datasets: [
+        {
+          label: "Ventas",
+          data: rows.map((r) => Number(r.ventas_totales || 0)),
+          borderColor: "#f0833e",
+          backgroundColor: "#ffac77",
+          tension: 0.35,
+        },
+      ],
+    };
+  }, [ventasMeses]);
+
+  // Pie: Pedidos últimos 4 meses
+  const pieData = useMemo(() => {
+    const rows = lastNMonthsAsc(pedidosMeses, 4);
+    return {
+      labels: rows.map((r) => monthLabel(r.mes)),
+      datasets: [
+        {
+          label: "Pedidos",
+          data: rows.map((r) => Number(r.total_pedidos || 0)),
+          backgroundColor: ["#f0833e", "#ffac77", "#2b6daf", "#2ca9e3"],
+          borderColor: ["#f0833e", "#ffac77", "#2b6daf", "#2ca9e3"],
+          borderWidth: 1,
+        },
+      ],
+    };
+  }, [pedidosMeses]);
+
+  // Barras: Ingresos por promociones (últimos 4 meses)
+  const promoBarData = useMemo(() => {
+    const rows = lastNMonthsAsc(promoIngresos, 4);
+    return {
+      labels: rows.map((r) => monthLabel(r.mes)),
+      datasets: [
+        {
+          label: "Ingresos por promociones",
+          data: rows.map((r) => Number(r.ingreso_con_promocion || 0)),
+          backgroundColor: "#ffac77",
+          borderColor: "#f0833e",
+        },
+      ],
+    };
+  }, [promoIngresos]);
+
+  // ======= RENDER =======
+  const cardCls =
+  "bg-[#fee9d6] rounded-xl shadow-neutral-600 shadow-sm p-6 flex flex-col justify-between h-[320px]";
+
+  const cardBase =
+  "bg-[#fee9d6] rounded-xl shadow-neutral-600 shadow-sm p-6 flex flex-col items-center justify-between";
+
+const H_TOP = "h-[320px]";     // altura igual para la fila superior
+const H_BOTTOM = "h-[320px]";  // altura igual para la fila inferior
 
   return (
-    <div
-      className=" px-12 "
-      style={{ ...styles.fixedShell, backgroundColor: "#f3f4f6" }}
-    >
+    <div className=" px-12 " style={{ ...styles.fixedShell, backgroundColor: "#f3f4f6" }}>
       <div
         className={`flex flex-col w-full  pt-2 px-8 transition-all duration-300  ${
           moveButton ? "ml-44" : "ml-0"
@@ -128,10 +235,12 @@ function Dashboard() {
             </h1>
             <hr className="bg-[#f0833e] h-[2px]"></hr>
           </div>
+
           <div className="flex flex-row gap-6 px-4 justify-center">
+            {/* Columna izquierda */}
             <div className="grid grid-cols-1 min-w-[450px] max-h-[580px] grid-rows-2 h-full gap-4 items-stretch pt-2">
               <div className="sm_grid px-16 space-y-2">
-                <p className="pl-0">Inventario Critico</p>{" "}
+                <p className="pl-0">Inventario Critico</p>
                 <MiniChart
                   title1="Producto"
                   title2="Stock"
@@ -155,6 +264,7 @@ function Dashboard() {
                   )}
                 />
               </div>
+
               <div className="sm_grid px-16">
                 <p className="pl-4">Total de Pedidos</p>
                 <div className="flex w-full h-[232px] px-2 items-center justify-center ">
@@ -168,43 +278,43 @@ function Dashboard() {
                 </div>
               </div>
             </div>
+
+            {/* Columna derecha */}
             <div className="grid grid-cols-2 grid-rows-9 max-h-[580px] gap-4 pt-2 w-full h-full items-stretch">
               <div className="lg_grid">
                 <div className="flex flex-row justify-center items-center gap-2">
-                  <p className="text-xl font-bold">Ventas Totales</p>{" "}
-                  <Icon
-                    icon="flat-color-icons:sales-performance"
-                    className="text-4xl"
-                  ></Icon>
+                  <p className="text-xl font-bold">Ventas Totales</p>
+                  <Icon icon="flat-color-icons:sales-performance" className="text-4xl" />
                 </div>
+
                 <div className="flex flex-row gap-2 justify-center font-medium pt-2">
                   <p>Hoy: </p>
-                  <p className="text-[#4CAF50]">{"ventasHoy"}</p>
+                  <p className="text-[#4CAF50]">{kpis.hoy ?? "—"}</p>
                   <p>|</p>
                   <p>Esta Semana:</p>
-                  <p className="text-[#4CAF50]">{"ventasSemana"}</p>
+                  <p className="text-[#4CAF50]">{kpis.semana ?? "—"}</p>
                   <p>|</p>
                   <p>Este Mes: </p>
-                  <p className="text-[#4CAF50]">{"ventasMes"}</p>
-                  <p>|</p> <p>Este año: </p>
-                  <p className="text-[#4CAF50]">{"ventasAño"}</p>
+                  <p className="text-[#4CAF50]">{kpis.mes ?? "—"}</p>
+                  <p>|</p>
+                  <p>Este año: </p>
+                  <p className="text-[#4CAF50]">{kpis.anio ?? "—"}</p>
                 </div>
+
                 <div className="flex w-full h-[220px] px-2 items-center justify-center ">
-                  <Line
-                    data={data}
-                    options={{ responsive: true, maintainAspectRatio: false }}
-                  />
+                  <Line data={lineData} options={{ responsive: true, maintainAspectRatio: false }} />
                 </div>
+                {/* Puedes mostrar el promedio si lo deseas */}
+                {/* <div className="text-center text-sm text-gray-600">Promedio 4 meses: {promedio4.toFixed(2)}</div> */}
               </div>
+
               <div className="bg-[#fee9d6] h-full row-span-4 col-span-1 py-2 px-12 rounded-xl shadow-neutral-600 shadow-sm items-center text-center">
-                <p className="text-xl font-bold">Promociones mas Efectivas </p>
+                <p className="text-xl font-bold">Promociones mas Efectivas</p>
                 <div className="flex w-full h-[200px] px-2 items-center justify-center ">
-                  <Bar
-                    data={data}
-                    options={{ responsive: true, maintainAspectRatio: false }}
-                  />
+                  <Bar data={promoBarData} options={{ responsive: true, maintainAspectRatio: false }} />
                 </div>
               </div>
+
               <div className="bg-[#fee9d6] h-full row-span-4 col-span-1 py-2 flex flex-col justify-center space-y-2 rounded-xl shadow-neutral-600 shadow-sm items-center text-center">
                 <p className="text-xl font-bold">Usuarios mas Activos </p>
                 <MiniChart2

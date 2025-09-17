@@ -49,7 +49,7 @@ export default function MisDirecciones() {
     console.log(" municipios:");
     const id_usuario = getUserId();
     if (!id_usuario) {
-      showToast("Usuario no autenticado", "error");
+      toast.error("Usuario no autenticado", { className: "toast-error" });
       return;
     }
 
@@ -86,7 +86,7 @@ export default function MisDirecciones() {
         }
       } catch (error) {
         console.error("Error al cargar datos iniciales:", error);
-        showToast("No tiene direcciones", "error");
+        toast.error("No tiene direcciones", { className: "toast-error" });
         setDirecciones([]);
         setMunicipios([]);
         setDepartamentos([]);
@@ -113,7 +113,7 @@ export default function MisDirecciones() {
 
     if (Object.keys(nuevosErrores).length > 0) {
       setErrores(nuevosErrores);
-      showToast("Por favor completa todos los campos obligatorios", "error");
+      toast.warn("Por favor completa todos los campos obligatorios", { className: "toast-warn" });
       return;
     }
 
@@ -152,10 +152,10 @@ export default function MisDirecciones() {
         id_municipio: "",
         id_departamento: "",
       });
-      showToast("Dirección guardada con éxito ✅", "success");
+      toast.success("Dirección guardada con éxito", { className: "toast-success" });
     } catch (error) {
       console.error("Error al guardar dirección:", error);
-      showToast("Error al guardar dirección", "error");
+      toast.error("Error al guardar dirección", { className: "toast-error" });
     }
   };
 
@@ -170,10 +170,10 @@ export default function MisDirecciones() {
       } else {
         setDirecciones([]);
       }
-      showToast("Dirección eliminada correctamente 🗑️", "success");
+      toast.success("Dirección eliminada correctamente", { className: "toast-success" });
     } catch (error) {
       console.error("Error al eliminar dirección:", error);
-      showToast("Error al eliminar dirección", "error");
+      toast.error("Error al eliminar dirección", { className: "toast-error" });
     }
   };
 

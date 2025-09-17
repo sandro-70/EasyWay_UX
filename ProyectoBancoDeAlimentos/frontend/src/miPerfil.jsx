@@ -13,6 +13,8 @@ import {
   validarCodigoDosPasos,
 } from "./api/Usuario.Route";
 import axiosInstance from "./api/axiosInstance";
+import { toast } from "react-toastify";
+import "./toast.css";
 
 /* ===================== ORIGIN backend + helpers ===================== */
 const BACKEND_ORIGIN = (() => {
@@ -226,7 +228,7 @@ export default function MiPerfil() {
       setUser((prev) => ({ ...(prev || {}), foto_perfil_url: justName, avatar_rev: Date.now() }));
     } catch (err) {
       console.error("Error subiendo foto:", err);
-      alert("No se pudo subir la foto.");
+      toast.error("No se pudo subir la foto.", { className: "toast-error" });
       setFotoUrl(""); // vuelve al placeholder
     }
   };
@@ -429,7 +431,7 @@ export default function MiPerfil() {
       setEditMode(false);
     } catch (err) {
       console.error("Error guardando perfil:", err?.response?.data || err.message || err);
-      alert("No se pudo guardar el perfil.");
+      toast.error("No se pudo guardar el perfil.", { className: "toast-error" });
     }
   };
 
@@ -452,35 +454,35 @@ export default function MiPerfil() {
     if (!correo) return;
     try {
       await enviarCorreoDosPasos(correo);
-      alert("Se ha enviado el código a tu correo");
+      toast.info("Se ha enviado el código a tu correo", { className: "toast-info" });
       setShowTwoFactorModal(false);
       setShowTwoFactorCodeModal(true);
     } catch (err) {
       console.error("Error enviando código:", err);
-      alert("No se pudo enviar el código. Intenta nuevamente.");
+      toast.error("No se pudo enviar el código. Intenta nuevamente.", { className: "toast-error" });
     }
   };
 
   const handleVerifyCode = async () => {
-    if (!twoFactorCode) return alert("Ingresa el código recibido");
+    if (!twoFactorCode) return toast.info("Ingresa el código recibido", { className: "toast-info" });
     try {
       await validarCodigoDosPasos(correo, twoFactorCode);
-      alert("Autenticación de dos pasos activada correctamente");
+      toast.success("Autenticación de dos pasos activada correctamente", { className: "toast-success" });
       setShowTwoFactorCodeModal(false);
       setTwoFactorCode("");
     } catch (err) {
       console.error("Error verificando código:", err);
-      alert("Código inválido o expirado. Intenta de nuevo.");
+      toast.warn("Código inválido o expirado. Intenta de nuevo.", { className: "toast-warn" });
     }
   };
 
   const handleResendCode = async () => {
     try {
       await enviarCorreoDosPasos(correo);
-      alert("Se ha reenviado el código a tu correo");
+      toast.info("Se ha reenviado el código a tu correo", { className: "toast-info" });
     } catch (err) {
       console.error("Error reenviando código:", err);
-      alert("No se pudo reenviar el código. Intenta más tarde.");
+      toast.error("No se pudo reenviar el código. Intenta más tarde.", { className: "toast-error" });
     }
   };
 

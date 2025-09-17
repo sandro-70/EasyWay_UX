@@ -1,11 +1,8 @@
-
-
-//sirve todo menos imágenes
-
-// src/pages/Inventario.jsx
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import axiosInstance from "../api/axiosInstance";
+import { toast } from "react-toastify";
+import "../toast.css";
 
 import {
   getAllProducts,
@@ -368,7 +365,7 @@ export default function Inventario() {
         setCategorias(mappedCategorias);
       } catch (err) {
         console.error("Error cargando inventario:", err);
-        alert("No se pudo cargar el inventario. Revisa la conexión.");
+        toast.error("No se pudo cargar el inventario. Revisa la conexión.", { className: "toast-error" });
       } finally {
         mounted && setLoading(false);
       }
@@ -472,7 +469,7 @@ export default function Inventario() {
       });
     } catch (e) {
       console.error("Error cargando productos por sucursal:", e);
-      alert("No se pudo cargar productos. Revisa la conexión.");
+      toast.error("No se pudo cargar productos. Revisa la conexión.", { className: "toast-error" });
     } finally {
       setLoading(false);
     }
@@ -511,7 +508,7 @@ export default function Inventario() {
         e?.response?.data?.detail ||
         e?.message ||
         "No se pudo crear la marca.";
-      alert(msg);
+      toast.error("No se pudo crear la marca.", { className: "toast-error" });
     } finally {
       setSavingMarca(false);
     }
@@ -545,8 +542,8 @@ export default function Inventario() {
       setPage(1); // vuelve a la primera página al filtrar
     } catch (e) {
       console.error("Error cargando productos:", e);
-      alert(
-        "No se pudo cargar productos. Verifica la conexión o la URL del API."
+      toast.error(
+        "No se pudo cargar productos. Verifica la conexión o la URL del API.", { className: "toast-error" }
       );
     } finally {
       setLoading(false);
@@ -762,7 +759,7 @@ export default function Inventario() {
       setSubcategorias(mapped);
     } catch (err) {
       console.error("Error cargando subcategorías", err);
-      alert("No se pudo cargar las subcategorías.");
+      toast.error("No se pudo cargar las subcategorías.", { className: "toast-error" });
     }
   }
 
@@ -1034,10 +1031,10 @@ export default function Inventario() {
 
     // Validaciones mínimas
     if (!d.producto?.trim())
-      return alert("El nombre del producto es obligatorio.");
-    if (!d.marcaId && !d.marca) return alert("Selecciona una marca.");
+      return toast.info("El nombre del producto es obligatorio.", { className: "toast-info" });
+    if (!d.marcaId && !d.marca) return toast.info("Selecciona una marca.", { className: "toast-error" });
     if (!d.subcategoriaId && !d.subcategoria)
-      return alert("Selecciona una subcategoría.");
+      return toast.info("Selecciona una subcategoría.", { className: "toast-info" });
 
     try {
       setSavingProduct(true);
@@ -1285,10 +1282,10 @@ export default function Inventario() {
     } catch (err) {
       const status = err?.response?.status;
       const data = err?.response?.data;
-      alert(
+      toast.error(
         `Error ${status ?? ""}: ${
           data?.message || data?.detail || data?.error || err.message
-        }`
+        }`, { className: "toast-error" }
       );
     } finally {
       setSavingProduct(false);
@@ -1299,7 +1296,7 @@ export default function Inventario() {
     if (!window.confirm("¿Desactivar este producto?")) return;
     const prodId = Number(String(id).trim());
     if (!Number.isFinite(prodId) || prodId <= 0) {
-      alert("ID de producto inválido.");
+      toast.error("ID de producto inválido.", { className: "toast-error" });
       return;
     }
     try {
@@ -1311,10 +1308,10 @@ export default function Inventario() {
     } catch (err) {
       const s = err?.response?.status;
       const d = err?.response?.data;
-      alert(
+      toast.error(
         "No se pudo desactivar. " +
           (s ? `HTTP ${s}. ` : "") +
-          (typeof d === "string" ? d : d?.message || d?.detail || "Error")
+          (typeof d === "string" ? d : d?.message || d?.detail || "Error"), { className: "toast-error" }
       );
     } finally {
       setDeletingId(null);
@@ -1325,7 +1322,7 @@ export default function Inventario() {
 
     const prodId = Number(String(id).trim());
     if (!Number.isFinite(prodId) || prodId <= 0) {
-      alert("ID de producto inválido.");
+      toast.error("ID de producto inválido.", { className: "toast-error" });
       return;
     }
 
@@ -1342,10 +1339,10 @@ export default function Inventario() {
     } catch (err) {
       const s = err?.response?.status;
       const d = err?.response?.data;
-      alert(
+      toast.error(
         "No se pudo desactivar. " +
           (s ? `HTTP ${s}. ` : "") +
-          (typeof d === "string" ? d : d?.message || d?.detail || "Error")
+          (typeof d === "string" ? d : d?.message || d?.detail || "Error"), { className: "toast-error" }
       );
     } finally {
       setDeletingId(null);
@@ -1412,11 +1409,11 @@ export default function Inventario() {
     const sucId = Number(String(sucursalId).trim());
     const qty = Number(String(cantidad).trim());
     if (!Number.isFinite(prodId) || prodId <= 0)
-      return alert("ID de producto inválido.");
+      return toast.error("ID de producto inválido.", { className: "toast-error" });
     if (!Number.isFinite(sucId) || sucId <= 0)
-      return alert("Selecciona una sucursal válida.");
+      return toast.warn("Selecciona una sucursal válida.", { className: "toast-warn" });
     if (!Number.isFinite(qty) || qty <= 0)
-      return alert("Ingresa una cantidad válida (> 0).");
+      return toast.warn("Ingresa una cantidad válida (> 0).", { className: "toast-warn" });
 
     try {
       setSavingSupply(true);
@@ -1428,12 +1425,12 @@ export default function Inventario() {
     } catch (err) {
       const status = err?.response?.status;
       const data = err?.response?.data;
-      alert(
+      toast.error(
         "No se pudo abastecer. " +
           (status ? `HTTP ${status}. ` : "") +
           (typeof data === "string"
             ? data
-            : data?.message || data?.detalle || "Error")
+            : data?.message || data?.detalle || "Error"), { className: "toast-error" }
       );
     } finally {
       setSavingSupply(false);

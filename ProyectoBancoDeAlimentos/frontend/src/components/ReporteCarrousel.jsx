@@ -3,6 +3,7 @@ import TablaPromociones from "../tablaReportesPromociones.jsx";
 import ReportesPedidos from "../pages/ReportesPedidos.jsx";
 import ReportesInventario from "../pages/ReportesInventario.jsx";
 import PersonalizacionReportes from "../PersonalizacionReportes.jsx";
+import ReportesUsuarios from "../reporteUsuarios.jsx";
 
 import React, { useState } from "react";
 import "./ReporteCarrousel.override.css";
@@ -15,11 +16,8 @@ const ReporteCarrousel = () => {
     { id: "promociones", label: "Promociones", node: <TablaPromociones /> },
     { id: "pedidos", label: "Pedidos", node: <ReportesPedidos /> },
     { id: "inventario", label: "Inventario", node: <ReportesInventario /> },
-    {
-      id: "personalizacion",
-      label: "Personalización",
-      node: <PersonalizacionReportes />,
-    },
+    { id: "usuarios", label: "Usuarios", node: <ReportesUsuarios /> },
+    { id: "personalizacion", label: "Personalización", node: <PersonalizacionReportes />, },
   ];
 
   return (

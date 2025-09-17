@@ -287,7 +287,8 @@ useEffect(() => {
           error?.message ||
           "No se pudo procesar el carrito";
 
-        toast.error(errorMessage, { className: "toast-error" });
+        toast.error("Debe iniciar sesión", { className: "toast-error" });
+        return navigate("/login");
       }
     }
   };
@@ -377,18 +378,14 @@ useEffect(() => {
                   onClick={() => handleCategoryClick(cat?.id_categoria)}
                 >
                   <img
-                    src={
-                      cat?.icono_categoria
-                        ? `/images/categorias/${cat.icono_categoria}`
-                        : "/PlaceHolder.png"
-                    }
-                    alt={cat?.nombre ?? "Categoría"}
-                    style={{ width: 70, height: 70, objectFit: "contain" }}
-                    onError={(e) => {
-                      e.currentTarget.onerror = null;
-                      e.currentTarget.src = "/PlaceHolder.png";
-                    }}
-                  />
+                    src={toPublicFotoSrc(cat?.icono_categoria, "categorias") || "/PlaceHolder.png"}
+                    alt={cat?.nombre ?? "Categoría"}
+                    style={{ width: 70, height: 70, objectFit: "contain" }}
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = "/PlaceHolder.png";
+                    }}
+                  />
                 </div>
                 <span style={styles.catTitle}>{cat?.nombre ?? "-"}</span>
               </div>

@@ -324,6 +324,7 @@ body {
   background-color: #ccc;
   border-radius: 34px;
   transition: 0.4s;
+  width: 100%;
 }
 .vt-slider:before {
   position: absolute;
@@ -340,7 +341,9 @@ body {
   background-color: #4f8df5;
 }
 .vt-switch input:checked + .vt-slider:before {
-  transform: translateX(26px);
+  left: auto;
+  right: 3px;
+  transform: translateX(2px);
 }
 
 /* Dark theme adjustments for row colors */

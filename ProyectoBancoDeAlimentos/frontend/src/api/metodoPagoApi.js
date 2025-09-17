@@ -17,6 +17,11 @@ export function deleteMetodoPago(id) {
   return axiosInstance.delete(`/api/metodo-pago/${id}`);
 }
 
-export function setMetodoPagoDefault(id){
-    return axiosInstance.patch(`/api/metodo-pago/default/${id}`);
+export function setMetodoPagoDefault(id) {
+  return axiosInstance.patch(`/api/metodo-pago/default/${id}`);
+}
+
+// Admin: obtener métodos de pago de un usuario por id
+export function getMetodosPagoByUserId(userId) {
+  return axiosInstance.get(`/api/metodo-pago/user/${userId}`);
 }

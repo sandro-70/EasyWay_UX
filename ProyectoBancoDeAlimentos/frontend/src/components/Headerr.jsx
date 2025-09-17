@@ -201,6 +201,8 @@ const Headerr = () => {
     return "/";
   };
 
+ const roleText = isAdmin ? "Administrador" : isConsultor ? "Consultor" : isCliente ? "Cliente" : "Invitado";
+
   if (loading) return null;
 
   return (
@@ -286,9 +288,16 @@ const Headerr = () => {
           <button style={styles.SmallWrapperUser}>
             <AvatarImg user={user} size={40} />
           </button>
-          <span>
-            {isAuthenticated ? `${user?.nombre || t("user") || "Usuario"}` : t("guest") || "Invitado"}
-          </span>
+          <div style={styles.userNameAndRoleContainer}>
+            {isAuthenticated ? (
+            <>
+              <span style={styles.fullNameText}>{user?.nombre || t("user") || "Usuario"}</span>
+              <span style={styles.roleText}>{roleText}</span>
+            </>
+          ) : (
+            <span style={styles.guestText}>{t("guest") || "Invitado"}</span>
+          )}
+        </div>
           {logMenu && (
             <div style={styles.dropdown}>
               <div style={styles.dropdownCaret} />
@@ -297,7 +306,7 @@ const Headerr = () => {
                   <div style={styles.userHeader}>
                     <span style={styles.hello}>{t("hello") || "Hola,"}</span>
                     <span style={styles.fullName}>
-                      {user?.nombre || ""} {user?.apellido || ""}
+                       {user?.nombre || ""} {user?.apellido || ""}
                     </span>
                   </div>
                   <div style={styles.headerDivider} />
@@ -577,6 +586,32 @@ const styles = {
     transition: "background .15s ease",
   },
   dropdownLinkHover: { background: "#f8fafc" },
+
+
+  userNameAndRoleContainer: {
+    display: "flex",
+    flexDirection: "column", // Esto hace que los elementos se apilen verticalmente
+    alignItems: "flex-start", // Opcional: alinea el texto a la izquierda
+    justifyContent: "center", // Opcional: centra verticalmente en el contenedor
+  },
+  fullNameText: {
+    // Estilos para el nombre completo
+    color: "white",
+    fontSize: "14px",
+    fontWeight: "bold",
+    whiteSpace: "nowrap",
+  },
+  roleText: {
+    // Estilos para el rol
+    color: "white",
+    fontSize: "14px",
+    opacity: 0.8,
+    whiteSpace: "nowrap",
+  },
+
 };
+
+
+
 
 export default Headerr;

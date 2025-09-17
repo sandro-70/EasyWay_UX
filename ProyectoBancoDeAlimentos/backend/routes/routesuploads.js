@@ -16,6 +16,10 @@ fs.mkdirSync(FOTO_DIR, { recursive: true });
 const PRODUCTO_DIR = path.resolve(__dirname, '..', 'public', 'images', 'productos');
 fs.mkdirSync(PRODUCTO_DIR, { recursive: true });
 
+//categorias
+const CATEGORIA_DIR = path.resolve(__dirname, '..', 'public', 'images', 'categorias');
+fs.mkdirSync(CATEGORIA_DIR, { recursive: true });
+
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, FOTO_DIR),
   filename: (req, file, cb) => {
@@ -33,6 +37,15 @@ const fileFilter = (_req, file, cb) => {
 
 const upload = multer({ storage, fileFilter, limits: { fileSize: 10 * 1024 * 1024 } });
 
+const storageCategoria = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, CATEGORIA_DIR),
+  filename: (req, file, cb) => {
+    const name = req.query.name || 'default';
+    const ext = path.extname(file.originalname || '.png').toLowerCase() || '.png';
+    cb(null, `${name}${ext}`);
+  },
+});
+
 const storageProducto = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, PRODUCTO_DIR),
   filename: (req, file, cb) => {
@@ -44,11 +57,20 @@ const storageProducto = multer.diskStorage({
   },
 });
 
+const uploadCategoria = multer({ storage: storageCategoria, fileFilter, limits: { fileSize: 20 * 1024 * 1024 } });
+
 const uploadProducto = multer({ storage: storageProducto, fileFilter, limits: { fileSize: 10 * 1024 * 1024 } });
 
 router.post('/profile-photo', upload.single('foto'), (req, res) => {
   if (!req.file) return res.status(400).json({ ok: false, msg: 'Archivo requerido (foto)' });
   console.log(' Guardado en:', req.file.path); // 👈 te muestra la ruta real
+  return res.json({ ok: true, filename: req.file.filename });
+});
+
+
+router.post('/category-photo', uploadCategoria.single('foto'), (req, res) => {
+  if (!req.file) return res.status(400).json({ ok: false, msg: 'Archivo requerido (foto)' });
+  console.log(' Guardado en:', req.file.path);
   return res.json({ ok: true, filename: req.file.filename });
 });
 
@@ -119,6 +141,9 @@ router.delete('/product-photos/:id_imagen', async (req, res) => {
     return res.status(500).json({ ok: false, msg: 'Error al eliminar imagen' });
   }
 });
+
+
+
 
 module.exports = router;
 module.exports.uploadProducto = uploadProducto;

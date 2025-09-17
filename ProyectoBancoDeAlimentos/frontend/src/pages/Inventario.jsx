@@ -1,11 +1,10 @@
+//sirve imágenes
 
-
-//sirve todo menos imágenes
-
-// src/pages/Inventario.jsx
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import axiosInstance from "../api/axiosInstance";
+import { toast } from "react-toastify";
+import "../toast.css";
 
 import {
   getAllProducts,
@@ -29,7 +28,9 @@ const BACKEND_ORIGIN = (() => {
   const base = axiosInstance?.defaults?.baseURL;
   try {
     const u = base
-      ? (base.startsWith("http") ? new URL(base) : new URL(base, window.location.origin))
+      ? base.startsWith("http")
+        ? new URL(base)
+        : new URL(base, window.location.origin)
       : new URL(window.location.origin);
     return `${u.protocol}//${u.host}`;
   } catch {
@@ -38,13 +39,17 @@ const BACKEND_ORIGIN = (() => {
 })();
 
 const backendImageUrl = (fileName) =>
-  fileName ? `${BACKEND_ORIGIN}/images/productos/${encodeURIComponent(fileName)}` : "";
+  fileName
+    ? `${BACKEND_ORIGIN}/images/productos/${encodeURIComponent(fileName)}`
+    : "";
 
 const toPublicFotoSrc = (nameOrPath) => {
   if (!nameOrPath) return "";
   if (/^https?:\/\//i.test(nameOrPath)) return nameOrPath;
-  if (nameOrPath.startsWith("/api/images/")) return `${BACKEND_ORIGIN}${encodeURI(nameOrPath)}`;
-  if (nameOrPath.startsWith("/images/")) return `${BACKEND_ORIGIN}/api${encodeURI(nameOrPath)}`;
+  if (nameOrPath.startsWith("/api/images/"))
+    return `${BACKEND_ORIGIN}${encodeURI(nameOrPath)}`;
+  if (nameOrPath.startsWith("/images/"))
+    return `${BACKEND_ORIGIN}/api${encodeURI(nameOrPath)}`;
   return backendImageUrl(nameOrPath);
 };
 
@@ -368,7 +373,9 @@ export default function Inventario() {
         setCategorias(mappedCategorias);
       } catch (err) {
         console.error("Error cargando inventario:", err);
-        alert("No se pudo cargar el inventario. Revisa la conexión.");
+        toast.error("No se pudo cargar el inventario. Revisa la conexión.", {
+          className: "toast-error",
+        });
       } finally {
         mounted && setLoading(false);
       }
@@ -472,7 +479,9 @@ export default function Inventario() {
       });
     } catch (e) {
       console.error("Error cargando productos por sucursal:", e);
-      alert("No se pudo cargar productos. Revisa la conexión.");
+      toast.error("No se pudo cargar productos. Revisa la conexión.", {
+        className: "toast-error",
+      });
     } finally {
       setLoading(false);
     }
@@ -511,7 +520,7 @@ export default function Inventario() {
         e?.response?.data?.detail ||
         e?.message ||
         "No se pudo crear la marca.";
-      alert(msg);
+      toast.error("No se pudo crear la marca.", { className: "toast-error" });
     } finally {
       setSavingMarca(false);
     }
@@ -545,8 +554,9 @@ export default function Inventario() {
       setPage(1); // vuelve a la primera página al filtrar
     } catch (e) {
       console.error("Error cargando productos:", e);
-      alert(
-        "No se pudo cargar productos. Verifica la conexión o la URL del API."
+      toast.error(
+        "No se pudo cargar productos. Verifica la conexión o la URL del API.",
+        { className: "toast-error" }
       );
     } finally {
       setLoading(false);
@@ -762,7 +772,9 @@ export default function Inventario() {
       setSubcategorias(mapped);
     } catch (err) {
       console.error("Error cargando subcategorías", err);
-      alert("No se pudo cargar las subcategorías.");
+      toast.error("No se pudo cargar las subcategorías.", {
+        className: "toast-error",
+      });
     }
   }
 
@@ -946,21 +958,24 @@ export default function Inventario() {
 
     try {
       // 1) Asegurar categorías
-      const cats = categorias && categorias.length ? categorias : await (async () => {
-        const catsRes = await ListarCategoria();
-        const catsRaw = pickArrayPayload(catsRes, [
-          "categorias",
-          "data",
-          "results",
-          "items",
-        ]);
-        const newCats = catsRaw.map((c, i) => ({
-          id: String(c.id_categoria ?? c.id ?? i),
-          nombre: c.nombre ?? `Categoría ${i + 1}`,
-        }));
-        setCategorias(newCats);
-        return newCats;
-      })();
+      const cats =
+        categorias && categorias.length
+          ? categorias
+          : await (async () => {
+              const catsRes = await ListarCategoria();
+              const catsRaw = pickArrayPayload(catsRes, [
+                "categorias",
+                "data",
+                "results",
+                "items",
+              ]);
+              const newCats = catsRaw.map((c, i) => ({
+                id: String(c.id_categoria ?? c.id ?? i),
+                nombre: c.nombre ?? `Categoría ${i + 1}`,
+              }));
+              setCategorias(newCats);
+              return newCats;
+            })();
 
       // 2) Detalle del producto
       const detRes = await getProductoById(row.id);
@@ -1034,10 +1049,15 @@ export default function Inventario() {
 
     // Validaciones mínimas
     if (!d.producto?.trim())
-      return alert("El nombre del producto es obligatorio.");
-    if (!d.marcaId && !d.marca) return alert("Selecciona una marca.");
+      return toast.info("El nombre del producto es obligatorio.", {
+        className: "toast-info",
+      });
+    if (!d.marcaId && !d.marca)
+      return toast.info("Selecciona una marca.", { className: "toast-error" });
     if (!d.subcategoriaId && !d.subcategoria)
-      return alert("Selecciona una subcategoría.");
+      return toast.info("Selecciona una subcategoría.", {
+        className: "toast-info",
+      });
 
     try {
       setSavingProduct(true);
@@ -1050,7 +1070,7 @@ export default function Inventario() {
         .filter(Boolean);
       // 👇 NUEVO: arma el payload de imágenes con NOMBRE + ORDEN + is_file para nuevos, y URL para existentes
       const imagenesPayload = (d.imagePreviews || []).map((src, idx) => {
-        const isBlob = src.startsWith('blob:');
+        const isBlob = src.startsWith("blob:");
         if (isBlob) {
           // Nueva imagen subida
           const fileName = d.imageUploadsNames?.[idx] || `image_${idx}.jpg`;
@@ -1179,85 +1199,6 @@ export default function Inventario() {
           d.imageFiles,
           imagenesPayload
         );
-
-        // --- 2) Actualización optimista en la tabla (sin volver a pedir) ---
-        setRows((prev) =>
-          prev.map((row) => {
-            if (String(row.id) !== String(d.id)) return row;
-
-            // IDs finales (si no vienen en d, usa lo que ya tiene la fila)
-            const nextMarcaId = String(
-              d.marcaId ?? d.marca ?? row.marcaId ?? ""
-            );
-            const nextCategoriaId = String(
-              d.categoriaId ?? d.categoria ?? row.categoriaId ?? ""
-            );
-            const nextSubcatId = String(
-              d.subcategoriaId ?? d.subcategoria ?? row.subcategoriaId ?? ""
-            );
-
-            // Nombres finales a partir de catálogos
-            const nextMarca = nameById(marcas, nextMarcaId) ?? row.marca;
-            const nextCategoria =
-              nameById(categorias, nextCategoriaId) ?? row.categoria;
-            const nextSubcategoria =
-              nameById(subcategorias, nextSubcatId) ?? row.subcategoria;
-
-            // Precio base y venta
-            const nextPrecioBase = Number.isFinite(Number(d.precioBase))
-              ? Number(d.precioBase)
-              : row.precioBase;
-
-            const porc = Number(d.porcentajeGanancia);
-            const nextPrecioVenta = Number.isFinite(porc)
-              ? round2(nextPrecioBase * (1 + porc / 100))
-              : row.precioVenta;
-
-            // Unidad y peso (si tienes estos campos en el draft)
-            const nextUnidadMedida = d.unidadMedida ?? row.unidadMedida; // ej. "kg", "g", "mg", "oz"
-            const nextPesoKg =
-              d.pesoValor !== undefined || d.pesoUnidad !== undefined
-                ? toKg(
-                    d.pesoValor ?? row.pesoValor,
-                    d.pesoUnidad ?? row.pesoUnidad
-                  )
-                : row.pesoKg;
-
-            return {
-              ...row,
-
-              // básicos
-              producto: (d.producto ?? row.producto) || row.producto,
-              descripcion: d.descripcion ?? row.descripcion,
-
-              // relación marca/categoría/subcategoría
-              marcaId: nextMarcaId || row.marcaId,
-              marca: nextMarca,
-              categoriaId: nextCategoriaId || row.categoriaId,
-              categoria: nextCategoria,
-              subcategoriaId: nextSubcatId || row.subcategoriaId,
-              subcategoria: nextSubcategoria,
-
-              // precios
-              precioBase: nextPrecioBase,
-              precioVenta: nextPrecioVenta,
-
-              // peso / unidad (si usas estos en la tabla o en el row)
-              unidadMedida: nextUnidadMedida,
-              pesoKg: Number.isFinite(nextPesoKg) ? nextPesoKg : row.pesoKg,
-              pesoValor: d.pesoValor ?? row.pesoValor,
-              pesoUnidad: d.pesoUnidad ?? row.pesoUnidad,
-
-              // estado
-              activo: typeof d.activo === "boolean" ? d.activo : row.activo,
-
-              // opcional: etiquetas si las guardas en el row
-              etiquetas: Array.isArray(d.etiquetas)
-                ? d.etiquetas
-                : row.etiquetas ?? [],
-            };
-          })
-        );
       } else {
         // CREAR producto
         const etiquetas = ["Nuevo"];
@@ -1272,7 +1213,7 @@ export default function Inventario() {
           d.unidadMedida ?? "unidad",
           pesoKg,
           d.imageFiles,
-          []
+          imagenesPayload
         );
 
         // Recargar productos después de crear
@@ -1285,10 +1226,11 @@ export default function Inventario() {
     } catch (err) {
       const status = err?.response?.status;
       const data = err?.response?.data;
-      alert(
+      toast.error(
         `Error ${status ?? ""}: ${
           data?.message || data?.detail || data?.error || err.message
-        }`
+        }`,
+        { className: "toast-error" }
       );
     } finally {
       setSavingProduct(false);
@@ -1299,7 +1241,7 @@ export default function Inventario() {
     if (!window.confirm("¿Desactivar este producto?")) return;
     const prodId = Number(String(id).trim());
     if (!Number.isFinite(prodId) || prodId <= 0) {
-      alert("ID de producto inválido.");
+      toast.error("ID de producto inválido.", { className: "toast-error" });
       return;
     }
     try {
@@ -1311,10 +1253,11 @@ export default function Inventario() {
     } catch (err) {
       const s = err?.response?.status;
       const d = err?.response?.data;
-      alert(
+      toast.error(
         "No se pudo desactivar. " +
           (s ? `HTTP ${s}. ` : "") +
-          (typeof d === "string" ? d : d?.message || d?.detail || "Error")
+          (typeof d === "string" ? d : d?.message || d?.detail || "Error"),
+        { className: "toast-error" }
       );
     } finally {
       setDeletingId(null);
@@ -1325,7 +1268,7 @@ export default function Inventario() {
 
     const prodId = Number(String(id).trim());
     if (!Number.isFinite(prodId) || prodId <= 0) {
-      alert("ID de producto inválido.");
+      toast.error("ID de producto inválido.", { className: "toast-error" });
       return;
     }
 
@@ -1342,10 +1285,11 @@ export default function Inventario() {
     } catch (err) {
       const s = err?.response?.status;
       const d = err?.response?.data;
-      alert(
+      toast.error(
         "No se pudo desactivar. " +
           (s ? `HTTP ${s}. ` : "") +
-          (typeof d === "string" ? d : d?.message || d?.detail || "Error")
+          (typeof d === "string" ? d : d?.message || d?.detail || "Error"),
+        { className: "toast-error" }
       );
     } finally {
       setDeletingId(null);
@@ -1389,17 +1333,16 @@ export default function Inventario() {
       }
     }
 
-
     // Imágenes del producto
     try {
-        const imgsRes = await getImagenesProducto(row.id);
-        const urls = ((imgsRes?.data ?? imgsRes) || [])
-          .map((i) => toPublicFotoSrc(i.url_imagen))
-          .filter(Boolean);
-        if (urls.length) {
-          setSupplyModal((prev) => ({ ...prev, images: urls }));
-        }
-      } catch {}
+      const imgsRes = await getImagenesProducto(row.id);
+      const urls = ((imgsRes?.data ?? imgsRes) || [])
+        .map((i) => toPublicFotoSrc(i.url_imagen))
+        .filter(Boolean);
+      if (urls.length) {
+        setSupplyModal((prev) => ({ ...prev, images: urls }));
+      }
+    } catch {}
   }
 
   function closeSupply() {
@@ -1412,11 +1355,17 @@ export default function Inventario() {
     const sucId = Number(String(sucursalId).trim());
     const qty = Number(String(cantidad).trim());
     if (!Number.isFinite(prodId) || prodId <= 0)
-      return alert("ID de producto inválido.");
+      return toast.error("ID de producto inválido.", {
+        className: "toast-error",
+      });
     if (!Number.isFinite(sucId) || sucId <= 0)
-      return alert("Selecciona una sucursal válida.");
+      return toast.warn("Selecciona una sucursal válida.", {
+        className: "toast-warn",
+      });
     if (!Number.isFinite(qty) || qty <= 0)
-      return alert("Ingresa una cantidad válida (> 0).");
+      return toast.warn("Ingresa una cantidad válida (> 0).", {
+        className: "toast-warn",
+      });
 
     try {
       setSavingSupply(true);
@@ -1428,12 +1377,13 @@ export default function Inventario() {
     } catch (err) {
       const status = err?.response?.status;
       const data = err?.response?.data;
-      alert(
+      toast.error(
         "No se pudo abastecer. " +
           (status ? `HTTP ${status}. ` : "") +
           (typeof data === "string"
             ? data
-            : data?.message || data?.detalle || "Error")
+            : data?.message || data?.detalle || "Error"),
+        { className: "toast-error" }
       );
     } finally {
       setSavingSupply(false);
@@ -1446,7 +1396,7 @@ export default function Inventario() {
       className="w-screen px-4 bg-[#f9fafb]"
       style={{
         position: "absolute",
-        top: "165px",
+        top: "90px",
         left: 0,
         right: 0,
         width: "100%",
@@ -1474,11 +1424,11 @@ export default function Inventario() {
         </div>
         <div className="h-1 w-full rounded-md bg-[#f0833e] mt-2" />
 
-        <div className="mt-4 overflow-hidden rounded-2xl shadow-sm border border-[#d8dadc] bg-white">
+        <div className="mt-4 overflow-visible rounded-2xl shadow-sm border border-[#d8dadc] bg-white">
           <div className="overflow-x-auto">
             <table className="w-full text-sm table-auto min-w-[900px]">
               <thead>
-                <tr className="text-black">
+                <tr className="text-center">
                   <Th
                     label="ID de Producto"
                     sortKey="id"
@@ -1517,7 +1467,7 @@ export default function Inventario() {
                   />
                   <th
                     ref={stockHeadRef}
-                    className="px-2 py-2 text-left bg-[#2B6DAF] relative"
+                    className="px-2 py-2 text-center bg-[#2B6DAF] relative"
                   >
                     <div className="flex items-center justify-between gap-2">
                       {/* Ordenar por stock */}
@@ -1585,7 +1535,7 @@ export default function Inventario() {
                     onSort={toggleSort}
                   />
 
-                  <th className="px-3 py-2 text-left bg-[#2B6DAF]">
+                  <th className="px-2 py-2 bg-[#2B6DAF] relative text-center">
                     <span className="text-white">Opciones</span>
                   </th>
                 </tr>
@@ -1608,21 +1558,21 @@ export default function Inventario() {
                     <tr
                       key={r.id + idx}
                       className={
-                        "border-b last:border-0 border-[#d8dadc] " +
+                        "border-b last:border-0 border-[#d8dadc]" +
                         (!r.activo ? "opacity-70" : "")
                       }
                     >
-                      <td className="px-3 py-3">{r.id}</td>
-                      <td className="px-3 py-3">{r.producto}</td>
-                      <td className="px-3 py-3">
+                      <td className="px-3 py-3 text-center">{r.id}</td>
+                      <td className="px-3 py-3 text-center">{r.producto}</td>
+                      <td className="px-3 py-3 text-center">
                         <StatusBadge active={r.activo} />
                       </td>
-                      <td className="px-3 py-3">{r.marca}</td>
-                      <td className="px-3 py-3">{r.categoria}</td>
-                      <td className="px-3 py-3">{r.subcategoria}</td>
-                      <td className="px-3 py-3">{r.stockKg} kg.</td>
-                      <td className="px-3 py-3">L. {r.precioBase}</td>
-                      <td className="px-3 py-3">L. {r.precioVenta}</td>
+                      <td className="px-3 py-3 text-center">{r.marca}</td>
+                      <td className="px-3 py-3 text-center">{r.categoria}</td>
+                      <td className="px-3 py-3 text-center">{r.subcategoria}</td>
+                      <td className="px-3 py-3 text-center">{r.stockKg} kg.</td>
+                      <td className="px-3 py-3 text-center">L. {r.precioBase}</td>
+                      <td className="px-3 py-3 text-center">L. {r.precioVenta}</td>
 
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">
@@ -1662,7 +1612,7 @@ export default function Inventario() {
                               className="p-2 rounded-xl border border-[#d8dadc] text-gray-400 cursor-not-allowed"
                               title="Producto inactivo"
                             >
-                              Inactivo
+                              <Icon.Trash className="text-red-500" />
                             </button>
                           )}
                         </div>
@@ -1784,16 +1734,6 @@ export default function Inventario() {
                     </button>
                   </div>
                 ))}
-
-                {/* Tile para añadir más (también usa label) */}
-                <label
-                  htmlFor="imgPicker"
-                  className="aspect-[4/3] w-full rounded-lg border border-dashed border-[#d8dadc] flex flex-col items-center justify-center hover:bg-gray-50 cursor-pointer"
-                  title="Añadir más imágenes"
-                >
-                  <Icon.Plus />
-                  <span className="text-sm text-gray-600 mt-1">Añadir</span>
-                </label>
               </div>
 
               <div className="col-span-2 flex justify-end">
@@ -1971,18 +1911,17 @@ export default function Inventario() {
           <Input
             type="number"
             label="Precio Base (L.)"
-            value={modal.draft.precioBase}
-            onChange={(v) =>
-              setModal((m) => ({ ...m, draft: { ...m.draft, precioBase: v } }))
-            }
-          />
-          <Input
-            type="number"
-            label="Porcentaje de ganancia (%)"
-            value={modal.draft.porcentajeGanancia}
-            onChange={(v) =>
-              setModal((m) => ({ ...m, draft: { ...m.draft, porcentajeGanancia: v } }))
-            }
+            min={0}
+            step="0.001"
+            value={modal.draft.precioBase ?? ""}
+            onChange={(v) => {
+              const n = v === "" ? "" : Math.max(0, Number(v));
+              setModal((m) => ({ ...m, draft: { ...m.draft, precioBase: n } }));
+            }}
+            onKeyDown={(e) => {
+              // opcional: bloquea teclear el signo -
+              if (e.key === "-") e.preventDefault();
+            }}
           />
           {/* Unidad de medida */}
           <label className="flex flex-col gap-1 col-span-2 sm:col-span-1">
@@ -2016,10 +1955,18 @@ export default function Inventario() {
           <Input
             type="number"
             label="Peso"
-            value={modal.draft.pesoValor}
-            onChange={(v) =>
-              setModal((m) => ({ ...m, draft: { ...m.draft, pesoValor: v } }))
-            }
+            min={0}
+            step="0.001"
+            value={modal.draft.pesoValor ?? ""}
+            onChange={(v) => {
+              // v suele llegar como string desde el input controlado
+              const n = v === "" ? "" : Math.max(0, Number(v));
+              setModal((m) => ({ ...m, draft: { ...m.draft, pesoValor: n } }));
+            }}
+            onKeyDown={(e) => {
+              // opcional: bloquea teclear el signo -
+              if (e.key === "-") e.preventDefault();
+            }}
           />
 
           {/* Unidad de peso */}
@@ -2074,8 +2021,9 @@ export default function Inventario() {
             </label>
           )}
 
-          <label className="col-span-2 inline-flex items-center gap-2">
+          <label className="col-span-2 flex flex-row items-center gap-2 whitespace-nowrap">
             <input
+              id="chk-activo"
               type="checkbox"
               className="w-5 h-5 accent-[#2b6daf]"
               checked={!!modal.draft.activo}

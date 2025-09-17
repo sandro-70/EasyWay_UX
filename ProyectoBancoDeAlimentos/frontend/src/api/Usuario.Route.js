@@ -30,6 +30,9 @@ export function RegistrarUser({
 }
 
 export function InformacionUser(id) {
+  if (!id) {
+    return axiosInstance.get('/api/MiPerfil/info/me');
+  }
   return axiosInstance.get(`/api/MiPerfil/info/${id}`);
 }
 // Devuelve sólo nombre y apellido (más liviano)
@@ -186,7 +189,7 @@ export function editarPerfil(
   predeterminada, // booleano si es dirección predeterminada
   id_municipio // nuevo ID de municipio
 ) {
-  return axiosInstance.put(`/api/usuarios/actualizar-usuario/${id_usuario}`, {
+  return axiosInstance.put(`/api/MiPerfil/perfil/${id_usuario}`, {
     nombre,
     apellido,
     telefono,

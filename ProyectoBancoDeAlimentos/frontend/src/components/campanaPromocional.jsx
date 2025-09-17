@@ -25,6 +25,7 @@ const initialForm = {
   // Banner
   bannerFile: null,
   bannerPreview: "",
+  orden : 0,
 };
 
 const CampanaPromocional = () => {
@@ -209,7 +210,7 @@ const CampanaPromocional = () => {
       // 1) Subir banner (opcional)
       let banner_url = null;
       if (formData.bannerFile) {
-        const desiredName = `banner_campaign_${Date.now()}_${formData.bannerFile.name}`;
+        const desiredName = `B_${Date.now()}_${formData.bannerFile.name}`;
         const up = await uploadProfilePhoto1(formData.bannerFile, desiredName);
         banner_url =
           up?.data?.url ||
@@ -241,6 +242,8 @@ const payload = {
   fecha_termina: formData.hasta,
   id_tipo_promo, 
   banner_url: banner_url || null,
+  orden: Number.isFinite(Number(formData.orden)) ? Number(formData.orden) : 0,
+
   productos: formData.aplicaA === "lista"
     ? formData.productos.map((p) => Number(p.id)).filter(Number.isInteger)
     : [],

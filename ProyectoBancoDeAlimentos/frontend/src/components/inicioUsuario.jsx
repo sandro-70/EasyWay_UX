@@ -4,6 +4,8 @@ import axiosInstance from "../api/axiosInstance"; // ⬅️ nuevo
 import { EffectCoverflow, Autoplay } from "swiper/modules";
 import { useNavigate } from "react-router-dom";
 import { getAllProducts, getProductoById } from "../api/InventarioApi";
+import { getProductosDestacados, getProductosTendencias } from "../api/InventarioApi";
+
 import { ObtenerCategoria, ListarCategoria } from "../api/CategoriaApi";
 import { AddNewCarrito, ViewCar, SumarItem } from "../api/CarritoApi";
 import { getPromocionesOrden } from "../api/PromocionesApi";
@@ -90,22 +92,43 @@ const InicioUsuario = () => {
   const [hoveredBanner, setHoveredBanner] = React.useState(null);
 
   const [products, setProducts] = useState([]);
+  const [destacados, setDestacados] = useState([]);
+  const [tendencias, setTendencias] = useState([]);
   const [promociones, setPromociones] = useState([]);
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const res = await getAllProducts();
-        console.log(res.data);
-        setProducts(res.data);
-      } catch (err) {
-        console.error("[PRODUCTS] error:", err?.response?.data || err);
-        toast.error(err?.response?.data?.message || "Error al cargar productos", { className: "toast-error" });
-      }
-    };
+ useEffect(() => {
+   const fetchDestacados = async () => {
+     try {
+       const res = await getProductosDestacados(); // ⬅️ /api/producto/destacados
+       setDestacados(Array.isArray(res?.data) ? res.data : []);
+     } catch (err) {
+       console.error("[DESTACADOS] error:", err?.response?.data || err);
+       // Fallback suave: toma 10 del catálogo general si falla la API
+       try {
+         const all = await getAllProducts();
+         setDestacados((Array.isArray(all?.data) ? all.data.slice(0, 10) : []));
+       } catch (e2) {
+         toast.error("No se pudieron cargar los destacados", { className: "toast-error" });
+       }
+     }
+   };
+   fetchDestacados();
+ }, []);
 
-    fetchProducts();
-  }, []);
+ useEffect(() => {
+   const fetchTendencias = async () => {
+     try {
+       const res = await getProductosTendencias(); // ⬅️ /api/producto/tendencias
+       setTendencias(Array.isArray(res?.data) ? res.data : []);
+     } catch (err) {
+       console.error("[TENDENCIAS] error:", err?.response?.data || err);
+       // Fallback: si falla, mostramos los destacados para no romper UI
+       setTendencias((prev) => (destacados.length ? destacados : prev));
+     }
+   };
+   fetchTendencias();
+ }, [destacados]);
+
 
   const [categoriesData, setCategoriesData] = useState([]);
 
@@ -264,7 +287,8 @@ useEffect(() => {
           error?.message ||
           "No se pudo procesar el carrito";
 
-        toast.error(errorMessage, { className: "toast-error" });
+        toast.error("Debe iniciar sesión", { className: "toast-error" });
+        return navigate("/login");
       }
     }
   };
@@ -304,11 +328,11 @@ useEffect(() => {
   };
 
   // Filtrar productos según searchText (ignora mayúsculas/minúsculas)
-  const filteredDestacados = products.filter((p) =>
+  const filteredDestacados = destacados.filter((p) =>
     p.nombre.toLowerCase().includes(searchText.toLowerCase())
   );
 
-  const filteredTendencias = products.filter((p) =>
+  const filteredTendencias = tendencias.filter((p) =>
     p.nombre.toLowerCase().includes(searchText.toLowerCase())
   );
 
@@ -354,18 +378,14 @@ useEffect(() => {
                   onClick={() => handleCategoryClick(cat?.id_categoria)}
                 >
                   <img
-                    src={
-                      cat?.icono_categoria
-                        ? `/images/categorias/${cat.icono_categoria}`
-                        : "/PlaceHolder.png"
-                    }
-                    alt={cat?.nombre ?? "Categoría"}
-                    style={{ width: 70, height: 70, objectFit: "contain" }}
-                    onError={(e) => {
-                      e.currentTarget.onerror = null;
-                      e.currentTarget.src = "/PlaceHolder.png";
-                    }}
-                  />
+                    src={toPublicFotoSrc(cat?.icono_categoria, "categorias") || "/PlaceHolder.png"}
+                    alt={cat?.nombre ?? "Categoría"}
+                    style={{ width: 70, height: 70, objectFit: "contain" }}
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = "/PlaceHolder.png";
+                    }}
+                  />
                 </div>
                 <span style={styles.catTitle}>{cat?.nombre ?? "-"}</span>
               </div>

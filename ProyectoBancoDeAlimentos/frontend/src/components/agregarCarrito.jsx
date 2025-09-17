@@ -286,7 +286,6 @@ function AgregarCarrito() {
         });
       } else {
         console.log("Producto nuevo, agregando al carrito");
-        console.log("Producto nuevo, agregando al carrito");
         await AddNewCarrito(id_producto, q);
         incrementCart(q);
         toast(

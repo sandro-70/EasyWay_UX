@@ -1,4 +1,4 @@
-.pedido-container {
+.content-container {
   padding: 10px;
   display: flex;
   justify-content: center;
@@ -8,17 +8,17 @@
   width: 1200px;
   margin: 0 auto;
   margin-top: 10px;
-  background-color: #ffff;
+  background-color: #ffffff;
   align-items: self-start;
 }
 
-.pedido-title {
+.page-title {
   color: #d8572f;
   font-weight: bold;
   font-size: 30px;
   text-align: left;
-  display: block; /* Cambiado de inline-block */
-  width: auto; /* para que no ocupe 100% */
+  display: block; 
+  width: auto; 
   margin: 0;
 }
 

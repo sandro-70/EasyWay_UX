@@ -20,6 +20,8 @@ import {
   getDirecciones, // ← para obtener id_direccion
 } from "../api/DireccionesApi";
 import axiosInstance from "../api/axiosInstance";
+import { toast } from "react-toastify";
+import "../toast.css";
 
 /* ===================== ORIGIN backend + helper URL imagen ===================== */
 const BACKEND_ORIGIN = (() => {
@@ -362,7 +364,7 @@ const handleFotoChange = async (e) => {
     }));
   } catch (err) {
     console.error("Error subiendo/guardando foto:", err);
-    alert("No se pudo guardar la nueva foto de perfil.");
+    toast.error("No se pudo guardar la nueva foto de perfil.", { className: "toast-error" });
   }
 };
 
@@ -485,7 +487,7 @@ const handleFotoChange = async (e) => {
   const handleSave = async () => {
     try {
       const uid = getUserId(user);
-      if (!uid) return alert("No se pudo determinar el usuario.");
+      if (!uid) return toast.error("No se pudo determinar el usuario.", { className: "toast-error" });
 
       await editarPerfil(
         uid,                          // id_usuario
@@ -531,11 +533,11 @@ const handleFotoChange = async (e) => {
         departamento, municipio, idMunicipio,
       });
 
-      alert("✅ Perfil actualizado correctamente");
+      toast.success("Perfil actualizado correctamente", { className: "toast-success" });
       setEditMode(false);
     } catch (err) {
       console.error("Error guardando perfil admin:", err);
-      alert("No se pudo guardar el perfil.");
+      toast.error("No se pudo guardar el perfil.", { className: "toast-error" });
     }
   };
 
@@ -588,33 +590,33 @@ const handleFotoChange = async (e) => {
     if (!correo) return;
     try {
       await enviarCorreoDosPasos(correo);
-      alert("Se ha enviado el código a tu correo");
+      toast.info("Se ha enviado el código a tu correo", { className: "toast-info" });
       setShowTwoFactorModal(false);
       setShowTwoFactorCodeModal(true);
     } catch (err) {
       console.error("Error enviando código:", err);
-      alert("No se pudo enviar el código. Intenta nuevamente.");
+      toast.error("No se pudo enviar el código. Intenta nuevamente.", { className: "toast-error" });
     }
   };
   const handleVerifyCode = async () => {
-    if (!twoFactorCode) return alert("Ingresa el código recibido");
+    if (!twoFactorCode) return toast.info("Ingresa el código recibido", { className: "toast-info" });
     try {
       await validarCodigoDosPasos(correo, twoFactorCode);
-      alert("Autenticación de dos pasos activada correctamente");
+      toast.success("Autenticación de dos pasos activada correctamente", { className: "toast-success" });
       setShowTwoFactorCodeModal(false);
       setTwoFactorCode("");
     } catch (err) {
       console.error("Error verificando código:", err);
-      alert("Código inválido o expirado. Intenta de nuevo.");
+      toast.warn("Código inválido o expirado. Intenta de nuevo.", { className: "toast-warn" });
     }
   };
   const handleResendCode = async () => {
     try {
       await enviarCorreoDosPasos(correo);
-      alert("Se ha reenviado el código a tu correo");
+      toast.info("Se ha reenviado el código a tu correo", { className: "toast-info" });
     } catch (err) {
       console.error("Error reenviando código:", err);
-      alert("No se pudo reenviar el código. Intenta más tarde.");
+      toast.error("No se pudo reenviar el código. Intenta más tarde.", { className: "toast-error" });
     }
   };
 

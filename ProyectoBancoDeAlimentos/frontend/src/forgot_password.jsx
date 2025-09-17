@@ -2,6 +2,8 @@ import "./forgot_password.css";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { forgetPassword } from "./api/Usuario.Route";
+import { toast } from "react-toastify";
+import "./toast.css";
 
 export default function ForgotPassword() {
   const [correo, setCorreo] = useState("");
@@ -10,17 +12,17 @@ export default function ForgotPassword() {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!correo) return alert("Ingresa tu correo.");
+    if (!correo) return toast.warn("Ingresa tu correo.", { className: "toast-warn" });
     try {
       console.log("correo:", correo);
       setLoading(true);
       
       await forgetPassword(correo);
       console.log("correox2:", correo);
-      alert("Te enviamos un código a tu correo.");
+      toast.info("Te enviamos un código a tu correo.", { className: "toast-info" });
       navigate("/verificar-codigo", { state: { correo } });
     } catch (err) {
-      alert(err?.response?.data?.error || "No se pudo enviar el correo.");
+      toast.error(err?.response?.data?.error || "No se pudo enviar el correo.", { className: "toast-error" });
     } finally {
       setLoading(false);
     }

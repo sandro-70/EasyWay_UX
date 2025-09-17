@@ -31,6 +31,8 @@ const IconSquareButton = ({ children, className = "", ...props }) => (
   </button>
 );
 
+
+
 const PencilIcon = ({ className = "" }) => (
   <svg
     viewBox="0 0 24 24"
@@ -313,13 +315,16 @@ function TableCard({
             key={it.id ?? it.id_categoria ?? it.id_subcategoria ?? i}
             className="flex items-center justify-between px-4 py-5"
           >
-            <button
-              type="button"
-              onClick={() => onSelect?.(it)}
-              className="text-[20px] font-normal text-gray-900 text-left hover:underline" // <--- SIN negrita
-            >
-              {label(it)}
-            </button>
+            <div className="flex items-center">
+              {it.imageUrl && <img src={it.imageUrl} alt="" className="w-8 h-8 mr-2 rounded" />}
+              <button
+                type="button"
+                onClick={() => onSelect?.(it)}
+                className="text-[20px] font-normal text-gray-900 text-left hover:underline" // <--- SIN negrita
+              >
+                {label(it)}
+              </button>
+            </div>
 
             {/* Columna fija de iconos, alineada bajo “Opciones” */}
             <div
@@ -564,11 +569,31 @@ function GestionProductos() {
     setShowCat(false);
     if (!newCategory?.trim()) return;
     try {
-      const res = await CrearCategoria(newCategory.trim(), "default");
+
+      let icono_categoria = "default";
+      if (newCatFile) {
+        const formData = new FormData();
+        formData.append("foto", newCatFile);
+        formData.append("name", newCategory.trim());
+        const uploadRes = await fetch(`http://localhost:3001/api/uploads/category-photo?name=${encodeURIComponent(newCategory.trim())}`, {
+          method: "POST",
+          body: formData,
+        });
+        const uploadData = await uploadRes.json();
+        if (uploadData.ok && uploadData.filename) {
+          // Use the filename returned by the backend for the image path
+          icono_categoria = `/images/categorias/${uploadData.filename}`;
+        }
+      }
+      const res = await CrearCategoria(newCategory.trim(), icono_categoria);
       const created = res?.data;
       if (created) {
-        addCategoryLocal(created);
-        setCategoria(created.nombre);
+        addCategoryLocal({
+          id_categoria: created.id_categoria,
+          nombre: newCategory.trim(),
+          icono_categoria: created.icono_categoria || "",
+        });
+        setCategoria(newCategory.trim());
         await loadSubcategories(created.id_categoria);
       } else {
         addCategoryLocal(newCategory.trim());
@@ -627,14 +652,24 @@ function GestionProductos() {
   async function submitEditCategory(e) {
     e.preventDefault();
     try {
-      const before = categories.find((c) => c.id_categoria === editCatId);
-      await ActualizarCategoria(editCatId, editCatName.trim(), "default");
-      updateCategoryLocal(
-        editCatId,
-        editCatName.trim(),
-        before?.icono_categoria
-      );
+      let icono_categoria = categories.find((c) => c.id_categoria === editCatId)?.icono_categoria || "default";
+      if (editCatFile) {
+        const formData = new FormData();
+        formData.append("foto", editCatFile);
+        formData.append("name", editCatName.trim());
+        const uploadRes = await fetch(`http://localhost:3001/api/uploads/category-photo?name=${encodeURIComponent(editCatName.trim())}`, {
+          method: "POST",
+          body: formData,
+        });
+        const uploadData = await uploadRes.json();
+        if (uploadData.ok && uploadData.filename) {
+          icono_categoria = `/images/categorias/${uploadData.filename}`;
+        }
+      }
+      await ActualizarCategoria(editCatId, editCatName.trim(), icono_categoria);
+      updateCategoryLocal(editCatId, editCatName.trim(), icono_categoria);
       setShowEditCat(false);
+      setEditCatFile(null);
     } catch (e) {
       console.error("Error actualizando categoría:", e);
       alert(
@@ -743,6 +778,7 @@ function GestionProductos() {
               items={categories.map((c) => ({
                 id: c.id_categoria,
                 name: c.name,
+                imageUrl: c.icono_categoria ? `http://localhost:3001${c.icono_categoria}` : null,
               }))}
               onSelect={(it) =>
                 handleSelectCategory({ id_categoria: it.id, name: it.name })
@@ -891,8 +927,13 @@ function GestionProductos() {
                 <SingleImageUploader
                   label="Imagen de la categoría (1)"
                   valueUrl={
-                    categories.find((c) => c.id_categoria === editCatId)
-                      ?.icono_categoria || ""
+                    (() => {
+                      const currentIcon = categories.find((c) => c.id_categoria === editCatId)?.icono_categoria;
+                      if (!currentIcon) return "";
+                      // Extract filename from path and construct full path in the folder
+                      const filename = currentIcon.split('/').pop();
+                      return filename ? `http://localhost:3001/images/categorias/${filename}` : "";
+                    })()
                   }
                   onFiles={(file) => setEditCatFile(file)}
                 />

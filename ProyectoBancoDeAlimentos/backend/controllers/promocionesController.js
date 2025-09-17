@@ -399,6 +399,7 @@ exports.crearPromocion = async (req, res) => {
         .status(403)
         .json({ message: "Solo los administradores pueden crear promociones" });
     }
+     const ordenNum = Number.isFinite(Number(orden)) ? Number(orden) : 0;
 
     const newPromocion = await promocion.create({
       nombre_promocion,
@@ -410,7 +411,7 @@ exports.crearPromocion = async (req, res) => {
       fecha_termina,
       id_tipo_promo,
       banner_url,
-      orden: orden || null,
+      orden: ordenNum,
       activa: true,
     });
     if (productos && Array.isArray(productos)) {

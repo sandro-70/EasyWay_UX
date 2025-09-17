@@ -6,7 +6,9 @@ const BACKEND_ORIGIN = (() => {
   const base = axiosInstance?.defaults?.baseURL;
   try {
     const u = base
-      ? (base.startsWith("http") ? new URL(base) : new URL(base, window.location.origin))
+      ? base.startsWith("http")
+        ? new URL(base)
+        : new URL(base, window.location.origin)
       : new URL(window.location.origin);
     return `${u.protocol}//${u.host}`;
   } catch {
@@ -16,18 +18,22 @@ const BACKEND_ORIGIN = (() => {
 
 // para nombres de archivo tipo "foto.jpg"
 const backendImageUrl = (fileName) =>
-  fileName ? `${BACKEND_ORIGIN}/api/images/productos/${encodeURIComponent(fileName)}` : "";
+  fileName
+    ? `${BACKEND_ORIGIN}/api/images/productos/${encodeURIComponent(fileName)}`
+    : "";
 
 // adapta la ruta que venga en DB a una URL válida del backend
 const toPublicFotoSrc = (nameOrPath, defaultDir = "productos") => {
-   if (!nameOrPath) return "";
-   const s = String(nameOrPath).trim();
-   if (/^https?:\/\//i.test(s)) return s;                          // ya es absoluta
-   if (s.startsWith("/api/images/")) return `${BACKEND_ORIGIN}${encodeURI(s)}`;
-   if (s.startsWith("/images/"))      return `${BACKEND_ORIGIN}/api${encodeURI(s)}`;
-   // nombre suelto => /api/images/<defaultDir>/<archivo>
-   return `${BACKEND_ORIGIN}/api/images/${encodeURIComponent(defaultDir)}/${encodeURIComponent(s)}`;
- };
+  if (!nameOrPath) return "";
+  const s = String(nameOrPath).trim();
+  if (/^https?:\/\//i.test(s)) return s; // ya es absoluta
+  if (s.startsWith("/api/images/")) return `${BACKEND_ORIGIN}${encodeURI(s)}`;
+  if (s.startsWith("/images/")) return `${BACKEND_ORIGIN}/api${encodeURI(s)}`;
+  // nombre suelto => /api/images/<defaultDir>/<archivo>
+  return `${BACKEND_ORIGIN}/api/images/${encodeURIComponent(
+    defaultDir
+  )}/${encodeURIComponent(s)}`;
+};
 
 const ConfigBanner = () => {
   const [banners, setBanners] = useState([]);
@@ -42,7 +48,6 @@ const ConfigBanner = () => {
     description: "",
     status: false,
   });
-  const [validationError, setValidationError] = useState("");
 
   const fetchBanners = async () => {
     try {
@@ -59,8 +64,6 @@ const ConfigBanner = () => {
           name: item.nombre_promocion,
           description: item.descripción || item.descripcion,
           backgroundImage: item.banner_url,
-          textColor: "white",
-          statusColor: "statusOrange",
           status:
             item.activa === true || item.activa === 1 || item.activa === "true",
         };
@@ -94,49 +97,81 @@ const ConfigBanner = () => {
     setCurrentIndex((prev) => (prev - 1 + banners.length) % banners.length);
   };
 
+  // Función para encontrar el primer orden disponible
+  const findNextAvailableOrder = () => {
+    const activeOrders = banners
+      .filter((banner) => banner.status && banner.orden > 0)
+      .map((banner) => banner.orden)
+      .sort((a, b) => a - b);
+
+    for (let i = 1; i <= activeOrders.length + 1; i++) {
+      if (!activeOrders.includes(i)) {
+        return i;
+      }
+    }
+    return activeOrders.length + 1;
+  };
+
   const openEditModal = () => {
     const current = banners[currentIndex];
     setEditForm({
-      orden: current.orden || 1,
+      orden: current.status ? current.orden || 1 : 0,
       name: current.name || "",
       description: current.description || "",
       status: current.status || false,
     });
-    setValidationError("");
     setIsEditModalOpen(true);
   };
 
   const closeEditModal = () => {
     setIsEditModalOpen(false);
     setEditForm({ orden: "", name: "", description: "", status: false });
-    setValidationError("");
     setSaving(false);
   };
 
   const handleInputChange = (field, value) => {
-    setEditForm((prev) => ({ ...prev, [field]: value }));
+    setEditForm((prev) => {
+      const newForm = { ...prev, [field]: value };
 
-    if (field === "orden") {
-      setValidationError("");
-    }
+      // Si cambia el estado, actualizar el orden automáticamente
+      if (field === "status") {
+        if (value) {
+          // Si se activa, asignar el próximo orden disponible
+          newForm.orden = findNextAvailableOrder();
+        } else {
+          // Si se desactiva, orden = 0
+          newForm.orden = 0;
+        }
+      }
+
+      return newForm;
+    });
   };
 
   const validateOrden = (nuevoOrden) => {
     const currentBanner = banners[currentIndex];
 
+    // Si esta descativado, 0 es siempre válido
+    if (nuevoOrden === 0) {
+      return true;
+    }
+
+    // Si es el mismo orden que ya tiene el banner actual
     if (nuevoOrden === currentBanner.orden) {
       return true;
     }
 
-    const ordenExiste = banners.some(
+    // Buscar si existe otro banner activo con el mismo orden
+    const bannerConMismoOrden = banners.find(
       (banner) =>
         banner.orden === nuevoOrden &&
-        banner.id_promocion !== currentBanner.id_promocion
+        banner.id_promocion !== currentBanner.id_promocion &&
+        banner.status
     );
 
-    if (ordenExiste) {
-      setValidationError(
-        `El orden ${nuevoOrden} ya está siendo utilizado por otro banner`
+    if (bannerConMismoOrden) {
+      alert(
+        `Error: El orden ${nuevoOrden} ya está siendo utilizado por el banner "${bannerConMismoOrden.name}". Por favor, elige un orden diferente.`
       );
       return false;
     }
@@ -146,22 +181,23 @@ const ConfigBanner = () => {
 
   const saveChanges = async () => {
     if (!editForm.name.trim() || !editForm.description.trim()) {
-      setValidationError("Por favor completa todos los campos requeridos");
+      alert("Por favor completa todos los campos requeridos");
       return;
     }
 
-    if (!editForm.orden || editForm.orden < 1) {
-      setValidationError("El orden debe ser un número mayor a 0");
+    // Validar orden solo si está activo
+    if (editForm.status && editForm.orden < 1) {
+      alert("El orden debe ser un número mayor a 0 para banners activos");
       return;
     }
 
-    if (!validateOrden(editForm.orden)) {
+    // Validar que el orden no esté duplicado
+    if (editForm.status && !validateOrden(editForm.orden)) {
       return;
     }
 
     try {
       setSaving(true);
-      setValidationError("");
       const currentBanner = banners[currentIndex];
 
       const updateData = {
@@ -202,7 +238,7 @@ const ConfigBanner = () => {
       alert("Banner actualizado exitosamente");
       closeEditModal();
 
-      // Recargar datos para confirmar
+      // Recargar datos
       await fetchBanners();
     } catch (err) {
       console.error("Error completo al guardar:", err);
@@ -218,7 +254,7 @@ const ConfigBanner = () => {
         errorMessage = err.message;
       }
 
-      setValidationError("Error al guardar cambios: " + errorMessage);
+      alert("Error al guardar cambios: " + errorMessage);
     } finally {
       setSaving(false);
     }
@@ -310,7 +346,10 @@ const ConfigBanner = () => {
             <div style={styles.bannerCard} onClick={openEditModal}>
               <div style={styles.imageContainer}>
                 <img
-                  src={toPublicFotoSrc(currentBanner.backgroundImage,"fotoDePerfil")}
+                  src={toPublicFotoSrc(
+                    currentBanner.backgroundImage,
+                    "fotoDePerfil"
+                  )}
                   alt={currentBanner.name}
                   style={styles.bannerImage}
                   onError={(e) => {
@@ -318,13 +357,13 @@ const ConfigBanner = () => {
                     e.currentTarget.src = "/PlaceHolder.png";
                   }}
                 />
-                //
-
-                //
                 <div style={styles.imageOverlay}></div>
               </div>
               <div style={styles.bannerContent}>
-                <div style={styles.bannerId}>Orden: {currentBanner.orden}</div>
+                <div style={styles.bannerId}>
+                  Orden:{" "}
+                  {currentBanner.status ? currentBanner.orden : "Inactivo (0)"}
+                </div>
                 <div style={styles.bannerName}>{currentBanner.name}</div>
                 <div style={styles.bannerDescription}>
                   {currentBanner.description}
@@ -389,34 +428,82 @@ const ConfigBanner = () => {
                   </button>
                 </div>
 
-                {validationError && (
-                  <div style={styles.errorMessage}>{validationError}</div>
-                )}
+                <div style={styles.formGroup}>
+                  <div style={styles.statusRow}>
+                    <label style={styles.label}>Estado de la Promoción:</label>
+                    <label style={styles.toggleWrapper}>
+                      <input
+                        type="checkbox"
+                        checked={editForm.status}
+                        onChange={(e) =>
+                          handleInputChange("status", e.target.checked)
+                        }
+                        style={styles.hiddenCheckbox}
+                        disabled={saving}
+                      />
+
+                      <div
+                        style={{
+                          ...styles.toggleSlider,
+                          backgroundColor: editForm.status
+                            ? "#d8572f"
+                            : "#e5e7eb",
+                        }}
+                      >
+                        <span>{editForm.status ? "Activa" : "Inactiva"}</span>
+
+                        <div
+                          style={{
+                            ...styles.toggleButton,
+                            transform: editForm.status
+                              ? "translateX(53px)"
+                              : "translateX(2px)",
+                          }}
+                        ></div>
+                      </div>
+                    </label>
+                  </div>
+                </div>
 
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Orden del Banner</label>
+                  <label style={styles.label}>Orden del Banner </label>
                   <input
                     type="number"
                     value={editForm.orden}
                     onChange={(e) =>
                       handleInputChange("orden", parseInt(e.target.value) || 0)
                     }
-                    style={styles.input}
+                    style={{
+                      ...styles.input,
+                      backgroundColor: !editForm.status ? "#f3f4f6" : "white",
+                      color: !editForm.status ? "#9ca3af" : "#111827",
+                    }}
                     onFocus={(e) => {
-                      e.target.style.borderColor =
-                        styles.inputFocus.borderColor;
-                      e.target.style.boxShadow = styles.inputFocus.boxShadow;
+                      if (editForm.status) {
+                        e.target.style.borderColor =
+                          styles.inputFocus.borderColor;
+                        e.target.style.boxShadow = styles.inputFocus.boxShadow;
+                      }
                     }}
                     onBlur={(e) => {
                       e.target.style.borderColor = "#d1d5db";
                       e.target.style.boxShadow = "none";
-                      if (e.target.value) {
-                        validateOrden(parseInt(e.target.value));
+                      if (e.target.value && editForm.status) {
+                        const ordenIngresado = parseInt(e.target.value);
+                        if (!validateOrden(ordenIngresado)) {
+                          setEditForm((prev) => ({
+                            ...prev,
+                            orden: findNextAvailableOrder(),
+                          }));
+                        }
                       }
                     }}
-                    placeholder="Orden del banner"
-                    min="1"
-                    disabled={saving}
+                    placeholder={
+                      editForm.status ? "Orden del banner" : "0 (Inactivo)"
+                    }
+                    min="0"
+                    disabled={saving || !editForm.status}
+                    readOnly={!editForm.status}
                   />
                 </div>
 
@@ -462,43 +549,6 @@ const ConfigBanner = () => {
                     maxLength="500"
                     disabled={saving}
                   />
-                </div>
-
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Estado de la Promoción</label>
-                  <div style={styles.statusToggleContainer}>
-                    <label style={styles.toggleWrapper}>
-                      <input
-                        type="checkbox"
-                        checked={editForm.status}
-                        onChange={(e) =>
-                          handleInputChange("status", e.target.checked)
-                        }
-                        style={styles.hiddenCheckbox}
-                        disabled={saving}
-                      />
-                      <div
-                        style={{
-                          ...styles.toggleSlider,
-                          backgroundColor: editForm.status
-                            ? "#d8572f"
-                            : "#e5e7eb",
-                        }}
-                      >
-                        <div
-                          style={{
-                            ...styles.toggleButton,
-                            transform: editForm.status
-                              ? "translateX(24px)"
-                              : "translateX(2px)",
-                          }}
-                        ></div>
-                      </div>
-                      <span style={styles.toggleLabel}>
-                        {editForm.status ? "Activa" : "Inactiva"}
-                      </span>
-                    </label>
-                  </div>
                 </div>
 
                 <div style={styles.modalButtons}>
@@ -590,7 +640,7 @@ const styles = {
     padding: "40px 20px",
   },
   container: {
-    maxWidth: "700px",
+    maxWidth: "1000px",
     margin: "0 auto",
     backgroundColor: "white",
     borderRadius: "16px",
@@ -600,6 +650,7 @@ const styles = {
   bannerSection: {
     padding: "40px 40px 20px",
     position: "relative",
+    width: "1000px",
   },
   navigationArrow: {
     position: "absolute",
@@ -632,7 +683,7 @@ const styles = {
   bannerCard: {
     borderRadius: "12px",
     width: "100%",
-    maxWidth: "400px",
+    maxWidth: "900px",
     height: "280px",
     position: "relative",
     margin: "0 auto",
@@ -788,19 +839,15 @@ const styles = {
     borderRadius: "50%",
     transition: "background-color 0.2s ease",
   },
-  errorMessage: {
-    backgroundColor: "#fef2f2",
-    border: "1px solid #fecaca",
-    borderRadius: "8px",
-    padding: "12px 16px",
-    marginBottom: "20px",
-    fontSize: "14px",
-    color: "#dc2626",
-    fontWeight: "500",
-  },
   formGroup: {
     marginBottom: "20px",
     padding: "0 20px",
+  },
+  statusRow: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%",
   },
   label: {
     display: "block",
@@ -808,6 +855,7 @@ const styles = {
     fontWeight: "500",
     color: "#374151",
     marginBottom: "8px",
+    textAlign: "left",
   },
   input: {
     width: "100%",
@@ -835,9 +883,9 @@ const styles = {
   },
   toggleWrapper: {
     display: "flex",
-    alignItems: "center",
+    alignItems: "right",
     cursor: "pointer",
-    gap: "12px",
+    padding: "0",
   },
   hiddenCheckbox: {
     position: "absolute",
@@ -848,7 +896,7 @@ const styles = {
   },
   toggleSlider: {
     position: "relative",
-    width: "48px",
+    width: "78px",
     height: "24px",
     borderRadius: "24px",
     transition: "background-color 0.3s ease",
@@ -864,12 +912,7 @@ const styles = {
     borderRadius: "50%",
     transition: "transform 0.3s ease",
     boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-  },
-  toggleLabel: {
-    fontSize: "14px",
-    fontWeight: "500",
-    color: "#374151",
-    userSelect: "none",
+    padding: "2px",
   },
   modalButtons: {
     display: "flex",

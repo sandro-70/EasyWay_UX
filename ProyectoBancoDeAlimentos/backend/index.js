@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
 const cookieParser = require("cookie-parser");
+const path = require("path");
 // Importar los modelos
 const db = require("./models"); // ✅ Importa ./models/index.js
 console.log("🔍 Modelos cargados:", Object.keys(db));
@@ -20,6 +21,9 @@ app.use(
 
 app.use(morgan("dev"));
 app.use(express.json());
+
+// Servir archivos estáticos de imágenes
+app.use("/images", express.static(path.join(__dirname, "public", "images")));
 
 // Logger personalizado
 app.use((req, res, next) => {

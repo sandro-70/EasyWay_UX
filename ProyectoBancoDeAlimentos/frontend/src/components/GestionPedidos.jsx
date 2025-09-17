@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "../components/GestionPedido.css";
+import { Icon } from "@iconify/react";
 
 import {
   getPedidosConDetalles,
@@ -65,7 +66,7 @@ function formatDate(value) {
   const year = d.getFullYear();
   return `${day}/${month}/${year}`;
 }
-const Icon = {
+const Othericon = {
   Search: (props) => (
     <svg
       viewBox="0 0 24 24"
@@ -113,7 +114,7 @@ function PaginationSmall({ page, pageCount, onPage }) {
         className="pedido-pagination-btn"
         disabled={page === 1}
       >
-        <Icon.ChevronLeft />
+        <Othericon.ChevronLeft />
       </button>
       {pages.map((p) => (
         <button
@@ -131,7 +132,7 @@ function PaginationSmall({ page, pageCount, onPage }) {
         className="pedido-pagination-btn"
         disabled={page === pageCount}
       >
-        <Icon.ChevronRight />
+        <Othericon.ChevronRight />
       </button>
     </div>
   );
@@ -662,6 +663,7 @@ const GestionPedidos = () => {
         {detalleOpen && pedidoSeleccionado && (
           <div className="modal-overlay">
             <div className="modal-container">
+              {/* Header */}
               <div className="modal-header">
                 <h2 className="modal-title">Detalle del Pedido</h2>
                 <button
@@ -673,49 +675,71 @@ const GestionPedidos = () => {
                 </button>
               </div>
 
+              {/* Body */}
               <div className="modal-body">
                 {/* Productos */}
-                <div className="productos-lista">
+                <section className="productos-lista">
                   <h3>Productos</h3>
-                  {Array.isArray(pedidoSeleccionado.productos)
-                    ? pedidoSeleccionado.productos.map((prod, i) => (
-                        <div className="producto-card" key={i}>
-                          <img src={prod.img} alt={formatField(prod.nombre)} />
+                  {Array.isArray(pedidoSeleccionado.productos) &&
+                    pedidoSeleccionado.productos.map((prod, i) => (
+                      <div className="producto-card" key={i}>
+                        <img src={prod.img} alt={formatField(prod.nombre)} />
+                        <div className="producto-info">
                           <p>{formatField(prod.nombre)}</p>
                           <span>Cantidad: {formatField(prod.cantidad)}</span>
                         </div>
-                      ))
-                    : null}
-                </div>
+                      </div>
+                    ))}
+                </section>
 
-                {/* Info del pedido */}
-                <div className="pedido-info">
-                  <h3>Información del Pedido</h3>
+                {/* Información del Pedido */}
+                <h3>Información del Pedido</h3>
+                <section className="seccion-pedido">
                   <div className="modal-grid-2">
-                    <Field label="Descuento" value={`L. ${formatField(pedidoSeleccionado.descuento)}`} readOnly />
-                    <Field label="Subtotal" value={`L. ${formatField(pedidoSeleccionado.subtotal)}`} readOnly />
-                    <Field label="Total" value={`L. ${formatField(pedidoSeleccionado.total)}`} readOnly />
-                    <Field label="Dirección de entrega" value={
-                      direccionEntrega ||
-                      formatField(pedidoSeleccionado.direccion)
-                    } readOnly />
-                    <Field label="Sucursal asignada" value={
-                      sucursalNombre || formatField(pedidoSeleccionado.sucursal)
-                    } readOnly />
-                    <Field label="Método de Pago" value={
-                      metodoPagoUsuario ||
-                      formatField(pedidoSeleccionado.metodoPago)
-                    } readOnly />
+                  <div className="modal-column">
+                    <Field
+                      label="Descuento"
+                      value={`L. ${formatField(pedidoSeleccionado.descuento)}`}
+                      readOnly
+                    />
+                    <Field
+                      label="Subtotal"
+                      value={`L. ${formatField(pedidoSeleccionado.subtotal)}`}
+                      readOnly
+                    />
+                    <Field
+                      label="Total"
+                      value={`L. ${formatField(pedidoSeleccionado.total)}`}
+                      readOnly
+                    />
+                  </div>
+                  <div className="modal-column">
+                    <Field
+                      label="Dirección de entrega"
+                      value={direccionEntrega || formatField(pedidoSeleccionado.direccion)}
+                      readOnly
+                    />
+                    <Field
+                      label="Sucursal asignada"
+                      value={sucursalNombre || formatField(pedidoSeleccionado.sucursal)}
+                      readOnly
+                    />
+                    <Field
+                      label="Método de Pago"
+                      value={metodoPagoUsuario || formatField(pedidoSeleccionado.metodoPago)}
+                      readOnly
+                    />
                   </div>
                 </div>
+                </section>
 
-                {/* Estado actual y cambio */}
-                <div className="estado-pedido">
+                {/* Estado del Pedido */}
+                <section className="seccion-pedido">
                   <h3>Estado del Pedido</h3>
                   <div className="modal-grid-2">
                     <Field label="Estado actual" value={estadoActual} readOnly disabled />
-                    <Field 
-                      label="Nuevo estado" 
+                    <Field
+                      label="Nuevo estado"
                       as="select"
                       value={nuevoEstado}
                       onChange={(e) => setNuevoEstado(e.target.value)}
@@ -726,24 +750,20 @@ const GestionPedidos = () => {
                       <option value="Entregado">Entregado</option>
                     </Field>
                   </div>
-                </div>
+                </section>
 
                 {/* Acciones */}
-                <div className="modal-actions">
-                  {/* Cambiar Estado: solo actualiza vista localmente (preview). Persist on Guardar. */}
+                <div className="modalactions">
                   <button
                     type="button"
                     className="btn-secondary"
                     onClick={() => {
-                      // actualizar preview local
                       setEstadoActual(nuevoEstado);
                       setPedidoSeleccionado((prev) => ({
                         ...prev,
                         estado: nuevoEstado,
                       }));
-                      const pedidoId = pedidoSeleccionado
-                        ? pedidoSeleccionado.id || pedidoSeleccionado.id_pedido
-                        : null;
+                      const pedidoId = pedidoSeleccionado?.id || pedidoSeleccionado?.id_pedido;
                       if (pedidoId) {
                         setPedidos((prev) =>
                           prev.map((it) =>
@@ -753,13 +773,11 @@ const GestionPedidos = () => {
                           )
                         );
                       }
-                      console.log("Estado cambiado localmente a:", nuevoEstado);
                     }}
                   >
                     Cambiar Estado
                   </button>
 
-                  {/* Cancelar Pedido: marca localmente como Cancelado. Persist on Guardar. */}
                   <button
                     type="button"
                     className="btn-danger"
@@ -767,13 +785,8 @@ const GestionPedidos = () => {
                       const cancelar = "Cancelado";
                       setNuevoEstado(cancelar);
                       setEstadoActual(cancelar);
-                      setPedidoSeleccionado((prev) => ({
-                        ...prev,
-                        estado: cancelar,
-                      }));
-                      const pedidoId = pedidoSeleccionado
-                        ? pedidoSeleccionado.id || pedidoSeleccionado.id_pedido
-                        : null;
+                      setPedidoSeleccionado((prev) => ({ ...prev, estado: cancelar }));
+                      const pedidoId = pedidoSeleccionado?.id || pedidoSeleccionado?.id_pedido;
                       if (pedidoId) {
                         setPedidos((prev) =>
                           prev.map((it) =>
@@ -783,39 +796,34 @@ const GestionPedidos = () => {
                           )
                         );
                       }
-                      console.log("Pedido marcado localmente como Cancelado");
                     }}
                   >
                     Cancelar Pedido
                   </button>
+                </div>
 
-                  {/* Guardar: persistir el nuevo estado en la base de datos */}
+                <div className="modal-actions">
+                  <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setDetalleOpen(false)} // Cierra el modal
+                >
+                  Cancelar
+                </button>
                   <button
                     type="button"
                     className="btn-primary"
                     onClick={async () => {
                       try {
-                        const pedidoId =
-                          pedidoSeleccionado &&
-                          (pedidoSeleccionado.id || pedidoSeleccionado.id_pedido);
-                        if (!pedidoId) {
-                          alert("No se encontró el ID del pedido para guardar");
-                          return;
-                        }
+                        const pedidoId = pedidoSeleccionado?.id || pedidoSeleccionado?.id_pedido;
+                        if (!pedidoId) return alert("No se encontró el ID del pedido");
                         const idEstado = estadoNameToId[nuevoEstado] || null;
-                        if (!idEstado) {
-                          alert("Estado no válido para guardar");
-                          return;
-                        }
+                        if (!idEstado) return alert("Estado no válido");
 
                         await actualizarEstadoPedido(pedidoId, idEstado);
 
-                        // confirmar en UI
                         setEstadoActual(nuevoEstado);
-                        setPedidoSeleccionado((prev) => ({
-                          ...prev,
-                          estado: nuevoEstado,
-                        }));
+                        setPedidoSeleccionado((prev) => ({ ...prev, estado: nuevoEstado }));
                         setPedidos((prev) =>
                           prev.map((it) =>
                             String(it.id) === String(pedidoId)
@@ -832,8 +840,8 @@ const GestionPedidos = () => {
                       }
                     }}
                   >
-                    Guardar
-                  </button>
+                    <Icon icon="mdi:content-save-outline" /> Guardar
+                    </button>
                 </div>
               </div>
             </div>

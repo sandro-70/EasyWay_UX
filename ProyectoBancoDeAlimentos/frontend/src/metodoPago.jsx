@@ -5,6 +5,8 @@ import { getAllMetodoPago, createMetodoPago, deleteMetodoPago, setMetodoPagoDefa
 import arrowL from "./images/arrowL.png";
 import arrowR from "./images/arrowR.png";
 import chip from "./images/chip.png";
+import { toast } from "react-toastify";
+import "./toast.css";
 export default function MetodoPago() {
   const [showForm, setShowForm] = useState(false);
   const [metodosPago, setMetodosPago] = useState([]);
@@ -33,7 +35,7 @@ export default function MetodoPago() {
       setMetodosPago(response.data);
     } catch (error) {
       console.error('Error al cargar métodos de pago:', error);
-      setError('No se pudieron cargar los métodos de pago');
+      toast.error('No se pudieron cargar los métodos de pago', { className: "toast-error" });
     } finally {
       setCargando(false);
     }
@@ -87,13 +89,11 @@ export default function MetodoPago() {
     const anoCompleto = ano < 100 ? 2000 + ano : ano;
     
     if (isNaN(mes) || mes < 1 || mes > 12) {
-      setError('Mes de vencimiento inválido (debe ser entre 1-12)');
-      return;
+      return toast.error("Mes de vencimiento inválido (1-12)", { className: "toast-error" });
     }
     
     if (isNaN(anoCompleto) || anoCompleto < 2000 || anoCompleto > 2100) {
-      setError('Año de vencimiento inválido');
-      return;
+      return toast.error("Año de vencimiento inválido", { className: "toast-error" });
     }
 
     // Preparar datos para la API según el modelo esperado
@@ -110,6 +110,7 @@ export default function MetodoPago() {
     };
 
     await createMetodoPago(payload);
+    toast.success("Método de pago agregado correctamente", { className: "toast-success" });
     setShowForm(false);
     setFormData({
       numero_tarjeta: "",
@@ -122,11 +123,7 @@ export default function MetodoPago() {
     cargarMetodosPago();
   } catch (error) {
     console.error('Error al agregar método de pago:', error);
-    if (error.response?.data?.message) {
-      setError(error.response.data.message);
-    } else {
-      setError('Error al agregar el método de pago');
-    }
+    toast.error(error.response?.data?.message || "Error al agregar el método de pago", { className: "toast-error" });
   }
 };
 
@@ -147,10 +144,11 @@ export default function MetodoPago() {
     if (window.confirm('¿Estás seguro de que quieres eliminar este método de pago?')) {
       try {
         await deleteMetodoPago(id);
+        toast.info("Método de pago eliminado", { className: "toast-info" });
         cargarMetodosPago();
       } catch (error) {
         console.error('Error al eliminar método de pago:', error);
-        setError('Error al eliminar el método de pago');
+        toast.error('Error al eliminar el método de pago', { className: "toast-error" });
       }
     }
   };
@@ -158,10 +156,11 @@ export default function MetodoPago() {
   const handleSetDefault = async (id) => {
     try {
       await setMetodoPagoDefault(id);
+      toast.success("Método de pago predeterminado actualizado", { className: "toast-success" });
       cargarMetodosPago();
     } catch (error) {
       console.error('Error al establecer método predeterminado:', error);
-      setError('Error al establecer método predeterminado');
+      toast.error('Error al establecer método predeterminado', { className: "toast-error" });
     }
   };
 

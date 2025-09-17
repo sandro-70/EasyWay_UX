@@ -19,7 +19,7 @@ const MisCupones = () => {
       try {
         const resUsuario = await InformacionUser();
         if (!resUsuario || !resUsuario.data) {
-          toast.error("No se pudo obtener la información del usuario ❌");
+          toast.error("No se pudo obtener la información del usuario");
           return;
         }
         if (resUsuario && resUsuario.data) {
@@ -27,7 +27,7 @@ const MisCupones = () => {
           const id_usuario = resUsuario.data.id_usuario;
           const resCupones = await GetALLCupones(id_usuario);
           if (!resCupones || !resCupones.data) {
-            toast.warning("No se encontraron cupones para este usuario ⚠️");
+            toast.warning("No se encontraron cupones para este usuario");
             return;
           }
 
@@ -54,16 +54,10 @@ const MisCupones = () => {
           setCuponesUsados(usados);
           setCuponesCaducados(caducados);
           setCuponesMostrados(noUsados);
-
-          if (cupones.length === 0) {
-                toast.info("No tienes cupones registrados", { className: "toast-info" });
-            } else {
-                toast.success("Cupones cargados correctamente", { className: "toast-success" });
-            }
         }
       } catch (err) {
         console.error("Error al obtener datos del usuario o cupones:", err);
-        toast.error("Error al cargar los cupones", { className: "toast-error" });
+        //toast.error("Error al cargar los cupones", { className: "toast-error" });
       } finally {
         setLoading(false);
       }
@@ -75,15 +69,15 @@ const MisCupones = () => {
   const mostrarCupones = (tipo) => {
     if (tipo === "Cupones no utilizados") {
         setCuponesMostrados(cuponesNoUtilizados);
-        if (cuponesNoUtilizados.length === 0) toast.info("No tienes cupones disponibles sin usar", { className: "toast-info" });
+        //if (cuponesNoUtilizados.length === 0) toast.info("No tienes cupones disponibles sin usar", { className: "toast-info" });
     } 
     else if (tipo === "Usados") {
         setCuponesMostrados(cuponesUsados);
-        if (cuponesUsados.length === 0) toast.info("Aún no has usado ningún cupón", { className: "toast-info" });
+        //if (cuponesUsados.length === 0) toast.info("Aún no has usado ningún cupón", { className: "toast-info" });
     } 
     else {
         setCuponesMostrados(cuponesCaducados);
-        if (cuponesCaducados.length === 0) toast.info("No tienes cupones caducados", { className: "toast-info" });
+        //if (cuponesCaducados.length === 0) toast.info("No tienes cupones caducados", { className: "toast-info" });
     }
   };
 

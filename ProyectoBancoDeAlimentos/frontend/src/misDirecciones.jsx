@@ -10,6 +10,8 @@ import {
   getAllDepartamentos,
 } from "./api/DireccionesApi";
 import { jwtDecode } from "jwt-decode";
+import { toast } from "react-toastify";
+import "./toast.css";
 
 export default function MisDirecciones() {
   const [showModal, setShowModal] = useState(false);
@@ -27,12 +29,12 @@ export default function MisDirecciones() {
   });
 
   const [errores, setErrores] = useState({});
-  const [toast, setToast] = useState({ mensaje: "", tipo: "" });
+  /*const [toast, setToast] = useState({ mensaje: "", tipo: "" });
 
   const showToast = (mensaje, tipo = "error") => {
     setToast({ mensaje, tipo });
     setTimeout(() => setToast({ mensaje: "", tipo: "" }), 3000);
-  };
+  };*/
 
   const getUserId = () => {
     const token = localStorage.getItem("token");
@@ -496,7 +498,7 @@ export default function MisDirecciones() {
             setDirecciones={setDirecciones}
             getUserId={getUserId}
             direcciones={direcciones}
-            setToast={setToast}
+            //setToast={setToast}
           />
         )}
       </div>

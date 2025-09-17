@@ -1428,7 +1428,7 @@ export default function Inventario() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm table-auto min-w-[900px]">
               <thead>
-                <tr className="text-black">
+                <tr className="text-center">
                   <Th
                     label="ID de Producto"
                     sortKey="id"
@@ -1467,7 +1467,7 @@ export default function Inventario() {
                   />
                   <th
                     ref={stockHeadRef}
-                    className="px-2 py-2 text-left bg-[#2B6DAF] relative"
+                    className="px-2 py-2 text-center bg-[#2B6DAF] relative"
                   >
                     <div className="flex items-center justify-between gap-2">
                       {/* Ordenar por stock */}
@@ -1535,7 +1535,7 @@ export default function Inventario() {
                     onSort={toggleSort}
                   />
 
-                  <th className="px-3 py-2 text-left bg-[#2B6DAF]">
+                  <th className="px-2 py-2 bg-[#2B6DAF] relative text-center">
                     <span className="text-white">Opciones</span>
                   </th>
                 </tr>
@@ -1558,21 +1558,21 @@ export default function Inventario() {
                     <tr
                       key={r.id + idx}
                       className={
-                        "border-b last:border-0 border-[#d8dadc] " +
+                        "border-b last:border-0 border-[#d8dadc]" +
                         (!r.activo ? "opacity-70" : "")
                       }
                     >
-                      <td className="px-3 py-3">{r.id}</td>
-                      <td className="px-3 py-3">{r.producto}</td>
-                      <td className="px-3 py-3">
+                      <td className="px-3 py-3 text-center">{r.id}</td>
+                      <td className="px-3 py-3 text-center">{r.producto}</td>
+                      <td className="px-3 py-3 text-center">
                         <StatusBadge active={r.activo} />
                       </td>
-                      <td className="px-3 py-3">{r.marca}</td>
-                      <td className="px-3 py-3">{r.categoria}</td>
-                      <td className="px-3 py-3">{r.subcategoria}</td>
-                      <td className="px-3 py-3">{r.stockKg} kg.</td>
-                      <td className="px-3 py-3">L. {r.precioBase}</td>
-                      <td className="px-3 py-3">L. {r.precioVenta}</td>
+                      <td className="px-3 py-3 text-center">{r.marca}</td>
+                      <td className="px-3 py-3 text-center">{r.categoria}</td>
+                      <td className="px-3 py-3 text-center">{r.subcategoria}</td>
+                      <td className="px-3 py-3 text-center">{r.stockKg} kg.</td>
+                      <td className="px-3 py-3 text-center">L. {r.precioBase}</td>
+                      <td className="px-3 py-3 text-center">L. {r.precioVenta}</td>
 
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">

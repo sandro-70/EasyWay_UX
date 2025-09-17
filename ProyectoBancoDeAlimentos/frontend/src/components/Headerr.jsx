@@ -119,16 +119,7 @@ const Headerr = () => {
 
   const isCliente = isAuthenticated && !isAdmin && !isConsultor;
 
-  // Cerrar dropdown user al click fuera
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (logMenu && userMenuRef.current && !userMenuRef.current.contains(event.target)) {
-        setLogOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [logMenu]);
+
 
   // Cerrar menú reportes al click fuera
   useEffect(() => {
@@ -151,8 +142,8 @@ const Headerr = () => {
         const lista = Array.isArray(r?.data?.privilegios)
           ? r.data.privilegios
           : Array.isArray(r?.data)
-          ? r.data
-          : [];
+            ? r.data
+            : [];
         const names = lista.map((p) => p?.nombre_privilegio ?? p?.nombre ?? p).filter(Boolean).map(_slug);
         if (alive) setPrivs(new Set(names));
       } catch {
@@ -286,8 +277,13 @@ const Headerr = () => {
           )}
         </div>
 
-        <div style={styles.user} ref={userMenuRef}>
-          <button style={styles.SmallWrapperUser} onClick={() => setLogOpen((prev) => !prev)}>
+        <div
+          style={styles.user}
+          ref={userMenuRef}
+          onMouseEnter={() => setLogOpen(true)}
+          onMouseLeave={() => setLogOpen(false)}
+        >
+          <button style={styles.SmallWrapperUser}>
             <AvatarImg user={user} size={40} />
           </button>
           <span>

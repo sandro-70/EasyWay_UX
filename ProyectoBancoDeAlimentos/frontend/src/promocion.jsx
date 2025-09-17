@@ -8,6 +8,8 @@ import { listarPorCategoria } from "./api/SubcategoriaApi";
 import { AddNewCarrito, ViewCar, SumarItem } from "./api/CarritoApi";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "./utils/CartContext";
+import { toast } from "react-toastify";
+import "./toast.css";
 
 function Promocion() {
   const navigate = useNavigate();
@@ -266,7 +268,7 @@ function Promocion() {
 
   const handleAgregar = async (id_producto) => {
     if (!id_producto) {
-      alert("ID de producto no válido");
+      toast.error("ID de producto no válido", { className: "toast-error" });
       return;
     }
 
@@ -285,7 +287,7 @@ function Promocion() {
         const nuevaCantidad = cantidadActual + 1;
 
         console.log(`Actualizando de ${cantidadActual} a ${nuevaCantidad}`);
-        alert(`Actualizando a ${nuevaCantidad}`);
+        toast.success(`Actualizando a ${nuevaCantidad}`, { className: "toast-success" });
 
         await SumarItem(id_producto, nuevaCantidad);
 
@@ -313,7 +315,7 @@ function Promocion() {
         const nuevosDetalles = carritoActualizado.data.carrito_detalles ?? [];
         setCarrito(nuevosDetalles);
 
-        alert(`Producto agregado al carrito`);
+        toast.success(`Producto agregado al carrito`, { className: "toast-success" });
         incrementCart();
       }
     } catch (error) {
@@ -325,10 +327,10 @@ function Promocion() {
           const carritoNuevo = await ViewCar();
           const nuevosDetalles = carritoNuevo.data.carrito_detalles ?? [];
           setCarrito(nuevosDetalles);
-          alert(`Producto agregado al carrito`);
+          toast.success(`Producto agregado al carrito`, { className: "toast-success" });
         } catch (err) {
           console.error("Error creando carrito:", err);
-          alert("No se pudo agregar el producto al carrito");
+          toast.error("No se pudo agregar el producto al carrito", { className: "toast-error" });
         }
       } else {
         const errorMessage =
@@ -336,7 +338,7 @@ function Promocion() {
           error?.response?.data?.message ||
           error?.message ||
           "No se pudo procesar el carrito";
-        alert(errorMessage);
+        toast.error(errorMessage, { className: "toast-error" });
       }
     }
   };

@@ -185,6 +185,10 @@ export function listarProductosporsucursal(id_sucursal) {
   return axiosInstance.get(`/api/producto/sucursal/${id_sucursal}`);
 }
 
+export function listarProductosl() {
+  return axiosInstance.get('/api/producto/');
+}
+
 export function addOrUpdateValoracion(id_producto, { puntuacion, comentario }) {
   const rating = Math.max(1, Math.min(5, parseInt(puntuacion, 10) || 0));
   return axiosInstance.post(

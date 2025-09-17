@@ -1,5 +1,5 @@
-const { Sequelize } = require('sequelize');
-const { factura_detalle, producto, factura, pedido, estado_pedido } = require("../models");
+const { Sequelize,Op, fn, col, literal  } = require('sequelize');
+const { factura_detalle, producto, factura, pedido, estado_pedido, promocion, promocion_pedido, Usuario } = require("../models");
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 
@@ -210,3 +210,171 @@ exports.exportVentasPDF = async (req, res) => {
     res.status(500).json({ error: 'Error al exportar el reporte de ventas a PDF' });
   }
 };
+
+exports.getPromedioVentas4Meses = async (req, res) => {
+  try {
+    const hoy = new Date();
+    const hace4Meses = new Date();
+    hace4Meses.setMonth(hoy.getMonth() - 3);//4 meses y actual
+
+    // Traer ventas agrupadas por mes
+    const ventas = await factura.findAll({
+      attributes: [
+        [Sequelize.fn("DATE_TRUNC", "month", Sequelize.col("fecha_emision")), "mes"],
+        [Sequelize.fn("SUM", Sequelize.col("total")), "ventas_totales"]
+      ],
+      where: {
+        fecha_emision: {
+          [Op.between]: [hace4Meses, hoy]
+        }
+      },
+      group: [Sequelize.fn("DATE_TRUNC", "month", Sequelize.col("fecha_emision"))],
+      order: [[Sequelize.fn("DATE_TRUNC", "month", Sequelize.col("fecha_emision")), "ASC"]]
+    });
+
+    //estructura para 4 meses
+    const resultados = [];
+    for (let i = 3; i >= 0; i--) {
+      const fechaMes = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+      const claveMes = fechaMes.toISOString().substring(0, 7); // yyyy-mm
+
+      const venta = ventas.find(v => 
+        v.get("mes").toISOString().substring(0, 7) === claveMes
+      );
+
+      resultados.push({
+        mes: claveMes,
+        ventas_totales: venta ? parseFloat(venta.get("ventas_totales")) : 0
+      });
+    }
+
+    // Calcular promedio sobre 4 meses
+    const promedio = resultados.reduce((a, b) => a + b.ventas_totales, 0) / 4;
+
+    return res.status(200).json({
+      ventas_por_mes: resultados,
+      promedio_4_meses: promedio
+    });
+
+  } catch (error) {
+    console.error("Error obteniendo promedio de ventas:", error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getPedidosPorMes = async (req, res) => {
+  try {
+    // Agrupar todos los pedidos por mes (sin límite de 4 meses)
+    const pedidos = await pedido.findAll({
+      attributes: [
+        [Sequelize.fn("DATE_TRUNC", "month", Sequelize.col("fecha_pedido")), "mes"],
+        [Sequelize.fn("COUNT", Sequelize.col("id_pedido")), "total_pedidos"]
+      ],
+      group: [Sequelize.fn("DATE_TRUNC", "month", Sequelize.col("fecha_pedido"))],
+      order: [[Sequelize.fn("DATE_TRUNC", "month", Sequelize.col("fecha_pedido")), "ASC"]]
+    });
+
+    // Convertir el resultado a un arreglo más limpio
+    const resultados = pedidos.map(p => ({
+      mes: p.get("mes").toISOString().substring(0, 7), // yyyy-mm
+      total_pedidos: parseInt(p.get("total_pedidos"))
+    }));
+
+    return res.status(200).json({
+      pedidos_por_mes: resultados
+    });
+
+  } catch (error) {
+    console.error("Error obteniendo pedidos por mes:", error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+
+exports.ingresosPromocionesUltimos4Meses = async (req, res) => {
+  try {
+    const fechaInicio = new Date();
+    fechaInicio.setMonth(fechaInicio.getMonth() - 4);
+
+    const data = await factura.findAll({
+      attributes: [
+        [
+          Sequelize.fn("DATE_TRUNC", "month", Sequelize.col("factura.fecha_emision")),
+          "mes"
+        ],
+        [
+          Sequelize.fn("SUM", Sequelize.col("factura.total")),
+          "ingreso_con_promocion"
+        ]
+      ],
+      include: [
+        {
+          model: pedido,
+          attributes: [],
+          required: true,
+          include: [
+            {
+              model: promocion,
+              attributes: [],
+              required: true,
+              through: { attributes: [] }
+            }
+          ]
+        }
+      ],
+      where: {
+        fecha_emision: { [Op.gte]: fechaInicio }
+      },
+      group: [Sequelize.fn("DATE_TRUNC", "month", Sequelize.col("factura.fecha_emision"))],
+      order: [
+        [Sequelize.fn("DATE_TRUNC", "month", Sequelize.col("factura.fecha_emision")), "ASC"]
+      ],
+      raw: true
+    });
+
+    // transformar a JSON bonito
+    const result = data.map(item => ({
+      mes: item.mes.toISOString().substring(0, 7),
+      ingreso_con_promocion: parseFloat(item.ingreso_con_promocion)
+    }));
+
+    return res.status(200).json({ ingresos_por_promociones: result });
+  } catch (error) {
+    console.error("Error calculando ingresos de promociones:", error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+
+exports.usuariosMasGastos = async (req, res) => {
+  try {
+    const userFactura = await factura.findAll({
+      attributes: [
+        [Sequelize.col("pedido.Usuario.nombre"), "nombre_usuario"],
+        [Sequelize.fn("COUNT", Sequelize.col("factura.id_factura")), "cantidad_compras"],
+        [Sequelize.fn("SUM", Sequelize.col("factura.total")), "total_gastado"]
+      ],
+      include: [
+        {
+          model: pedido,
+          attributes: [],
+          include: [
+            {
+              model: Usuario,
+              attributes: []
+            }
+          ]
+        }
+      ],
+      group: ["pedido.Usuario.id_usuario", "pedido.Usuario.nombre"],
+      order: [[Sequelize.literal("total_gastado"), "DESC"]],
+      raw: true
+    });
+
+    res.json(userFactura);
+  } catch (error) {
+    console.error("Error en usuariosMasGastos:", error);
+    res.status(500).json({ error: "Error interno al obtener usuarios con más gastos" });
+  }
+};
+

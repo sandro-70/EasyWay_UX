@@ -5,8 +5,9 @@ import {
   crearProducto,
   actualizarProducto,
   listarProductosporsucursal,
+  listarProductosl
 } from "../api/InventarioApi";
-import { GetCupones, GetALLCupones } from "../api/CuponesApi";
+import { getStock } from "../api/reporteusuarioApi";
 import {
   uploadProductPhotos,
   uploadProductPhotos2,
@@ -60,23 +61,7 @@ export default function TestAuth() {
   const fetchProductos = async () => {
     try {
       setLoading(true);
-      const res = await getAllProducts(); // axios response
-
-      /*
-      4,
-      "Andres",
-      "Martinez",
-      "99999999",
-      "masculino",
-      "/fotos/perfil.png",
-      2,                  // id de la dirección
-      "Calle Nueva 123",
-      "Tegucigalpa",
-      "11101",
-      true,
-      5
-      preguntar como saca ese campo de la direccion
-      */
+      const res = await listarProductosl(); // axios response
       setRawResponse(res?.data ?? null);
       const arr = extractArray(res?.data);
       setProducts(arr);

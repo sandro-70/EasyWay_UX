@@ -758,3 +758,47 @@ exports.actualizarProducto = async (req, res) => {
     });
   }
 };
+
+exports.getStock = async (req, res) => {
+  try {
+    const data = await sucursal_producto.findAll({
+      attributes: ['id_sucursal', 'id_producto', 'stock_disponible'],
+      include: [
+        {
+          model: producto,
+          attributes: ['nombre', 'unidad_medida'],
+          include: [
+            {
+              model: subcategoria,
+              as: 'subcategoria',
+              attributes: ['nombre'],
+              include: [
+                {
+                  model: categoria,
+                  as: 'categoria',
+                  attributes: ['nombre']
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      order: [['stock_disponible', 'ASC']] // de menor a mayor stock
+    });
+
+    const result = data.map(item => ({
+      id_sucursal: item.id_sucursal,
+      id_producto: item.id_producto,
+      nombre_producto: item.producto?.nombre,
+      categoria: item.producto?.subcategoria?.categoria?.nombre || null,
+      subcategoria: item.producto?.subcategoria?.nombre || null,
+      stock: item.stock_disponible,
+      unidad_medida: item.producto?.unidad_medida
+    }));
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: error.message });
+  }
+};

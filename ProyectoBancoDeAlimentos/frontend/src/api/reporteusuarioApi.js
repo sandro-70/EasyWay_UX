@@ -34,3 +34,24 @@ export function exportVentasExcel(params) {//no funciona bien
 export function exportVentasPDF(params) {//no funciona bien
     return axiosInstance.get('/api/reportes/ventas/export/pdf', { params, responseType: 'blob' });
 }
+
+export function getPromedioVentas4Meses(){
+    return axiosInstance.get('/api/reportes/reporte-4meses');
+}
+
+export function getPedidosPorMes(){
+    return axiosInstance.get('/api/reportes/pedido-mes');
+}
+
+//esta es la unica que no probe
+export function ingresosPromocionesUltimos4Meses(){
+    return axiosInstance.get('/api/reportes/ingresos-promocion');
+}
+
+export function usuariosMasGastos(){
+    return axiosInstance.get('/api/reportes/usuarios-gastos');
+}
+
+export function getStock(){
+    return axiosInstance.get('/api/producto/get-stock-sucursal');
+}

@@ -10,6 +10,7 @@ router.get('/destacados', productoCtrl.destacados);
 router.get('/tendencias', productoCtrl.tendencias);
 router.get('/marcas', productoCtrl.listarMarcas);
 router.get('/porcentaje-ganancia', productoCtrl.getAllPorcentajeGanancia);
+router.get('/get-stock-sucursal', productoCtrl.getStock);
 
 router.get('/favoritos', verificarToken, ctrl.listMisFavoritos);
 
@@ -33,5 +34,6 @@ router.get ('/:id/valoraciones', ctrl.listValoracionesByProducto); // No requier
 router.post('/:id/valoraciones', verificarToken, ctrl.addOrUpdateValoracion); // Requiere token
 
 router.post('/marcas', productoCtrl.crearMarca);
+
 
 module.exports = router;

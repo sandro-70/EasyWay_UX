@@ -21,6 +21,30 @@ async function seed(req, res) {
         cantidad_unidad_medida: 3,
         subtotal_producto: 85.0,
       },
+      {
+        id_factura: 1,
+        id_producto: 3,
+        cantidad_unidad_medida: 1,
+        subtotal_producto: 15.99,
+      },
+      {
+        id_factura: 1,
+        id_producto: 4,
+        cantidad_unidad_medida: 2,
+        subtotal_producto: 40.0,
+      },
+      {
+        id_factura: 1,
+        id_producto: 5,
+        cantidad_unidad_medida: 2,
+        subtotal_producto: 40.0,
+      },
+      {
+        id_factura: 3,
+        id_producto: 1,
+        cantidad_unidad_medida: 1,
+        subtotal_producto: 25.0,
+      },
     ];
 
     for (const rec of sample) {

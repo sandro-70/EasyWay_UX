@@ -1,3 +1,32 @@
+.pedido-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  padding: 20px 0;
+}
+
+.pedido-title {
+  color: #f0833e;
+  font-weight: bold;
+  font-size: 40px;
+  text-align: left;
+  display: inline-block;
+  width: 100%;
+  margin-top: 60px;
+}
+
+.pedido-table {
+  width: 70%;
+  margin: 0 auto;
+  table-layout: fixed; /* evita que las columnas se expandan por contenido */
+  min-width: 600px; /* ajusta el mínimo que quieras evitar scroll horizontal */
+  border-collapse: collapse;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
 .pedido-thead th {
   background-color: #2b6daf;
   color: #fff;
@@ -338,7 +367,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #007bff;
+  background: #2b6daf;
   color: #fff;
   padding: 8px 12px;
   border-radius: 8px 8px 0 0;
@@ -361,10 +390,26 @@
 /* Productos */
 .productos-lista {
   display: flex;
-  justify-content: space-between;
+  flex-direction: row;
   gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
+  flex-wrap: nowrap; /* keep cards on a single line */
+  overflow-x: auto; /* enable horizontal scroll when many cards */
+  padding-bottom: 12px; /* space for scrollbar */
+  margin-bottom: 20px;
+  -webkit-overflow-scrolling: touch;
+  height: 270px;
+  max-height: 300px;
+}
+
+.productos-lista::-webkit-scrollbar {
+  height: 10px;
+}
+.productos-lista::-webkit-scrollbar-track {
+  background: transparent;
+}
+.productos-lista::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
 }
 
 .producto-card {
@@ -372,13 +417,30 @@
   border: 1px solid #ddd;
   border-radius: 8px;
   padding: 8px;
-  width: calc(50% - 12px);
+  flex: 0 0 180px; /* fixed card width but allow horizontal scroll */
+  min-width: 140px;
+  max-width: 140px;
+  box-sizing: border-box;
+  margin-bottom: 10px;
 }
 
 .producto-card img {
   width: 60px;
   height: 60px;
   margin-bottom: 5px;
+}
+
+/* Texto dentro de la card: limitar líneas para mantener altura */
+.producto-card p,
+.producto-card .prod-nombre,
+.producto-card .prod-desc {
+  margin: 4px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2; /* limitar a 2 líneas */
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 /* Info */

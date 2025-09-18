@@ -324,22 +324,16 @@ const GestionPedidos = () => {
   const [metodoPagoUsuario, setMetodoPagoUsuario] = useState(null);
   const [sucursalNombre, setSucursalNombre] = useState(null);
   // mapeo simple nombre de estado -> id en la tabla estado_pedido
-  const estadoNameToId = {
-    Pendiente: 1,
-    "En Preparación": 2, // mapeado a 'Procesando'
-    "En Camino": 3, // mapeado a 'Enviado'
-    Entregado: 4,
-    Cancelado: 5,
-  };
-
   return (
     <div className="page-container">
       <main className="main-content">
         <header className="page-header">
-          <h1><span className="accent">Gestión De Pedidos</span></h1>
+          <h1>
+            <span className="pedido-title">Gestión De Pedidos</span>
+          </h1>
         </header>
         <div className="divider" />
-        
+
         <div className="search-bar">
           <div className="user-count">
             <span>Total pedidos: </span>
@@ -413,7 +407,8 @@ const GestionPedidos = () => {
                               // pedir detalle actualizado del pedido
                               const id = p.id || p.id_pedido;
                               const resp = await listarPedido(id);
-                              const detalle = resp && resp.data ? resp.data : {};
+                              const detalle =
+                                resp && resp.data ? resp.data : {};
                               // combinar sin perder datos ya mapeados en la tabla
                               const combinado = { ...p, ...detalle };
 
@@ -438,11 +433,15 @@ const GestionPedidos = () => {
                                 detallesFactura.length > 0
                               ) {
                                 subtotalCalc = detallesFactura.reduce(
-                                  (s, d) => s + Number(d.subtotal_producto || 0),
+                                  (s, d) =>
+                                    s + Number(d.subtotal_producto || 0),
                                   0
                                 );
                               }
-                              if (facturaObj && facturaObj.total !== undefined) {
+                              if (
+                                facturaObj &&
+                                facturaObj.total !== undefined
+                              ) {
                                 totalCalc = Number(facturaObj.total);
                                 console.log(
                                   "Total que viene de facturaObj.total:",
@@ -457,7 +456,8 @@ const GestionPedidos = () => {
                                 ) {
                                   subtotalCalc =
                                     facturaObj.factura_detalles.reduce(
-                                      (s, d) => Number(d.subtotal_producto || 0),
+                                      (s, d) =>
+                                        Number(d.subtotal_producto || 0),
                                       0
                                     );
                                   console.log(
@@ -470,7 +470,8 @@ const GestionPedidos = () => {
                                 ) {
                                   subtotalCalc =
                                     facturaObj.factura_detalle.reduce(
-                                      (s, d) => Number(d.subtotal_producto || 0),
+                                      (s, d) =>
+                                        Number(d.subtotal_producto || 0),
                                       0
                                     );
                                 }
@@ -561,7 +562,8 @@ const GestionPedidos = () => {
                                       if (resolvedSucursal) {
                                         setPedidos((prev) =>
                                           prev.map((it) =>
-                                            String(it.id) === String(combinado.id)
+                                            String(it.id) ===
+                                            String(combinado.id)
                                               ? {
                                                   ...it,
                                                   sucursal: resolvedSucursal,
@@ -589,14 +591,51 @@ const GestionPedidos = () => {
                                 }
 
                                 try {
-                                  const mpResp = await getAllMetodoPago();
+                                  let mpResp = null;
+
+                                  if (userId) {
+                                    try {
+                                      mpResp = await getMetodosPagoByUserId(
+                                        userId
+                                      );
+                                    } catch (err) {
+                                      // Si no autorizado, intentar el endpoint general
+                                      const status = err?.response?.status;
+                                      if (status === 401 || status === 403) {
+                                        mpResp = await getAllMetodoPago();
+                                      } else {
+                                        // rethrow para ser capturado por outer catch
+                                        throw err;
+                                      }
+                                    }
+                                  } else {
+                                    mpResp = await getAllMetodoPago();
+                                  }
+
                                   const metodos =
                                     mpResp && mpResp.data ? mpResp.data : [];
-                                  // filtrar por id_usuario si el API devuelve todos los metodos
-                                  let mpUsuario = metodos.find(
-                                    (m) => String(m.id_usuario) === String(userId)
-                                  );
-                                  // buscar predeterminado si no hay uno por usuario
+
+                                  // Búsqueda robusta del método del usuario: el backend puede
+                                  // devolver campos con nombres distintos (id_usuario, idUsuario, etc.)
+                                  const matchesUser = (m) => {
+                                    if (!m) return false;
+                                    const candidates = [
+                                      m.id_usuario,
+                                      m.idUsuario,
+                                      m.id_user,
+                                      m.usuario_id,
+                                      m.id,
+                                    ];
+                                    return candidates.some(
+                                      (c) =>
+                                        c != null &&
+                                        String(c) === String(userId)
+                                    );
+                                  };
+
+                                  let mpUsuario = metodos.find(matchesUser);
+
+                                  // si la lista ya está filtrada por usuario, tomar el predeterminado
                                   if (!mpUsuario) {
                                     mpUsuario =
                                       metodos.find(
@@ -605,6 +644,7 @@ const GestionPedidos = () => {
                                       metodos[0] ||
                                       null;
                                   }
+
                                   const formatted = formatPayment(mpUsuario);
                                   setMetodoPagoUsuario(formatted);
                                   console.log(

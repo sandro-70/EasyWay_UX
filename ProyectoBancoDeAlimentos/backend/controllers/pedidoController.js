@@ -136,13 +136,18 @@ exports.crearPedido = async (req, res) => {
       req.body;
 
     // Validar si el cupón existe si se proporciona
+    let id_cupon_valido = null;
     if (id_cupon) {
+      console.log("Validando cupón con id:", id_cupon);
       const cuponExistente = await cupon.findByPk(id_cupon, {
         transaction: t,
       });
-      if (!cuponExistente) {
-        await t.rollback();
-        return res.status(400).json({ error: "Cupón inválido" });
+      if (cuponExistente) {
+        console.log("Cupón válido:", cuponExistente);
+        id_cupon_valido = id_cupon;
+      } else {
+        console.log("Cupón inválido:", id_cupon, "- Procediendo sin cupón");
+        id_cupon_valido = null;
       }
     }
 
@@ -155,7 +160,8 @@ exports.crearPedido = async (req, res) => {
     if (!metodoPredeterminado) {
       await t.rollback();
       return res.status(400).json({
-        error: "No se encontró un método de pago predeterminado para el usuario",
+        error:
+          "No se encontró un método de pago predeterminado para el usuario",
       });
     }
 
@@ -215,7 +221,7 @@ exports.crearPedido = async (req, res) => {
         id_usuario,
         direccion_envio,
         id_sucursal,
-        id_cupon: id_cupon || null,
+        id_cupon: id_cupon_valido,
         id_estado_pedido: 1, // Pendiente
         descuento: descuento || 0,
       },

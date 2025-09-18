@@ -155,7 +155,6 @@ export function crearProducto(
   etiquetas,
   unidadMedida,
   pesoKg,
-  activo,
   files = [],
   imagenesPayload = []
 ) {
@@ -175,7 +174,6 @@ export function crearProducto(
       Array.isArray(etiquetas) ? etiquetas.join(",") : etiquetas
     );
   formData.append("unidad_medida", unidadMedida);
-  if (activo !== undefined) formData.append("peso_kg", pesoKg);
   formData.append("activo", true); // Default to true for creates
   if (pesoKg !== "" && pesoKg != null && Number.isFinite(Number(pesoKg))) {
     formData.append("peso", String(pesoKg));

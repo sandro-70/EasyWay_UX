@@ -996,7 +996,10 @@ export default function Inventario() {
         const urls = ((imgsRes?.data ?? imgsRes) || [])
           .map((i) => toPublicFotoSrc(i.url_imagen))
           .filter(Boolean);
-        if (urls.length) draftFromApi.imagePreviews = urls;
+        if (urls.length) {
+          draftFromApi.imagePreviews = urls;
+          draftFromApi.imageUploadsNames = new Array(urls.length).fill("");
+        }
       } catch {}
 
       // 6) Set al modal

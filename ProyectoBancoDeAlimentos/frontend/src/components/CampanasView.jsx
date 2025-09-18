@@ -1,14 +1,10 @@
 // CampanasView.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
-import { useNavigate } from "react-router-dom";
-//import "./UserManagementViews.css";
-import {
-  getPromociones,
-  desactivarPromocion,
-} from "../api/PromocionesApi";
+import { getPromociones, desactivarPromocion } from "../api/PromocionesApi";
+import CampanaDetalleModal from "./CampanaDetalleModal"; 
+import "./campanasview.css"
 
-// Mapear id_tipo_promo (según tu creación: % => 1, fijo => 2)
 const tipoToLabel = (id_tipo_promo) => {
   const v = Number(id_tipo_promo);
   if (v === 1) return "Porcentaje";
@@ -17,16 +13,21 @@ const tipoToLabel = (id_tipo_promo) => {
 };
 
 export default function CampanasView() {
-  const navigate = useNavigate();
   const [rows, setRows] = useState([]);
   const [query, setQuery] = useState("");
 
+  // modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState(null);
+  const [mode, setMode] = useState("view"); // "view" | "edit"
+
+
+  //ventanas emergentes
+  
   const cargar = async () => {
     try {
       const resp = await getPromociones();
       const data = Array.isArray(resp?.data) ? resp.data : [];
-      // Normalizamos por si viene "descripcion" o "descripción"
-      
       const ui = data.map((p) => ({
         id: p.id_promocion,
         nombre: p.nombre_promocion ?? "",
@@ -52,11 +53,11 @@ export default function CampanasView() {
 
   const onEliminar = async (id) => {
     if (!id) return;
-    if (!window.confirm("¿Eliminar (desactivar) esta campaña?")) return;
+    if (!window.confirm("¿Eliminar esta campaña?")) return;
     try {
       await desactivarPromocion(id);
       await cargar();
-      alert("Campaña eliminada (desactivada).");
+      alert("Campaña eliminada.");
     } catch (e) {
       console.error(e);
       alert("No se pudo eliminar la campaña.");
@@ -64,37 +65,38 @@ export default function CampanasView() {
   };
 
   const onVer = (id) => {
-    navigate(`/campanapromocional?id=${id}&mode=view`);
+    setSelectedId(id);
+    setMode("view");
+    setModalOpen(true);
   };
+
   const onEditar = (id) => {
-    navigate(`/campana-promocional?id=${id}&mode=edit`);
+    setSelectedId(id);
+    setMode("edit");
+    setModalOpen(true);
   };
 
   return (
     <div className="page-container">
       <div className="main-content">
-        {/* Encabezado idéntico */}
+        {/* Header */}
         <div className="page-header">
           <h1>Campaña promocional</h1>
           <div style={{ display: "flex", gap: 8 }}>
-
-            <button className="btn-secondary" onClick={() => cargar()}>
+            <button className="btn-secondary" onClick={cargar}>
               <Icon icon="mdi:refresh" width={18} height={18} />
               Recargar
             </button>
-            <button
-              className="btn-primary"
-              onClick={() => navigate("/campanaPromocional")}
-            >
+            <a className="btn-primary" href="/campanaPromocional">
               <Icon icon="mdi:plus" width={18} height={18} />
               Nueva campaña
-            </button>
+            </a>
           </div>
         </div>
 
         <div className="divider" />
 
-        {/* Buscador igual al patrón */}
+        {/* Search */}
         <div className="search-bar">
           <div className="search-input">
             <Icon className="search-icon" icon="mdi:magnify" />
@@ -110,7 +112,7 @@ export default function CampanasView() {
           </span>
         </div>
 
-        {/* Tabla con mismo formato */}
+        {/* Tabla */}
         <div className="table-container">
           <table className="users-table">
             <thead>
@@ -130,10 +132,8 @@ export default function CampanasView() {
                   </td>
                 </tr>
               ) : (
-                
                 filtered.map((r) => (
                   <tr key={r.id}>
-                  
                     <td style={{ textAlign: "center" }}>{r.id}</td>
                     <td>{r.nombre}</td>
                     <td>{r.descripcion}</td>
@@ -169,6 +169,16 @@ export default function CampanasView() {
             </tbody>
           </table>
         </div>
+
+        {/* Modal */}
+        {modalOpen && (
+          <CampanaDetalleModal
+            id={selectedId}
+            mode={mode}                // "view" | "edit"
+            onClose={() => setModalOpen(false)}
+            onSaved={() => { setModalOpen(false); cargar(); }}
+          />
+        )}
       </div>
     </div>
   );

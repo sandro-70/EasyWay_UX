@@ -57,10 +57,10 @@ import DetallePedidos from "./pages/DetallesPedido.jsx";
 import GestionDePedido from "./components/GestionPedidos.jsx";
 import ConfigBanner from "./configBanner.jsx";
 import { SearchProvider } from "./searchContext.jsx";
-
 // Mejora compatible (tu compañerx): mantenida bajo tu esquema
 import ListaDeDeseos from "./pages/ListaDeDeseos.jsx";
 import CampanasView from "./components/CampanasView.jsx";
+import CampanaDetalleModal from "./components/CampanaDetalleModal.jsx";
 
 const HEADER_HEIGHT = 60; // px
 
@@ -215,6 +215,14 @@ function App() {
                 element={
                   <ProtectedRoute rolesPermitidos={["administrador"]}>
                     <CampanasView />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/campana-detalle"
+                element={
+                  <ProtectedRoute rolesPermitidos={["administrador"]}>
+                    <CampanaDetalleModal />
                   </ProtectedRoute>
                 }
               />

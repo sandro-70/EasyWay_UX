@@ -370,9 +370,7 @@ const Headerr = () => {
 
               {reportesMenu && (
                 <div style={styles.dropdownReportes}>
-                  <Link to="/HistorialCompras" style={styles.dropdownLink} onClick={() => setReportesMenu(false)}>
-                    Historial de Compras
-                  </Link>
+      
                   <Link to="/descuentos_aplicados" style={styles.dropdownLink} onClick={() => setReportesMenu(false)}>
                     Descuentos aplicados
                   </Link>

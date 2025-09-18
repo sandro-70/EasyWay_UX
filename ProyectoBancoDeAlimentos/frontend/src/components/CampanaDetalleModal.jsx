@@ -187,12 +187,7 @@ export default function CampanaDetalleModal({ id, mode = "view", onClose, onSave
                          onChange={onChange} disabled={readOnly} type="text" placeholder="https://…" />
                 </div>
 
-                <div className="cp-field">
-                  <label className="cp-label">Activa</label>
-                  <input type="checkbox" checked={!!form.activa}
-                         onChange={(e) => setForm((s) => ({ ...s, activa: e.target.checked }))}
-                         disabled={readOnly} style={{ width: 18, height: 18 }} />
-                </div>
+              
               </div>
 
               <div className="cp-modal-footer">

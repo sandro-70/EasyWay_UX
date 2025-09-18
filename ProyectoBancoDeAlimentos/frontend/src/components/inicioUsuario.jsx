@@ -444,7 +444,7 @@ useEffect(() => {
       const categoria = producto?.subcategoria?.categoria;
 
       if (categoria) {
-        navigate(`/promocion/${promo.id_tipo_promo}`);
+        navigate(`/promocion/${promo.id_promocion}`);
       } else {
         toast.error("No se encontró la categoría del producto", { className: "toast-error" });
       }

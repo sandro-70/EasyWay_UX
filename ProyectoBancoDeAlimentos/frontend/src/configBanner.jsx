@@ -107,12 +107,12 @@ const ConfigBanner = () => {
     const currentBanner = banners[currentIndex];
     const currentlyActiveBanners = getActiveBannersCount();
 
-    if (willBeActive && !currentBanner.status) {
+    if (willBeActive) {
       // Se está activando un banner inactivo: +1 al total
       return currentlyActiveBanners + 1;
     } else if (!willBeActive && currentBanner.status) {
       // Se está desactivando un banner activo: -1 al total
-      return Math.max(0, currentlyActiveBanners - 1);
+      return currentlyActiveBanners - 1;
     } else {
       // No cambia el estado, el máximo es el número actual de activos
       return currentlyActiveBanners;
@@ -162,7 +162,7 @@ const ConfigBanner = () => {
       return { isValid: true, message: "" };
     }
 
-    const orderNum = parseInt(orden);
+    const orderNum = orden;
     const maxOrder = getMaxOrderAfterChange(true);
 
     if (isNaN(orderNum)) {

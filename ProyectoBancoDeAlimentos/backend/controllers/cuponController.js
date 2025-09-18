@@ -206,7 +206,7 @@ exports.desactivarCupon = async (req, res) => {
 
 exports.editarCupon = async (req, res) => {
   const { id_cupon } = req.params;
-  const {codigo,descripcion,tipo,valor,uso_por_usuario,termina_en,activo} = req.body;
+  const { codigo, descripcion, tipo, valor, uso_por_usuario, termina_en, activo } = req.body;
 
   try {
     const cuponz = await cupon.findByPk(id_cupon);
@@ -214,7 +214,6 @@ exports.editarCupon = async (req, res) => {
 
     const updates = {};
 
-    // codigo (único)
     if (codigo !== undefined) {
       const cod = String(codigo).trim();
       if (!cod) return res.status(400).json({ message: 'codigo no puede estar vacío' });
@@ -232,9 +231,6 @@ exports.editarCupon = async (req, res) => {
 
     if (tipo !== undefined) {
       const t = String(tipo).trim().toLowerCase();
-      // si quieres forzar valores, descomenta las 2 líneas siguientes:
-      // const permitidos = ['porcentaje', 'monto'];
-      // if (!permitidos.includes(t)) return res.status(400).json({ message: 'tipo inválido' });
       updates.tipo = t;
     }
 
@@ -263,8 +259,8 @@ exports.editarCupon = async (req, res) => {
       updates.activo = activo;
     }
 
-    await c.update(updates);
-    return res.json({ message: 'Cupón actualizado', data: c });
+    await cuponz.update(updates);
+    return res.json({ message: 'Cupón actualizado', data: cuponz });
 
   } catch (err) {
     console.error('Error editando cupón:', err);

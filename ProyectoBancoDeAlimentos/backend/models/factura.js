@@ -9,6 +9,10 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    id_metodo_pago: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
     fecha_emision: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,

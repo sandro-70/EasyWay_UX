@@ -10,6 +10,7 @@ router.get('/pedido-mes', reportesController.getPedidosPorMes);
 router.get('/ingresos-promocion', reportesController.ingresosPromocionesUltimos4Meses);
 router.get('/usuarios-gastos', reportesController.usuariosMasGastos);
 router.get('/promociones', reportesController.getReportePromociones);
+router.get('/reporte-pedidos', reportesController.getReportePedidos);
 
 module.exports = router;
 

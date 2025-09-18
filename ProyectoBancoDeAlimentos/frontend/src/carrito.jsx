@@ -32,7 +32,9 @@ const BACKEND_ORIGIN = (() => {
   const base = axiosInstance?.defaults?.baseURL;
   try {
     const u = base
-      ? (base.startsWith("http") ? new URL(base) : new URL(base, window.location.origin))
+      ? base.startsWith("http")
+        ? new URL(base)
+        : new URL(base, window.location.origin)
       : new URL(window.location.origin);
     return `${u.protocol}//${u.host}`;
   } catch {
@@ -42,7 +44,9 @@ const BACKEND_ORIGIN = (() => {
 
 // para nombres de archivo tipo "foto.jpg"
 const backendImageUrl = (fileName) =>
-  fileName ? `${BACKEND_ORIGIN}/api/images/productos/${encodeURIComponent(fileName)}` : "";
+  fileName
+    ? `${BACKEND_ORIGIN}/api/images/productos/${encodeURIComponent(fileName)}`
+    : "";
 
 // adapta la ruta que venga en DB a una URL válida del backend
 const toPublicFotoSrc = (nameOrPath) => {
@@ -50,7 +54,7 @@ const toPublicFotoSrc = (nameOrPath) => {
   const s = String(nameOrPath);
   if (/^https?:\/\//i.test(s)) return s; // ya es absoluta
   if (s.startsWith("/api/images/")) return `${BACKEND_ORIGIN}${encodeURI(s)}`;
-  if (s.startsWith("/images/"))      return `${BACKEND_ORIGIN}/api${encodeURI(s)}`;
+  if (s.startsWith("/images/")) return `${BACKEND_ORIGIN}/api${encodeURI(s)}`;
   return backendImageUrl(s); // nombre suelto => /images/productos/<archivo>
 };
 
@@ -118,6 +122,11 @@ function Carrito() {
       );
     }
   };
+
+  // Verifica si hay al menos un producto sin stock
+  const hayProductoSinStock = (detalles ?? []).some(
+    (p) => getStockEnSucursal(p.producto.id_producto) === 0
+  );
 
   //validar si una promoción está activa
   const validarFechaPromocion = (fechaInicio, fechaTermina) => {
@@ -241,7 +250,8 @@ function Carrito() {
     const stockDisponible = getStockEnSucursal(id);
     if (n > stockDisponible) {
       toast.info(
-        `Solo hay ${stockDisponible} unidades disponibles en esta sucursal`, { className: "toast-info" }
+        `Solo hay ${stockDisponible} unidades disponibles en esta sucursal`,
+        { className: "toast-info" }
       );
       return;
     }
@@ -261,7 +271,9 @@ function Carrito() {
       );
     } catch (err) {
       console.error("Error updating quantity:", err);
-      toast.error("No se pudo actualizar la cantidad", { className: "toast-error" });
+      toast.error("No se pudo actualizar la cantidad", {
+        className: "toast-error",
+      });
     }
   };
 
@@ -283,7 +295,8 @@ function Carrito() {
         setVisible(true);
         setDesc(cuponValido.valor);
         toast.success(
-          `Cupón agregado: ${cuponValido.codigo}, ${cuponValido.valor}% de descuento`, { className: "toast-success" }
+          `Cupón agregado: ${cuponValido.codigo}, ${cuponValido.valor}% de descuento`,
+          { className: "toast-success" }
         );
         setIDCuponDesactivar(cuponValido.id_cupon);
       } else {
@@ -303,8 +316,9 @@ function Carrito() {
       const stockDisponible = getStockEnSucursal(item.producto.id_producto);
       if (item.cantidad_unidad_medida > stockDisponible) {
         toast.error(
-          `No hay suficiente stock de ${item.producto.nombre}. Disponible: ${stockDisponible}, Solicitado: ${item.cantidad_unidad_medida}`
-        , { className: "toast-error" });
+          `No hay suficiente stock de ${item.producto.nombre}. Disponible: ${stockDisponible}, Solicitado: ${item.cantidad_unidad_medida}`,
+          { className: "toast-error" }
+        );
         return;
       }
     }
@@ -383,7 +397,8 @@ function Carrito() {
 
         if (nuevaCantidad > stockDisponible) {
           toast.info(
-            `Solo hay ${stockDisponible} unidades disponibles en esta sucursal`, { className: "toast-info" }
+            `Solo hay ${stockDisponible} unidades disponibles en esta sucursal`,
+            { className: "toast-info" }
           );
           return;
         }
@@ -391,7 +406,9 @@ function Carrito() {
         console.log(
           "Actualizando de " + cantidadActual + " a " + nuevaCantidad
         );
-        toast("Actualizando a " + nuevaCantidad, { className: "toast-default" });
+        toast("Actualizando a " + nuevaCantidad, {
+          className: "toast-default",
+        });
 
         await SumarItem(id_producto, nuevaCantidad);
 
@@ -434,7 +451,9 @@ function Carrito() {
           toast("Producto agregado al carrito", { className: "toast-default" });
         } catch (err) {
           console.error("Error creando carrito:", err);
-          toast.error("No se pudo agregar el producto al carrito", { className: "toast-error" });
+          toast.error("No se pudo agregar el producto al carrito", {
+            className: "toast-error",
+          });
         }
       } else {
         const errorMessage =
@@ -460,7 +479,8 @@ function Carrito() {
     const stockDisponible = getStockEnSucursal(p.producto.id_producto);
     if (n > stockDisponible) {
       toast.error(
-        `Solo hay ${stockDisponible} unidades disponibles en esta sucursal`, { className: "toast-error" }
+        `Solo hay ${stockDisponible} unidades disponibles en esta sucursal`,
+        { className: "toast-error" }
       );
       setQtyDraft((prev) => {
         const { [p.id_carrito_detalle]: _, ...rest } = prev;
@@ -476,7 +496,9 @@ function Carrito() {
       if (diff < 0) decrementCart(-diff);
     } catch (err) {
       console.error("Error confirmando cantidad:", err);
-      toast.error("No se pudo actualizar la cantidad", { className: "toast-error" });
+      toast.error("No se pudo actualizar la cantidad", {
+        className: "toast-error",
+      });
     } finally {
       setQtyDraft((prev) => {
         const { [p.id_carrito_detalle]: _, ...rest } = prev;
@@ -544,7 +566,9 @@ function Carrito() {
         }
       } catch (err) {
         console.error("[REGISTER] error:", err?.response?.data || err);
-        toast.error(err?.response?.data?.message || "Error", { className: "toast-error" });
+        toast.error(err?.response?.data?.message || "Error", {
+          className: "toast-error",
+        });
       }
     };
     productos();
@@ -640,7 +664,9 @@ function Carrito() {
                           p.producto.imagenes.length > 0 &&
                           p.producto.imagenes[0].url_imagen ? (
                             <img
-                              src={toPublicFotoSrc(p.producto.imagenes[0].url_imagen)}
+                              src={toPublicFotoSrc(
+                                p.producto.imagenes[0].url_imagen
+                              )}
                               alt={p.producto.nombre}
                               style={styles.productImg}
                               onClick={() =>
@@ -652,8 +678,8 @@ function Carrito() {
                                   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
                               }}
                             />
-                            //
                           ) : (
+                            //
                             <div
                               style={styles.productImg}
                               onClick={() =>
@@ -706,11 +732,13 @@ function Carrito() {
 
                             <div className="flex flex-row gap-1">
                               <button
-                                onClick={() => updateQuantity(
-                                  p.id_carrito_detalle,
-                                  p.producto.id_producto,
-                                  p.cantidad_unidad_medida - 1
-                                )}
+                                onClick={() =>
+                                  updateQuantity(
+                                    p.id_carrito_detalle,
+                                    p.producto.id_producto,
+                                    p.cantidad_unidad_medida - 1
+                                  )
+                                }
                                 className=" bg-[#114C87] text-white rounded-md h-9 px-1"
                                 disabled={sinStock}
                               >
@@ -752,11 +780,13 @@ function Carrito() {
                               />
 
                               <button
-                                onClick={() => updateQuantity(
-                                  p.id_carrito_detalle,
-                                  p.producto.id_producto,
-                                  p.cantidad_unidad_medida + 1
-                                )}
+                                onClick={() =>
+                                  updateQuantity(
+                                    p.id_carrito_detalle,
+                                    p.producto.id_producto,
+                                    p.cantidad_unidad_medida + 1
+                                  )
+                                }
                                 className="bg-[#114C87] text-white rounded-md h-9 px-1"
                                 disabled={sinStock}
                               >
@@ -793,6 +823,7 @@ function Carrito() {
               </div>
             )}
           </div>
+
           <div className="flex flex-col col-span-1 w-full rounded-md border-gray-200 border-2 px-6 py-1 pb-2">
             {/* Solo formulario de cupones */}
             {showProducts && (
@@ -874,55 +905,69 @@ function Carrito() {
               <hr className="bg-[#80838A] h-[2px] w-full mb-1"></hr>
             </div>
 
-            {showProducts && (
-              <div>
-                <ul className="text-left space-y-3 font-medium text-md">
-                  <li className="flex justify-between">
-                    <span>Subtotal</span>
-                    <span>L. {total.toFixed(2)}</span>
-                  </li>
-
-                  {/* Descuento de cupón */}
-                  {discount && descCupon > 0 && (
-                    <li className="flex justify-between text-blue-600">
-                      <span>Descuento cupón ({descCupon}%)</span>
-                      <span>-L. {(total * (descCupon / 100)).toFixed(2)}</span>
-                    </li>
-                  )}
-
-                  {/* Descuento de promoción automática */}
-                  {promocionAplicada && (
-                    <li className="flex justify-between text-green-600">
-                      <span>
-                        Promoción (
-                        {promocionAplicada.id_tipo_promo === 1
-                          ? `${promocionAplicada.valor_porcentaje}%`
-                          : `L. ${promocionAplicada.valor_fijo} fijo`}
-                        )
-                      </span>
-                      <span>-L. {calcularDescuentoPromocion().toFixed(2)}</span>
-                    </li>
-                  )}
-
-                  <li className="flex justify-between">
-                    <span>Impuesto (15%)</span>
-                    <span>L. {obtenerImpuesto()}</span>
-                  </li>
-
-                  <hr className="bg-black h-[3px] w-full" />
-                  <li className="text-lg font-bold flex justify-between">
-                    <span>Total</span>
-                    <span>L. {obtenerTotal()}</span>
-                  </li>
-
-                  <button
-                    onClick={realizarCompra}
-                    className="bg-[#F0833E] rounded-md text-white text-xl w-full p-1"
-                  >
-                    Efectuar Compra
-                  </button>
-                </ul>
+            {hayProductoSinStock ? (
+              <div className="mt-2 p-4 bg-red-50 border border-red-400 rounded-md text-red-800 font-medium max-w-xs">
+                ⚠️ Tienes uno o más productos sin stock en la sucursal
+                seleccionada. No puedes realizar la compra hasta ajustar la
+                cantidad o cambiar de sucursal.
               </div>
+            ) : (
+              showProducts && (
+                <div>
+                  <ul className="text-left space-y-3 font-medium text-md">
+                    {/* Subtotal */}
+                    <li className="flex justify-between">
+                      <span>Subtotal</span>
+                      <span>L. {total.toFixed(2)}</span>
+                    </li>
+
+                    {/* Descuento de cupón */}
+                    {discount && descCupon > 0 && (
+                      <li className="flex justify-between text-blue-600">
+                        <span>Descuento cupón ({descCupon}%)</span>
+                        <span>
+                          -L. {(total * (descCupon / 100)).toFixed(2)}
+                        </span>
+                      </li>
+                    )}
+
+                    {/* Descuento de promoción automática */}
+                    {promocionAplicada && (
+                      <li className="flex justify-between text-green-600">
+                        <span>
+                          Promoción (
+                          {promocionAplicada.id_tipo_promo === 1
+                            ? `${promocionAplicada.valor_porcentaje}%`
+                            : `L. ${promocionAplicada.valor_fijo} fijo`}
+                          )
+                        </span>
+                        <span>
+                          -L. {calcularDescuentoPromocion().toFixed(2)}
+                        </span>
+                      </li>
+                    )}
+
+                    {/* Impuesto */}
+                    <li className="flex justify-between">
+                      <span>Impuesto (15%)</span>
+                      <span>L. {obtenerImpuesto()}</span>
+                    </li>
+
+                    <hr className="bg-black h-[3px] w-full" />
+                    <li className="text-lg font-bold flex justify-between">
+                      <span>Total</span>
+                      <span>L. {obtenerTotal()}</span>
+                    </li>
+
+                    <button
+                      onClick={realizarCompra}
+                      className="bg-[#F0833E] rounded-md text-white text-xl w-full p-1"
+                    >
+                      Efectuar Compra
+                    </button>
+                  </ul>
+                </div>
+              )
             )}
 
             {!showProducts && (

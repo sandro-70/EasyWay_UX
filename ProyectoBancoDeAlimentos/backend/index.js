@@ -75,7 +75,7 @@ const insertRolesPrvilegios = require("./Inserts/InsertRolesPrvilegios");
     await db.sequelize.authenticate();
     console.log("Conexión a la BD establecida");
 
-    // await db.sequelize.sync({ alter: true });
+    // await db.sequelize.sync({ force: true });
     // console.log("Modelos sincronizados y tablas reiniciadas");
     // await insertUsuarios(
     //   { app: { locals: { db } } },
@@ -224,7 +224,7 @@ const insertRolesPrvilegios = require("./Inserts/InsertRolesPrvilegios");
     //   }
     // );
 
-    // console.log("Seeds insertados correctamente");
+    console.log("Seeds insertados correctamente");
   } catch (error) {
     console.error("Error al conectar/sincronizar o insertar seeds:", error);
   }

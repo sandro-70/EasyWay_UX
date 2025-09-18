@@ -35,5 +35,72 @@
   "light_theme": "Clair Thème",
   "dark_theme": "Sombre Thème",
   "theme_description": "Sélectionnez un thème :",
-  "vocab_title": "Liste de vocabulaire"
+  "vocab_title": "Liste de vocabulaire",
+  "editProfile": "Éditer Profil",
+  "generalData": "Données Générales",
+
+  "perfil": {
+    "title": "Mon Profil",
+    "dataTitle": "Informations Personnelles",
+    "configuration": "Configuration",
+    "changePassword": "Changer de mot de passe",
+    "editPhoto": "Éditer Photo",
+    "myOrders": "Mes Commandes",
+    "myPaymentMethods": "Mes Méthodes de Paiement",
+    "myAddresses": "Mes Adresses",
+    "myCoupons": "Mes Coupons",
+    "myInvoices": "Mes Factures",
+    "wishlist": "Liste de Souhaits",
+
+    "field": {
+      "nombre": "Nom",
+      "apellidos": "Prénom",
+      "correo": "E-mail",
+      "telefono": "éléphone",
+      "genero": "Genre"
+    },
+    "placeholder": {
+      "nombre": "Entrez votre nom",
+      "apellidos": "Entrez vos prénoms",
+      "correo": "Entrez votre e-mail",
+      "telefono": "Entrez votre téléphone"
+    },
+    "gender": {
+      "masculino": "Masculin",
+      "femenino": "Féminin",
+      "otro": "Autre"
+    },
+    "button": {
+      "editar": "Éditer",
+      "guardar": "Enregistrer",
+      "cancelar": "Annuler"
+    },
+    "modal": {
+      "changePassword": {
+        "title": "Changer de mot de passe",
+        "oldPassword": "Mot de passe actuel",
+        "newPassword": "Nouveau mot de passe",
+        "confirmPassword": "Confirmer le nouveau mot de passe",
+        "completeFields": "Veuillez remplir tous les champs",
+        "mismatch": "Les mots de passe ne correspondent pas",
+        "minLength": "Le mot de passe doit comporter au moins 6 caractères",
+        "wrongOld": "Mot de passe actuel incorrect"
+      },
+      "2fa": {
+        "title": "Authentification à deux facteurs",
+        "sendCode": "Envoyer le code",
+        "instruction": "Entrez le code que vous avez reçu par e-mail",
+        "verify": "Vérifier",
+        "resend": "Renvoyer le code"
+      }
+    },
+    "toast": {
+      "passwordChanged": "Mot de passe changé avec succès"
+    },
+    "history": {
+      "title": "Historique d'accès",
+      "loading": "Chargement de l'historique...",
+      "noRecords": "Aucun enregistrement trouvé"
+    }
+  }
 }

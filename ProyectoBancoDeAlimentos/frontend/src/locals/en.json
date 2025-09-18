@@ -35,5 +35,71 @@
   "dark_theme": "Dark Theme",
   "theme_description": "Select a theme:",
   "rating_system": "Rating System",
-  "vocab_title": "Vocabulary List"
+  "vocab_title": "Vocabulary List",
+  "editProfile": "Edit Profile",
+  "generalData": "General Data",
+  "perfil": {
+    "title": "My Profile",
+    "dataTitle": "Personal Information",
+    "configuration": "Configuration",
+    "changePassword": "Change Password",
+    "editPhoto": "Edit Photo",
+    "myOrders": "My Orders",
+    "myPaymentMethods": "My Payment Methods",
+    "myAddresses": "My Addresses",
+    "myCoupons": "My Coupons",
+    "myInvoices": "My Invoices",
+    "wishlist": "Wishlist",
+
+    "field": {
+      "nombre": "First Name",
+      "apellidos": "Last Name",
+      "correo": "Email",
+      "telefono": "Phone",
+      "genero": "Gender"
+    },
+    "placeholder": {
+      "nombre": "Enter your first name",
+      "apellidos": "Enter your last name",
+      "correo": "Enter your email",
+      "telefono": "Enter your phone"
+    },
+    "gender": {
+      "masculino": "Male",
+      "femenino": "Female",
+      "otro": "Other"
+    },
+    "button": {
+      "editar": "Edit",
+      "guardar": "Save",
+      "cancelar": "Cancel"
+    },
+    "modal": {
+      "changePassword": {
+        "title": "Change Password",
+        "oldPassword": "Current Password",
+        "newPassword": "New Password",
+        "confirmPassword": "Confirm New Password",
+        "completeFields": "Complete all fields",
+        "mismatch": "Passwords do not match",
+        "minLength": "Password must be at least 6 characters long",
+        "wrongOld": "Current password is incorrect"
+      },
+      "2fa": {
+        "title": "Two-Factor Authentication",
+        "sendCode": "Send Code",
+        "instruction": "Enter the code you received by email",
+        "verify": "Verify",
+        "resend": "Resend Code"
+      }
+    },
+    "toast": {
+      "passwordChanged": "Password changed successfully"
+    },
+    "history": {
+      "title": "Access History",
+      "loading": "Loading history...",
+      "noRecords": "No records found"
+    }
+  }
 }

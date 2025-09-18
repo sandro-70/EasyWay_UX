@@ -35,5 +35,72 @@
   "dark_theme": "深色 主题",
   "theme_description": "选择一个主题：",
   "rating_system": "评级系统",
-  "vocab_title": "词汇列表"
+  "vocab_title": "词汇列表",
+  "editProfile": "编辑个人资料",
+  "generalData": "一般数据",
+
+  "perfil": {
+    "title": "我的个人资料",
+    "dataTitle": "个人信息",
+    "configuration": "配置",
+    "changePassword": "更改密码",
+    "editPhoto": "编辑照片",
+    "myOrders": "我的订单",
+    "myPaymentMethods": "我的支付方式",
+    "myAddresses": "我的地址",
+    "myCoupons": "我的优惠券",
+    "myInvoices": "我的发票",
+    "wishlist": "愿望清单",
+
+    "field": {
+      "nombre": "名字",
+      "apellidos": "姓氏",
+      "correo": "电子邮件",
+      "telefono": "电话",
+      "genero": "性别"
+    },
+    "placeholder": {
+      "nombre": "输入你的名字",
+      "apellidos": "输入你的姓氏",
+      "correo": "输入你的电子邮件",
+      "telefono": "输入你的电话"
+    },
+    "gender": {
+      "masculino": "男性",
+      "femenino": "女性",
+      "otro": "其他"
+    },
+    "button": {
+      "editar": "编辑",
+      "guardar": "保存",
+      "cancelar": "取消"
+    },
+    "modal": {
+      "changePassword": {
+        "title": "修改密码",
+        "oldPassword": "当前密码",
+        "newPassword": "新密码",
+        "confirmPassword": "确认新密码",
+        "completeFields": "请填写所有字段",
+        "mismatch": "密码不匹配",
+        "minLength": "密码长度至少为6个字符",
+        "wrongOld": "当前密码不正确"
+      },
+      "2fa": {
+        "title": "两步验证",
+        "sendCode": "发送代码",
+        "instruction": "输入您收到的电子邮件中的代码",
+        "verify": "验证",
+        "resend": "重新发送代码"
+      }
+    },
+    "toast": {
+      "passwordChanged": "密码修改成功"
+    },
+    "history": {
+      "title": "访问历史",
+      "loading": "加载历史记录...",
+      "noRecords": "没有记录"
+    }
+  }
 }

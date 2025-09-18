@@ -25,6 +25,8 @@ root.render(
           pauseOnHover
           theme="colored"
           transition={Zoom}
+          limit={5}
+          style={{ zIndex: 1000000 }}
         />
       </CartProvider>
     </BrowserRouter>

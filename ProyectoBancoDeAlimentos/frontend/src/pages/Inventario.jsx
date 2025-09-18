@@ -18,7 +18,6 @@ import {
   getMarcas,
   listarProductosporsucursal,
   crearMarca,
-  eliminarImagenProducto,
 } from "../api/InventarioApi";
 import { ListarCategoria } from "../api/CategoriaApi";
 import { listarSubcategoria } from "../api/SubcategoriaApi";
@@ -1569,10 +1568,16 @@ export default function Inventario() {
                       </td>
                       <td className="px-3 py-3 text-center">{r.marca}</td>
                       <td className="px-3 py-3 text-center">{r.categoria}</td>
-                      <td className="px-3 py-3 text-center">{r.subcategoria}</td>
+                      <td className="px-3 py-3 text-center">
+                        {r.subcategoria}
+                      </td>
                       <td className="px-3 py-3 text-center">{r.stockKg} kg.</td>
-                      <td className="px-3 py-3 text-center">L. {r.precioBase}</td>
-                      <td className="px-3 py-3 text-center">L. {r.precioVenta}</td>
+                      <td className="px-3 py-3 text-center">
+                        L. {r.precioBase}
+                      </td>
+                      <td className="px-3 py-3 text-center">
+                        L. {r.precioVenta}
+                      </td>
 
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">

@@ -173,9 +173,6 @@ metodo_pago.belongsTo(direccion, { foreignKey: 'id_direccion_facturacion' });
 metodo_pago.belongsTo(Usuario, { foreignKey: 'id_usuario' });
 Usuario.hasOne(metodo_pago, { foreignKey: 'id_usuario' });
 
-metodo_pago.hasMany(factura, { foreignKey: 'id_metodo_pago' });
-factura.belongsTo(metodo_pago, { foreignKey: 'id_metodo_pago' });
-
 // --- Lista deseos ---
 Usuario.hasMany(lista_deseos, { foreignKey: 'id_usuario' });
 lista_deseos.belongsTo(Usuario, { foreignKey: 'id_usuario' });

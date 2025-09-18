@@ -1,6 +1,5 @@
 const { Sequelize,Op, fn, col, literal  } = require('sequelize');
-const { factura_detalle, producto, factura, pedido, estado_pedido, promocion, promocion_pedido, Usuario, categoria, 
-  subcategoria, promocion_producto, metodo_pago } = require("../models");
+const { factura_detalle, producto, factura, pedido, estado_pedido, promocion, promocion_pedido, Usuario, categoria, subcategoria, promocion_producto } = require("../models");
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 
@@ -450,48 +449,5 @@ exports.getReportePromociones = async (req, res) => {
   } catch (error) {
     console.error("Error al generar reporte de promociones:", error);
     res.status(500).json({ error: "Error al generar reporte de promociones" });
-  }
-};
-
-exports.getReportePedidos = async (req, res) => {
-  try {
-    const pedidos = await pedido.findAll({
-      attributes: ['id_pedido', 'fecha_pedido'],
-      include: [
-        {
-          model: estado_pedido,
-          attributes: ['nombre_pedido']
-        },
-        {
-          model: factura,
-          attributes: ['id_factura'],
-          include: [
-            {
-              model: metodo_pago,
-              attributes: ['brand_tarjeta', 'tarjeta_ultimo']
-            }
-          ]
-        }
-      ],
-      order: [['id_pedido', 'ASC']]
-    });
-
-    if (!pedidos || pedidos.length === 0) {
-      return res.status(404).json({ message: 'No se encontraron pedidos.' });
-    }
-
-    const resultado = pedidos.map(p => ({
-      id_pedido: p.id_pedido,
-      estado: p.estado_pedido?.nombre_pedido || null,
-      fecha_pedido: p.fecha_pedido,
-      metodo_pago: p.factura?.metodo_pago
-        ? `${p.factura.metodo_pago.brand_tarjeta} ****${p.factura.metodo_pago.tarjeta_ultimo}`
-        : null
-    }));
-
-    return res.json(resultado);
-  } catch (err) {
-    console.error('Error en getReportePedidos:', err);
-    return res.status(500).json({ message: 'Error interno al generar reporte de pedidos' });
   }
 };

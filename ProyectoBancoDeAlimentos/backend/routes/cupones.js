@@ -8,5 +8,7 @@ router.post('/agregar/:id_usuario', cuponController.addCuponUsuario);
 router.get('/cupones', cuponController.getAllCupones);
 router.get('/usuario/:id_usuario', cuponController.allCupones);
 router.patch('/desactivar-cupon/:id_cupon', cuponController.desactivarCupon);
+router.put('/editar-cupon/:id_cupon', cuponController.editarCupon);
+router.post('/crear-cupon/:id_usuario', cuponController.crearCupon);
 
 module.exports = router;

@@ -41,3 +41,7 @@ export function activarPromocion(id) {
 export function actualizarPromocion(id, data) {
   return axiosInstance.put(`/api/promociones/actualizar/${id}`, data);
 }
+
+export function productosPorPromocion(id_promocion){
+    return axiosInstance.get(`/api/promociones/productos-promo/${id_promocion}`);
+}

@@ -7,6 +7,8 @@ const {
   estado_pedido,
   factura,
   promocion_producto,
+  subcategoria,
+  categoria,
   sequelize,
 } = require("../models");
 
@@ -592,5 +594,62 @@ exports.actualizarPromocion = async (req, res) => {
   } catch (error) {
     console.error("Error al actualizar la promoción:", error);
     res.status(500).json({ error: "Error al actualizar la promoción" });
+  }
+};
+
+exports.productosPorPromocion = async (req, res) => {
+  try {
+    // 1) tomar solo el param, no el objeto entero
+    const id_promocion = parseInt(req.params.id_promocion, 10);
+
+    if (!Number.isInteger(id_promocion)) {
+      return res.status(400).json({ message: 'id_promocion inválido' });
+    }
+
+    // (opcional) validar que la promo exista
+    const existe = await promocion.findByPk(id_promocion);
+    if (!existe) return res.status(404).json({ message: 'Promoción no encontrada' });
+
+    const soloActivos = String(req.query.activos || '').toLowerCase() === 'true';
+
+    const rows = await producto.findAll({
+      where: soloActivos ? { activo: true } : undefined,
+      attributes: [
+        'id_producto',
+        'nombre',
+        [sequelize.col('subcategoria.categoria.nombre'), 'categoria'],
+        [sequelize.col('subcategoria.nombre'), 'subcategoria'],
+      ],
+      include: [
+        // Join con promoción para filtrar por id_promocion
+        {
+          model: promocion,
+          where: { id_promocion },     // <- es un número
+          attributes: [],
+          through: { attributes: [] },
+          required: true,
+        },
+        // Subcategoria -> Categoria (usando tus alias reales)
+        {
+          model: subcategoria,
+          as: 'subcategoria',
+          attributes: [],
+          required: true,
+          include: [{
+            model: categoria,
+            as: 'categoria',
+            attributes: [],
+            required: true,
+          }]
+        }
+      ],
+      order: [['id_producto', 'ASC']],
+      raw: true, // para que Sequelize.col salga como campos planos
+    });
+
+    return res.json(rows); // [{ id_producto, nombre, categoria, subcategoria }]
+  } catch (err) {
+    console.error('Error listando productos básicos por promoción:', err);
+    return res.status(500).json({ message: 'Error interno al listar productos de la promoción' });
   }
 };

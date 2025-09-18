@@ -203,3 +203,74 @@ exports.desactivarCupon = async (req, res) => {
     res.status(500).json({ error: "Error interno al desactivar el cupón" });
   }
 };
+
+exports.editarCupon = async (req, res) => {
+  const { id_cupon } = req.params;
+  const {codigo,descripcion,tipo,valor,uso_por_usuario,termina_en,activo} = req.body;
+
+  try {
+    const cuponz = await cupon.findByPk(id_cupon);
+    if (!cuponz) return res.status(404).json({ message: 'Cupon no encontrado' });
+
+    const updates = {};
+
+    // codigo (único)
+    if (codigo !== undefined) {
+      const cod = String(codigo).trim();
+      if (!cod) return res.status(400).json({ message: 'codigo no puede estar vacío' });
+
+      const duplicado = await cupon.count({
+        where: { codigo: cod, id_cupon: { [Op.ne]: id_cupon } }
+      });
+      if (duplicado) {
+        return res.status(409).json({ message: 'El código de cupón ya existe' });
+      }
+      updates.codigo = cod;
+    }
+
+    if (descripcion !== undefined) updates.descripcion = String(descripcion).trim();
+
+    if (tipo !== undefined) {
+      const t = String(tipo).trim().toLowerCase();
+      // si quieres forzar valores, descomenta las 2 líneas siguientes:
+      // const permitidos = ['porcentaje', 'monto'];
+      // if (!permitidos.includes(t)) return res.status(400).json({ message: 'tipo inválido' });
+      updates.tipo = t;
+    }
+
+    if (valor !== undefined) {
+      const v = Number(valor);
+      if (Number.isNaN(v) || v < 0) return res.status(400).json({ message: 'valor debe ser >= 0' });
+      updates.valor = v;
+    }
+
+    if (uso_por_usuario !== undefined) {
+      const u = Number(uso_por_usuario);
+      if (!Number.isInteger(u) || u < 0) return res.status(400).json({ message: 'uso_por_usuario debe ser entero >= 0' });
+      updates.uso_por_usuario = u;
+    }
+
+    if (termina_en !== undefined) {
+      const d = String(termina_en);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || Number.isNaN(Date.parse(d))) {
+        return res.status(400).json({ message: 'termina_en debe ser YYYY-MM-DD' });
+      }
+      updates.termina_en = d;
+    }
+
+    if (activo !== undefined) {
+      if (typeof activo !== 'boolean') return res.status(400).json({ message: 'activo debe ser booleano' });
+      updates.activo = activo;
+    }
+
+    await c.update(updates);
+    return res.json({ message: 'Cupón actualizado', data: c });
+
+  } catch (err) {
+    console.error('Error editando cupón:', err);
+    if (err.name === 'SequelizeUniqueConstraintError') {
+      return res.status(409).json({ message: 'Código de cupón duplicado' });
+    }
+    return res.status(500).json({ message: 'Error interno al editar cupón' });
+  }
+};

@@ -129,6 +129,33 @@ const InicioUsuario = () => {
    fetchTendencias();
  }, [destacados]);
 
+// === Productos que están en alguna promoción (por id_producto) ===
+const [promoProductIds, setPromoProductIds] = useState(new Set());
+
+useEffect(() => {
+  const fetchPromosDetalles = async () => {
+    try {
+      // GET http://localhost:3001/api/promociones/detalles
+      const res = await axiosInstance.get("/api/promociones/detalles");
+      const lista = Array.isArray(res?.data) ? res.data : [];
+      const ids = new Set();
+      // Cada promo trae un array de id de productos
+      for (const promo of lista) {
+        for (const pid of (promo.productos || [])) {
+          ids.add(Number(pid));
+        }
+      }
+      setPromoProductIds(ids);
+      console.log("[PROMOS DETALLES] ids con promo:", Array.from(ids));
+    } catch (err) {
+      console.error("[PROMOS DETALLES] error:", err?.response?.data || err);
+    }
+  };
+  fetchPromosDetalles();
+}, []);
+
+// helper
+const hasPromo = (idProducto) => promoProductIds.has(Number(idProducto));
 
   const [categoriesData, setCategoriesData] = useState([]);
 
@@ -147,6 +174,116 @@ const InicioUsuario = () => {
   }, []);
 
   const [carrito, setCarrito] = useState([]);
+
+  // === productos → [id_promocion] ===
+const [promosPorProducto, setPromosPorProducto] = useState({});
+
+// === id_promocion → info (porcentaje/fijo, fechas, activa) ===
+const [promosInfo, setPromosInfo] = useState({});
+
+// ya tienes este:
+
+// 1) /api/promociones/detalles  → mapea productos a promociones
+useEffect(() => {
+  const fetchPromosDetalles = async () => {
+    try {
+      const res = await axiosInstance.get("/api/promociones/detalles");
+      const lista = Array.isArray(res?.data) ? res.data : [];
+      const ids = new Set();
+      const map = {};
+
+      for (const promo of lista) {
+        const pidArr = Array.isArray(promo.productos) ? promo.productos : [];
+        for (const pid of pidArr) {
+          const idNum = Number(pid);
+          ids.add(idNum);
+          if (!map[idNum]) map[idNum] = [];
+          map[idNum].push(Number(promo.id_promocion));
+        }
+      }
+      setPromoProductIds(ids);
+      setPromosPorProducto(map);
+      console.log("[DETALLES] promosPorProducto:", map);
+    } catch (err) {
+      console.error("[PROMOS DETALLES] error:", err?.response?.data || err);
+    }
+  };
+  fetchPromosDetalles();
+}, []);
+
+// 2) /api/promociones/listarorden → info de descuento/fechas
+useEffect(() => {
+  const fetchPromosInfo = async () => {
+    try {
+      const res = await axiosInstance.get("/api/promociones/listarorden");
+      const arr = Array.isArray(res?.data) ? res.data : [];
+      const map = {};
+      for (const p of arr) {
+        map[Number(p.id_promocion)] = {
+          id_promocion: Number(p.id_promocion),
+          id_tipo_promo: Number(p.id_tipo_promo),
+          valor_porcentaje: p.valor_porcentaje != null ? parseFloat(p.valor_porcentaje) : null,
+          valor_fijo: p.valor_fijo != null ? Number(p.valor_fijo) : null,
+          compra_min: p.compra_min != null ? Number(p.compra_min) : null,
+          fecha_inicio: p.fecha_inicio || null,
+          fecha_termina: p.fecha_termina || null,
+          activa: p.activa === true || p.activa === 1 || p.activa === "true",
+        };
+      }
+      setPromosInfo(map);
+      console.log("[LISTARORDEN] promosInfo:", map);
+    } catch (err) {
+      console.error("[PROMOS LISTARORDEN] error:", err?.response?.data || err);
+    }
+  };
+  fetchPromosInfo();
+}, []);
+
+
+const isDateInRange = (startStr, endStr) => {
+  const today = new Date();
+  const start = startStr ? new Date(startStr) : null;
+  const end   = endStr   ? new Date(endStr)   : null;
+  if (start && today < start) return false;
+  if (end && today > end) return false; // inclusivo está bien para este caso
+  return true;
+};
+
+const computeDiscountedPriceByPromo = (basePrice, pInfo) => {
+  if (!pInfo?.activa || !isDateInRange(pInfo.fecha_inicio, pInfo.fecha_termina)) return null;
+
+  const price = Number(basePrice) || 0;
+  if (price <= 0) return null;
+
+  // Solo aplicamos precio unitario para tipos con descuento directo
+  // 1 = porcentual, 2 = fijo (según tu lógica del carrito)
+  if (pInfo.id_tipo_promo === 1 && pInfo.valor_porcentaje > 0) {
+    const pct = pInfo.valor_porcentaje / 100;
+    return Math.max(0, price * (1 - pct));
+  }
+  if (pInfo.id_tipo_promo === 2 && pInfo.valor_fijo > 0) {
+    return Math.max(0, price - pInfo.valor_fijo);
+  }
+  // Otros tipos (3,4,5) no alteran precio unitario aquí
+  return null;
+};
+
+const bestPromoPriceForProduct = (product) => {
+  const base = Number(product?.precio_base) || 0;
+  const ids = promosPorProducto[Number(product?.id_producto)] || [];
+  let best = null;
+
+  for (const idPromo of ids) {
+    const info = promosInfo[idPromo];
+    const discounted = computeDiscountedPriceByPromo(base, info);
+    if (discounted == null) continue;
+
+    if (best == null || discounted < best.finalPrice) {
+      best = { finalPrice: discounted, promoId: idPromo };
+    }
+  }
+  return best; // {finalPrice, promoId} | null
+};
 
   // Promociones
 useEffect(() => {
@@ -557,6 +694,7 @@ useEffect(() => {
               onMouseLeave={() => setHoveredProductDest(null)}
               onClick={() => handleProductClick(p.id_producto)}
             >
+              {hasPromo(p.id_producto) && <div style={styles.offerBadge}>OFERTA</div>}
               <div style={styles.topRow}>
                 <span></span>
                 <span style={styles.stars}>
@@ -591,7 +729,20 @@ useEffect(() => {
                 <div style={styles.productImg}>Imagen no disponible</div>
               )}
               <p style={styles.productName}>{p.nombre}</p>
-              <p style={styles.productPrice}>L. {p.precio_base}</p>
+              <div style={styles.priceRow}>
+   {(() => {
+     const best = bestPromoPriceForProduct(p);
+     if (best) {
+       return (
+         <>
+           <span style={styles.newPrice}>L. {best.finalPrice.toFixed(2)}</span>
+           <span style={styles.strikePrice}>L. {Number(p.precio_base).toFixed(2)}</span>
+         </>
+       );
+     }
+     return <span style={styles.productPrice}>L. {Number(p.precio_base).toFixed(2)}</span>;
+   })()}
+ </div>
               <button
                 style={{
                   ...styles.addButton,
@@ -655,6 +806,7 @@ useEffect(() => {
               onMouseLeave={() => setHoveredProductTrend(null)}
               onClick={() => handleProductClick(p.id_producto)}
             >
+              {hasPromo(p.id_producto) && <div style={styles.offerBadge}>OFERTA</div>}
               <div style={styles.topRow}>
                 <span></span>
                 <span style={styles.stars}>
@@ -689,7 +841,20 @@ useEffect(() => {
                 <div style={styles.productImg}>Imagen no disponible</div>
               )}
               <p style={styles.productName}>{p.nombre}</p>
-              <p style={styles.productPrice}>L. {p.precio_base}</p>
+              <div style={styles.priceRow}>
+   {(() => {
+     const best = bestPromoPriceForProduct(p);
+     if (best) {
+       return (
+         <>
+           <span style={styles.newPrice}>L. {best.finalPrice.toFixed(2)}</span>
+           <span style={styles.strikePrice}>L. {Number(p.precio_base).toFixed(2)}</span>
+         </>
+       );
+     }
+     return <span style={styles.productPrice}>L. {Number(p.precio_base).toFixed(2)}</span>;
+   })()}
+ </div>
               <button
                 style={{
                   ...styles.addButton,
@@ -857,6 +1022,67 @@ const styles = {
     fontWeight: "650",
     fontSize: "22px",
   },
+  productBox: {
+  flexShrink: 0,
+  width: "254px",
+  height: "265px",
+  borderRadius: "25px",
+  padding: "10px",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  backgroundColor: "#fff",
+  boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.15)",
+  position: "relative",          // 👈 necesario para posicionar el badge
+},
+
+offerBadge: {
+  position: "absolute",
+  top: 10,
+  left: -6,                      // 👈 “pegado” a la izquierda
+  transform: "rotate(-12deg)",
+  background: "#ff1744",         // rojo llamativo
+  color: "#fff",
+  fontWeight: 800,
+  fontSize: 12,
+  padding: "4px 10px",
+  borderRadius: "10px",
+  boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
+  letterSpacing: 1,
+},
+
+ strikePrice: {
+   fontSize: "14px",
+   color: "#94a3b8",     // gris suave
+   textDecoration: "line-through",
+   lineHeight: 1.1,
+   margin: 0,
+ },
+promoTag: {
+  width: "100%",
+  textAlign: "left",
+  fontSize: "17px",
+  fontWeight: 800,
+  color: "#2b6daf",              // azul de tu paleta (llamativo)
+  marginTop: 0,
+},
+
+// (mantén productPrice como lo tienes para los que NO tienen promo)
+priceRow: {
+   width: "100%",
+   display: "flex",
+   alignItems: "baseline",
+   gap: "10px",
+   marginTop: "auto",    // empuja la fila de precios hacia abajo del card
+ },
+
+ newPrice: {
+   fontSize: "20px",
+   fontWeight: 900,
+   color: "#16a34a",     // verde
+   lineHeight: 1.1,
+ },
+
 };
 
 export default InicioUsuario;

@@ -9,6 +9,37 @@ import { AddNewCarrito, ViewCar, SumarItem } from "./api/CarritoApi";
 import { useNavigate } from "react-router-dom";
 import CompararProducto from "./components/compararProducto";
 import {useCart} from "./utils/CartContext";
+import axiosInstance from "./api/axiosInstance";
+
+const BACKEND_ORIGIN = (() => {
+  const base = axiosInstance?.defaults?.baseURL;
+  try {
+    const u = base
+      ? base.startsWith("http")
+        ? new URL(base)
+        : new URL(base, window.location.origin)
+      : new URL(window.location.origin);
+    return `${u.protocol}//${u.host}`;
+  } catch {
+    return window.location.origin;
+  }
+})();
+
+// para nombres de archivo tipo "foto.jpg"
+const backendImageUrl = (fileName) =>
+  fileName
+    ? `${BACKEND_ORIGIN}/api/images/productos/${encodeURIComponent(fileName)}`
+    : "";
+
+// adapta la ruta que venga en DB a una URL válida del backend
+const toPublicFotoSrc = (nameOrPath) => {
+  if (!nameOrPath) return "";
+  const s = String(nameOrPath);
+  if (/^https?:\/\//i.test(s)) return s; // ya es absoluta
+  if (s.startsWith("/api/images/")) return `${BACKEND_ORIGIN}${encodeURI(s)}`;
+  if (s.startsWith("/images/")) return `${BACKEND_ORIGIN}/api${encodeURI(s)}`;
+  return backendImageUrl(s); // nombre suelto => /images/productos/<archivo>
+};
 
 function Categoria() {
   const navigate = useNavigate();
@@ -216,6 +247,102 @@ function Categoria() {
     const filtered = applyFilters(products);
     setFilteredProducts(filtered);
   }, [products, selectedSubcategorias, priceRange, selectedMarca, orderby]);
+
+
+  // === Promos ===
+const [promosPorProducto, setPromosPorProducto] = useState({}); // { id_producto: [id_promocion, ...] }
+const [promosInfo, setPromosInfo] = useState({});               // { id_promocion: { tipo, %/fijo, fechas, activa } }
+
+// 1) /api/promociones/detalles → mapea productos a promociones
+useEffect(() => {
+  const fetchPromosDetalles = async () => {
+    try {
+      const res = await axiosInstance.get("/api/promociones/detalles");
+      const lista = Array.isArray(res?.data) ? res.data : [];
+      const map = {};
+      for (const promo of lista) {
+        const arr = Array.isArray(promo.productos) ? promo.productos : [];
+        for (const pid of arr) {
+          const idNum = Number(pid);
+          if (!map[idNum]) map[idNum] = [];
+          map[idNum].push(Number(promo.id_promocion));
+        }
+      }
+      setPromosPorProducto(map);
+    } catch (err) {
+      console.error("[PROMOS DETALLES] error:", err?.response?.data || err);
+    }
+  };
+  fetchPromosDetalles();
+}, []);
+
+// 2) /api/promociones/listarorden → info de descuento/fechas
+useEffect(() => {
+  const fetchPromosInfo = async () => {
+    try {
+      const res = await axiosInstance.get("/api/promociones/listarorden");
+      const arr = Array.isArray(res?.data) ? res.data : [];
+      const map = {};
+      for (const p of arr) {
+        map[Number(p.id_promocion)] = {
+          id_promocion: Number(p.id_promocion),
+          id_tipo_promo: Number(p.id_tipo_promo),
+          valor_porcentaje: p.valor_porcentaje != null ? parseFloat(p.valor_porcentaje) : null,
+          valor_fijo: p.valor_fijo != null ? Number(p.valor_fijo) : null,
+          compra_min: p.compra_min != null ? Number(p.compra_min) : null,
+          fecha_inicio: p.fecha_inicio || null,
+          fecha_termina: p.fecha_termina || null,
+          activa: p.activa === true || p.activa === 1 || p.activa === "true",
+        };
+      }
+      setPromosInfo(map);
+    } catch (err) {
+      console.error("[PROMOS LISTARORDEN] error:", err?.response?.data || err);
+    }
+  };
+  fetchPromosInfo();
+}, []);
+
+// === Helpers (mismos que usas en las otras pantallas) ===
+const isDateInRange = (startStr, endStr) => {
+  const today = new Date();
+  const start = startStr ? new Date(startStr) : null;
+  const end   = endStr   ? new Date(endStr)   : null;
+  if (start && today < start) return false;
+  if (end && today > end) return false;
+  return true;
+};
+
+const computeDiscountedPriceByPromo = (basePrice, pInfo) => {
+  if (!pInfo?.activa || !isDateInRange(pInfo.fecha_inicio, pInfo.fecha_termina)) return null;
+  const price = Number(basePrice) || 0;
+  if (price <= 0) return null;
+
+  // 1 = %; 2 = fijo
+  if (pInfo.id_tipo_promo === 1 && pInfo.valor_porcentaje > 0) {
+    const pct = pInfo.valor_porcentaje / 100;
+    return Math.max(0, price * (1 - pct));
+  }
+  if (pInfo.id_tipo_promo === 2 && pInfo.valor_fijo > 0) {
+    return Math.max(0, price - pInfo.valor_fijo);
+  }
+  return null;
+};
+
+const bestPromoPriceForProduct = (prod) => {
+  const base = Number(prod?.precio_base) || 0;
+  const ids = promosPorProducto[Number(prod?.id_producto)] || [];
+  let best = null;
+  for (const idPromo of ids) {
+    const info = promosInfo[idPromo];
+    const discounted = computeDiscountedPriceByPromo(base, info);
+    if (discounted == null) continue;
+    if (best == null || discounted < best.finalPrice) {
+      best = { finalPrice: discounted, promoId: idPromo };
+    }
+  }
+  return best; // { finalPrice, promoId } | null
+};
 
   useEffect(() => {
     const productos = async () => {
@@ -655,7 +782,7 @@ function Categoria() {
                     }}
                   >
                     <div style={styles.topRow}>
-                      <span style={styles.badge}>Oferta</span>
+                     {bestPromoPriceForProduct(p) && <span style={styles.offerChip}>OFERTA</span>}
                       <span style={styles.stars}>
                         {Array.from({ length: 5 }, (_, i) => (
                           <span
@@ -675,7 +802,7 @@ function Categoria() {
                     p.imagenes.length > 0 &&
                     p.imagenes[0].url_imagen ? (
                       <img
-                        src={`/images/productos/${p.imagenes[0].url_imagen}`}
+                        src={toPublicFotoSrc(p.imagenes[0].url_imagen)}
                         alt={p.nombre}
                         style={styles.productImg}
                         onError={(e) => {
@@ -687,7 +814,20 @@ function Categoria() {
                       <div style={styles.productImg}>Imagen no disponible</div>
                     )}
                     <p style={styles.productName}>{p.nombre}</p>
-                    <p style={styles.productPrice}>L.{p.precio_base}</p>
+                    <div style={styles.priceRow}>
+   {(() => {
+     const best = bestPromoPriceForProduct(p);
+     if (best) {
+       return (
+         <>
+           <span style={styles.newPrice}>L. {best.finalPrice.toFixed(2)}</span>
+           <span style={styles.strikePrice}>L. {Number(p.precio_base).toFixed(2)}</span>
+         </>
+       );
+     }
+     return <span style={styles.productPrice}>L. {Number(p.precio_base).toFixed(2)}</span>;
+   })()}
+ </div>
 
                     <button
                       style={{
@@ -826,6 +966,38 @@ const styles = {
     objectFit: "contain",
     marginTop: "6px",
   },
+  priceRow: {
+  width: "100%",
+  display: "flex",
+  alignItems: "baseline",
+  gap: "10px",
+  marginTop: "4px",
+},
+
+newPrice: {
+  fontSize: "18px",
+  fontWeight: 900,
+  color: "#16a34a",   // verde
+  lineHeight: 1.1,
+},
+
+strikePrice: {
+  fontSize: "14px",
+  color: "#94a3b8",
+  textDecoration: "line-through",
+  lineHeight: 1.1,
+},
+
+offerChip: {
+  backgroundColor: "#ff1744",
+  color: "#fff",
+  fontWeight: 800,
+  fontSize: 12,
+  padding: "4px 10px",
+  borderRadius: "999px",
+  letterSpacing: 1,
+},
+
 };
 
 

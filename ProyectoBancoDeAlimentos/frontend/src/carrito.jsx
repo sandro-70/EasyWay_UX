@@ -532,6 +532,100 @@ function Carrito() {
     }
   };
 
+  // === Promos por producto (como en Inicio/Categoría) ===
+const [promosPorProducto, setPromosPorProducto] = useState({}); // { id_producto: [id_promocion, ...] }
+const [promosInfo, setPromosInfo] = useState({});               // { id_promocion: {...} }
+
+// /api/promociones/detalles → mapea productos a promociones
+useEffect(() => {
+  const fetchPromosDetalles = async () => {
+    try {
+      const res = await axiosInstance.get("/api/promociones/detalles");
+      const lista = Array.isArray(res?.data) ? res.data : [];
+      const map = {};
+      for (const promo of lista) {
+        const arr = Array.isArray(promo.productos) ? promo.productos : [];
+        for (const pid of arr) {
+          const idNum = Number(pid);
+          if (!map[idNum]) map[idNum] = [];
+          map[idNum].push(Number(promo.id_promocion));
+        }
+      }
+      setPromosPorProducto(map);
+    } catch (err) {
+      console.error("[PROMOS DETALLES] error:", err?.response?.data || err);
+    }
+  };
+  fetchPromosDetalles();
+}, []);
+
+// /api/promociones/listarorden → info de descuento/fechas
+useEffect(() => {
+  const fetchPromosInfo = async () => {
+    try {
+      const res = await axiosInstance.get("/api/promociones/listarorden");
+      const arr = Array.isArray(res?.data) ? res.data : [];
+      const map = {};
+      for (const p of arr) {
+        map[Number(p.id_promocion)] = {
+          id_promocion: Number(p.id_promocion),
+          id_tipo_promo: Number(p.id_tipo_promo), // 1=%  2=fijo
+          valor_porcentaje: p.valor_porcentaje != null ? parseFloat(p.valor_porcentaje) : null,
+          valor_fijo: p.valor_fijo != null ? Number(p.valor_fijo) : null,
+          compra_min: p.compra_min != null ? Number(p.compra_min) : null,
+          fecha_inicio: p.fecha_inicio || null,
+          fecha_termina: p.fecha_termina || null,
+          activa: p.activa === true || p.activa === 1 || p.activa === "true",
+        };
+      }
+      setPromosInfo(map);
+    } catch (err) {
+      console.error("[PROMOS LISTARORDEN] error:", err?.response?.data || err);
+    }
+  };
+  fetchPromosInfo();
+}, []);
+
+// Helpers (mismos que usas en otras vistas)
+const isDateInRange = (startStr, endStr) => {
+  const today = new Date();
+  const start = startStr ? new Date(startStr) : null;
+  const end   = endStr   ? new Date(endStr)   : null;
+  if (start && today < start) return false;
+  if (end && today > end) return false;
+  return true;
+};
+
+const computeDiscountedPriceByPromo = (basePrice, pInfo) => {
+  if (!pInfo?.activa || !isDateInRange(pInfo.fecha_inicio, pInfo.fecha_termina)) return null;
+  const price = Number(basePrice) || 0;
+  if (price <= 0) return null;
+  // 1 = %; 2 = fijo
+  if (pInfo.id_tipo_promo === 1 && pInfo.valor_porcentaje > 0) {
+    const pct = pInfo.valor_porcentaje / 100;
+    return Math.max(0, price * (1 - pct));
+  }
+  if (pInfo.id_tipo_promo === 2 && pInfo.valor_fijo > 0) {
+    return Math.max(0, price - pInfo.valor_fijo);
+  }
+  return null;
+};
+
+const bestPromoPriceForProduct = (prod) => {
+  const base = Number(prod?.precio_base) || 0;
+  const ids = promosPorProducto[Number(prod?.id_producto)] || [];
+  let best = null;
+  for (const idPromo of ids) {
+    const info = promosInfo[idPromo];
+    const discounted = computeDiscountedPriceByPromo(base, info);
+    if (discounted == null) continue;
+    if (best == null || discounted < best.finalPrice) {
+      best = { finalPrice: discounted, promoId: idPromo };
+    }
+  }
+  return best; // { finalPrice, promoId } | null
+};
+
   //Automatico cuando cambie el total
   useEffect(() => {
     if (total > 0 && promociones.length > 0) {
@@ -675,7 +769,7 @@ function Carrito() {
 
                     return (
                       <li key={i}>
-                        <div className="flex flex-row gap-8 justify-between ">
+                        <div className="flex flex-row gap-8  ">
                           {p.producto.imagenes &&
                           p.producto.imagenes.length > 0 &&
                           p.producto.imagenes[0].url_imagen ? (
@@ -707,15 +801,17 @@ function Carrito() {
                             </div>
                           )}
 
-                          <div className="flex flex-col w-full text-left font-medium">
+                          <div className="flex flex-col w-full text-left font-medium flex-1">
                             <p
-                              className="py-2 text-xl cursor-pointer"
-                              onClick={() =>
-                                navigate(`/producto/${p.producto.id_producto}`)
-                              }
-                            >
-                              {p.producto.nombre}
-                            </p>
+  className="py-2 text-xl cursor-pointer"
+  onClick={() => navigate(`/producto/${p.producto.id_producto}`)}
+>
+  {p.producto.nombre}
+  {bestPromoPriceForProduct(p.producto) && (
+    <span style={{ ...styles.offerChip, marginLeft: 8 }}>OFERTA</span>
+  )}
+</p>
+
 
                             <div className="flex -mt-1 mb-1">
                               {Array.from({ length: 5 }).map((_, idx) => (
@@ -758,7 +854,7 @@ function Carrito() {
                                 className=" bg-[#114C87] text-white rounded-md h-9 px-1"
                                 disabled={sinStock}
                               >
-                                <span className="material-symbols-outlined text-3xl">
+                                <span className="material-symbols-outlined text-5xl">
                                   check_indeterminate_small
                                 </span>
                               </button>
@@ -810,11 +906,36 @@ function Carrito() {
                                   add
                                 </span>
                               </button>
-                              <div className="flex  w-full h-full justify-center items-center ">
-                                <p className="text-2xl pl-16 ">
-                                  L. {p.subtotal_detalle}
-                                </p>
-                              </div>
+                              {/* Precio a la derecha (subtotal con OFERTA si aplica) */}
+<div className="flex w-full h-full justify-end items-center">
+  {(() => {
+    const best = bestPromoPriceForProduct(p.producto); // { finalPrice, promoId } | null
+    const qty = Number(p.cantidad_unidad_medida) || 0;
+    const unitBase = Number(p.producto.precio_base) || 0;
+    const subBase = unitBase * qty;
+
+    if (best) {
+      const subPromo = best.finalPrice * qty;
+      return (
+        <div className="text-right">
+          <div className="text-2xl font-extrabold text-green-600">
+            L. {subPromo.toFixed(2)}
+          </div>
+          <div className="text-lg text-slate-400 line-through">
+            L. {subBase.toFixed(2)}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="text-2xl font-bold">
+        L. {subBase.toFixed(2)}
+      </div>
+    );
+  })()}
+</div>
+
                             </div>
                           </div>
                           <button
@@ -1048,7 +1169,8 @@ function Carrito() {
                   onClick={() => navigate(`/producto/${p.id_producto}`)}
                 >
                   <div style={styles.topRow}>
-                    <div style={styles.stars}>
+                    {bestPromoPriceForProduct(p) && <span style={styles.offerChip}>OFERTA</span>}
+  <div style={styles.stars}>
                       {Array.from({ length: 5 }).map((_, idx) => (
                         <span
                           key={idx}
@@ -1078,7 +1200,20 @@ function Carrito() {
                     <div style={styles.productImg}>Imagen no disponible</div>
                   )}
                   <p style={styles.productName}>{p.nombre}</p>
-                  <p style={styles.productPrice}>L. {p.precio_base}</p>
+                   <div style={styles.priceRow}>
+   {(() => {
+     const best = bestPromoPriceForProduct(p);
+     if (best) {
+       return (
+         <>
+           <span style={styles.newPrice}>L. {best.finalPrice.toFixed(2)}</span>
+           <span style={styles.strikePrice}>L. {Number(p.precio_base).toFixed(2)}</span>
+         </>
+       );
+     }
+     return <span style={styles.productPrice}>L. {Number(p.precio_base).toFixed(2)}</span>;
+   })()}
+ </div>
                   <button
                     style={{
                       ...styles.addButton,
@@ -1218,6 +1353,38 @@ const styles = {
     display: "flex",
     flexDirection: "column",
   },
+  priceRow: {
+  width: "100%",
+  display: "flex",
+  alignItems: "baseline",
+  gap: "10px",
+  marginTop: "auto",
+},
+
+newPrice: {
+  fontSize: "17px",
+  fontWeight: 900,
+  color: "#16a34a", // verde
+  lineHeight: 1.1,
+},
+
+strikePrice: {
+  fontSize: "14px",
+  color: "#94a3b8", // gris
+  textDecoration: "line-through",
+  lineHeight: 1.1,
+},
+
+offerChip: {
+  backgroundColor: "#ff1744",
+  color: "#fff",
+  fontWeight: 800,
+  fontSize: 12,
+  padding: "2px 8px",
+  borderRadius: "999px",
+  letterSpacing: 1,
+},
+
 };
 
 export default Carrito;

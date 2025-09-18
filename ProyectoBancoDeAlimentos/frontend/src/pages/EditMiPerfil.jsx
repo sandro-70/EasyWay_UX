@@ -315,7 +315,7 @@ export default function EditarPerfilAdmin() {
   /* =================== SUBIR FOTO (solo en modo edición) =================== */
  // ✅ Guardar la foto inmediatamente después de subirla
 const handleFotoChange = async (e) => {
-  if (!editMode) return;                 // solo en modo edición
+                 // solo en modo edición
   const file = e.target.files?.[0];
   if (!file) return;
 
@@ -651,9 +651,8 @@ const handleFotoChange = async (e) => {
           />
           <button
             className="editar-boton"
-            onClick={() => editMode && document.getElementById("foto-input").click()}
-            disabled={!editMode}
-            title={editMode ? "Cambiar Foto" : "Pulsa Editar para Cambiar la Foto"}
+            onClick={() => fileInputRef.current?.click()}
+            title="Cambiar Foto"
           >
             <Icon name="camera" className="icon-small" />
             <span>Editar Foto</span>

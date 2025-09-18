@@ -104,6 +104,100 @@ function AgregarCarrito() {
   // Para porcentajes y totales visuales
   const safeTotal = Math.max(0, Number(effectiveTotal || 0));
   const pct = (n) => (safeTotal > 0 ? Math.round((n * 100) / safeTotal) : 0);
+// === Promos ===
+const [promosPorProducto, setPromosPorProducto] = useState({}); // { id_producto: [id_promocion, ...] }
+const [promosInfo, setPromosInfo] = useState({});               // { id_promocion: { tipo, %/fijo, fechas, activa } }
+
+// 1) /api/promociones/detalles → mapea productos a promociones
+useEffect(() => {
+  const fetchPromosDetalles = async () => {
+    try {
+      const res = await axiosInstance.get("/api/promociones/detalles");
+      const lista = Array.isArray(res?.data) ? res.data : [];
+      const map = {};
+      for (const promo of lista) {
+        const arr = Array.isArray(promo.productos) ? promo.productos : [];
+        for (const pid of arr) {
+          const idNum = Number(pid);
+          if (!map[idNum]) map[idNum] = [];
+          map[idNum].push(Number(promo.id_promocion));
+        }
+      }
+      setPromosPorProducto(map);
+    } catch (err) {
+      console.error("[PROMOS DETALLES] error:", err?.response?.data || err);
+    }
+  };
+  fetchPromosDetalles();
+}, []);
+
+// 2) /api/promociones/listarorden → info de descuento/fechas
+useEffect(() => {
+  const fetchPromosInfo = async () => {
+    try {
+      const res = await axiosInstance.get("/api/promociones/listarorden");
+      const arr = Array.isArray(res?.data) ? res.data : [];
+      const map = {};
+      for (const p of arr) {
+        map[Number(p.id_promocion)] = {
+          id_promocion: Number(p.id_promocion),
+          id_tipo_promo: Number(p.id_tipo_promo),
+          valor_porcentaje: p.valor_porcentaje != null ? parseFloat(p.valor_porcentaje) : null,
+          valor_fijo: p.valor_fijo != null ? Number(p.valor_fijo) : null,
+          compra_min: p.compra_min != null ? Number(p.compra_min) : null,
+          fecha_inicio: p.fecha_inicio || null,
+          fecha_termina: p.fecha_termina || null,
+          activa: p.activa === true || p.activa === 1 || p.activa === "true",
+        };
+      }
+      setPromosInfo(map);
+    } catch (err) {
+      console.error("[PROMOS LISTARORDEN] error:", err?.response?.data || err);
+    }
+  };
+  fetchPromosInfo();
+}, []);
+
+// Helpers de precio en promo (igual que en InicioUsuario)
+const isDateInRange = (startStr, endStr) => {
+  const today = new Date();
+  const start = startStr ? new Date(startStr) : null;
+  const end   = endStr   ? new Date(endStr)   : null;
+  if (start && today < start) return false;
+  if (end && today > end) return false;
+  return true;
+};
+
+const computeDiscountedPriceByPromo = (basePrice, pInfo) => {
+  if (!pInfo?.activa || !isDateInRange(pInfo.fecha_inicio, pInfo.fecha_termina)) return null;
+  const price = Number(basePrice) || 0;
+  if (price <= 0) return null;
+
+  // Solo tipos que afectan al precio unitario
+  if (pInfo.id_tipo_promo === 1 && pInfo.valor_porcentaje > 0) {
+    const pct = pInfo.valor_porcentaje / 100;
+    return Math.max(0, price * (1 - pct));
+  }
+  if (pInfo.id_tipo_promo === 2 && pInfo.valor_fijo > 0) {
+    return Math.max(0, price - pInfo.valor_fijo);
+  }
+  return null; // otros tipos no alteran el unitario aquí
+};
+
+const bestPromoPriceForProduct = (prod) => {
+  const base = Number(prod?.precio_base) || 0;
+  const ids = promosPorProducto[Number(prod?.id_producto)] || [];
+  let best = null;
+  for (const idPromo of ids) {
+    const info = promosInfo[idPromo];
+    const discounted = computeDiscountedPriceByPromo(base, info);
+    if (discounted == null) continue;
+    if (best == null || discounted < best.finalPrice) {
+      best = { finalPrice: discounted, promoId: idPromo };
+    }
+  }
+  return best; // { finalPrice, promoId } | null
+};
 
   // ======= Carga inicial de página =======
   useEffect(() => {
@@ -430,7 +524,7 @@ function AgregarCarrito() {
                 onClick={() => handleProductClick(p.id_producto)}
               >
                 <div style={styles.cardTopRow}>
-                  <span style={styles.badge}>Oferta</span>
+   {bestPromoPriceForProduct(p) && <span style={styles.offerChip}>OFERTA</span>}
                   <div style={styles.stars}>
                     {Array.from({ length: 5 }, (_, i) => (
                       <span
@@ -472,7 +566,20 @@ function AgregarCarrito() {
 
                 <div style={styles.cardContent}>
                   <h3 style={styles.cardTitle}>{p.nombre}</h3>
-                  <p style={styles.cardPrice}>L. {p.precio_base} P/Kilo</p>
+                  <div style={styles.priceRow}>
+   {(() => {
+     const best = bestPromoPriceForProduct(p);
+     if (best) {
+       return (
+         <>
+           <span style={styles.newPrice}>L. {best.finalPrice.toFixed(2)}</span>
+           <span style={styles.strikePrice}>L. {Number(p.precio_base).toFixed(2)}</span>
+         </>
+       );
+     }
+     return <span style={styles.cardPrice}>L. {Number(p.precio_base).toFixed(2)} P/Kilo</span>;
+   })()}
+ </div>
                   <button
                     style={styles.addButton}
                     onClick={(e) => {
@@ -562,10 +669,28 @@ function AgregarCarrito() {
                 <p style={styles.detailCode}>Código: {product.id_producto}</p>
 
                 <div style={styles.detailStockWrapper}>
-                  <div style={styles.detailPrice}>
-                    L. {product.precio_base}{" "}
-                    <span style={styles.detailPriceUnit}>P/Kilo</span>
-                  </div>
+                  
+                    
+                    
+                   {(() => {
+   const best = bestPromoPriceForProduct(product);
+   if (best) {
+     return (
+       <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+         <span style={styles.newPrice}>L. {best.finalPrice.toFixed(2)}</span>
+         <span style={styles.strikePrice}>L. {Number(product.precio_base).toFixed(2)}</span>
+         <span style={styles.detailPriceUnit}>P/Kilo</span>
+         <span style={styles.offerPill}>OFERTA</span>
+       </div>
+     );
+   }
+   return (
+     <div style={styles.detailPrice}>
+       L. {Number(product.precio_base).toFixed(2)}{" "}
+       <span style={styles.detailPriceUnit}>P/Kilo</span>
+     </div>
+   );
+ })()}
                 </div>
 
                 <div style={styles.actionsRow}>
@@ -1160,6 +1285,48 @@ const styles = {
   },
   reviewUserDate: { fontSize: "12px", color: "#777" },
   reviewText: { fontSize: "14px", color: "#333", lineHeight: 1.4 },
+   priceRow: {
+   width: "100%",
+   display: "flex",
+   alignItems: "baseline",
+   gap: "10px",
+ },
+
+ newPrice: {
+   fontSize: "20px",
+   fontWeight: 900,
+   color: "#16a34a",   // verde
+   lineHeight: 1.1,
+ },
+
+ strikePrice: {
+   fontSize: "14px",
+   color: "#94a3b8",
+   textDecoration: "line-through",
+   lineHeight: 1.1,
+   margin: 0,
+ },
+
+ offerChip: {
+   backgroundColor: "#ff1744",
+   color: "#fff",
+   fontWeight: 800,
+   fontSize: 12,
+   padding: "2px 10px",
+   borderRadius: "999px",
+   letterSpacing: 1,
+ },
+
+ offerPill: {
+   backgroundColor: "#ff1744",
+   color: "#fff",
+   fontWeight: 800,
+   fontSize: 12,
+   padding: "2px 10px",
+   borderRadius: "999px",
+   letterSpacing: 1,
+ }
+
 };
 
 export default AgregarCarrito;

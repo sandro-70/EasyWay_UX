@@ -10,6 +10,8 @@ const {
   carrito,
   carrito_detalle,
   sucursal_producto,
+  metodo_pago,
+  cupon,
 } = require("../models");
 const { Op } = require("sequelize");
 
@@ -133,6 +135,30 @@ exports.crearPedido = async (req, res) => {
     const { id_usuario, direccion_envio, id_sucursal, id_cupon, descuento } =
       req.body;
 
+    // Validar si el cupón existe si se proporciona
+    if (id_cupon) {
+      const cuponExistente = await cupon.findByPk(id_cupon, {
+        transaction: t,
+      });
+      if (!cuponExistente) {
+        await t.rollback();
+        return res.status(400).json({ error: "Cupón inválido" });
+      }
+    }
+
+    // Obtener método de pago predeterminado del usuario
+    const metodoPredeterminado = await metodo_pago.findOne({
+      where: { id_usuario, metodo_predeterminado: true },
+      transaction: t,
+    });
+
+    if (!metodoPredeterminado) {
+      await t.rollback();
+      return res.status(400).json({
+        error: "No se encontró un método de pago predeterminado para el usuario",
+      });
+    }
+
     //obtener carrito
     const cart = await carrito.findOne({
       where: { id_usuario },
@@ -220,6 +246,7 @@ exports.crearPedido = async (req, res) => {
     const nuevaFactura = await factura.create(
       {
         id_pedido: nuevoPedido.id_pedido,
+        id_metodo_pago: metodoPredeterminado.id_metodo_pago,
         fecha_emision: new Date(),
         total: totalFactura,
       },

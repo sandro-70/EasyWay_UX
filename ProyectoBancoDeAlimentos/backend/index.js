@@ -75,8 +75,8 @@ const insertRolesPrvilegios = require("./Inserts/InsertRolesPrvilegios");
     await db.sequelize.authenticate();
     console.log("Conexión a la BD establecida");
 
-    // await db.sequelize.sync({ alter: true });
-    // console.log("Modelos sincronizados y tablas reiniciadas");
+    await db.sequelize.sync({ alter: true });
+    console.log("Modelos sincronizados y tablas reiniciadas");
     // await insertUsuarios(
     //   { app: { locals: { db } } },
     //   {

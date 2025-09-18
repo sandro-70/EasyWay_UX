@@ -22,6 +22,7 @@ import {
   listarProductosporsucursal,
 } from "./api/InventarioApi";
 import { crearPedido } from "./api/PedidoApi";
+import { getAllMetodoPago } from "./api/metodoPagoApi";
 import { UserContext } from "./components/userContext";
 import { useCart } from "../src/utils/CartContext";
 import { toast } from "react-toastify";
@@ -335,6 +336,20 @@ function Carrito() {
 
       const sucursalId = Number(idSucursal ?? sucursales[0]?.id_sucursal ?? 2);
 
+      // Obtener métodos de pago del usuario
+      const metodosPagoResponse = await getAllMetodoPago();
+      const metodosPago = metodosPagoResponse.data || [];
+
+      // Encontrar el método de pago predeterminado
+      const metodoPagoDefault = metodosPago.find(mp => mp.metodo_predeterminado === true);
+
+      if (!metodoPagoDefault) {
+        toast.error("No tienes un método de pago predeterminado configurado", { className: "toast-error" });
+        return;
+      }
+
+      console.log("Método de pago predeterminado:", metodoPagoDefault);
+
       const response = await crearPedido(
         user.id_usuario,
         id_direccion,
@@ -354,7 +369,8 @@ function Carrito() {
       setShowProd(false);
     } catch (err) {
       console.error("Error creating pedido:", err);
-      toast.error("No se pudo crear el pedido", { className: "toast-error" });
+      const errorMessage = err?.response?.data?.error || "No se pudo crear el pedido";
+      toast.error(errorMessage, { className: "toast-error" });
     }
   };
 

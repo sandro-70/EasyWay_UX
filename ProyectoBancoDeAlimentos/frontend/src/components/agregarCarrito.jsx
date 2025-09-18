@@ -1,5 +1,5 @@
 // AgregarCarrito.jsx
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useContext } from "react";
 import { Minus, Plus, Heart } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -15,7 +15,8 @@ import { height } from "@mui/system";
 import { toast } from "react-toastify";
 import "../toast.css";
 import 'react-toastify/dist/ReactToastify.css';
-import { AddProductoFav } from "../api/lista_deseos";
+import { agregarAListaDeseos } from "../api/listaDeseosApi";
+import { UserContext } from "../components/userContext";
 // ====== helpers para construir la URL absoluta desde el backend ======
 const BACKEND_ORIGIN = (() => {
   const base = axiosInstance?.defaults?.baseURL;
@@ -69,13 +70,14 @@ function AgregarCarrito() {
     totalReviews: 0,
     dist: [0, 0, 0, 0, 0], // [1★,2★,3★,4★,5★]
   });
-
+  const { user } = useContext(UserContext);   // para tomar id_usuario
   const [myRating, setMyRating] = useState(0);
   const [myComment, setMyComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   // favoritos
   const [favLoading, setFavLoading] = useState(false);
+  const [isFav, setIsFav] = useState(false);   // para rellenar el corazón cuando quede guardado
 
   // ======= Derivados: si backend NO trae resumen, lo calculamos con reviews =======
   const computed = useMemo(() => {
@@ -462,6 +464,44 @@ const bestPromoPriceForProduct = (prod) => {
       setFavLoading(false);
     }
   }
+async function handleFavorito() {
+  if (!product?.id_producto) return;
+
+  const token = localStorage.getItem("token");
+  if (!token) {
+    toast.info("Inicia sesión para usar Favoritos.", { className: "toast-info" });
+    return navigate("/login");
+  }
+  if (!user?.id_usuario) {
+    toast.error("No se encontró tu usuario en sesión.", { className: "toast-error" });
+    return;
+  }
+
+  try {
+    setFavLoading(true);
+    const res = await agregarAListaDeseos(user.id_usuario, product.id_producto);
+
+    setIsFav(true);
+    toast.success(res?.data?.message || "Producto agregado a tu lista de deseos", {
+      className: "toast-success",
+    });
+  } catch (e) {
+    const status = e?.response?.status;
+    const msg = e?.response?.data?.message || e?.message;
+
+    // ya existe en la lista (tu controller envia 400)
+    if (status === 400 && /ya está en la lista/i.test(msg || "")) {
+      setIsFav(true);
+      toast.info("Este producto ya está en tu lista de deseos.", { className: "toast-info" });
+    } else if (status === 404) {
+      toast.error(msg || "Usuario o producto no encontrado", { className: "toast-error" });
+    } else {
+      toast.error(msg || "No se pudo agregar a favoritos", { className: "toast-error" });
+    }
+  } finally {
+    setFavLoading(false);
+  }
+}
 
   
   // ======= Utilidades UI =======
@@ -711,11 +751,17 @@ const bestPromoPriceForProduct = (prod) => {
                   </button>
 
                   <button
-                    style={styles.favoriteBtn}
+                    style={{
+    ...styles.favoriteBtn,
+   // antes estaba fijo
+   opacity: favLoading ? 0.6 : 1,
+   backgroundColor: isFav ? "#e11d48" : "#F0833E", // rojo si ya es favorito
+                     } }
                     onClick={handleFavorito}
                     disabled={favLoading}
+                    title={isFav ? "En tu lista de deseos" : "Agregar a Favoritos"}
                   >
-                    <Heart size={24} fill="white" />
+                    <Heart size={24} color="white" fill={isFav ? "white" : "none"} />
                   </button>
                 </div>
                 <div style={styles.detailDescription}>

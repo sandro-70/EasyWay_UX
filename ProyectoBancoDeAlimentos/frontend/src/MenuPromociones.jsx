@@ -24,7 +24,7 @@ const MenuPromociones = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 px-4 py-8">
             <Link
-              to="/campanaPromocional"
+              to="/campanaviews"
               className="bg-white rounded-2xl p-6 flex flex-col items-center text-center shadow-md border border-blue-100 transition-transform duration-300 hover:scale-105 hover:shadow-lg"
             >
               <Calendar size={40} color="#3b82f6" />

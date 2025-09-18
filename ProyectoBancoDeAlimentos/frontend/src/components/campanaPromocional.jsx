@@ -1,6 +1,7 @@
 // campanaPromocional.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Upload, Calendar, ChevronDown, X, Check } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import "./campanaPromocional.css";
 
 /** ==== API ==== */
@@ -43,7 +44,7 @@ const CampanaPromocional = () => {
   const [activeIndex, setActiveIndex] = useState(0);
   const comboRef = useRef(null);
   const inputRef = useRef(null);
-
+  const navigate = useNavigate();
   // Banner
   const fileInputRef = useRef(null);
 
@@ -274,9 +275,12 @@ const payload = {
     <div className="pageWrapper">
       <div className="container">
         {/* Encabezado */}
-        <div className="headerWrapper">
-          <h1 className="header">Crear Campaña Promocional</h1>
-        </div>
+        <div className="headerWrapper" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+  <h1 className="header">Crear Campaña Promocional</h1>
+  <div style={{ display: "flex", gap: 8 }}>
+    
+  </div>
+</div>
         <div className="headerLine" />
 
         {/* Datos campaña (2 columnas) */}
@@ -543,6 +547,8 @@ const payload = {
 
         {/* Acción */}
         <div className="buttonRow">
+          <button className="btn-volver-campana" onClick={() => navigate(-1)}>Volver</button>
+
           <button
             type="button"
             className="saveButton"
@@ -551,7 +557,9 @@ const payload = {
           >
             {loadingSave ? "Guardando..." : "Guardar Campaña"}
           </button>
+          
         </div>
+        
       </div>
     </div>
   );

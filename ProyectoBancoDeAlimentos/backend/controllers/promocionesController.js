@@ -17,7 +17,7 @@ const { Op } = require("sequelize");
 exports.listar = async (req, res) => {
   try {
     const promos = await promocion.findAll({
-      where: { activa: { [Op.ne]: null } },
+      where: { activa: true },
       order: [["fecha_inicio", "DESC"]],
     });
     res.json(promos);

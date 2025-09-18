@@ -60,6 +60,7 @@ import { SearchProvider } from "./searchContext.jsx";
 
 // Mejora compatible (tu compañerx): mantenida bajo tu esquema
 import ListaDeDeseos from "./pages/ListaDeDeseos.jsx";
+import CampanasView from "./components/CampanasView.jsx";
 
 const HEADER_HEIGHT = 60; // px
 
@@ -206,6 +207,14 @@ function App() {
                 element={
                   <ProtectedRoute rolesPermitidos={["administrador"]}>
                     <CampanaPromocional />
+                  </ProtectedRoute>
+                }
+              />
+               <Route
+                path="/campanaviews"
+                element={
+                  <ProtectedRoute rolesPermitidos={["administrador"]}>
+                    <CampanasView />
                   </ProtectedRoute>
                 }
               />

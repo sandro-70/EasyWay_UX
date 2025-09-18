@@ -54,6 +54,13 @@
   margin-bottom: 24px;
 }
 
+.btn-volver-campana {
+  padding : 8px 24px;
+  background:var(--brand);
+  color: #fff;
+  border-radius: 6px;
+  margin-right: 770px;
+}
 /* El banner vive en la col 3 y se expande dos filas (fila 1 y 2) */
 .bannerInGrid{
   grid-column: 3 / 4;

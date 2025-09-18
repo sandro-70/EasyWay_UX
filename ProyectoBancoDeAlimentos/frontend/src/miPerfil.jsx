@@ -620,7 +620,7 @@ const handleFotoChange = async (e) => {
             title="Cambiar foto"
           >
             <Icon name="camera" className="icon-small" />
-            <span>Editar foto</span>
+            <span>Editar Foto</span>
           </button>
         </aside>
 
@@ -668,9 +668,9 @@ const handleFotoChange = async (e) => {
                 onChange={(e) => setGenero(e.target.value)}
                 disabled={!editMode}
               >
-                <option>masculino</option>
-                <option>femenino</option>
-                <option>otro</option>
+                <option>Masculino</option>
+                <option>Femenino</option>
+                <option>Otro</option>
               </select>
             </Field>
           </div>
@@ -695,7 +695,7 @@ const handleFotoChange = async (e) => {
             <div className="modal-overlay">
               <div className="mPerfil-modal">
                 <div className="modal-headerr">
-                  <h3 className="label-modal-confirm">Cambio de contraseña</h3>
+                  <h3 className="label-modal-confirm">Cambio de Contraseña</h3>
                   <button
                     className="mPerfil-cancel-button"
                     onClick={() => setShowPasswordModal(false)}
@@ -704,19 +704,19 @@ const handleFotoChange = async (e) => {
                   </button>
                 </div>
                 <div className="modal-body">
-                  <label>Contraseña anterior</label>
+                  <label>Contraseña Anterior</label>
                   <input
                     type="password"
                     value={oldPassword}
                     onChange={(e) => setOldPassword(e.target.value)}
                   />
-                  <label>Nueva contraseña</label>
+                  <label>Nueva Contraseña</label>
                   <input
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                   />
-                  <label>Confirmación de nueva contraseña</label>
+                  <label>Confirmación de Nueva Contraseña</label>
                   <input
                     type="password"
                     value={confirmPassword}
@@ -793,7 +793,7 @@ const handleFotoChange = async (e) => {
               <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-0 relative">
                 <div className="bg-[#2b6daf] text-white text-center py-2">
                   <h2 className="font-semibold text-lg">
-                    Activar autenticación en dos pasos
+                    Activar Autenticación en Dos Pasos
                   </h2>
                 </div>
                 <button
@@ -810,7 +810,7 @@ const handleFotoChange = async (e) => {
                     <label className="flex items-center gap-2 border border-[#2b6daf] p-2 rounded">
                       <input type="radio" name="twofactor" className="accent-[#2b6daf] align-middle m-0" />
                       <span className="align-middle">
-                        Enviar correo al ***@gmail.com
+                        Enviar código al ***@gmail.com
                       </span>
                     </label>
                   </div>
@@ -830,7 +830,7 @@ const handleFotoChange = async (e) => {
               <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-0 relative">
                 <div className="bg-[#2b6daf] text-white text-center py-2">
                   <h2 className="font-semibold text-lg">
-                    Activar autenticación en dos pasos
+                    Activar Autenticación en Dos Pasos
                   </h2>
                 </div>
                 <button
@@ -866,7 +866,7 @@ const handleFotoChange = async (e) => {
                       className="text-[#2b6daf] text-sm hover:underline"
                       onClick={handleResendCode}
                     >
-                      Reenviar código
+                      Reenviar Código
                     </button>
                   </div>
                 </div>
@@ -952,7 +952,7 @@ const handleFotoChange = async (e) => {
             className="new-link"
             onClick={() => setShowPasswordModal(true)}
           >
-            Cambiar contraseña
+            Cambiar Contraseña
           </Link>
         </div>
         <div className="f2-autenticacion">
@@ -965,7 +965,7 @@ const handleFotoChange = async (e) => {
               setShowTwoFactorModal(true);
             }}
           >
-            Autenticación en dos pasos
+            Autenticación en Dos Pasos
           </Link>
         </div>
         <div className="historial">

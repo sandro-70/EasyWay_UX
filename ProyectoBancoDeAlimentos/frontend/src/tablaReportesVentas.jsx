@@ -102,12 +102,10 @@ function TablaReportesVentas() {
           id: index + 1,
           producto: v.producto.nombre,
           categoria: v.producto.categoria || "-",
-          subcategoria: v.producto.subcategoria || "-",
-          CantidadVendida: v.total_vendido,
-          precioBase: v.producto.precio_base,
-          precioVenta: v.total_vendido * v.producto.precio_base, // cálculo ejemplo
-          Descuento: 0,
-          Total: v.total_vendido * v.producto.precio_base,
+          sucursal: v.sucursal?.nombre || "Sucursal no definida",
+          cantidad: v.total_vendido,
+          precioVenta: v.producto.precio_base,
+          total: v.total_vendido * v.producto.precio_base,
         }));
         setVentas(formatted);
         setLoading(false);
@@ -181,11 +179,11 @@ function TablaReportesVentas() {
                     onClick={() => setOrderDesc(!orderDesc)}
                     title="Ordenar por ID"
                   >
-                    ID de Producto {orderDesc ? "↓" : "↑"}
+                    ID {orderDesc ? "↓" : "↑"}
                   </th>
                   <th>
                     <div className="flex items-center justify-center">
-                      <span>Producto</span>
+                      <span>Nombre</span>
                       <span
                         className="ventas-search-icon ml-1 cursor-pointer"
                         onClick={() => setShowFilter(true)}
@@ -196,18 +194,16 @@ function TablaReportesVentas() {
                     </div>
                   </th>
                   <th>Categoría</th>
-                  <th>Subcategoría</th>
-                  <th>Cantidad Vendida</th>
-                  <th>Precio Base</th>
+                  <th>Cantidad</th>
+                  <th>Sucursal</th>
                   <th>Precio Venta</th>
-                  <th>Descuento</th>
-                  <th>Total</th>
+                  <th>Total Vendido</th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedData.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="ventas-table-empty">
+                    <td colSpan={7} className="ventas-table-empty">
                       ⚠ Sin resultados para "{appliedFilter}"
                     </td>
                   </tr>
@@ -217,12 +213,10 @@ function TablaReportesVentas() {
                       <td>{row.id}</td>
                       <td>{row.producto}</td>
                       <td>{row.categoria}</td>
-                      <td>{row.subcategoria}</td>
-                      <td>{row.CantidadVendida}</td>
-                      <td>{row.precioBase}</td>
-                      <td>{row.precioVenta}</td>
-                      <td>{row.Descuento}</td>
-                      <td>{row.Total}</td>
+                      <td>{row.cantidad}</td>
+                      <td>{row.sucursal}</td>
+                      <td>L. {row.precioVenta}</td>
+                      <td>L. {row.total}</td>
                     </tr>
                   ))
                 )}

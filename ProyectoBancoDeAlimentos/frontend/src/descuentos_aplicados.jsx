@@ -2,7 +2,9 @@ import React from "react";
 import { getDescuentosAplicadosPorUsuario } from "./api/PromocionesApi";
 import "./descuentos_aplicados.css";
 import { InformacionUser } from "./api/Usuario.Route";
+import DetalleFactura from "./pages/DetalleFactura"; // 👈 ajusta la ruta si tu archivo está en otra carpeta
 
+/* ---------- Helpers de fecha (corrige "YYYY-MM-DD HH:mm:ss.SSS -0600") ---------- */
 function parseDbDate(input) {
   if (!input) return null;
   if (input instanceof Date) return isNaN(input) ? null : input;
@@ -33,13 +35,14 @@ const fmtHN = (date) =>
       })
     : "-";
 
-/* ---- Normalizador específico de TU controller ---- */
+/* ---------- Normalizador según tu controller (fecha_pedido, id_factura, descuento_total) ---------- */
 function mapApiToRow(row) {
   const fecha = parseDbDate(row.fecha_pedido);
   return {
-    fecha, // Date ya válido
-    factura: row.id_factura ? `#${row.id_factura}` : "-", // string
-    descuento: Number(row.descuento_total) || 0, // número
+    fecha, // Date válido
+    facturaText: row.id_factura ? `#${row.id_factura}` : "-", // para mostrar en la tabla
+    facturaId: row.id_factura ?? null, // para abrir DetalleFactura
+    descuento: Number(row.descuento_total) || 0,
   };
 }
 
@@ -53,6 +56,7 @@ export default class DescuentosAplicados extends React.Component {
     error: null,
     rows: [],
     page: 1,
+    openFacturaId: null, // 👈 controla el modal de detalle
   };
 
   async componentDidMount() {
@@ -61,7 +65,7 @@ export default class DescuentosAplicados extends React.Component {
 
   async resolveUserId() {
     try {
-      const { data } = await InformacionUser("me"); // puede ser cualquier valor
+      const { data } = await InformacionUser("me"); // tu API devuelve el id sin importar el parámetro
       const userId =
         data?.id_usuario ?? data?.id ?? data?.user?.id_usuario ?? null;
 
@@ -104,16 +108,21 @@ export default class DescuentosAplicados extends React.Component {
     this.setState({ page: Math.min(Math.max(1, next), total) });
   };
 
+  openDetalle = (facturaId) => this.setState({ openFacturaId: facturaId });
+  closeDetalle = () => this.setState({ openFacturaId: null });
+
   render() {
-    const { loadingUser, loading, error, rows, page } = this.state;
+    const { loadingUser, loading, error, rows, page, openFacturaId } =
+      this.state;
     const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
     const start = (page - 1) * PAGE_SIZE;
     const pageRows = rows.slice(start, start + PAGE_SIZE);
 
     return (
       <section className="discounts">
-        <header className="discounts__header">
-          <h2 className="discounts__title">Descuentos</h2>
+        <header className="sectionHeader">
+          <h1 className="sectionHeader__title">Descuentos Aplicados</h1>
+          <div className="sectionHeader__rule" />
         </header>
 
         <div className="discounts__tableWrap">
@@ -153,7 +162,22 @@ export default class DescuentosAplicados extends React.Component {
                 pageRows.map((r, i) => (
                   <tr key={i}>
                     <td>{fmtHN(r.fecha)}</td>
-                    <td>{r.factura}</td>
+
+                    {/* #Factura como link: abre DetalleFactura */}
+                    <td>
+                      {r.facturaId ? (
+                        <button
+                          className="linklike"
+                          onClick={() => this.openDetalle(r.facturaId)}
+                          title={`Ver factura ${r.facturaText}`}
+                        >
+                          {r.facturaText}
+                        </button>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+
                     <td className="num">
                       L.{" "}
                       {r.descuento.toLocaleString("es-HN", {
@@ -186,6 +210,27 @@ export default class DescuentosAplicados extends React.Component {
             ›
           </button>
         </nav>
+
+        {/* -------- Modal estilo inventario: aquí se monta tu clase DetalleFactura -------- */}
+        {openFacturaId != null && (
+          <div className="drawer__overlay" onClick={this.closeDetalle}>
+            <div className="drawer__card" onClick={(e) => e.stopPropagation()}>
+              <header className="drawer__header">
+                <h3 className="drawer__title">Factura #{openFacturaId}</h3>
+                <button className="drawer__close" onClick={this.closeDetalle}>
+                  ×
+                </button>
+              </header>
+
+              {/* Tu componente (clase) DetalleFactura.js */}
+              <DetalleFactura
+                key={openFacturaId} // fuerza remount al cambiar de factura
+                facturaId={openFacturaId}
+                compact={true}
+              />
+            </div>
+          </div>
+        )}
       </section>
     );
   }

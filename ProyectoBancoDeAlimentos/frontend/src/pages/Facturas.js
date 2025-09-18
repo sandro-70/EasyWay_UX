@@ -28,12 +28,12 @@ class Facturas extends Component {
     this.setState({ cargando: true });
     try {
       const res = await getAllFacturasByUserwithDetails();
-      const facturas = res.data.map(f => ({
+      const facturas = res.data.map((f) => ({
         id: f.id_factura,
         numero: f.id_factura,
         fecha: new Date(f.fecha_emision).toLocaleDateString("es-ES"),
         metodo_pago: f.metodo_pago?.nombre || "Sin especificar",
-        productos: f.factura_detalles.map(fd => ({
+        productos: f.factura_detalles.map((fd) => ({
           codigo: fd.id_producto,
           nombre: fd.producto.nombre,
           cantidad: fd.cantidad_unidad_medida,
@@ -50,11 +50,23 @@ class Facturas extends Component {
 
   formatFecha = (fechaStr) => {
     const meses = [
-      "enero","febrero","marzo","abril","mayo","junio",
-      "julio","agosto","septiembre","octubre","noviembre","diciembre"
+      "enero",
+      "febrero",
+      "marzo",
+      "abril",
+      "mayo",
+      "junio",
+      "julio",
+      "agosto",
+      "septiembre",
+      "octubre",
+      "noviembre",
+      "diciembre",
     ];
     const [dia, mes, anio] = fechaStr.split("/");
-    return `${dia.padStart(2, "0")} de ${meses[parseInt(mes, 10) - 1]} de ${anio}`;
+    return `${dia.padStart(2, "0")} de ${
+      meses[parseInt(mes, 10) - 1]
+    } de ${anio}`;
   };
 
   handleSelect = (factura) => {
@@ -76,8 +88,8 @@ class Facturas extends Component {
   getBase64Image = (url) =>
     new Promise((resolve, reject) => {
       fetch(url)
-        .then(res => res.blob())
-        .then(blob => {
+        .then((res) => res.blob())
+        .then((blob) => {
           const reader = new FileReader();
           reader.onloadend = () => resolve(reader.result);
           reader.onerror = reject;
@@ -91,7 +103,10 @@ class Facturas extends Component {
     if (!facturaSeleccionada) return;
 
     const productos = facturaSeleccionada.productos;
-    const subtotal = productos.reduce((acc, prod) => acc + prod.cantidad * prod.precio, 0);
+    const subtotal = productos.reduce(
+      (acc, prod) => acc + prod.cantidad * prod.precio,
+      0
+    );
     const isv = subtotal * 0.15;
     const costoEnvio = 10.0;
     const totalPagar = subtotal + isv + costoEnvio;
@@ -115,15 +130,24 @@ class Facturas extends Component {
     doc.text(this.formatFecha(facturaSeleccionada.fecha), 35, 42);
     doc.text(facturaSeleccionada.metodo_pago, 50, 48);
     // Resumen
-    doc.setFontSize(13).setFont(undefined, "bold").text("Resumen de la Orden", 14, 58);
+    doc
+      .setFontSize(13)
+      .setFont(undefined, "bold")
+      .text("Resumen de la Orden", 14, 58);
 
-    const tableColumn = ["Código", "Producto", "Cantidad", "Precio Unitario", "Subtotal"];
-    const tableRows = productos.map(prod => [
+    const tableColumn = [
+      "Código",
+      "Producto",
+      "Cantidad",
+      "Precio Unitario",
+      "Subtotal",
+    ];
+    const tableRows = productos.map((prod) => [
       prod.codigo,
       prod.nombre,
       `x${prod.cantidad}`,
       `Lps. ${prod.precio.toFixed(2)}`,
-      `Lps. ${(prod.cantidad * prod.precio).toFixed(2)}`
+      `Lps. ${(prod.cantidad * prod.precio).toFixed(2)}`,
     ]);
 
     autoTable(doc, {
@@ -131,32 +155,63 @@ class Facturas extends Component {
       head: [tableColumn],
       body: tableRows,
       styles: { fontSize: 11, textColor: [0, 0, 0], halign: "center" },
-      headStyles: { fillColor: [43, 109, 175], textColor: 255, fontStyle: "bold" },
-      columnStyles: { 2: { halign: "center" }, 3: { halign: "center" }, 4: { halign: "center" } }
+      headStyles: {
+        fillColor: [43, 109, 175],
+        textColor: 255,
+        fontStyle: "bold",
+      },
+      columnStyles: {
+        2: { halign: "center" },
+        3: { halign: "center" },
+        4: { halign: "center" },
+      },
     });
 
     const finalY = doc.lastAutoTable.finalY || 60;
-    doc.setDrawColor(200).setLineWidth(0.5).line(14, finalY + 2, 196, finalY + 2);
+    doc
+      .setDrawColor(200)
+      .setLineWidth(0.5)
+      .line(14, finalY + 2, 196, finalY + 2);
 
     // Totales
     doc.setFontSize(11).setFont(undefined, "normal");
-    doc.text(`Subtotal: Lps. ${subtotal.toFixed(2)}`, 196, finalY + 12, { align: "right" });
-    doc.text(`ISV 15%: Lps. ${isv.toFixed(2)}`, 196, finalY + 19, { align: "right" });
-    doc.text(`Costo de envío: Lps. ${costoEnvio.toFixed(2)}`, 196, finalY + 26, { align: "right" });
+    doc.text(`Subtotal: Lps. ${subtotal.toFixed(2)}`, 196, finalY + 12, {
+      align: "right",
+    });
+    doc.text(`ISV 15%: Lps. ${isv.toFixed(2)}`, 196, finalY + 19, {
+      align: "right",
+    });
+    doc.text(
+      `Costo de envío: Lps. ${costoEnvio.toFixed(2)}`,
+      196,
+      finalY + 26,
+      { align: "right" }
+    );
     doc.setFont(undefined, "bold");
-    doc.text(`Total a pagar: Lps. ${totalPagar.toFixed(2)}`, 196, finalY + 34, { align: "right" });
+    doc.text(`Total a pagar: Lps. ${totalPagar.toFixed(2)}`, 196, finalY + 34, {
+      align: "right",
+    });
 
     doc.save(`Factura_${facturaSeleccionada.numero}.pdf`);
   };
 
   render() {
-    const { facturas, facturaSeleccionada, mostrarModal, fechaFiltro, cargando } = this.state;
+    const {
+      facturas,
+      facturaSeleccionada,
+      mostrarModal,
+      fechaFiltro,
+      cargando,
+    } = this.state;
     const facturasFiltradas = fechaFiltro
-      ? facturas.filter(f => f.fecha.split("/")[1] === fechaFiltro)
+      ? facturas.filter((f) => f.fecha.split("/")[1] === fechaFiltro)
       : facturas;
 
     const productos = facturaSeleccionada ? facturaSeleccionada.productos : [];
-    const subtotal = productos.reduce((acc, prod) => acc + prod.cantidad * prod.precio, 0);
+    const subtotal = productos.reduce(
+      (acc, prod) => acc + prod.cantidad * prod.precio,
+      0
+    );
     const isv = subtotal * 0.15;
     const costoEnvio = 10.0;
     const totalPagar = subtotal + isv + costoEnvio;
@@ -171,7 +226,9 @@ class Facturas extends Component {
         {/* Contenido principal */}
         <div className="flex-1 p-6 flex flex-col items-center">
           <div className="w-[700px] p-4 rounded border border-gray-300 bg-white mt-24">
-            <h1 className="text-[#f0833e] text-3xl mb-2 font-normal text-left mt-8">Facturas</h1>
+            <h1 className="text-[#f0833e] text-3xl mb-2 font-normal text-left mt-8">
+              Facturas
+            </h1>
             <div className="h-0.5 bg-[#f0833e] mb-4 w-full mx-auto"></div>
 
             {cargando ? (
@@ -188,15 +245,32 @@ class Facturas extends Component {
                     >
                       <option value="">Meses</option>
                       {[
-                        "Enero","Febrero","Marzo","Abril","Mayo","Junio",
-                        "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
+                        "Enero",
+                        "Febrero",
+                        "Marzo",
+                        "Abril",
+                        "Mayo",
+                        "Junio",
+                        "Julio",
+                        "Agosto",
+                        "Septiembre",
+                        "Octubre",
+                        "Noviembre",
+                        "Diciembre",
                       ].map((mes, i) => (
-                        <option key={i+1} value={(i+1).toString().padStart(2, "0")}>
+                        <option
+                          key={i + 1}
+                          value={(i + 1).toString().padStart(2, "0")}
+                        >
                           {mes}
                         </option>
                       ))}
                     </select>
-                    <img src={CalendarioIcon} alt="Calendario" className="h-5 w-5" />
+                    <img
+                      src={CalendarioIcon}
+                      alt="Calendario"
+                      className="h-5 w-5"
+                    />
                   </div>
                 </div>
 
@@ -205,13 +279,23 @@ class Facturas extends Component {
                     <div
                       key={f.id}
                       className={`cursor-pointer p-2 hover:bg-blue-50 transition-colors 
-                        ${facturaSeleccionada?.id === f.id ? "bg-blue-100" : ""} 
-                        ${index < facturasFiltradas.length - 1 ? "border-b border-gray-300" : ""}`}
+                        ${
+                          facturaSeleccionada?.id === f.id ? "bg-blue-100" : ""
+                        } 
+                        ${
+                          index < facturasFiltradas.length - 1
+                            ? "border-b border-gray-300"
+                            : ""
+                        }`}
                       onClick={() => this.handleSelect(f)}
                     >
                       <div className="flex flex-col text-left">
-                        <p className="text-gray-800 font-bold">Pedido #{f.numero}</p>
-                        <p className="text-gray-500 text-sm">{f.fecha}- {f.metodo_pago}</p>
+                        <p className="text-gray-800 font-bold">
+                          Pedido #{f.numero}
+                        </p>
+                        <p className="text-gray-500 text-sm">
+                          {f.fecha}- {f.metodo_pago}
+                        </p>
                       </div>
                     </div>
                   ))}
@@ -241,11 +325,24 @@ class Facturas extends Component {
                 </div>
 
                 <div className="flex flex-col items-start mb-3">
-                  <p className="mb-0.5"><span className="font-bold">Supermercado:</span> Easy Way</p>
-                  <p className="mb-0.5"><span className="font-bold">No. Factura:</span> #{facturaSeleccionada.numero}</p>
-                  <p className="mb-0.5"><span className="font-bold">Método de Pago:</span> {facturaSeleccionada.metodo_pago}</p>
-                  <p className="mb-2"><span className="font-bold">Fecha:</span> {this.formatFecha(facturaSeleccionada.fecha)}</p>
-                  <h2 className="text-base font-bold mb-1">Resumen de la Orden</h2>
+                  <p className="mb-0.5">
+                    <span className="font-bold">Supermercado:</span> Easy Way
+                  </p>
+                  <p className="mb-0.5">
+                    <span className="font-bold">No. Factura:</span> #
+                    {facturaSeleccionada.numero}
+                  </p>
+                  <p className="mb-0.5">
+                    <span className="font-bold">Método de Pago:</span>{" "}
+                    {facturaSeleccionada.metodo_pago}
+                  </p>
+                  <p className="mb-2">
+                    <span className="font-bold">Fecha:</span>{" "}
+                    {this.formatFecha(facturaSeleccionada.fecha)}
+                  </p>
+                  <h2 className="text-base font-bold mb-1">
+                    Resumen de la Orden
+                  </h2>
                 </div>
 
                 <TablaProductos productos={productos} />
@@ -260,7 +357,9 @@ class Facturas extends Component {
                           <td className="p-0">
                             <div className="flex justify-between py-1">
                               <span>Subtotal</span>
-                              <span className="text-right">Lps. {subtotal.toFixed(2)}</span>
+                              <span className="text-right">
+                                Lps. {subtotal.toFixed(2)}
+                              </span>
                             </div>
                           </td>
                         </tr>
@@ -268,7 +367,9 @@ class Facturas extends Component {
                           <td className="p-0">
                             <div className="flex justify-between py-1">
                               <span>ISV 15%</span>
-                              <span className="text-right">Lps. {isv.toFixed(2)}</span>
+                              <span className="text-right">
+                                Lps. {isv.toFixed(2)}
+                              </span>
                             </div>
                           </td>
                         </tr>
@@ -276,7 +377,9 @@ class Facturas extends Component {
                           <td className="p-0">
                             <div className="flex justify-between py-1">
                               <span>Costo de envío</span>
-                              <span className="text-right">Lps. {costoEnvio.toFixed(2)}</span>
+                              <span className="text-right">
+                                Lps. {costoEnvio.toFixed(2)}
+                              </span>
                             </div>
                           </td>
                         </tr>
@@ -284,7 +387,9 @@ class Facturas extends Component {
                           <td className="p-0">
                             <div className="flex justify-between font-bold pt-2">
                               <span>Total a pagar</span>
-                              <span className="text-right">Lps. {totalPagar.toFixed(2)}</span>
+                              <span className="text-right">
+                                Lps. {totalPagar.toFixed(2)}
+                              </span>
                             </div>
                           </td>
                         </tr>
@@ -296,7 +401,11 @@ class Facturas extends Component {
                         onClick={this.handleExportar}
                         className="bg-[#2e9fd4] text-white font-semibold px-4 py-1.5 rounded-lg shadow hover:bg-[#16324f] transition-colors flex items-center gap-2"
                       >
-                        <img src={LogoExport} alt="Exportar" className="h-4 w-4" />
+                        <img
+                          src={LogoExport}
+                          alt="Exportar"
+                          className="h-4 w-4"
+                        />
                         Exportar
                       </button>
                     </div>

@@ -7,47 +7,79 @@ import PerfilSidebar from "../components/perfilSidebar";
 import { getAllFacturasByUserwithDetails } from "../api/FacturaApi";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+
 class DetalleFactura extends Component {
-    state = {
+  state = {
     factura: null,
     cargando: false,
+    error: null,
   };
+
   componentDidMount() {
-    this.fetchFactura();
+    const id = this.getFacturaId(this.props);
+    this.fetchFactura(id);
   }
-  fetchFactura = async () => {
-    const { params } = this.props;
-    const { id } = params || {};
-    if (!id) return;
-    this.setState({ cargando: true });
+
+  componentDidUpdate(prevProps) {
+    const prevId = this.getFacturaId(prevProps);
+    const currId = this.getFacturaId(this.props);
+    if (prevId !== currId) {
+      this.fetchFactura(currId);
+    }
+  }
+
+  /** Lee el id desde: props.facturaId | props.idFactura | props.params.id */
+  getFacturaId = (props) => {
+    const { facturaId, idFactura, params } = props || {};
+    return facturaId ?? idFactura ?? params?.id ?? null;
+  };
+
+  fetchFactura = async (id) => {
+    if (!id) {
+      this.setState({ factura: null, cargando: false, error: null });
+      return;
+    }
+    this.setState({ cargando: true, error: null });
     try {
       const res = await getAllFacturasByUserwithDetails();
-      const f = res.data.find(fact => fact.id_factura === parseInt(id));
-      if (!f) return;
+      const f = (res.data || []).find(
+        (fact) => Number(fact.id_factura) === Number(id)
+      );
+      if (!f) {
+        this.setState({
+          factura: null,
+          cargando: false,
+          error: "Factura no encontrada",
+        });
+        return;
+      }
+
+      // Normaliza a la estructura que espera tu UI/TablaProductos
       const factura = {
         id: f.id_factura,
         numero: f.id_factura,
         fecha: new Date(f.fecha_emision).toLocaleDateString("es-ES"),
         metodo_pago: f.metodo_pago?.nombre || "Sin especificar",
-        productos: f.factura_detalles.map(fd => ({
+        productos: (f.factura_detalles || []).map((fd) => ({
           codigo: fd.id_producto,
-          nombre: fd.producto.nombre,
-          cantidad: fd.cantidad_unidad_medida,
-          precio: parseFloat(fd.producto.precio_base),
+          nombre: fd.producto?.nombre ?? `#${fd.id_producto}`,
+          cantidad: Number(fd.cantidad_unidad_medida ?? fd.cantidad ?? 0),
+          precio: Number(fd.producto?.precio_base ?? 0),
         })),
       };
-      this.setState({ factura });
+
+      this.setState({ factura, cargando: false });
     } catch (error) {
       console.error("Error al cargar la factura:", error);
-    } finally {
-      this.setState({ cargando: false });
+      this.setState({ error: "No se pudo cargar la factura", cargando: false });
     }
   };
+
   getBase64Image = (url) =>
     new Promise((resolve, reject) => {
       fetch(url)
-        .then(res => res.blob())
-        .then(blob => {
+        .then((res) => res.blob())
+        .then((blob) => {
           const reader = new FileReader();
           reader.onloadend = () => resolve(reader.result);
           reader.onerror = reject;
@@ -55,27 +87,33 @@ class DetalleFactura extends Component {
         })
         .catch(reject);
     });
+
   handleExportar = () => {
     alert("Exportando factura...");
+    // Aquí ya tienes jsPDF y autotable importados por si luego quieres exportar de verdad.
   };
 
   render() {
-    const { params } = this.props;
-    const { id } = params || {};
+    const { factura, cargando, error } = this.state;
+    const compact = this.props.compact === true; // si se usa en modal
 
-    const facturas = [
-      { id: 1, numero: "123456", fecha: "26 de agosto de 2025" },
-      { id: 2, numero: "123457", fecha: "12/06/2024" },
-      { id: 3, numero: "123458", fecha: "08/06/2024" },
-      { id: 4, numero: "123426", fecha: "06/04/2024" },
-      { id: 5, numero: "123436", fecha: "02/04/2024" },
-    ];
+    if (cargando) {
+      return <div className="modal__empty">Cargando…</div>;
+    }
 
-    const factura = facturas.find((f) => f.id === parseInt(id));
+    if (error) {
+      return <div className="modal__empty">{error}</div>;
+    }
 
     if (!factura) {
       return (
-        <div className="min-h-screen flex justify-center items-center">
+        <div
+          className={
+            compact
+              ? "modal__empty"
+              : "min-h-screen flex justify-center items-center"
+          }
+        >
           <div className="text-center">
             <p className="text-gray-700">
               Seleccione una factura para ver el detalle
@@ -85,11 +123,7 @@ class DetalleFactura extends Component {
       );
     }
 
-    const productos = [
-  { codigo: "0001", nombre: "Manzanas", cantidad: 3, precio: 25.0 },
-  { codigo: "0002", nombre: "Leche", cantidad: 2, precio: 30.0 }
-];
-
+    const productos = factura.productos || [];
     const subtotal = productos.reduce(
       (acc, prod) => acc + prod.cantidad * prod.precio,
       0
@@ -98,17 +132,15 @@ class DetalleFactura extends Component {
     const costoEnvio = 10.0;
     const totalPagar = subtotal + isv + costoEnvio;
 
-    return (
-      <div  className="min-h-screen bg-gray-100">
-         <section className="sidebar">
-        <PerfilSidebar />
-      </section>
-      <div className="min-h-screen flex justify-center items-start pt-4">
-  <div className="w-[750px] border border-gray-300 shadow-lg overflow-hidden bg-white p-6 mt-4">
+    // ---- Layout principal ----
+    if (compact) {
+      // Versión compacta: ideal para el modal
+      return (
+        <div className="w-full">
           {/* Título y logo */}
           <div className="flex justify-between items-center mb-4">
-            <h1 className="text-4xl font-bold text-black">Factura</h1>
-            <img src={Logo} alt="Logo" className="h-10 w-auto" />
+            <h1 className="text-2xl font-bold text-black">Factura</h1>
+            <img src={Logo} alt="Logo" className="h-8 w-auto" />
           </div>
 
           {/* Datos básicos y título de la tabla */}
@@ -120,7 +152,7 @@ class DetalleFactura extends Component {
               <span className="font-bold">No. Factura:</span> #{factura.numero}
             </p>
             <p className="text-black-800 mb-2">
-            <span className="font-bold">Fecha:</span> 26 de agosto de 2025
+              <span className="font-bold">Fecha:</span> {factura.fecha}
             </p>
             <h2 className="text-base font-bold text-black-800 mb-1">
               Resumen de la Orden
@@ -128,17 +160,16 @@ class DetalleFactura extends Component {
           </div>
 
           {/* Tabla de productos */}
-         <div className="mt-[-8]"> {/* Margen superior negativo para subir la tabla */}
-         <TablaProductos productos={productos} />
-         </div>
-
+          <div className="mt-[-8px]">
+            <TablaProductos productos={productos} />
+          </div>
 
           {/* Separador */}
           <div className="border-t border-gray-300 my-3 w-full"></div>
 
-          {/* Totales */}
+          {/* Totales + Exportar */}
           <div className="flex justify-end w-full">
-            <div className="w-2/5">
+            <div className="w-full md:w-2/5">
               <table className="w-full text-sm mb-3 border-none">
                 <tbody>
                   <tr>
@@ -176,7 +207,6 @@ class DetalleFactura extends Component {
                 </tbody>
               </table>
 
-              {/* Botón Exportar */}
               <div className="flex justify-end">
                 <button
                   onClick={this.handleExportar}
@@ -188,9 +218,102 @@ class DetalleFactura extends Component {
               </div>
             </div>
           </div>
-
         </div>
-      </div>
+      );
+    }
+
+    // Versión completa (la que tenías con sidebar)
+    return (
+      <div className="min-h-screen bg-gray-100">
+        <section className="sidebar">
+          <PerfilSidebar />
+        </section>
+
+        <div className="min-h-screen flex justify-center items-start pt-4">
+          <div className="w-[750px] border border-gray-300 shadow-lg overflow-hidden bg-white p-6 mt-4">
+            {/* Título y logo */}
+            <div className="flex justify-between items-center mb-4">
+              <h1 className="text-4xl font-bold text-black">Factura</h1>
+              <img src={Logo} alt="Logo" className="h-10 w-auto" />
+            </div>
+
+            {/* Datos básicos */}
+            <div className="flex flex-col items-start mb-3">
+              <p className="text-black-800 mb-0.5">
+                <span className="font-bold">Supermercado:</span> Easy Way
+              </p>
+              <p className="text-black-800 mb-0.5">
+                <span className="font-bold">No. Factura:</span> #
+                {factura.numero}
+              </p>
+              <p className="text-black-800 mb-2">
+                <span className="font-bold">Fecha:</span> {factura.fecha}
+              </p>
+              <h2 className="text-base font-bold text-black-800 mb-1">
+                Resumen de la Orden
+              </h2>
+            </div>
+
+            {/* Tabla de productos */}
+            <div className="mt-[-8px]">
+              <TablaProductos productos={productos} />
+            </div>
+
+            <div className="border-t border-gray-300 my-3 w-full"></div>
+
+            {/* Totales */}
+            <div className="flex justify-end w-full">
+              <div className="w-2/5">
+                <table className="w-full text-sm mb-3 border-none">
+                  <tbody>
+                    <tr>
+                      <td className="border-none p-0">
+                        <div className="flex justify-between py-1">
+                          <span>Subtotal</span>
+                          <span>Lps. {subtotal.toFixed(2)}</span>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border-none p-0">
+                        <div className="flex justify-between py-1">
+                          <span>Impuesto sobre Ventas (ISV 15%)</span>
+                          <span>Lps. {isv.toFixed(2)}</span>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border-none p-0">
+                        <div className="flex justify-between py-1">
+                          <span>Costo de envío</span>
+                          <span>Lps. {costoEnvio.toFixed(2)}</span>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="border-none p-0">
+                        <div className="flex justify-between font-bold pt-2">
+                          <span>Total a pagar</span>
+                          <span>Lps. {totalPagar.toFixed(2)}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <div className="flex justify-end">
+                  <button
+                    onClick={this.handleExportar}
+                    className="bg-[#2e9fd4] text-white font-semibold px-4 py-1.5 rounded-lg shadow hover:bg-[#16324f] transition-colors flex items-center gap-2"
+                  >
+                    <img src={LogoExport} alt="Exportar" className="h-4 w-4" />
+                    Exportar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

@@ -10,31 +10,53 @@
   --panel-max: 900px; /* ancho del panel centrado */
   --pager-size: 40px; /* tamaño de los círculos de paginación */
 }
+/* === Header tipo “Historial de Compras” === */
+.sectionHeader {
+  margin: 8px 0 12px; /* compacto como el historial */
+}
+.sectionHeader__title {
+  margin: 0 0 4px 0;
+  color: var(--title); /* #e96803 */
+  font-weight: 800;
+  font-size: clamp(22px, 2.6vw, 32px);
+  letter-spacing: 0.2px;
+  text-align: left; /* alineado a la izquierda */
+}
+.sectionHeader__rule {
+  height: 3px; /* un pelín más gruesa como en la captura */
+  width: 100%;
+  background: var(--rule); /* #f0833e */
+  border-radius: 2px;
+}
 
-/* ===== Panel centrado, sin huecos laterales ===== */
+/* Quita la línea que antes estaba “encima de la tabla” */
+.discounts__tableWrap::before {
+  content: none !important;
+}
+
+/* ===== Panel centrado, look inventario ===== */
 .discounts {
   background: var(--bg);
   color: var(--text);
-  /* centramos el panel y evitamos el gran espacio: */
   max-width: var(--panel-max);
-  margin: 12px auto 24px; /* arriba más corto, abajo cómodo */
-  padding: 0 12px; /* pequeño gutter lateral */
+  margin: 12px auto 24px; /* centrado compacto */
+  padding: 0 12px;
 }
 
 /* ===== Título compacto, pegado a la línea ===== */
 .discounts__header {
   text-align: center;
-  margin: 10px 0 10px;
+  margin: 6px 0 6px;
 }
 .discounts__title {
-  margin: 3;
+  margin: 0;
   color: var(--title);
   font-weight: 800;
   font-size: clamp(22px, 2.6vw, 32px);
-  letter-spacing: 0px;
+  letter-spacing: 0;
 }
 
-/* ===== Tabla centrada ===== */
+/* ===== Tabla centrada con línea naranja arriba ===== */
 .discounts__tableWrap {
   width: 100%;
   margin: 0 auto;
@@ -44,12 +66,10 @@
   background: #fff;
   position: relative;
 }
-
-/* LÍNEA naranja SOLO arriba de la tabla, mismo ancho que el wrap */
 .discounts__tableWrap::before {
   content: "";
   position: absolute;
-  top: -10px; /* separación mínima del título */
+  top: -10px;
   left: 0;
   right: 0;
   height: 2px;
@@ -65,7 +85,6 @@
   border-spacing: 0;
   font-size: 14.5px;
 }
-
 .discounts__table thead th {
   background: var(--blue);
   color: #fff;
@@ -109,15 +128,28 @@
   padding: 24px 0;
 }
 
+/* Link del #Factura */
+.linklike {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: #2563eb;
+  font-weight: 800;
+  cursor: pointer;
+}
+.linklike:hover {
+  text-decoration: underline;
+}
+
 /* ===== Paginación compacta centrada ===== */
 .discounts__pager {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  margin-top: 12px; /* pegado a la tabla */
+  margin-top: 12px;
 }
-
 .pager__btn {
   width: var(--pager-size);
   height: var(--pager-size);
@@ -134,7 +166,6 @@
   opacity: 0.45;
   cursor: not-allowed;
 }
-
 .pager__page {
   min-width: var(--pager-size);
   height: var(--pager-size);
@@ -144,4 +175,48 @@
   place-items: center;
   font-weight: 800;
   background: #fff;
+}
+
+/* ===== Modal (drawer) estilo inventario ===== */
+.drawer__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9990;
+  background: rgba(0, 0, 0, 0.34);
+  display: grid;
+  place-items: center;
+}
+.drawer__card {
+  width: min(860px, 94vw);
+  max-height: 90vh;
+  overflow: auto;
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  padding: 14px;
+}
+.drawer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.drawer__title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--title);
+}
+.drawer__close {
+  appearance: none;
+  border: 0;
+  background: #fff;
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  font-size: 24px;
+}
+.drawer__close:hover {
+  background: #f3f4f6;
 }

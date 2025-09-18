@@ -1,6 +1,6 @@
 .mis-pedidos-container {
   position: absolute;
-  top: 100px; /* offset desde header */
+  top: 150px; /* offset desde header */
   left: 0;
   right: 0;
   display: flex;

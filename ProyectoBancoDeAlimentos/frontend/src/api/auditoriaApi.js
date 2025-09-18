@@ -1,7 +1,7 @@
 import axiosInstance from './axiosInstance';
 
-export function agregarAuditoria(id_producto, id_usuario, id_sucursal, cantidad, nombre_operacion, fecha_caducidad){
-    return axiosInstance.post('api/auditorias/agregar', {id_producto, id_usuario, id_sucursal, cantidad, nombre_operacion, fecha_caducidad});
+export function agregarAuditoria(id_producto, id_usuario, id_sucursal, cantidad, nombre_operacion){
+    return axiosInstance.post('api/auditorias/agregar', {id_producto, id_usuario, id_sucursal, cantidad, nombre_operacion});
 }
 
 export function listarAuditorias(){

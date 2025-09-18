@@ -3,7 +3,7 @@ const { auditoria_inventario, producto, subcategoria, categoria, sequelize, sucu
 
 exports.agregarAuditoria = async (req, res) => {
     try{
-        const {id_producto, id_usuario, id_sucursal, cantidad, nombre_operacion, fecha_caducidad } = req.body;
+        const {id_producto, id_usuario, id_sucursal, cantidad, nombre_operacion } = req.body;
 
         const prod = await producto.findByPk(id_producto);
         if (!prod) {
@@ -16,7 +16,6 @@ exports.agregarAuditoria = async (req, res) => {
         id_sucursal,
         cantidad,
         nombre_operacion,
-        fecha_caducidad,
         fecha_movimiento: new Date()
         });
 

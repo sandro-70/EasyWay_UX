@@ -25,10 +25,6 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.ENUM("entrada", "salida", "ajuste"),
       allowNull: false
     },
-    fecha_caducidad: {
-      type: DataTypes.DATEONLY,
-      allowNull: true
-    },
     fecha_movimiento: {
       type: DataTypes.DATEONLY,
       allowNull: false,

@@ -379,7 +379,7 @@ export default function MetodoPago() {
                 >
                   Cancelar
                 </button>
-                <button type="submit" className="btn-guardar">
+                <button type="submit" className="btn-guardar-tarjeta">
                   Guardar
                 </button>
               </div>

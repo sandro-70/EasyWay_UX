@@ -260,7 +260,7 @@
   background: #b3b3b3;
 }
 
-.btn-guardar {
+.btn-guardar-tarjeta {
   background: #f0833e;
   color: white;
   border: none;
@@ -271,8 +271,8 @@
   transition: background-color 0.3s;
 }
 
-.btn-guardar:hover {
-  background: #e97025;
+.btn-guardar-tarjeta:hover {
+  background: #fdb756;
 }
 
 /* Información de seguridad (solo visible cuando NO se agrega tarjeta) */

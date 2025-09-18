@@ -97,25 +97,32 @@ const ConfigBanner = () => {
     setCurrentIndex((prev) => (prev - 1 + banners.length) % banners.length);
   };
 
-  // Función para encontrar el primer orden disponible
-  const findNextAvailableOrder = () => {
-    const activeOrders = banners
-      .filter((banner) => banner.status && banner.orden > 0)
-      .map((banner) => banner.orden)
-      .sort((a, b) => a - b);
+  // Función para contar banners activos
+  const getActiveBannersCount = () => {
+    return banners.filter((banner) => banner.status && banner.orden > 0).length;
+  };
 
-    for (let i = 1; i <= activeOrders.length + 1; i++) {
-      if (!activeOrders.includes(i)) {
-        return i;
-      }
+  // Función para obtener el orden máximo después del cambio
+  const getMaxOrderAfterChange = (willBeActive) => {
+    const currentBanner = banners[currentIndex];
+    const currentlyActiveBanners = getActiveBannersCount();
+
+    if (willBeActive && !currentBanner.status) {
+      // Se está activando un banner inactivo: +1 al total
+      return currentlyActiveBanners + 1;
+    } else if (!willBeActive && currentBanner.status) {
+      // Se está desactivando un banner activo: -1 al total
+      return Math.max(0, currentlyActiveBanners - 1);
+    } else {
+      // No cambia el estado, el máximo es el número actual de activos
+      return currentlyActiveBanners;
     }
-    return activeOrders.length + 1;
   };
 
   const openEditModal = () => {
     const current = banners[currentIndex];
     setEditForm({
-      orden: current.status ? current.orden || 1 : 0,
+      orden: current.status ? current.orden || 1 : "",
       name: current.name || "",
       description: current.description || "",
       status: current.status || false,
@@ -133,14 +140,15 @@ const ConfigBanner = () => {
     setEditForm((prev) => {
       const newForm = { ...prev, [field]: value };
 
-      // Si cambia el estado, actualizar el orden automáticamente
+      // Si cambia el estado a activo, asignar el siguiente orden disponible (al final)
       if (field === "status") {
         if (value) {
-          // Si se activa, asignar el próximo orden disponible
-          newForm.orden = findNextAvailableOrder();
+          // Se activa: poner al final de la secuencia
+          const maxOrder = getMaxOrderAfterChange(true);
+          newForm.orden = maxOrder;
         } else {
-          // Si se desactiva, orden = 0
-          newForm.orden = 0;
+          // Se desactiva: orden = 0
+          newForm.orden = "";
         }
       }
 
@@ -148,60 +156,176 @@ const ConfigBanner = () => {
     });
   };
 
-  const validateOrden = (nuevoOrden) => {
-    const currentBanner = banners[currentIndex];
-
-    // Si esta descativado, 0 es siempre válido
-    if (nuevoOrden === 0) {
-      return true;
+  // Función para validar el orden ingresado
+  const validateOrder = (orden, isActive) => {
+    if (!isActive) {
+      return { isValid: true, message: "" };
     }
 
-    // Si es el mismo orden que ya tiene el banner actual
-    if (nuevoOrden === currentBanner.orden) {
-      return true;
+    const orderNum = parseInt(orden);
+    const maxOrder = getMaxOrderAfterChange(true);
+
+    if (isNaN(orderNum)) {
+      return { isValid: false, message: "El orden debe ser un número" };
     }
 
-    // Buscar si existe otro banner activo con el mismo orden
-    const bannerConMismoOrden = banners.find(
-      (banner) =>
-        banner.orden === nuevoOrden &&
-        banner.id_promocion !== currentBanner.id_promocion &&
-        banner.status
-    );
+    if (orderNum < 1) {
+      return { isValid: false, message: "El orden mínimo es 1" };
+    }
 
-    if (bannerConMismoOrden) {
-      alert(
-        `Error: El orden ${nuevoOrden} ya está siendo utilizado por el banner "${bannerConMismoOrden.name}". Por favor, elige un orden diferente.`
+    if (orderNum > maxOrder) {
+      return {
+        isValid: false,
+        message: `El orden máximo permitido es ${maxOrder}`,
+      };
+    }
+
+    return { isValid: true, message: "" };
+  };
+
+  // Función para reorganizar banners cuando se cambia el orden
+  const reorganizeBanners = async (newOrder, currentBanner) => {
+    const currentOrder = currentBanner.orden;
+
+    // Si el banner está inactivo y se está activando
+    if (!currentBanner.status && editForm.status) {
+      // Mover todos los banners desde la posición deseada hacia adelante
+      const bannersToMove = banners.filter(
+        (banner) =>
+          banner.id_promocion !== currentBanner.id_promocion &&
+          banner.status &&
+          banner.orden >= newOrder
       );
-      return false;
+
+      if (bannersToMove.length > 0) {
+        const confirmMessage = `Al activar "${
+          currentBanner.name
+        }" en la posición ${newOrder}, se moverán los siguientes banners:
+
+${bannersToMove
+  .map((b) => `"${b.name}" (${b.orden} → ${b.orden + 1})`)
+  .join("\n")}
+
+¿Deseas continuar?`;
+
+        if (!window.confirm(confirmMessage)) {
+          return false;
+        }
+
+        // Mover los banners afectados
+        for (const banner of bannersToMove.sort((a, b) => b.orden - a.orden)) {
+          await actualizarPromocion(banner.id_promocion, {
+            orden: banner.orden + 1,
+            nombre_promocion: banner.name,
+            descripción: banner.description,
+            banner_url: banner.backgroundImage,
+            activa: banner.status,
+          });
+        }
+      }
+      return true;
+    }
+
+    // Si el banner ya está activo y cambia de posición
+    if (currentBanner.status && editForm.status && newOrder !== currentOrder) {
+      let bannersToMove = [];
+      let message = "";
+
+      if (newOrder > currentOrder) {
+        // Moviendo hacia adelante: los banners entre current+1 y newOrder se mueven hacia atrás
+        bannersToMove = banners.filter(
+          (banner) =>
+            banner.id_promocion !== currentBanner.id_promocion &&
+            banner.status &&
+            banner.orden > currentOrder &&
+            banner.orden <= newOrder
+        );
+        message = `Al mover "${
+          currentBanner.name
+        }" del orden ${currentOrder} al ${newOrder}, se moverán hacia atrás:
+
+${bannersToMove
+  .map((b) => `"${b.name}" (${b.orden} → ${b.orden - 1})`)
+  .join("\n")}`;
+      } else {
+        // Moviendo hacia atrás: los banners entre newOrder y current-1 se mueven hacia adelante
+        bannersToMove = banners.filter(
+          (banner) =>
+            banner.id_promocion !== currentBanner.id_promocion &&
+            banner.status &&
+            banner.orden >= newOrder &&
+            banner.orden < currentOrder
+        );
+        message = `Al mover "${
+          currentBanner.name
+        }" del orden ${currentOrder} al ${newOrder}, se moverán hacia adelante:
+
+${bannersToMove
+  .map((b) => `"${b.name}" (${b.orden} → ${b.orden + 1})`)
+  .join("\n")}`;
+      }
+
+      if (bannersToMove.length > 0) {
+        message += "\n\n¿Deseas continuar?";
+        if (!window.confirm(message)) {
+          return false;
+        }
+
+        // Reorganizar los banners afectados
+        for (const banner of bannersToMove) {
+          const newBannerOrder =
+            newOrder > currentOrder ? banner.orden - 1 : banner.orden + 1;
+          await actualizarPromocion(banner.id_promocion, {
+            orden: newBannerOrder,
+            nombre_promocion: banner.name,
+            descripción: banner.description,
+            banner_url: banner.backgroundImage,
+            activa: banner.status,
+          });
+        }
+      }
     }
 
     return true;
   };
 
   const saveChanges = async () => {
+    // Validaciones básicas
     if (!editForm.name.trim() || !editForm.description.trim()) {
       alert("Por favor completa todos los campos requeridos");
       return;
     }
 
-    // Validar orden solo si está activo
-    if (editForm.status && editForm.orden < 1) {
-      alert("El orden debe ser un número mayor a 0 para banners activos");
-      return;
-    }
-
-    // Validar que el orden no esté duplicado
-    if (editForm.status && !validateOrden(editForm.orden)) {
+    // Validar orden si está activo
+    const orderValidation = validateOrder(editForm.orden, editForm.status);
+    if (!orderValidation.isValid) {
+      alert(orderValidation.message);
       return;
     }
 
     try {
       setSaving(true);
       const currentBanner = banners[currentIndex];
+      const newOrder = editForm.status ? parseInt(editForm.orden) : 0;
 
+      // Si hay cambio en el orden o estado, reorganizar primero
+      if (
+        editForm.status !== currentBanner.status ||
+        (editForm.status && newOrder !== currentBanner.orden)
+      ) {
+        const reorganizeResult = await reorganizeBanners(
+          newOrder,
+          currentBanner
+        );
+        if (!reorganizeResult) {
+          setSaving(false);
+          return; // Usuario canceló
+        }
+      }
+
+      // Actualizar el banner actual
       const updateData = {
-        orden: parseInt(editForm.orden),
+        orden: newOrder,
         nombre_promocion: editForm.name.trim(),
         descripción: editForm.description.trim(),
         banner_url: currentBanner.backgroundImage,
@@ -213,39 +337,16 @@ const ConfigBanner = () => {
         currentBanner.id_promocion,
         updateData
       );
-
-      const response = await actualizarPromocion(
-        currentBanner.id_promocion,
-        updateData
-      );
-      console.log("Respuesta de actualización:", response);
-
-      // Actualizar el banner local inmediatamente para reflejar el cambio
-      setBanners((prevBanners) =>
-        prevBanners.map((banner, index) =>
-          index === currentIndex
-            ? {
-                ...banner,
-                orden: parseInt(editForm.orden),
-                name: editForm.name.trim(),
-                description: editForm.description.trim(),
-                status: editForm.status,
-              }
-            : banner
-        )
-      );
+      await actualizarPromocion(currentBanner.id_promocion, updateData);
 
       alert("Banner actualizado exitosamente");
       closeEditModal();
-
-      // Recargar datos
       await fetchBanners();
     } catch (err) {
       console.error("Error completo al guardar:", err);
       console.error("Respuesta del servidor:", err.response);
 
       let errorMessage = "Error desconocido";
-
       if (err.response?.data?.message) {
         errorMessage = err.response.data.message;
       } else if (err.response?.data?.error) {
@@ -428,6 +529,46 @@ const ConfigBanner = () => {
                   </button>
                 </div>
 
+                {/* Previsualización del Banner */}
+                <div style={styles.previewSection}>
+                  <h4 style={styles.previewTitle}>Previsualización</h4>
+                  <div style={styles.previewBannerCard}>
+                    <div style={styles.previewImageContainer}>
+                      <img
+                        src={toPublicFotoSrc(
+                          currentBanner.backgroundImage,
+                          "fotoDePerfil"
+                        )}
+                        alt={editForm.name || currentBanner.name}
+                        style={styles.previewBannerImage}
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = "/PlaceHolder.png";
+                        }}
+                      />
+                      <div style={styles.previewImageOverlay}></div>
+                    </div>
+                    <div style={styles.previewBannerContent}>
+                      <div style={styles.previewBannerId}>
+                        Orden:{" "}
+                        {editForm.status
+                          ? editForm.orden || "1"
+                          : "Inactivo (0)"}
+                      </div>
+                      <div style={styles.previewBannerName}>
+                        {editForm.name.trim() || "Nombre del banner"}
+                      </div>
+                      <div style={styles.previewBannerDescription}>
+                        {editForm.description.trim() ||
+                          "Descripción del banner"}
+                      </div>
+                      <div style={styles.previewBannerStatus}>
+                        Estado: {editForm.status ? "Activa" : "Inactiva"}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div style={styles.formGroup}>
                   <div style={styles.statusRow}>
                     <label style={styles.label}>Estado de la Promoción:</label>
@@ -470,9 +611,7 @@ const ConfigBanner = () => {
                   <input
                     type="number"
                     value={editForm.orden}
-                    onChange={(e) =>
-                      handleInputChange("orden", parseInt(e.target.value) || 0)
-                    }
+                    onChange={(e) => handleInputChange("orden", e.target.value)}
                     style={{
                       ...styles.input,
                       backgroundColor: !editForm.status ? "#f3f4f6" : "white",
@@ -488,20 +627,16 @@ const ConfigBanner = () => {
                     onBlur={(e) => {
                       e.target.style.borderColor = "#d1d5db";
                       e.target.style.boxShadow = "none";
-                      if (e.target.value && editForm.status) {
-                        const ordenIngresado = parseInt(e.target.value);
-                        if (!validateOrden(ordenIngresado)) {
-                          setEditForm((prev) => ({
-                            ...prev,
-                            orden: findNextAvailableOrder(),
-                          }));
-                        }
-                      }
                     }}
                     placeholder={
-                      editForm.status ? "Orden del banner" : "0 (Inactivo)"
+                      editForm.status
+                        ? `Orden del banner (1-${getMaxOrderAfterChange(
+                            editForm.status
+                          )})`
+                        : "0 (Inactivo)"
                     }
-                    min="0"
+                    min="1"
+                    max={getMaxOrderAfterChange(editForm.status)}
                     disabled={saving || !editForm.status}
                     readOnly={!editForm.status}
                   />
@@ -656,23 +791,19 @@ const styles = {
     position: "absolute",
     top: "50%",
     transform: "translateY(-50%)",
-    background: "rgba(0,0,0,0.05)",
-    border: "none",
-    borderRadius: "50%",
     width: "40px",
     height: "40px",
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: "18px",
-    color: "#6b7280",
+    fontSize: "35px",
+    color: "#33363dff",
     transition: "all 0.2s ease",
     zIndex: 10,
   },
   navigationArrowHover: {
-    background: "rgba(0,0,0,0.1)",
-    color: "#374151",
+    color: "#515137ff",
   },
   navLeft: {
     left: "10px",
@@ -804,10 +935,10 @@ const styles = {
     borderRadius: "16px",
     padding: "0px 0px 20px 0px",
     width: "90%",
-    maxWidth: "500px",
+    maxWidth: "600px", // Aumentado de 500px a 600px
     boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
     position: "relative",
-    maxHeight: "90vh",
+    maxHeight: "95vh",
     overflowY: "auto",
   },
   modalHeader: {
@@ -815,33 +946,135 @@ const styles = {
     justifyContent: "space-between",
     alignItems: "center",
     backgroundColor: "#2b6daf",
-    padding: "10px 40px",
+    padding: "15px 30px",
     borderRadius: "16px 16px 0 0",
-    marginBottom: "10px",
+    marginBottom: "20px",
   },
   modalTitle: {
-    fontSize: "20px",
+    fontSize: "22px",
     fontWeight: "600",
     color: "white",
+    margin: "0",
   },
   closeButton: {
     background: "none",
     border: "none",
-    fontSize: "24px",
+    fontSize: "28px",
     color: "white",
     cursor: "pointer",
     padding: "0",
-    width: "32px",
-    height: "32px",
+    width: "36px",
+    height: "36px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     borderRadius: "50%",
     transition: "background-color 0.2s ease",
   },
+
+  // Estilos mejorados para la previsualización
+  previewSection: {
+    padding: "0 25px 25px",
+    borderBottom: "1px solid #e5e7eb",
+    marginBottom: "10px",
+  },
+  previewTitle: {
+    fontSize: "18px",
+    color: "#374151",
+    marginBottom: "5px",
+    textAlign: "center",
+  },
+  previewBannerCard: {
+    borderRadius: "12px",
+    width: "100%",
+    height: "200px", // Altura fija para mejor proporción
+    position: "relative",
+    boxShadow: "0 4px 15px rgba(0, 0, 0, 0.2)",
+    overflow: "hidden",
+    border: "2px solid #e5e7eb",
+  },
+  previewImageContainer: {
+    position: "relative",
+    width: "100%",
+    height: "100%",
+  },
+  previewBannerImage: {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    borderRadius: "10px",
+  },
+  previewImageOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: "linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.6))",
+    borderRadius: "10px",
+  },
+  previewBannerContent: {
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    transform: "translate(-50%, -50%)",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    textAlign: "center",
+    color: "white",
+    zIndex: 3,
+    width: "90%",
+  },
+  previewBannerId: {
+    fontSize: "11px",
+    fontWeight: "500",
+    marginBottom: "6px",
+    opacity: "0.9",
+    textShadow: "0 1px 3px rgba(0,0,0,0.7)",
+    padding: "3px 8px",
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: "6px",
+    backdropFilter: "blur(5px)",
+  },
+  previewBannerName: {
+    fontSize: "16px",
+    fontWeight: "700",
+    marginBottom: "6px",
+    lineHeight: "1.2",
+    textShadow: "0 1px 3px rgba(0,0,0,0.8)",
+    maxWidth: "90%",
+    wordBreak: "break-word",
+  },
+  previewBannerDescription: {
+    fontSize: "12px",
+    fontWeight: "400",
+    marginBottom: "8px",
+    opacity: "0.95",
+    lineHeight: "1.3",
+    maxWidth: "85%",
+    textShadow: "0 1px 2px rgba(0,0,0,0.6)",
+    display: "-webkit-box",
+    WebkitLineClamp: "2",
+    WebkitBoxOrient: "vertical",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  previewBannerStatus: {
+    fontSize: "10px",
+    fontWeight: "600",
+    padding: "4px 10px",
+    borderRadius: "12px",
+    background: "rgba(255,255,255,0.3)",
+    backdropFilter: "blur(10px)",
+    border: "1px solid rgba(255,255,255,0.2)",
+    textShadow: "none",
+  },
+
   formGroup: {
     marginBottom: "20px",
-    padding: "0 20px",
+    padding: "0 25px",
   },
   statusRow: {
     display: "flex",
@@ -852,7 +1085,7 @@ const styles = {
   label: {
     display: "block",
     fontSize: "14px",
-    fontWeight: "500",
+    fontWeight: "600",
     color: "#374151",
     marginBottom: "8px",
     textAlign: "left",
@@ -870,7 +1103,7 @@ const styles = {
   },
   textarea: {
     resize: "vertical",
-    minHeight: "80px",
+    minHeight: "90px",
     fontFamily: "inherit",
   },
   inputFocus: {
@@ -878,12 +1111,9 @@ const styles = {
     borderColor: "#d8572f",
     boxShadow: "0 0 0 3px rgba(216, 87, 47, 0.1)",
   },
-  statusToggleContainer: {
-    marginTop: "4px",
-  },
   toggleWrapper: {
     display: "flex",
-    alignItems: "right",
+    alignItems: "center",
     cursor: "pointer",
     padding: "0",
   },
@@ -896,33 +1126,40 @@ const styles = {
   },
   toggleSlider: {
     position: "relative",
-    width: "78px",
-    height: "24px",
-    borderRadius: "24px",
+    width: "85px",
+    height: "32px",
+    borderRadius: "32px",
     transition: "background-color 0.3s ease",
     cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "12px",
+    fontWeight: "600",
+    color: "white",
+    textShadow: "0 1px 2px rgba(0,0,0,0.3)",
   },
   toggleButton: {
     position: "absolute",
-    top: "2px",
-    left: "2px",
-    width: "20px",
-    height: "20px",
+    top: "3px",
+    left: "3px",
+    width: "26px",
+    height: "26px",
     backgroundColor: "white",
     borderRadius: "50%",
     transition: "transform 0.3s ease",
-    boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-    padding: "2px",
+    boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
+    border: "1px solid rgba(0,0,0,0.1)",
   },
   modalButtons: {
     display: "flex",
-    gap: "12px",
-    marginTop: "24px",
-    padding: "0 30px",
+    gap: "15px",
+    marginTop: "10px",
+    padding: "0 25px",
   },
   cancelButton: {
     flex: 1,
-    padding: "12px",
+    padding: "14px",
     border: "1px solid #d1d5db",
     borderRadius: "8px",
     backgroundColor: "white",
@@ -934,16 +1171,15 @@ const styles = {
   },
   saveButton: {
     flex: 1,
-    padding: "12px",
+    padding: "14px",
     border: "none",
     borderRadius: "8px",
     backgroundColor: "#d8572f",
     color: "white",
     fontSize: "16px",
-    fontWeight: "500",
+    fontWeight: "600",
     cursor: "pointer",
     transition: "all 0.2s ease",
   },
 };
-
 export default ConfigBanner;

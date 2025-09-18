@@ -1,18 +1,15 @@
-import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 export default function PerfilSidebar() {
-  const { t } = useTranslation();
-
   return (
     <div className="w-64 bg-white shadow-md p-4 rounded-xl fixed top-32 left-0 h-[calc(100vh-64px)] z-20">
-      <h2 className="text-lg font-semibold mb-4">{t("perfil.title")}</h2>
+      <h2 className="text-lg font-semibold mb-4">Mi cuenta</h2>
       <ul className="space-y-2">
         <li>
           <Link
             to="/miPerfil"
             className="block p-2 rounded hover:bg-[#f0833e] text-gray-700"
           >
-            {t("perfil.dataTitle")}
+            Editar perfil
           </Link>
         </li>
         <li>
@@ -20,7 +17,7 @@ export default function PerfilSidebar() {
             to="/misPedidos"
             className="block p-2 rounded hover:bg-[#f0833e] text-gray-700"
           >
-            {t("perfil.myOrders")}
+            Mis Pedidos
           </Link>
         </li>
         <li>
@@ -28,7 +25,7 @@ export default function PerfilSidebar() {
             to="/metodoPago"
             className="block p-2 rounded hover:bg-[#f0833e] text-gray-700"
           >
-            {t("perfil.myPaymentMethods")}
+            Métodos de Pago
           </Link>
         </li>
 
@@ -37,7 +34,7 @@ export default function PerfilSidebar() {
             to="/misDirecciones"
             className="block p-2 rounded hover:bg-[#f0833e] text-gray-700"
           >
-            {t("perfil.myAddresses")}
+            Mis Direcciones
           </Link>
         </li>
         <li>
@@ -45,7 +42,7 @@ export default function PerfilSidebar() {
             to="/misCupones"
             className="block p-2 rounded hover:bg-[#f0833e] text-gray-700"
           >
-            {t("perfil.myCoupons")}
+            Mis Cupones
           </Link>
         </li>
         <li>
@@ -53,7 +50,7 @@ export default function PerfilSidebar() {
             to="/facturas"
             className="block p-2 rounded hover:bg-[#f0833e] text-gray-700"
           >
-            {t("perfil.myInvoices")}
+            Mis Facturas
           </Link>
         </li>
         <li>
@@ -61,7 +58,7 @@ export default function PerfilSidebar() {
             to="/ListaDeDeseos"
             className="block p-2 rounded hover:bg-[#f0833e] text-gray-700"
           >
-            {t("perfil.wishlist")}
+            Lista de Deseos
           </Link>
         </li>
       </ul>

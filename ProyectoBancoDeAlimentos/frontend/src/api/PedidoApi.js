@@ -41,3 +41,7 @@ export function actualizarEstadoPedido(id_pedido, id_estado_pedido) {
     id_estado_pedido,
   });
 }
+
+export function getReportePedidos() {
+  return axiosInstance.get("/api/reportes/reporte-pedidos");
+}

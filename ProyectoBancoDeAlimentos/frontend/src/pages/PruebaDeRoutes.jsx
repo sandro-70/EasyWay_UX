@@ -8,7 +8,7 @@ import {
   listarProductosl
 } from "../api/InventarioApi";
 
-import { productosPorPromocion } from "../api/PromocionesApi";
+import { editarCupon } from "../api/CuponesApi";
 import { getStock } from "../api/reporteusuarioApi";
 import {
   uploadProductPhotos,
@@ -63,7 +63,7 @@ export default function TestAuth() {
   const fetchProductos = async () => {
     try {
       setLoading(true);
-      const res = await productosPorPromocion(1); // axios response
+      const res = await editarCupon(3, "dasddd", "nueva descripcion", "porcetanej", 150, 3, "2025-10-31", true); // axios response
       setRawResponse(res?.data ?? null);
       const arr = extractArray(res?.data);
       setProducts(arr);

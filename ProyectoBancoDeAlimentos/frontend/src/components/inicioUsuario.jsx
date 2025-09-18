@@ -385,7 +385,6 @@ useEffect(() => {
           }
           return prev;
         });
-        incrementCart(1);
       } else {
         console.log("Producto nuevo, agregando al carrito");
         toast(`Producto agregado al carrito`, { className: "toast-default" });

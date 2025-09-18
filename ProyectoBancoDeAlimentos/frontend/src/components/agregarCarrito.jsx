@@ -375,7 +375,6 @@ const bestPromoPriceForProduct = (prod) => {
       if (productoExistente) {
         // Usar SumarItem con la cantidad TOTAL que debe quedar
         await SumarItem(id_producto, nuevaCantidad);
-        incrementCart();
         toast(`Cantidad actualizada a ${nuevaCantidad} unidades`, {
           className: "toast-default",
         });

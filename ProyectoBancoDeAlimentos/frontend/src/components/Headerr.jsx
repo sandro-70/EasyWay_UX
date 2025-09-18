@@ -161,7 +161,7 @@ const Headerr = () => {
         const response = await ViewCar();
         const cart = response.data;
         if (!cart || !cart.carrito_detalles) return setCount(0);
-        const total = cart.carrito_detalles.reduce((acc, item) => acc + item.cantidad_unidad_medida, 0);
+        const total = cart.carrito_detalles.reduce((acc, item) => acc + 1, 0);
         setCount(total);
       } catch (err) {
         console.error("Error obteniendo carrito:", err);

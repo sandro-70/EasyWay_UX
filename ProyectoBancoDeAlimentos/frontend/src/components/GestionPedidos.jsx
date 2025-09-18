@@ -328,9 +328,7 @@ const GestionPedidos = () => {
     <div className="page-container">
       <main className="main-content">
         <header className="page-header">
-          <h1>
-            <span className="pedido-title">Gestión De Pedidos</span>
-          </h1>
+          <h1>Gestión De Pedidos</h1>
         </header>
         <div className="divider" />
 

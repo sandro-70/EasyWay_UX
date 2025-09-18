@@ -446,7 +446,7 @@ function Carrito() {
         console.log("Producto nuevo, agregando al carrito");
 
         await AddNewCarrito(id_producto, 1);
-
+        incrementCart(1);
         const carritoActualizado = await ViewCar();
         const nuevosDetalles = carritoActualizado.data.carrito_detalles ?? [];
         setDetalles(nuevosDetalles);
@@ -596,28 +596,38 @@ const isDateInRange = (startStr, endStr) => {
   return true;
 };
 
-const computeDiscountedPriceByPromo = (basePrice, pInfo) => {
+// ⬇️ AHORA valida también la compra mínima contra el subtotal del carrito
+const computeDiscountedPriceByPromo = (basePrice, pInfo, cartSubtotal) => {
   if (!pInfo?.activa || !isDateInRange(pInfo.fecha_inicio, pInfo.fecha_termina)) return null;
+
   const price = Number(basePrice) || 0;
   if (price <= 0) return null;
+
+  const min = pInfo.compra_min != null ? Number(pInfo.compra_min) : 0;
+  const subtotal = Number(cartSubtotal) || 0;
+
+  // si la promo tiene compra mínima y el carrito no llega, NO aplica aún
+  if (min > 0 && subtotal < min) return null;
+
   // 1 = %; 2 = fijo
-  if (pInfo.id_tipo_promo === 1 && pInfo.valor_porcentaje > 0) {
-    const pct = pInfo.valor_porcentaje / 100;
+  if (pInfo.id_tipo_promo === 1 && Number(pInfo.valor_porcentaje) > 0) {
+    const pct = Number(pInfo.valor_porcentaje) / 100;
     return Math.max(0, price * (1 - pct));
   }
-  if (pInfo.id_tipo_promo === 2 && pInfo.valor_fijo > 0) {
-    return Math.max(0, price - pInfo.valor_fijo);
+  if (pInfo.id_tipo_promo === 2 && Number(pInfo.valor_fijo) > 0) {
+    return Math.max(0, price - Number(pInfo.valor_fijo));
   }
   return null;
 };
 
-const bestPromoPriceForProduct = (prod) => {
+// ⬇️ pásale el subtotal del carrito (por defecto, tu estado `total`)
+const bestPromoPriceForProduct = (prod, cartSubtotal = total) => {
   const base = Number(prod?.precio_base) || 0;
   const ids = promosPorProducto[Number(prod?.id_producto)] || [];
   let best = null;
   for (const idPromo of ids) {
     const info = promosInfo[idPromo];
-    const discounted = computeDiscountedPriceByPromo(base, info);
+    const discounted = computeDiscountedPriceByPromo(base, info, cartSubtotal);
     if (discounted == null) continue;
     if (best == null || discounted < best.finalPrice) {
       best = { finalPrice: discounted, promoId: idPromo };
@@ -807,10 +817,11 @@ const bestPromoPriceForProduct = (prod) => {
   onClick={() => navigate(`/producto/${p.producto.id_producto}`)}
 >
   {p.producto.nombre}
-  {bestPromoPriceForProduct(p.producto) && (
+  {bestPromoPriceForProduct(p.producto, total) && (
     <span style={{ ...styles.offerChip, marginLeft: 8 }}>OFERTA</span>
   )}
 </p>
+
 
 
                             <div className="flex -mt-1 mb-1">
@@ -909,7 +920,7 @@ const bestPromoPriceForProduct = (prod) => {
                               {/* Precio a la derecha (subtotal con OFERTA si aplica) */}
 <div className="flex w-full h-full justify-end items-center">
   {(() => {
-    const best = bestPromoPriceForProduct(p.producto); // { finalPrice, promoId } | null
+    const best = bestPromoPriceForProduct(p.producto, total); // 👈
     const qty = Number(p.cantidad_unidad_medida) || 0;
     const unitBase = Number(p.producto.precio_base) || 0;
     const subBase = unitBase * qty;
@@ -928,13 +939,10 @@ const bestPromoPriceForProduct = (prod) => {
       );
     }
 
-    return (
-      <div className="text-2xl font-bold">
-        L. {subBase.toFixed(2)}
-      </div>
-    );
+    return <div className="text-2xl font-bold">L. {subBase.toFixed(2)}</div>;
   })()}
 </div>
+
 
                             </div>
                           </div>

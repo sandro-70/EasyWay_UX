@@ -216,7 +216,7 @@ exports.getDescuentosAplicadosPorUsuario = async (req, res) => {
     // 1) Traer pedidos del usuario
     const pedidosUsuario = await pedido.findAll({
       where: { id_usuario },
-      attributes: ["id_pedido", "fecha_pedido"],
+      attributes: ["id_pedido", "fecha_pedido", "descuento"],
       order: [["fecha_pedido", "DESC"]],
     });
 
@@ -288,7 +288,8 @@ exports.getDescuentosAplicadosPorUsuario = async (req, res) => {
           fecha_pedido: p.fecha_pedido,
           id_factura: facturaRow ? facturaRow.id_factura : null,
           total_factura: facturaRow ? Number(facturaRow.total) : null,
-          descuento_total: descuentoTotal,
+          descuento_total: descuentoTotal || Number(p.descuento) || 0,
+          descuento_pedido: Number(p.descuento) || 0,
           promociones: promocionesInfo, // lista (puede venir vacía)
         };
       })

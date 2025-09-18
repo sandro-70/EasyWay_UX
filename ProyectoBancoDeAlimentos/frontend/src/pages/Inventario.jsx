@@ -809,17 +809,28 @@ export default function Inventario() {
   }
 
   function removePreview(idx) {
+    const src = modal.draft.imagePreviews[idx];
+    const isOld = !src.startsWith("blob:");
+    if (isOld) {
+      const oldCount = modal.draft.imagePreviews.filter(s => !s.startsWith("blob:")).length;
+      if (oldCount <= 1) {
+        return toast.error("Debe mantener al menos una imagen antigua.", { className: "toast-error" });
+      }
+    }
     setModal((m) => {
       const nextPreviews = [...(m.draft.imagePreviews || [])];
       const nextFiles = [...(m.draft.imageFiles || [])];
+      const nextNames = [...(m.draft.imageUploadsNames || [])];
       nextPreviews.splice(idx, 1);
       nextFiles.splice(idx, 1);
+      nextNames.splice(idx, 1);
       return {
         ...m,
         draft: {
           ...m.draft,
           imagePreviews: nextPreviews,
           imageFiles: nextFiles,
+          imageUploadsNames: nextNames,
         },
       };
     });
@@ -1060,6 +1071,8 @@ export default function Inventario() {
       return toast.info("Selecciona una subcategoría.", {
         className: "toast-info",
       });
+    if (!d.imagePreviews || d.imagePreviews.length === 0)
+      return alert("El producto debe tener al menos una imagen");
 
     try {
       setSavingProduct(true);
@@ -1073,6 +1086,7 @@ export default function Inventario() {
       // 👇 NUEVO: arma el payload de imágenes con NOMBRE + ORDEN + is_file para nuevos, y URL para existentes
       const imagenesPayload = (d.imagePreviews || []).map((src, idx) => {
         const isBlob = src.startsWith("blob:");
+
         if (isBlob) {
           // Nueva imagen subida
           const fileName = d.imageUploadsNames?.[idx] || `image_${idx}.jpg`;
@@ -1083,8 +1097,9 @@ export default function Inventario() {
           };
         } else {
           // Imagen existente
+          const relativePath = src.replace(BACKEND_ORIGIN, "").replace(/^\/api/, "");
           return {
-            url_imagen: src,
+            url_imagen: relativePath,
             orden_imagen: idx,
             is_file: false,
           };
@@ -1228,12 +1243,15 @@ export default function Inventario() {
     } catch (err) {
       const status = err?.response?.status;
       const data = err?.response?.data;
-      toast.error(
-        `Error ${status ?? ""}: ${
-          data?.message || data?.detail || data?.error || err.message
-        }`,
-        { className: "toast-error" }
-      );
+      const message = data?.message || data?.detail || data?.error || err.message;
+      if (status === 400 && message === "El producto debe tener al menos una imagen") {
+        alert("El producto debe tener al menos una imagen");
+      } else {
+        toast.error(
+          `Error ${status ?? ""}: ${message}`,
+          { className: "toast-error" }
+        );
+      }
     } finally {
       setSavingProduct(false);
     }

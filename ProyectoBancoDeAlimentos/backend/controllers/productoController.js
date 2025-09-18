@@ -718,13 +718,26 @@ exports.actualizarProducto = async (req, res) => {
 
     // Actualizar imagenes
     const payload = JSON.parse(imagenes_payload || "[]");
+
+    // Validar que el producto tenga al menos una imagen
+    if (payload.length === 0) {
+      return res.status(400).json({ message: "El producto debe tener al menos una imagen" });
+    }
+
     await imagen_producto.destroy({ where: { id_producto: id } });
     let fileIndex = 0;
     for (const item of payload) {
       const { url_imagen, orden_imagen, is_file } = item;
-      const url = is_file
-        ? `/images/productos/${files[fileIndex++].filename}`
-        : url_imagen;
+      let url;
+      if (is_file) {
+        if (!files || !files[fileIndex]) {
+          return res.status(400).json({ message: "Archivo requerido para imagen nueva" });
+        }
+        url = `/images/productos/${files[fileIndex].filename}`;
+        fileIndex++;
+      } else {
+        url = url_imagen;
+      }
       await imagen_producto.create({
         id_producto: id,
         url_imagen: url,

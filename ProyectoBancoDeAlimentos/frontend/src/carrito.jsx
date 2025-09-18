@@ -240,8 +240,8 @@ function Carrito() {
 
     const stockDisponible = getStockEnSucursal(id);
     if (n > stockDisponible) {
-      alert(
-        `Solo hay ${stockDisponible} unidades disponibles en esta sucursal`
+      toast.info(
+        `Solo hay ${stockDisponible} unidades disponibles en esta sucursal`, { className: "toast-info" }
       );
       return;
     }
@@ -261,7 +261,7 @@ function Carrito() {
       );
     } catch (err) {
       console.error("Error updating quantity:", err);
-      alert("No se pudo actualizar la cantidad");
+      toast.error("No se pudo actualizar la cantidad", { className: "toast-error" });
     }
   };
 
@@ -282,18 +282,18 @@ function Carrito() {
       if (cuponValido) {
         setVisible(true);
         setDesc(cuponValido.valor);
-        alert(
-          `Cupón agregado: ${cuponValido.codigo}, ${cuponValido.valor}% de descuento`
+        toast.success(
+          `Cupón agregado: ${cuponValido.codigo}, ${cuponValido.valor}% de descuento`, { className: "toast-success" }
         );
         setIDCuponDesactivar(cuponValido.id_cupon);
       } else {
         setVisible(false);
         setDesc(0);
-        alert("Cupón inválido o expirado");
+        toast.error("Cupón inválido o expirado", { className: "toast-error" });
       }
     } catch (err) {
       console.error("Error fetching coupons:", err);
-      alert("Error al verificar el cupón");
+      toast.error("Error al verificar el cupón", { className: "toast-error" });
     }
   };
 
@@ -302,9 +302,9 @@ function Carrito() {
     for (const item of detalles) {
       const stockDisponible = getStockEnSucursal(item.producto.id_producto);
       if (item.cantidad_unidad_medida > stockDisponible) {
-        alert(
+        toast.error(
           `No hay suficiente stock de ${item.producto.nombre}. Disponible: ${stockDisponible}, Solicitado: ${item.cantidad_unidad_medida}`
-        );
+        , { className: "toast-error" });
         return;
       }
     }
@@ -336,11 +336,11 @@ function Carrito() {
       setPromocionAplicada(null);
 
       console.log("Pedido creado:", response.data);
-      alert("Pedido creado correctamente!");
+      toast("Pedido creado correctamente!", { className: "toast-default" });
       setShowProd(false);
     } catch (err) {
       console.error("Error creating pedido:", err);
-      alert("No se pudo crear el pedido");
+      toast.error("No se pudo crear el pedido", { className: "toast-error" });
     }
   };
 
@@ -361,7 +361,7 @@ function Carrito() {
 
   const handleAgregar = async (id_producto) => {
     if (!id_producto) {
-      alert("ID de producto no válido");
+      toast.error("ID de producto no válido", { className: "toast-error" });
       return;
     }
 
@@ -382,8 +382,8 @@ function Carrito() {
         const nuevaCantidad = cantidadActual + 1;
 
         if (nuevaCantidad > stockDisponible) {
-          alert(
-            `Solo hay ${stockDisponible} unidades disponibles en esta sucursal`
+          toast.info(
+            `Solo hay ${stockDisponible} unidades disponibles en esta sucursal`, { className: "toast-info" }
           );
           return;
         }
@@ -391,7 +391,7 @@ function Carrito() {
         console.log(
           "Actualizando de " + cantidadActual + " a " + nuevaCantidad
         );
-        alert("Actualizando a " + nuevaCantidad);
+        toast("Actualizando a " + nuevaCantidad, { className: "toast-default" });
 
         await SumarItem(id_producto, nuevaCantidad);
 
@@ -418,7 +418,7 @@ function Carrito() {
         const nuevosDetalles = carritoActualizado.data.carrito_detalles ?? [];
         setDetalles(nuevosDetalles);
 
-        alert("Producto agregado al carrito");
+        toast("Producto agregado al carrito", { className: "toast-default" });
       }
     } catch (error) {
       console.error("Error:", error);
@@ -431,10 +431,10 @@ function Carrito() {
           const nuevosDetalles = carritoNuevo.data.carrito_detalles ?? [];
           setDetalles(nuevosDetalles);
 
-          alert("Producto agregado al carrito");
+          toast("Producto agregado al carrito", { className: "toast-default" });
         } catch (err) {
           console.error("Error creando carrito:", err);
-          alert("No se pudo agregar el producto al carrito");
+          toast.error("No se pudo agregar el producto al carrito", { className: "toast-error" });
         }
       } else {
         const errorMessage =
@@ -443,7 +443,7 @@ function Carrito() {
           error?.message ||
           "No se pudo procesar el carrito";
 
-        alert(errorMessage);
+        toast.error(errorMessage, { className: "toast-error" });
       }
     }
   };
@@ -459,8 +459,8 @@ function Carrito() {
 
     const stockDisponible = getStockEnSucursal(p.producto.id_producto);
     if (n > stockDisponible) {
-      alert(
-        `Solo hay ${stockDisponible} unidades disponibles en esta sucursal`
+      toast.error(
+        `Solo hay ${stockDisponible} unidades disponibles en esta sucursal`, { className: "toast-error" }
       );
       setQtyDraft((prev) => {
         const { [p.id_carrito_detalle]: _, ...rest } = prev;
@@ -476,7 +476,7 @@ function Carrito() {
       if (diff < 0) decrementCart(-diff);
     } catch (err) {
       console.error("Error confirmando cantidad:", err);
-      alert("No se pudo actualizar la cantidad");
+      toast.error("No se pudo actualizar la cantidad", { className: "toast-error" });
     } finally {
       setQtyDraft((prev) => {
         const { [p.id_carrito_detalle]: _, ...rest } = prev;
@@ -499,8 +499,8 @@ function Carrito() {
     const stockDisponible = getStockEnSucursal(p.producto.id_producto);
 
     if (nuevaCantidad > stockDisponible) {
-      alert(
-        `Solo hay ${stockDisponible} unidades disponibles en esta sucursal`
+      toast.error(
+        `Solo hay ${stockDisponible} unidades disponibles en esta sucursal`, { className: "toast-error" }
       );
       return;
     }
@@ -514,7 +514,7 @@ function Carrito() {
       incrementCart(1);
     } catch (err) {
       console.error("Error incrementando producto:", err);
-      alert("No se pudo aumentar la cantidad");
+      toast.error("No se pudo aumentar la cantidad", { className: "toast-error" });
     }
   };
 
@@ -530,7 +530,7 @@ function Carrito() {
       decrementCart(1);
     } catch (err) {
       console.error("Error disminuyendo producto:", err);
-      alert("No se pudo disminuir la cantidad");
+      toast.error("No se pudo disminuir la cantidad", { className: "toast-error" });
     }
   };
 
@@ -584,7 +584,7 @@ function Carrito() {
         }
       } catch (err) {
         console.error("[REGISTER] error:", err?.response?.data || err);
-        alert(err?.response?.data?.message || "Error");
+        toast.error(err?.response?.data?.message || "Error", { className: "toast-error" });
       }
     };
     productos();

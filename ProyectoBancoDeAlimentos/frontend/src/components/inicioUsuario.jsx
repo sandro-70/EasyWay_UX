@@ -591,7 +591,7 @@ useEffect(() => {
                 <div style={styles.productImg}>Imagen no disponible</div>
               )}
               <p style={styles.productName}>{p.nombre}</p>
-              <p style={styles.productPrice}>{p.precio_base}</p>
+              <p style={styles.productPrice}>L. {p.precio_base}</p>
               <button
                 style={{
                   ...styles.addButton,
@@ -689,7 +689,7 @@ useEffect(() => {
                 <div style={styles.productImg}>Imagen no disponible</div>
               )}
               <p style={styles.productName}>{p.nombre}</p>
-              <p style={styles.productPrice}>{p.precio_base}</p>
+              <p style={styles.productPrice}>L. {p.precio_base}</p>
               <button
                 style={{
                   ...styles.addButton,

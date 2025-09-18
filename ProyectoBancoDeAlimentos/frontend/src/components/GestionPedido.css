@@ -1,33 +1,3 @@
-.pedido-container {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-  padding: 20px 0;
-}
-
-.pedido-title {
-  border-bottom: #f0833e 4px solid;
-  color: #f0833e;
-  font-weight: bold;
-  margin-bottom: 1rem;
-  font-size: 34px;
-  text-align: left;
-  display: inline-block;
-  width: 75%;
-}
-
-.pedido-table {
-  width: 70%;
-  margin: 0 auto;
-  table-layout: fixed; /* evita que las columnas se expandan por contenido */
-  min-width: 600px; /* ajusta el mínimo que quieras evitar scroll horizontal */
-  border-collapse: collapse;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
 .pedido-thead th {
   background-color: #2b6daf;
   color: #fff;

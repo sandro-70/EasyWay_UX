@@ -624,7 +624,7 @@ const handleFotoChange = async (e) => {
 
   return (
     <div className="perfil-container">
-      <h1 className="perfil-title">Editar Perfil Administrador</h1>
+      <h1 className="perfil-title">Editar Perfil</h1>
       <hr className="perfil-separator" />
       <p className="Datos-text">Datos Generales</p>
 
@@ -653,10 +653,10 @@ const handleFotoChange = async (e) => {
             className="editar-boton"
             onClick={() => editMode && document.getElementById("foto-input").click()}
             disabled={!editMode}
-            title={editMode ? "Cambiar foto" : "Pulsa Editar para cambiar la foto"}
+            title={editMode ? "Cambiar Foto" : "Pulsa Editar para Cambiar la Foto"}
           >
             <Icon name="camera" className="icon-small" />
-            <span>Editar foto</span>
+            <span>Editar Foto</span>
           </button>
         </aside>
 
@@ -679,9 +679,9 @@ const handleFotoChange = async (e) => {
 
             <Field label="Género">
               <select value={genero} onChange={(e) => setGenero(e.target.value)} disabled={!editMode}>
-                <option>masculino</option>
-                <option>femenino</option>
-                <option>otro</option>
+                <option>Masculino</option>
+                <option>Femenino</option>
+                <option>Otro</option>
               </select>
             </Field>
             <Field label="Rol">
@@ -690,7 +690,7 @@ const handleFotoChange = async (e) => {
 
             <Field label="Departamento">
               <select value={departamento} onChange={handleDepartamentoChange} disabled={!editMode}>
-                <option value="">Seleccione un departamento</option>
+                <option value="">Seleccione un Departamento</option>
                 {departamentos.map((d) => (
                   <option key={d.id_departamento} value={d.nombre_departamento}>
                     {d.nombre_departamento}
@@ -749,15 +749,15 @@ const handleFotoChange = async (e) => {
             <div className="modal-overlay">
               <div className="mPerfil-modal">
                 <div className="modal-headerr">
-                  <h3 className="label-modal-confirm">Cambio de contraseña</h3>
+                  <h3 className="label-modal-confirm">Cambio de Contraseña</h3>
                   <button className="mPerfil-cancel-button" onClick={() => setShowPasswordModal(false)}>✕</button>
                 </div>
                 <div className="modal-body">
-                  <label>Contraseña anterior</label>
+                  <label>Contraseña Anterior</label>
                   <input type="password" value={oldPassword} onChange={(e) => setOldPassword(e.target.value)} />
-                  <label>Nueva contraseña</label>
+                  <label>Nueva Contraseña</label>
                   <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-                  <label>Confirmación de nueva contraseña</label>
+                  <label>Confirmación de Nueva Contraseña</label>
                   <input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
                   {passwordError && <p className="password-error" role="alert" aria-live="assertive">{passwordError}</p>}
                 </div>
@@ -776,7 +776,7 @@ const handleFotoChange = async (e) => {
             <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
               <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-0 relative">
                 <div className="bg-[#2b6daf] text-white text-center py-2">
-                  <h2 className="font-semibold text-lg">Activar autenticación en dos pasos</h2>
+                  <h2 className="font-semibold text-lg">Activar Autenticación en Dos Pasos</h2>
                 </div>
                 <button className="absolute top-3 right-3 text-white hover:text-gray-200" onClick={() => setShowTwoFactorModal(false)}>✕</button>
                 <div className="p-6">
@@ -790,7 +790,7 @@ const handleFotoChange = async (e) => {
                     </label>
                   </div>
                   <button className="w-full bg-[#2b6daf] hover:bg-blue-700 text-white py-2 rounded-md" onClick={handleSendCode}>
-                    Enviar código
+                    Enviar Código
                   </button>
                 </div>
               </div>
@@ -801,7 +801,7 @@ const handleFotoChange = async (e) => {
             <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
               <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-0 relative">
                 <div className="bg-[#2b6daf] text-white text-center py-2">
-                  <h2 className="font-semibold text-lg">Activar autenticación en dos pasos</h2>
+                  <h2 className="font-semibold text-lg">Activar Autenticación en Dos Pasos</h2>
                 </div>
                 <button className="absolute top-3 right-3 text-white hover:text-gray-200" onClick={() => setShowTwoFactorCodeModal(false)}>✕</button>
                 <div className="p-6">
@@ -836,7 +836,7 @@ const handleFotoChange = async (e) => {
             <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
               <div className="bg-white rounded-lg shadow-lg w-full max-w-xl p-0 relative" style={{ marginTop: "80px" }}>
                 <div className="bg-[#2b6daf] text-white text-center py-3 rounded-t-lg">
-                  <h2 className="font-semibold text-lg">Historial de accesos</h2>
+                  <h2 className="font-semibold text-lg">Historial de Accesos</h2>
                 </div>
                 <button className="absolute top-3 right-3 text-white hover:text-gray-200" onClick={() => setShowHistorial(false)}>✕</button>
 
@@ -880,13 +880,13 @@ const handleFotoChange = async (e) => {
         <div className="candado-link">
           <img src="/Vector.png" alt="imagen" className="candado" />
           <Link to="#" className="new-link" onClick={() => setShowPasswordModal(true)}>
-            Cambiar contraseña
+            Cambiar Contraseña
           </Link>
         </div>
         <div className="f2-autenticacion">
           <img src="/f2.png" alt="imagen" className="f2" />
           <Link to="#" className="new-link" onClick={(e) => { e.preventDefault(); setShowTwoFactorModal(true); }}>
-            Autenticación en dos pasos
+            Autenticación en Dos Pasos
           </Link>
         </div>
         <div className="historial">

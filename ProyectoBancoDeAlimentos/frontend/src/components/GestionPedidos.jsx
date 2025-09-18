@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import "../components/GestionPedido.css";
 
 import {
   getPedidosConDetalles,
@@ -10,6 +9,7 @@ import { getAllSucursales } from "../api/InventarioApi";
 import { getDirecciones } from "../api/DireccionesApi";
 import { getAllMetodoPago, getMetodosPagoByUserId } from "../api/metodoPagoApi";
 import { InformacionUserNombre } from "../api/Usuario.Route";
+import "./GestionPedido.css";
 
 // Nota: el shape devuelto por la API puede variar. Aquí asumimos que
 // cada pedido tiene al menos: id_pedido (o id), nombre_usuario, fecha,
@@ -333,371 +333,340 @@ const GestionPedidos = () => {
   };
 
   return (
-    <div
-      className="px-4"
-      style={{
-        position: "fixed",
-        left: 0,
-        right: 0,
-        bottom: "300px",
-        width: "100%",
-        flexDirection: "column",
-        alignItems: "center",
-      }}
-    >
-      <div className="pedido-container">
-        <h2 className="pedido-title">Gestión de Pedidos</h2>
-
-        <div className="pedido-table-wrap">
-          <table className="pedido-table">
-            <thead className="pedido-thead">
-              <tr>
-                <th
-                  style={{ cursor: "pointer" }}
-                  onClick={() => {
-                    setOrderDesc(!orderDesc);
-                    setCurrentPage(1); // reset paginación al cambiar orden
-                  }}
-                  title="Ordenar por ID"
-                >
-                  ID de Producto {orderDesc ? "↓" : "↑"}
-                </th>
-                <th>Usuario</th>
-                <th>Fecha</th>
-                <th>Estado</th>
-                <th>Sucursal</th>
-                <th>Más información</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan="6" className="pedido-table-empty">
-                    Cargando pedidos...
-                  </td>
-                </tr>
-              ) : error ? (
-                <tr>
-                  <td colSpan="6" className="pedido-table-empty">
-                    {error}
-                  </td>
-                </tr>
-              ) : visible.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="pedido-table-empty">
-                    No hay pedidos para mostrar
-                  </td>
-                </tr>
-              ) : (
-                visible.map((p) => (
-                  <tr key={p.id}>
-                    <td>{p.id}</td>
-                    <td>{formatField(p.usuario)}</td>
-                    <td>{formatDate(p.fecha)}</td>
-                    <td>{formatField(p.estado)}</td>
-                    <td>{formatField(p.sucursal)}</td>
-                    <td>
-                      <button
-                        className="pedido-export-btn"
-                        onClick={async () => {
-                          try {
-                            // pedir detalle actualizado del pedido
-                            const id = p.id || p.id_pedido;
-                            const resp = await listarPedido(id);
-                            const detalle = resp && resp.data ? resp.data : {};
-                            // combinar sin perder datos ya mapeados en la tabla
-                            const combinado = { ...p, ...detalle };
-
-                            // calcular subtotal/total si vienen dentro de factura
-                            // Nota: la respuesta original (getPedidosConDetalles) se guarda en combinado.raw
-                            // y puede contener `factura`. Buscar en ambas ubicaciones.
-                            const facturaObj =
-                              combinado.factura ||
-                              combinado.Factura ||
-                              combinado.raw?.factura ||
-                              combinado.raw?.Factura ||
-                              null;
-                            const detallesFactura =
-                              facturaObj?.factura_detalles ||
-                              facturaObj?.factura_detalle ||
-                              [];
-                            let subtotalCalc =
-                              combinado.subtotal || combinado.sub_total || 0;
-                            let totalCalc = combinado.total || 0;
-                            if (
-                              Array.isArray(detallesFactura) &&
-                              detallesFactura.length > 0
-                            ) {
-                              subtotalCalc = detallesFactura.reduce(
-                                (s, d) => s + Number(d.subtotal_producto || 0),
-                                0
-                              );
-                            }
-                            if (facturaObj && facturaObj.total !== undefined) {
-                              totalCalc = Number(facturaObj.total);
-                              console.log(
-                                "Total que viene de facturaObj.total:",
-                                totalCalc
-                              );
-
-                              console.log("Objeto obj", facturaObj);
-                              // Calcular subtotal a partir de los detalles de factura si existen
-                              if (
-                                Array.isArray(facturaObj.factura_detalles) &&
-                                facturaObj.factura_detalles.length > 0
-                              ) {
-                                subtotalCalc =
-                                  facturaObj.factura_detalles.reduce(
-                                    (s, d) => Number(d.subtotal_producto || 0),
-                                    0
-                                  );
-                                console.log(
-                                  "Lo que trae objetoObj.factura_Detalles... SUbtotalCalc =  ",
-                                  subtotalCalc
-                                );
-                              } else if (
-                                Array.isArray(facturaObj.factura_detalle) &&
-                                facturaObj.factura_detalle.length > 0
-                              ) {
-                                subtotalCalc =
-                                  facturaObj.factura_detalle.reduce(
-                                    (s, d) => Number(d.subtotal_producto || 0),
-                                    0
-                                  );
-                              }
-                              console.log(
-                                "Subtotal calculado desde detalles:",
-                                subtotalCalc
-                              );
-                            }
-                            combinado.subtotal = subtotalCalc;
-                            combinado.total = totalCalc;
-
-                            // obtener direcciones del usuario y metodo de pago
-                            const userId =
-                              combinado.id_usuario ||
-                              combinado.idUsuario ||
-                              null;
-
-                            // si falta nombre en el combinado, intentar traerlo por id
-                            if (
-                              userId &&
-                              (!combinado.usuario ||
-                                combinado.usuario === "-" ||
-                                combinado.usuario === null)
-                            ) {
-                              try {
-                                const userResp = await InformacionUserNombre(
-                                  userId
-                                );
-
-                                const udata =
-                                  userResp && userResp.data
-                                    ? userResp.data
-                                    : null;
-                                if (udata) {
-                                  combinado.usuario = udata.nombre
-                                    ? udata.apellido
-                                      ? `${udata.nombre} ${udata.apellido}`
-                                      : udata.nombre
-                                    : udata.nombre_completo ||
-                                      udata.correo ||
-                                      combinado.usuario;
-                                }
-                              } catch (e) {
-                                console.warn(
-                                  "No se pudo obtener nombre de usuario:",
-                                  e
-                                );
-                              }
-                            }
-
-                            if (userId) {
-                              try {
-                                const dirResp = await getDirecciones(userId);
-                                const direcciones =
-                                  dirResp && dirResp.data ? dirResp.data : [];
-                                // buscar predeterminada o la primera
-                                const pred =
-                                  direcciones.find((d) => d.predeterminada) ||
-                                  direcciones[0] ||
-                                  null;
-                                setDireccionEntrega(
-                                  pred
-                                    ? `${pred.calle || ""} ${
-                                        pred.ciudad || ""
-                                      }`.trim()
-                                    : null
-                                );
-                                // si existe id_municipio en la direccion, buscar sucursal
-                                if (pred && pred.id_municipio) {
-                                  try {
-                                    const sucResp = await getAllSucursales();
-                                    const sucursales =
-                                      sucResp && sucResp.data
-                                        ? sucResp.data
-                                        : [];
-                                    const match = sucursales.find(
-                                      (s) =>
-                                        String(s.id_municipio) ===
-                                        String(pred.id_municipio)
-                                    );
-                                    const resolvedSucursal = match
-                                      ? match.nombre ||
-                                        match.nombre_sucursal ||
-                                        null
-                                      : null;
-                                    setSucursalNombre(resolvedSucursal);
-                                    // actualizar la fila de la tabla para mostrar sucursal
-                                    if (resolvedSucursal) {
-                                      setPedidos((prev) =>
-                                        prev.map((it) =>
-                                          String(it.id) === String(combinado.id)
-                                            ? {
-                                                ...it,
-                                                sucursal: resolvedSucursal,
-                                              }
-                                            : it
-                                        )
-                                      );
-                                    }
-                                  } catch (e) {
-                                    console.warn(
-                                      "Error al obtener sucursales:",
-                                      e
-                                    );
-                                    setSucursalNombre(null);
-                                  }
-                                } else {
-                                  setSucursalNombre(null);
-                                }
-                              } catch (e) {
-                                console.warn(
-                                  "Error al obtener direcciones:",
-                                  e
-                                );
-                                setDireccionEntrega(null);
-                              }
-
-                              try {
-                                let mpResp = null;
-
-                                if (userId) {
-                                  try {
-                                    mpResp = await getMetodosPagoByUserId(
-                                      userId
-                                    );
-                                  } catch (err) {
-                                    // Si no autorizado, intentar el endpoint general
-                                    const status = err?.response?.status;
-                                    if (status === 401 || status === 403) {
-                                      mpResp = await getAllMetodoPago();
-                                    } else {
-                                      // rethrow para ser capturado por outer catch
-                                      throw err;
-                                    }
-                                  }
-                                } else {
-                                  mpResp = await getAllMetodoPago();
-                                }
-
-                                const metodos =
-                                  mpResp && mpResp.data ? mpResp.data : [];
-
-                                // Búsqueda robusta del método del usuario: el backend puede
-                                // devolver campos con nombres distintos (id_usuario, idUsuario, etc.)
-                                const matchesUser = (m) => {
-                                  if (!m) return false;
-                                  const candidates = [
-                                    m.id_usuario,
-                                    m.idUsuario,
-                                    m.id_user,
-                                    m.usuario_id,
-                                    m.id,
-                                  ];
-                                  return candidates.some(
-                                    (c) =>
-                                      c != null && String(c) === String(userId)
-                                  );
-                                };
-
-                                let mpUsuario = metodos.find(matchesUser);
-
-                                // si la lista ya está filtrada por usuario, tomar el predeterminado
-                                if (!mpUsuario) {
-                                  mpUsuario =
-                                    metodos.find(
-                                      (m) => m.metodo_predeterminado
-                                    ) ||
-                                    metodos[0] ||
-                                    null;
-                                }
-
-                                const formatted = formatPayment(mpUsuario);
-                                setMetodoPagoUsuario(formatted);
-                                console.log(
-                                  "Método de Pago del Usuario:",
-                                  formatted
-                                );
-                              } catch (e) {
-                                console.warn(
-                                  "Error al obtener metodos de pago:",
-                                  e
-                                );
-                                setMetodoPagoUsuario(null);
-                              }
-                            } else {
-                              setDireccionEntrega(null);
-                              setMetodoPagoUsuario(null);
-                            }
-
-                            setPedidoSeleccionado(combinado);
-                            // inicializar estados (usar formatField para evitar objects)
-                            setEstadoActual(
-                              formatField(combinado.estado || p.estado)
-                            );
-                            console.log(
-                              "Estado actual inicial: en el modal",
-                              formatField(combinado.estado || p.estado)
-                            );
-                            setNuevoEstado(
-                              formatField(combinado.estado || p.estado)
-                            );
-                            setDetalleOpen(true);
-                          } catch (e) {
-                            console.error(
-                              "Error al obtener detalle del pedido:",
-                              e
-                            );
-                            // fallback local
-                            setPedidoSeleccionado(p);
-                            setEstadoActual(formatField(p.estado));
-                            setNuevoEstado(formatField(p.estado));
-                            setDetalleOpen(true);
-                          }
-                        }}
-                      >
-                        Ver
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+    <div className="page-container">
+      <main className="main-content">
+        <header className="page-header">
+          <h1><span className="accent">Gestión De Pedidos</span></h1>
+        </header>
+        <div className="divider" />
+        
+        <div className="search-bar">
+          <div className="user-count">
+            <span>Total pedidos: </span>
+            <span className="count-bubble">{pedidos.length}</span>
+          </div>
         </div>
 
-        {/* Paginación */}
-        <div className="pedido-footer">
-          <span>
-            {loading ? "Cargando total..." : `Total Pedidos: `}{" "}
-            <p>{pedidos.length}</p>
-          </span>
-          <PaginationSmall
-            page={currentPage}
-            pageCount={totalPages}
-            onPage={setCurrentPage}
-          />
+        <div className="table-container">
+          <div className="table-scroll">
+            <table className="users-table">
+              <colgroup>
+                <col className="col-id" />
+                <col className="col-name" />
+                <col className="col-date" />
+                <col className="col-status" />
+                <col className="col-branch" />
+                <col className="col-actions" />
+              </colgroup>
+
+              <thead>
+                <tr>
+                  <th
+                    style={{ cursor: "pointer" }}
+                    onClick={() => {
+                      setOrderDesc(!orderDesc);
+                      setCurrentPage(1); // reset paginación al cambiar orden
+                    }}
+                    title="Ordenar por ID"
+                  >
+                    ID de Producto {orderDesc ? "↓" : "↑"}
+                  </th>
+                  <th>Usuario</th>
+                  <th>Fecha</th>
+                  <th>Estado</th>
+                  <th>Sucursal</th>
+                  <th>Más información</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan="6" className="cell-center">
+                      Cargando pedidos...
+                    </td>
+                  </tr>
+                ) : error ? (
+                  <tr>
+                    <td colSpan="6" className="cell-center">
+                      {error}
+                    </td>
+                  </tr>
+                ) : visible.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="cell-center">
+                      No hay pedidos para mostrar
+                    </td>
+                  </tr>
+                ) : (
+                  visible.map((p) => (
+                    <tr key={p.id}>
+                      <td className="cell-center">{p.id}</td>
+                      <td className="cell-left">{formatField(p.usuario)}</td>
+                      <td className="cell-center">{formatDate(p.fecha)}</td>
+                      <td className="cell-center">{formatField(p.estado)}</td>
+                      <td className="cell-center">{formatField(p.sucursal)}</td>
+                      <td className="cell-center">
+                        <button
+                          className="btn-primary"
+                          onClick={async () => {
+                            try {
+                              // pedir detalle actualizado del pedido
+                              const id = p.id || p.id_pedido;
+                              const resp = await listarPedido(id);
+                              const detalle = resp && resp.data ? resp.data : {};
+                              // combinar sin perder datos ya mapeados en la tabla
+                              const combinado = { ...p, ...detalle };
+
+                              // calcular subtotal/total si vienen dentro de factura
+                              // Nota: la respuesta original (getPedidosConDetalles) se guarda en combinado.raw
+                              // y puede contener `factura`. Buscar en ambas ubicaciones.
+                              const facturaObj =
+                                combinado.factura ||
+                                combinado.Factura ||
+                                combinado.raw?.factura ||
+                                combinado.raw?.Factura ||
+                                null;
+                              const detallesFactura =
+                                facturaObj?.factura_detalles ||
+                                facturaObj?.factura_detalle ||
+                                [];
+                              let subtotalCalc =
+                                combinado.subtotal || combinado.sub_total || 0;
+                              let totalCalc = combinado.total || 0;
+                              if (
+                                Array.isArray(detallesFactura) &&
+                                detallesFactura.length > 0
+                              ) {
+                                subtotalCalc = detallesFactura.reduce(
+                                  (s, d) => s + Number(d.subtotal_producto || 0),
+                                  0
+                                );
+                              }
+                              if (facturaObj && facturaObj.total !== undefined) {
+                                totalCalc = Number(facturaObj.total);
+                                console.log(
+                                  "Total que viene de facturaObj.total:",
+                                  totalCalc
+                                );
+
+                                console.log("Objeto obj", facturaObj);
+                                // Calcular subtotal a partir de los detalles de factura si existen
+                                if (
+                                  Array.isArray(facturaObj.factura_detalles) &&
+                                  facturaObj.factura_detalles.length > 0
+                                ) {
+                                  subtotalCalc =
+                                    facturaObj.factura_detalles.reduce(
+                                      (s, d) => Number(d.subtotal_producto || 0),
+                                      0
+                                    );
+                                  console.log(
+                                    "Lo que trae objetoObj.factura_Detalles... SUbtotalCalc =  ",
+                                    subtotalCalc
+                                  );
+                                } else if (
+                                  Array.isArray(facturaObj.factura_detalle) &&
+                                  facturaObj.factura_detalle.length > 0
+                                ) {
+                                  subtotalCalc =
+                                    facturaObj.factura_detalle.reduce(
+                                      (s, d) => Number(d.subtotal_producto || 0),
+                                      0
+                                    );
+                                }
+                                console.log(
+                                  "Subtotal calculado desde detalles:",
+                                  subtotalCalc
+                                );
+                              }
+                              combinado.subtotal = subtotalCalc;
+                              combinado.total = totalCalc;
+
+                              // obtener direcciones del usuario y metodo de pago
+                              const userId =
+                                combinado.id_usuario ||
+                                combinado.idUsuario ||
+                                null;
+
+                              // si falta nombre en el combinado, intentar traerlo por id
+                              if (
+                                userId &&
+                                (!combinado.usuario ||
+                                  combinado.usuario === "-" ||
+                                  combinado.usuario === null)
+                              ) {
+                                try {
+                                  const userResp = await InformacionUserNombre(
+                                    userId
+                                  );
+
+                                  const udata =
+                                    userResp && userResp.data
+                                      ? userResp.data
+                                      : null;
+                                  if (udata) {
+                                    combinado.usuario = udata.nombre
+                                      ? udata.apellido
+                                        ? `${udata.nombre} ${udata.apellido}`
+                                        : udata.nombre
+                                      : udata.nombre_completo ||
+                                        udata.correo ||
+                                        combinado.usuario;
+                                  }
+                                } catch (e) {
+                                  console.warn(
+                                    "No se pudo obtener nombre de usuario:",
+                                    e
+                                  );
+                                }
+                              }
+
+                              if (userId) {
+                                try {
+                                  const dirResp = await getDirecciones(userId);
+                                  const direcciones =
+                                    dirResp && dirResp.data ? dirResp.data : [];
+                                  // buscar predeterminada o la primera
+                                  const pred =
+                                    direcciones.find((d) => d.predeterminada) ||
+                                    direcciones[0] ||
+                                    null;
+                                  setDireccionEntrega(
+                                    pred
+                                      ? `${pred.calle || ""} ${
+                                          pred.ciudad || ""
+                                        }`.trim()
+                                      : null
+                                  );
+                                  // si existe id_municipio en la direccion, buscar sucursal
+                                  if (pred && pred.id_municipio) {
+                                    try {
+                                      const sucResp = await getAllSucursales();
+                                      const sucursales =
+                                        sucResp && sucResp.data
+                                          ? sucResp.data
+                                          : [];
+                                      const match = sucursales.find(
+                                        (s) =>
+                                          String(s.id_municipio) ===
+                                          String(pred.id_municipio)
+                                      );
+                                      const resolvedSucursal = match
+                                        ? match.nombre ||
+                                          match.nombre_sucursal ||
+                                          null
+                                        : null;
+                                      setSucursalNombre(resolvedSucursal);
+                                      // actualizar la fila de la tabla para mostrar sucursal
+                                      if (resolvedSucursal) {
+                                        setPedidos((prev) =>
+                                          prev.map((it) =>
+                                            String(it.id) === String(combinado.id)
+                                              ? {
+                                                  ...it,
+                                                  sucursal: resolvedSucursal,
+                                                }
+                                              : it
+                                          )
+                                        );
+                                      }
+                                    } catch (e) {
+                                      console.warn(
+                                        "Error al obtener sucursales:",
+                                        e
+                                      );
+                                      setSucursalNombre(null);
+                                    }
+                                  } else {
+                                    setSucursalNombre(null);
+                                  }
+                                } catch (e) {
+                                  console.warn(
+                                    "Error al obtener direcciones:",
+                                    e
+                                  );
+                                  setDireccionEntrega(null);
+                                }
+
+                                try {
+                                  const mpResp = await getAllMetodoPago();
+                                  const metodos =
+                                    mpResp && mpResp.data ? mpResp.data : [];
+                                  // filtrar por id_usuario si el API devuelve todos los metodos
+                                  let mpUsuario = metodos.find(
+                                    (m) => String(m.id_usuario) === String(userId)
+                                  );
+                                  // buscar predeterminado si no hay uno por usuario
+                                  if (!mpUsuario) {
+                                    mpUsuario =
+                                      metodos.find(
+                                        (m) => m.metodo_predeterminado
+                                      ) ||
+                                      metodos[0] ||
+                                      null;
+                                  }
+                                  const formatted = formatPayment(mpUsuario);
+                                  setMetodoPagoUsuario(formatted);
+                                  console.log(
+                                    "Método de Pago del Usuario:",
+                                    formatted
+                                  );
+                                } catch (e) {
+                                  console.warn(
+                                    "Error al obtener metodos de pago:",
+                                    e
+                                  );
+                                  setMetodoPagoUsuario(null);
+                                }
+                              } else {
+                                setDireccionEntrega(null);
+                                setMetodoPagoUsuario(null);
+                              }
+
+                              setPedidoSeleccionado(combinado);
+                              // inicializar estados (usar formatField para evitar objects)
+                              setEstadoActual(
+                                formatField(combinado.estado || p.estado)
+                              );
+                              console.log(
+                                "Estado actual inicial: en el modal",
+                                formatField(combinado.estado || p.estado)
+                              );
+                              setNuevoEstado(
+                                formatField(combinado.estado || p.estado)
+                              );
+                              setDetalleOpen(true);
+                            } catch (e) {
+                              console.error(
+                                "Error al obtener detalle del pedido:",
+                                e
+                              );
+                              // fallback local
+                              setPedidoSeleccionado(p);
+                              setEstadoActual(formatField(p.estado));
+                              setNuevoEstado(formatField(p.estado));
+                              setDetalleOpen(true);
+                            }
+                          }}
+                        >
+                          Ver
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Paginación */}
+          <div className="pagination">
+            <PaginationSmall
+              page={currentPage}
+              pageCount={totalPages}
+              onPage={setCurrentPage}
+            />
+          </div>
         </div>
 
         {/* Modal de detalle */}
@@ -850,7 +819,7 @@ const GestionPedidos = () => {
             </div>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 };

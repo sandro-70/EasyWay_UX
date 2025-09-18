@@ -281,14 +281,14 @@ function AgregarCarrito() {
       if (productoExistente) {
         // Usar SumarItem con la cantidad TOTAL que debe quedar
         await SumarItem(id_producto, nuevaCantidad);
-        incrementCart(q);
+        incrementCart();
         toast(`Cantidad actualizada a ${nuevaCantidad} unidades`, {
           className: "toast-default",
         });
       } else {
         console.log("Producto nuevo, agregando al carrito");
         await AddNewCarrito(id_producto, q);
-        incrementCart(q);
+        incrementCart();
         toast(
           `Producto agregado al carrito (${q} ${
             q === 1 ? "unidad" : "unidades"

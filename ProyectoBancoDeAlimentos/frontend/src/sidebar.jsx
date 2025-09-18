@@ -116,7 +116,7 @@ const Sidebar = ({ moveButton, showSidebar }) => {
                     onClick={closeIfMobile}
                   >
                     <span className="material-symbols-outlined text-[42px] text-white">package_2</span>
-                    Gestion de<br />Inventario
+                    Gestión de<br />Inventario
                   </NavLink>
                 </li>
               )}
@@ -129,7 +129,7 @@ const Sidebar = ({ moveButton, showSidebar }) => {
                     onClick={closeIfMobile}
                   >
                     <span className="material-symbols-outlined text-[42px] text-white">assignment</span>
-                    Gestion de<br />pedidos
+                    Gestión de<br />Pedidos
                   </NavLink>
                 </li>
               )}
@@ -156,7 +156,7 @@ const Sidebar = ({ moveButton, showSidebar }) => {
                       onClick={closeIfMobile}
                     >
                       <span className="material-symbols-outlined text-[42px] text-white">percent_discount</span>
-                      Promociones y descuentos
+                      Promociones & Descuentos
                     </NavLink>
                   </li>
                   <li>
@@ -166,7 +166,7 @@ const Sidebar = ({ moveButton, showSidebar }) => {
                       onClick={closeIfMobile}
                     >
                       <span className="material-symbols-outlined text-[42px] text-white">groups</span>
-                      Gestion de <br />Usuarios
+                      Gestión de <br />Usuarios
                     </NavLink>
                   </li>
                 </>
@@ -183,7 +183,7 @@ const Sidebar = ({ moveButton, showSidebar }) => {
                 onClick={closeIfMobile}
               >
                 <span className="material-symbols-outlined text-[42px] text-white">settings</span>
-                Configuracion
+                Configuración
               </NavLink>
             </div>
           )}

@@ -494,46 +494,6 @@ function Carrito() {
     }
   };
 
-  const handleIncrement = async (p) => {
-    const nuevaCantidad = p.cantidad_unidad_medida + 1;
-    const stockDisponible = getStockEnSucursal(p.producto.id_producto);
-
-    if (nuevaCantidad > stockDisponible) {
-      toast.error(
-        `Solo hay ${stockDisponible} unidades disponibles en esta sucursal`, { className: "toast-error" }
-      );
-      return;
-    }
-
-    try {
-      await updateQuantity(
-        p.id_carrito_detalle,
-        p.producto.id_producto,
-        nuevaCantidad
-      );
-      incrementCart(1);
-    } catch (err) {
-      console.error("Error incrementando producto:", err);
-      toast.error("No se pudo aumentar la cantidad", { className: "toast-error" });
-    }
-  };
-
-  const handleDecrement = async (p) => {
-    if (p.cantidad_unidad_medida <= 1) return;
-    const nuevaCantidad = p.cantidad_unidad_medida - 1;
-    try {
-      await updateQuantity(
-        p.id_carrito_detalle,
-        p.producto.id_producto,
-        nuevaCantidad
-      );
-      decrementCart(1);
-    } catch (err) {
-      console.error("Error disminuyendo producto:", err);
-      toast.error("No se pudo disminuir la cantidad", { className: "toast-error" });
-    }
-  };
-
   //Automatico cuando cambie el total
   useEffect(() => {
     if (total > 0 && promociones.length > 0) {
@@ -746,7 +706,11 @@ function Carrito() {
 
                             <div className="flex flex-row gap-1">
                               <button
-                                onClick={() => handleDecrement(p)}
+                                onClick={() => updateQuantity(
+                                  p.id_carrito_detalle,
+                                  p.producto.id_producto,
+                                  p.cantidad_unidad_medida - 1
+                                )}
                                 className=" bg-[#114C87] text-white rounded-md h-9 px-1"
                                 disabled={sinStock}
                               >
@@ -788,7 +752,11 @@ function Carrito() {
                               />
 
                               <button
-                                onClick={() => handleIncrement(p)}
+                                onClick={() => updateQuantity(
+                                  p.id_carrito_detalle,
+                                  p.producto.id_producto,
+                                  p.cantidad_unidad_medida + 1
+                                )}
                                 className="bg-[#114C87] text-white rounded-md h-9 px-1"
                                 disabled={sinStock}
                               >
@@ -1058,7 +1026,6 @@ function Carrito() {
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      incrementCart(1);
                       handleAgregar(p.id_producto, 1);
                     }}
                   >

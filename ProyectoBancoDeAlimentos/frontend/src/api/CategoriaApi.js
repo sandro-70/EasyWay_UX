@@ -6,11 +6,11 @@ export function ListarCategoria(){
 export function ObtenerCategoria(id){
     return axiosInstance.get(`/api/categorias/${id}`);
 }
-export function CrearCategoria(nombre, icono_categoria){
-  return axiosInstance.post('/api/categorias', { nombre, icono_categoria });
+export function CrearCategoria(nombre, icono_categoria, PorcentajeDeGananciaMinimo){
+  return axiosInstance.post('/api/categorias', { nombre, icono_categoria, PorcentajeDeGananciaMinimo });
 }
-export function ActualizarCategoria(id, nombre, icono_categoria){
-  return axiosInstance.put(`/api/categorias/${id}`, { nombre, icono_categoria });
+export function ActualizarCategoria(id, nombre, icono_categoria, PorcentajeDeGananciaMinimo){
+  return axiosInstance.put(`/api/categorias/${id}`, { nombre, icono_categoria, PorcentajeDeGananciaMinimo });
 }
 export function DesactivarProductosDeCategoria(id){
   return axiosInstance.delete(`/api/categorias/${id}`);

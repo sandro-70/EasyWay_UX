@@ -9,7 +9,7 @@ const MiniChart = ({ title1, title2, data, itemsPerPage = 4, renderRow }) => {
   const currentData = data.slice(startIndex, startIndex + itemsPerPage);
 
   return (
-    <div className="w-80 flex flex-col  ">
+    <div className="w-80 flex flex-col min-w-[360px] -ml-4">
       {/* Title */}
       <div className="bg-white rounded-md shadow-md border-2 border-black">
         <div className="flex flex-row justify-between bg-[#2b6daf] text-white rounded-t-sm rounded-b-none px-4 pt-2 ">

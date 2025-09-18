@@ -19,14 +19,15 @@ import {
 } from "chart.js";
 import { Line, Bar, Pie } from "react-chartjs-2";
 
-// ⬇️ IMPORTA TUS APIS
+// APIs
 import {
   getPromedioVentas4Meses,
   getPedidosPorMes,
   ingresosPromocionesUltimos4Meses,
   usuariosMasGastos,
   getStock,
-} from "./api/reporteusuarioApi"; // <-- ajusta la ruta si difiere
+} from "./api/reporteusuarioApi";
+import { getAllSucursales } from "./api/InventarioApi"; // ⬅️ NUEVO
 
 function Dashboard() {
   const { moveButton } = useOutletContext();
@@ -44,13 +45,19 @@ function Dashboard() {
   );
 
   // ======= STATE =======
-  const [inventory, setInventory] = useState([]); // [{producto, stock}]
-  const [activeUsers, setActiveUsers] = useState([]); // [{nombre, compras, gastosTotales}]
-  const [ventasMeses, setVentasMeses] = useState([]); // [{mes:'YYYY-MM', ventas_totales:number}]
+  const [inventoryRaw, setInventoryRaw] = useState([]); // filas crudas por sucursal
+  const [inventory, setInventory] = useState([]); // lo que se muestra (filtrado/ordenado)
+  const [activeUsers, setActiveUsers] = useState([]);
+  const [ventasMeses, setVentasMeses] = useState([]);
   const [promedio4, setPromedio4] = useState(0);
-  const [pedidosMeses, setPedidosMeses] = useState([]); // [{mes:'YYYY-MM', total_pedidos:number}]
-  const [promoIngresos, setPromoIngresos] = useState([]); // [{mes:'YYYY-MM', ingreso_con_promocion:number}]
+  const [pedidosMeses, setPedidosMeses] = useState([]);
+  const [promoIngresos, setPromoIngresos] = useState([]);
   const [kpis, setKpis] = useState({ hoy: null, semana: null, mes: null, anio: null });
+
+  // Sucursales (filtro)
+  const [sucursales, setSucursales] = useState([]);
+  const [sucursalId, setSucursalId] = useState("all"); // "all" = todas
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   // ======= HELPERS =======
   const monthLabel = (ym) => {
@@ -62,58 +69,81 @@ function Dashboard() {
     }
   };
 
+  const addLps = (num) => {
+    if (num == null) return "—";
+    return num + ". Lps";
+  }
+
   const lastNMonthsAsc = (rows, n) =>
-    [...rows]
-      .sort((a, b) => (a.mes < b.mes ? -1 : 1))
-      .slice(Math.max(0, rows.length - n));
+    [...rows].sort((a, b) => (a.mes < b.mes ? -1 : 1)).slice(Math.max(0, rows.length - n));
 
   // ======= FETCH =======
   useEffect(() => {
     const fetchAll = async () => {
-      // Stock
-      const res = await getStock();
-  const arr = Array.isArray(res?.data) ? res.data : [];
+      try {
+        // 1) Stock (por sucursal)
+        const res = await getStock();
+        const arr = Array.isArray(res?.data) ? res.data : [];
 
-  // normaliza
-  const norm = arr.map(r => ({
-    id_producto: r?.id_producto,
-    producto: r?.nombre_producto ?? "-",
-    stock: Number(r?.stock ?? r?.stock_disponible ?? 0),
-    unidad: r?.unidad_medida ?? "",
-  }));
+        // Normaliza para no romper aunque cambie el shape
+        const norm = arr.map((r) => ({
+          id_producto: r?.id_producto ?? r?.producto?.id_producto ?? null,
+          producto:
+            r?.nombre_producto ??
+            r?.producto?.nombre ??
+            r?.producto_nombre ??
+            "-",
+          stock: Number(
+            r?.stock ?? r?.stock_disponible ?? r?.cantidad ?? r?.cantidad_total ?? 0
+          ),
+          id_sucursal:
+            r?.id_sucursal ??
+            r?.sucursal?.id_sucursal ??
+            r?.sucursal_producto?.id_sucursal ??
+            r?.idSucursal ??
+            null,
+          sucursal:
+            r?.nombre_sucursal ??
+            r?.sucursal?.nombre_sucursal ??
+            r?.sucursal_producto?.sucursal?.nombre_sucursal ??
+            r?.sucursal_nombre ??
+            "",
+        }));
 
-  // 🔧 agrupa por producto (elige SUM o MIN según tu necesidad)
-  const groupedMap = new Map();
-  for (const row of norm) {
-    const k = row.id_producto ?? row.producto;
-    const prev = groupedMap.get(k);
-    if (!prev) {
-      groupedMap.set(k, { ...row });
-    } else {
-      // SUMA total por producto (→ una fila por producto)
-      prev.stock += row.stock;
+        setInventoryRaw(norm);
 
-      // Si prefieres el valor más crítico por sucursal, usa MIN:
-      // prev.stock = Math.min(prev.stock, row.stock);
-    }
-  }
-
-  const grouped = Array.from(groupedMap.values())
-    .sort((a, b) => a.stock - b.stock);
-
-  // Si quieres mostrar solo críticos (ej. <= 5), descomenta:
-  // const grouped = Array.from(groupedMap.values())
-  //   .filter(x => x.stock <= 5)
-  //   .sort((a, b) => a.stock - b.stock);
-
-  setInventory(grouped);
+        // 2) Sucursales (catálogo)
+        try {
+          const sres = await getAllSucursales();
+          const list = Array.isArray(sres?.data) ? sres.data : [];
+          // Toma id y nombre con varios “alias” posibles
+          const uniq = [];
+          const seen = new Set();
+          for (const s of list) {
+            const id =
+              s?.id_sucursal ?? s?.id ?? s?.codigo ?? s?.sucursal?.id_sucursal ?? null;
+            const nombre =
+              s?.nombre_sucursal ?? s?.nombre ?? s?.sucursal?.nombre_sucursal ?? "Sucursal";
+            if (id != null && !seen.has(String(id))) {
+              seen.add(String(id));
+              uniq.push({ id: String(id), nombre });
+            }
+          }
+          setSucursales(uniq);
+        } catch (e) {
+          // si falla, mantenemos solo "Todas"
+          setSucursales([]);
+          console.warn("[getAllSucursales] error:", e);
+        }
+      } catch (e) {
+        console.error("[getStock] error:", e);
+        setInventoryRaw([]);
+      }
 
       // Ventas 4 meses
       try {
         const res = await getPromedioVentas4Meses();
-        const ventas = Array.isArray(res?.data?.ventas_por_mes)
-          ? res.data.ventas_por_mes
-          : [];
+        const ventas = Array.isArray(res?.data?.ventas_por_mes) ? res.data.ventas_por_mes : [];
         setVentasMeses(ventas);
         setPromedio4(Number(res?.data?.promedio_4_meses ?? 0));
       } catch (e) {
@@ -122,19 +152,17 @@ function Dashboard() {
         setPromedio4(0);
       }
 
-      // Pedidos por mes (todos) -> tomamos últimos 4
+      // Pedidos por mes
       try {
         const res = await getPedidosPorMes();
-        const pedidos = Array.isArray(res?.data?.pedidos_por_mes)
-          ? res.data.pedidos_por_mes
-          : [];
+        const pedidos = Array.isArray(res?.data?.pedidos_por_mes) ? res.data.pedidos_por_mes : [];
         setPedidosMeses(pedidos);
       } catch (e) {
         console.error("[getPedidosPorMes] error:", e);
         setPedidosMeses([]);
       }
 
-      // Ingresos por promociones últimos 4 meses
+      // Ingresos por promociones
       try {
         const res = await ingresosPromocionesUltimos4Meses();
         const rows = Array.isArray(res?.data?.ingresos_por_promociones)
@@ -166,6 +194,24 @@ function Dashboard() {
     fetchAll();
   }, []);
 
+  // Filtrado por sucursal + “críticos”
+  useEffect(() => {
+    const base = inventoryRaw.filter((r) => r.producto && r.producto !== "-");
+
+    const bySucursal =
+      sucursalId === "all"
+        ? base
+        : base.filter((r) => String(r.id_sucursal) === String(sucursalId));
+
+    // Críticos: <= 5 (si no hay críticos, muestra los más bajos igual)
+    const critical = bySucursal.filter((r) => Number.isFinite(r.stock) && r.stock <= 40);
+    const display = (critical.length ? critical : bySucursal)
+      .slice() // copia
+      .sort((a, b) => a.stock - b.stock);
+
+    setInventory(display);
+  }, [inventoryRaw, sucursalId]);
+
   // ======= KPIs derivados de ventas (Mes / Año) =======
   useEffect(() => {
     const now = new Date();
@@ -176,15 +222,14 @@ function Dashboard() {
       .reduce((acc, v) => acc + Number(v.ventas_totales || 0), 0);
 
     setKpis({
-      hoy: null, // no hay endpoint para hoy
-      semana: null, // no hay endpoint para semana
+      hoy: null,
+      semana: null,
       mes: ventasMes,
-      anio: ventasAnio || (ventasMes === null ? null : ventasMes), // fallback bobo
+      anio: ventasAnio || (ventasMes === null ? null : ventasMes),
     });
   }, [ventasMeses]);
 
   // ======= DATASETS CHART.JS =======
-  // Línea: Ventas últimos 4 meses (garantizamos 4 puntos si el backend ya lo hace)
   const lineData = useMemo(() => {
     const rows = lastNMonthsAsc(ventasMeses, 4);
     return {
@@ -201,7 +246,6 @@ function Dashboard() {
     };
   }, [ventasMeses]);
 
-  // Pie: Pedidos últimos 4 meses
   const pieData = useMemo(() => {
     const rows = lastNMonthsAsc(pedidosMeses, 4);
     return {
@@ -218,7 +262,6 @@ function Dashboard() {
     };
   }, [pedidosMeses]);
 
-  // Barras: Ingresos por promociones (últimos 4 meses)
   const promoBarData = useMemo(() => {
     const rows = lastNMonthsAsc(promoIngresos, 4);
     return {
@@ -236,13 +279,28 @@ function Dashboard() {
 
   // ======= RENDER =======
   const cardCls =
-  "bg-[#fee9d6] rounded-xl shadow-neutral-600 shadow-sm p-6 flex flex-col justify-between h-[320px]";
-
+    "bg-[#fee9d6] rounded-xl shadow-neutral-600 shadow-sm p-6 flex flex-col justify-between h-[320px]";
   const cardBase =
-  "bg-[#fee9d6] rounded-xl shadow-neutral-600 shadow-sm p-6 flex flex-col items-center justify-between";
+    "bg-[#fee9d6] rounded-xl shadow-neutral-600 shadow-sm p-6 flex flex-col items-center justify-between";
+  const H_TOP = "h-[320px]";
+  const H_BOTTOM = "h-[320px]";
 
-const H_TOP = "h-[320px]";     // altura igual para la fila superior
-const H_BOTTOM = "h-[320px]";  // altura igual para la fila inferior
+  // Encabezado “Stock” clicable + etiqueta de sucursal
+  const sucursalTxt =
+    sucursalId === "all"
+      ? "Todas"
+      : (sucursales.find((s) => String(s.id) === String(sucursalId))?.nombre ?? "Sucursal");
+  const stockHeader = (
+    <span
+      onClick={() => setPickerOpen((v) => !v)}
+      title="Filtrar por sucursal"
+      style={{ cursor: "pointer", userSelect: "none" }}
+    >
+      Stock {sucursalId === "all" ? "" : `· ${sucursalTxt}`} ▾
+    </span>
+  );
+
+
 
   return (
     <div className=" px-12 " style={{ ...styles.fixedShell, backgroundColor: "#f3f4f6" }}>
@@ -263,29 +321,71 @@ const H_BOTTOM = "h-[320px]";  // altura igual para la fila inferior
             {/* Columna izquierda */}
             <div className="grid grid-cols-1 min-w-[450px] max-h-[580px] grid-rows-2 h-full gap-4 items-stretch pt-2">
               <div className="sm_grid px-16 space-y-2">
-                <p className="pl-0">Inventario Critico</p>
-                <MiniChart
-                  title1="Producto"
-                  title2="Stock"
-                  data={inventory}
-                  itemsPerPage={4}
-                  renderRow={(item) => (
-                    <>
-                      <span>{item.producto}</span>
-                      <span
-                        className={`font-bold ${
-                          item.stock <= 2
-                            ? "text-red-600"
-                            : item.stock <= 5
-                            ? "text-orange-500"
-                            : "text-yellow-500"
-                        }`}
+                <p className="pl-0 ">Inventario Critico</p>
+
+                {/* Contenedor relativo para el mini–selector */}
+                <div style={{ position: "relative " }}>
+                  <MiniChart
+                    title1="Producto"
+                    title2={stockHeader} // ⬅️ clicable
+                    data={inventory}
+                    itemsPerPage={4}
+                    renderRow={(item) => (
+                      <>
+                        <span>{item.producto}</span>
+                        <span
+                          className={`font-bold ${
+                            item.stock <= 2
+                              ? "text-red-600"
+                              : item.stock <= 5
+                              ? "text-orange-500"
+                              : "text-yellow-500"
+                          }`}
+                        >
+                          {item.stock}
+                        </span>
+                      </>
+                    )}
+                  />
+
+                  {/* Mini–dropdown (no cambia el diseño, solo se superpone) */}
+                  {pickerOpen && (
+                    <div
+                      className="bg-white rounded-md border shadow-md"
+                      style={{
+                        position: "absolute",
+                        right: 12,
+                        top: 8,
+                        zIndex: 20,
+                        minWidth: 180,
+                        padding: 8,
+                      }}
+                    >
+                      <div
+                        className="px-2 py-1 hover:bg-gray-100 cursor-pointer rounded"
+                        onClick={() => {
+                          setSucursalId("all");
+                          setPickerOpen(false);
+                        }}
                       >
-                        {item.stock}
-                      </span>
-                    </>
+                        Todas las sucursales
+                      </div>
+                      <div className="h-px bg-gray-200 my-1" />
+                      {sucursales.map((s) => (
+                        <div
+                          key={s.id}
+                          className="px-2 py-1 hover:bg-gray-100 cursor-pointer rounded"
+                          onClick={() => {
+                            setSucursalId(String(s.id));
+                            setPickerOpen(false);
+                          }}
+                        >
+                          {s.nombre}
+                        </div>
+                      ))}
+                    </div>
                   )}
-                />
+                </div>
               </div>
 
               <div className="sm_grid px-16">
@@ -312,23 +412,21 @@ const H_BOTTOM = "h-[320px]";  // altura igual para la fila inferior
 
                 <div className="flex flex-row gap-2 justify-center font-medium pt-2">
                   <p>Hoy: </p>
-                  <p className="text-[#4CAF50]">{kpis.hoy ?? "—"}</p>
+                  <p className="text-[#4CAF50]">{addLps(kpis.hoy) ?? "—"}</p>
                   <p>|</p>
                   <p>Esta Semana:</p>
-                  <p className="text-[#4CAF50]">{kpis.semana ?? "—"}</p>
+                  <p className="text-[#4CAF50]">{addLps(kpis.semana) ?? "—"}</p>
                   <p>|</p>
                   <p>Este Mes: </p>
-                  <p className="text-[#4CAF50]">{kpis.mes ?? "—"}</p>
+                  <p className="text-[#4CAF50]">{addLps(kpis.mes) ?? "—"}</p>
                   <p>|</p>
                   <p>Este año: </p>
-                  <p className="text-[#4CAF50]">{kpis.anio ?? "—"}</p>
+                  <p className="text-[#4CAF50]">{addLps(kpis.anio) ?? "—"}</p>
                 </div>
 
                 <div className="flex w-full h-[220px] px-2 items-center justify-center ">
                   <Line data={lineData} options={{ responsive: true, maintainAspectRatio: false }} />
                 </div>
-                {/* Puedes mostrar el promedio si lo deseas */}
-                {/* <div className="text-center text-sm text-gray-600">Promedio 4 meses: {promedio4.toFixed(2)}</div> */}
               </div>
 
               <div className="bg-[#fee9d6] h-full row-span-4 col-span-1 py-2 px-12 rounded-xl shadow-neutral-600 shadow-sm items-center text-center">
@@ -350,7 +448,7 @@ const H_BOTTOM = "h-[320px]";  // altura igual para la fila inferior
                     <>
                       <span>{item.nombre}</span>
                       <span>{item.compras}</span>
-                      <span>{item.gastosTotales}</span>
+                      <span>{item.gastosTotales+". Lps"}</span>
                     </>
                   )}
                 />
@@ -362,6 +460,7 @@ const H_BOTTOM = "h-[320px]";  // altura igual para la fila inferior
     </div>
   );
 }
+
 const styles = {
   fixedShell: {
     position: "absolute",

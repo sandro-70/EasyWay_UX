@@ -3,7 +3,7 @@ import TablaPromociones from "../tablaReportesPromociones.jsx";
 import ReportesPedidos from "../pages/ReportesPedidos.jsx";
 import ReportesInventario from "../pages/ReportesInventario.jsx";
 import PersonalizacionReportes from "../PersonalizacionReportes.jsx";
-import ReportesUsuarios from "../reporteUsuarios.jsx";
+import ReportesUsuarios from "../tablaReportesUsuarios.jsx";
 
 import React, { useState } from "react";
 import "./ReporteCarrousel.override.css";

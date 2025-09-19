@@ -37,7 +37,7 @@ import TablaVentas from "./tablaReportesVentas.jsx";
 import LayoutSidebar from "./layoutSidebar.jsx";
 import AsignarDescuentos from "./asignarDescuentos.jsx";
 import TablaPromociones from "./tablaReportesPromociones.jsx";
-import TablaUsuarios from "./reporteUsuarios.jsx";
+import TablaUsuarios from "./tablaReportesUsuarios.jsx";
 import SistemaValoracion from "./SistemaValoracion.jsx";
 import PersonalizacionReportes from "./PersonalizacionReportes.jsx";
 import DescuentosAplicados from "./descuentos_aplicados.jsx";

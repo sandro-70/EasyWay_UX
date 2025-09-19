@@ -22,6 +22,7 @@ import HistorialPedido from "./pages/HistorialPedido.jsx";
 import MisDirecciones from "./misDirecciones.jsx";
 import AgregarCarrito from "./components/agregarCarrito.jsx";
 import CompararProducto from "./components/compararProducto.jsx";
+import GestionCupones from "./components/gestionCupones.jsx";
 import UserManagementViews from "./UserManagementViews.jsx";
 import MisCupones from "./misCupones.jsx";
 import Verificacion from "./components/verificacion.jsx";
@@ -37,7 +38,6 @@ import TablaVentas from "./tablaReportesVentas.jsx";
 import LayoutSidebar from "./layoutSidebar.jsx";
 import AsignarDescuentos from "./asignarDescuentos.jsx";
 import TablaPromociones from "./tablaReportesPromociones.jsx";
-import TablaUsuarios from "./tablaReportesUsuarios.jsx";
 import SistemaValoracion from "./SistemaValoracion.jsx";
 import PersonalizacionReportes from "./PersonalizacionReportes.jsx";
 import DescuentosAplicados from "./descuentos_aplicados.jsx";
@@ -219,18 +219,18 @@ function App() {
                 }
               />
               <Route
-                path="/campana-detalle"
+                path="/gestionCupones"
                 element={
                   <ProtectedRoute rolesPermitidos={["administrador"]}>
-                    <CampanaDetalleModal />
+                    <GestionCupones />
                   </ProtectedRoute>
                 }
               />
               <Route
-                path="/tablaUsuarios"
+                path="/campana-detalle"
                 element={
                   <ProtectedRoute rolesPermitidos={["administrador"]}>
-                    <TablaUsuarios />
+                    <CampanaDetalleModal />
                   </ProtectedRoute>
                 }
               />

@@ -107,6 +107,7 @@ function TablaReportesPromociones() {
           <button onClick={exportToExcel} className="ventas-export-btn">📊 Exportar a Excel</button>
         </header>
         <div className="divider" />
+        
         <div className="promocion-count">
           <span>Total Promociones: </span>
           <span className="count-bubble">{filteredData.length}</span>

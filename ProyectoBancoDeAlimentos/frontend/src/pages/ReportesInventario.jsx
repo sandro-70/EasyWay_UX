@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { saveAs } from "file-saver";
 import * as XLSX from "xlsx";
+import { listarAuditorias, filtrarCantidadMayor, filtrarCantidadMenor } from "../api/auditoriaApi";
+import { listarProductosl } from "../api/InventarioApi";
 import "./ReportesInventario.css";
 
 export default function ReportesInventario() {
@@ -14,23 +16,29 @@ export default function ReportesInventario() {
   // Traer auditorías según filtro
   const fetchAuditorias = async () => {
     try {
-      let url = "/api/auditorias";
-      if (filtro === "Más vendidos") url = "/api/auditorias/filtrarCantidadMayor";
-      if (filtro === "Menos vendidos") url = "/api/auditorias/filtrarCantidadMenor";
+      let response;
+      if (filtro === "Todos") response = await listarAuditorias();
+      else if (filtro === "Más vendidos") response = await filtrarCantidadMayor();
+      else if (filtro === "Menos vendidos") response = await filtrarCantidadMenor();
+      else response = await listarAuditorias();
 
-      const { data } = await axios.get(url);
-      setFilas(data);
-      setPaginaActual(1); // reset paginación al cambiar filtro
+      setFilas(response.data);
+      setPaginaActual(1); 
     } catch (error) {
       console.error("Error al traer auditorías:", error);
     }
   };
 
-  // Traer valor total del inventario
   const fetchValorInventario = async () => {
     try {
-      const { data } = await axios.get("/api/auditorias/valorTotalInventario");
-      setValorInventario(data.valor_total);
+      const { data } = await listarProductosl();
+
+      const total = data.reduce((acc, prod) => {
+        const precio = Number(prod.precio_venta || 0);
+        return acc + precio;
+      }, 0);
+
+      setValorInventario(total);
     } catch (error) {
       console.error("Error al traer valor de inventario:", error);
     }

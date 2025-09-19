@@ -50,7 +50,7 @@ const MenuPromociones = () => {
             </Link>
 
             <Link
-              to="/definirCupones"
+              to="/gestionCupones"
               className="bg-white rounded-2xl p-6 flex flex-col items-center text-center shadow-md border border-blue-100 transition-transform duration-300 hover:scale-105 hover:shadow-lg"
             >
               <Ticket size={40} color="#3b82f6" />

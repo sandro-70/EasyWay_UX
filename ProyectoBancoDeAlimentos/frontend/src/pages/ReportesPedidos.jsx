@@ -106,23 +106,11 @@ const ReportesPedidos = () => {
   };
 
   return (
-    <div
-      className="content"
-      style={{
-        position: "absolute",
-        left: 0,
-        right: 0,
-        width: "100%",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-      }}>
+    <div className="px-4" style={{ position: "absolute", left: 0, right: 0, width: "100%", display: "flex", flexDirection: "column" }}>
       <div className="content-container">
         <header className="page-header">
-          <h1 className="pedido-title"><span>Reportes de Pedidos</span></h1>
-          <button onClick={exportToExcel} className="ventas-export-btn">
-            📊 Exportar a Excel
-          </button>
+          <h1 className="promocion-title"><span>Reportes de Pedidos</span></h1>
+          <button onClick={exportToExcel} className="ventas-export-btn">📊 Exportar a Excel</button>
         </header>
         <div className="divider" />
 

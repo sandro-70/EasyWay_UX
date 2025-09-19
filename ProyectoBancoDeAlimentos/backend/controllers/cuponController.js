@@ -51,8 +51,13 @@ exports.crearCupon = async (req, res) => {
   const { nombre, codigo, tipo, descripcion, valor, termina_en, uso_por_usuario } = req.body;
   const { id_usuario } = req.params;
 
+  const userId = parseInt(id_usuario, 10);
+  if (isNaN(userId)) {
+    return res.status(400).json({ message: "ID de usuario inválido." });
+  }
+
   try {
-    const user = await Usuario.findOne({ where: { id_usuario } });
+    const user = await Usuario.findOne({ where: { id_usuario: userId } });
 
     if (!user) {
       return res.status(404).json({ message: "Usuario no encontrado!" });
@@ -89,7 +94,6 @@ exports.crearCupon = async (req, res) => {
     return res.status(500).json({ message: "Error al intentar crear un cupón!" });
   }
 };
-
 
 exports.addCuponUsuario = async (req, res) => {
   const { codigo } = req.body;

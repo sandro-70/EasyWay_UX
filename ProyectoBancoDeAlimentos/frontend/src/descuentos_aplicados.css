@@ -69,7 +69,7 @@
 .discounts__tableWrap::before {
   content: "";
   position: absolute;
-  top: -10px;
+  top: -9px;
   left: 0;
   right: 0;
   height: 2px;
@@ -89,7 +89,7 @@
   background: var(--blue);
   color: #fff;
   padding: 18px 20px;
-  text-align: left;
+  text-align: center;
   border-bottom: 1px solid var(--blue-line);
   font-weight: 700;
 }

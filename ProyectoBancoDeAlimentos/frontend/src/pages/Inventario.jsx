@@ -208,7 +208,7 @@ function Modal({ open, onClose, children, panelClassName = "" }) {
       />
       <div
         className={
-          "relative w-full max-w-2xl md:max-w-3xl rounded-2xl bg-white shadow-2xl border border-[#d8dadc] max-h-[90vh] overflow-y-auto " +
+          "relative w-full max-w-2xl md:max-w-30xl rounded-2xl bg-white shadow-2xl border border-[#d8dadc] max-h-[90vh] overflow-hidden " +
           panelClassName
         }
       >
@@ -221,7 +221,19 @@ function Modal({ open, onClose, children, panelClassName = "" }) {
 
 /* ===================== PAGINA INVENTARIO ===================== */
 export default function Inventario() {
-  // Sidebar
+  // helpers (colócalos arriba del componente o en utils)
+  const UNIT_SUFFIX = {
+    unidad: (n) => (Number(n) === 1 ? "ud" : "ud"),
+    libra: () => "lb",
+    litro: () => "L",
+    // fallback por si viene vacío o desconocido
+    default: () => "kg",
+  };
+
+  function unitSuffix(unidad, cantidad) {
+    const f = UNIT_SUFFIX[unidad?.toLowerCase?.()] || UNIT_SUFFIX.default;
+    return f(cantidad);
+  }
 
   // Tabla
   const [rows, setRows] = useState([]);
@@ -812,9 +824,13 @@ export default function Inventario() {
     const src = modal.draft.imagePreviews[idx];
     const isOld = !src.startsWith("blob:");
     if (isOld) {
-      const oldCount = modal.draft.imagePreviews.filter(s => !s.startsWith("blob:")).length;
+      const oldCount = modal.draft.imagePreviews.filter(
+        (s) => !s.startsWith("blob:")
+      ).length;
       if (oldCount <= 1) {
-        return toast.error("Debe mantener al menos una imagen antigua.", { className: "toast-error" });
+        return toast.error("Debe mantener al menos una imagen antigua.", {
+          className: "toast-error",
+        });
       }
     }
     setModal((m) => {
@@ -1097,7 +1113,9 @@ export default function Inventario() {
           };
         } else {
           // Imagen existente
-          const relativePath = src.replace(BACKEND_ORIGIN, "").replace(/^\/api/, "");
+          const relativePath = src
+            .replace(BACKEND_ORIGIN, "")
+            .replace(/^\/api/, "");
           return {
             url_imagen: relativePath,
             orden_imagen: idx,
@@ -1243,14 +1261,17 @@ export default function Inventario() {
     } catch (err) {
       const status = err?.response?.status;
       const data = err?.response?.data;
-      const message = data?.message || data?.detail || data?.error || err.message;
-      if (status === 400 && message === "El producto debe tener al menos una imagen") {
+      const message =
+        data?.message || data?.detail || data?.error || err.message;
+      if (
+        status === 400 &&
+        message === "El producto debe tener al menos una imagen"
+      ) {
         alert("El producto debe tener al menos una imagen");
       } else {
-        toast.error(
-          `Error ${status ?? ""}: ${message}`,
-          { className: "toast-error" }
-        );
+        toast.error(`Error ${status ?? ""}: ${message}`, {
+          className: "toast-error",
+        });
       }
     } finally {
       setSavingProduct(false);
@@ -1592,7 +1613,14 @@ export default function Inventario() {
                       <td className="px-3 py-3 text-center">
                         {r.subcategoria}
                       </td>
-                      <td className="px-3 py-3 text-center">{r.stockKg} kg.</td>
+                      <td className="px-3 py-3 text-center">
+                        {" "}
+                        {r.stockKg}{" "}
+                        {unitSuffix(
+                          r.unidad_medida ?? r.unidadMedida,
+                          r.stockKg
+                        )}
+                      </td>
                       <td className="px-3 py-3 text-center">
                         L. {r.precioBase}
                       </td>
@@ -1673,7 +1701,7 @@ export default function Inventario() {
       {/* ========== Modal Agregar / Editar ========== */}
       <Modal open={modal.open} onClose={closeModal}>
         <div
-          className="px-5 py-3 rounded-t-2xl sticky top-0"
+          className="px-5 py-3 rounded-t-2xl sticky top-0" //AQUI ARREGLE LO DE IMAGEN
           style={{ backgroundColor: "#2b6daf" }}
         >
           <h3 className="text-white font-medium">
@@ -1681,7 +1709,7 @@ export default function Inventario() {
           </h3>
         </div>
 
-        <div className="p-5 grid grid-cols-2 gap-4">
+        <div className="p-5 grid grid-cols-2 gap-4 max-h-[70vh] overflow-y-auto pr-2">
           {/* input file oculto (compartido) */}
           <input
             id="imgPicker"
@@ -1742,7 +1770,7 @@ export default function Inventario() {
             </div>
           ) : (
             <>
-              <div className="col-span-2 grid grid-cols-3 gap-3">
+              <div className="col-span-2 grid grid-cols-3 gap-3 relative z-0">
                 {modal.draft.imagePreviews.map((src, i) => (
                   <div key={i} className="relative">
                     <img
@@ -1754,7 +1782,7 @@ export default function Inventario() {
                       type="button"
                       title="Quitar"
                       onClick={() => removePreview(i)}
-                      className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-white border border-[#d8dadc] shadow text-sm"
+                      className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-white border border-[#d8dadc] shadow text-sm z-20 pointer-events-auto"
                     >
                       ✕
                     </button>
@@ -1762,7 +1790,7 @@ export default function Inventario() {
                 ))}
               </div>
 
-              <div className="col-span-2 flex justify-end">
+              <div className="col-span-2 flex justify-end relative z-10">
                 <label
                   htmlFor="imgPicker"
                   className="mt-2 px-3 py-2 rounded-lg border border-[#d8dadc] hover:bg-gray-50 cursor-pointer"
@@ -2105,7 +2133,7 @@ export default function Inventario() {
           )}
         </div>
 
-        <div className="px-5 pb-5 grid grid-cols-2 gap-4">
+        <div className="px-5 pb-5 grid grid-cols-2 gap-4 relative z-20">
           <Input
             label="ID"
             value={supplyModal.draft.id}

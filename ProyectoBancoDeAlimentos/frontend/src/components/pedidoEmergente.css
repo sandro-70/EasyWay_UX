@@ -59,14 +59,7 @@ th {
   gap: 10px;
 }
 
-.btn-reordenar {
-  background: #f0833e;
-  color: #fff;
-  border: none;
-  padding: 8px 14px;
-  border-radius: 6px;
-  cursor: pointer;
-}
+
 
 .btn-volver {
   background: #2b6daf;

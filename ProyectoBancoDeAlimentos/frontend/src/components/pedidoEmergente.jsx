@@ -26,7 +26,7 @@ const PedidoEmergente = ({ pedido, cerrarModal }) => {
         </table>
 
         <div className="botones">
-          <button className="btn-reordenar">Reordenar</button>
+          
           <button className="btn-volver" onClick={cerrarModal}>
             Volver
           </button>

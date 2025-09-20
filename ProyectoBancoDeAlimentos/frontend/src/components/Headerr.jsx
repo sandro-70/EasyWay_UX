@@ -217,7 +217,7 @@ const Headerr = () => {
 
         <div style={styles.divBar}>
           {/* La barra de búsqueda solo se muestra si NO es admin */}
-          {!isAdmin && (
+          {!isAdmin && !isConsultor && (
             <div style={styles.searchWrapper}>
               <button style={styles.iconBtn}>
                 <img src={FilterIcon} alt="Filter" style={styles.icon} />

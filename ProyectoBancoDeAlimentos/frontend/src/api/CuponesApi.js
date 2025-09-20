@@ -23,3 +23,11 @@ export function editarCupon(id_cupon, codigo, descripcion, tipo, valor, uso_por_
 export function crearCupon(id_usuario, codigo, descripcion, tipo, valor, uso_por_usuario, termina_en){
     return axiosInstance.post(`/api/cupones/crear-cupon/${id_usuario}`, {codigo, descripcion, tipo, valor, uso_por_usuario, termina_en});
 }
+
+export function usarCuponHistorial(id_cupon, id_usuario, id_pedido, fecha_usado) {
+  return axiosInstance.post('/api/cupones/usar-cupon', {id_cupon, id_usuario, id_pedido, fecha_usado });
+}
+
+export function checkCuponUsuario(id_cupon, id_usuario) {
+  return axiosInstance.get(`/api/cupones/check-uso/${id_cupon}/usuario/${id_usuario}`);
+}

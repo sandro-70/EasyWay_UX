@@ -14,7 +14,13 @@ import {
   eliminarItem,
   AddNewCarrito,
 } from "./api/CarritoApi";
-import { GetCupones, desactivarCupon, editarCupon } from "./api/CuponesApi";
+import {
+  GetCupones,
+  desactivarCupon,
+  editarCupon,
+  usarCuponHistorial,
+  checkCuponUsuario,
+} from "./api/CuponesApi";
 import { getPromociones } from "./api/PromocionesApi";
 import {
   getProductosRecomendados,
@@ -205,26 +211,39 @@ function Carrito() {
     }
   };
 
-  //(cupones + promociones)
   const obtenerDescuentoTotal = () => {
-    const descuentoCupon = descCupon.valor > 0 ? total * (descCupon.valor / 100) : 0;
-    const descuentoPromocion = calcularDescuentoPromocion();
+    const subtotal = total; // subtotal sin descuentos
 
+    let descuentoCupon = 0;
+    if (descCupon) {
+      if (descCupon.tipo === "porcentaje") {
+        descuentoCupon = subtotal * (descCupon.valor / 100);
+      } else if (descCupon.tipo === "fijo") {
+        descuentoCupon = descCupon.valor;
+      }
+    }
+
+    const descuentoPromocion = promocionAplicada
+      ? calcularDescuentoPromocion()
+      : 0;
     return descuentoCupon + descuentoPromocion;
   };
 
-  const obtenerTotal = () => {
+  const obtenerSubtotalConDescuento = () => {
+    const subtotal = total;
     const descuentoTotal = obtenerDescuentoTotal();
-    const subtotalConDescuentos = total - descuentoTotal;
-    const totalConImpuestos = subtotalConDescuentos * 1.15;
-
-    return Math.max(0, totalConImpuestos).toFixed(2);
+    return Math.max(0, subtotal - descuentoTotal);
   };
 
   const obtenerImpuesto = () => {
-    const descuentoTotal = obtenerDescuentoTotal();
-    const subtotalConDescuentos = total - descuentoTotal;
-    return (subtotalConDescuentos * 0.15).toFixed(2);
+    const subtotalConDescuento = obtenerSubtotalConDescuento();
+    return (subtotalConDescuento * 0.15).toFixed(2);
+  };
+
+  const obtenerTotal = () => {
+    const subtotalConDescuento = obtenerSubtotalConDescuento();
+    const impuesto = subtotalConDescuento * 0.15;
+    return (subtotalConDescuento + impuesto).toFixed(2);
   };
 
   const obtenerDescuento = () => {
@@ -277,40 +296,66 @@ function Carrito() {
     }
   };
 
-  // Verifica si el cupon es valido
+  // checkCupon actualizado
   const checkCupon = async (e) => {
     e.preventDefault();
     try {
-      console.log("Intentando obtener cupones...");
+      // 1️⃣ Obtener todos los cupones
       const res = await GetCupones();
-      console.log(res.data);
       const allCoupons = res.data ?? [];
 
+      // 2️⃣ Buscar cupón por código y activo
       const cuponValido = allCoupons.find(
         (c) =>
           c.codigo.toLowerCase() === cupon.toLowerCase() && c.activo === true
       );
 
-      if (cuponValido) {
-        setVisible(true);
-        setDesc(cuponValido);
-        toast.success(
-          `Cupón agregado: ${cuponValido.codigo}, ${cuponValido.valor}% de descuento`,
-          { className: "toast-success" }
-        );
-      } else {
+      if (!cuponValido) {
         setVisible(false);
         setDesc(0);
         toast.error("Cupón inválido o expirado", { className: "toast-error" });
+        return;
       }
+
+      // 3️⃣ Verificar si el usuario ya lo usó
+      const checkUsuario = await checkCuponUsuario(
+        cuponValido.id_cupon,
+        user.id_usuario
+      );
+
+      if (checkUsuario.data?.usado) {
+        setVisible(false);
+        setDesc(0);
+        toast.info("Ya has usado este cupón anteriormente", {
+          className: "toast-info",
+        });
+        return;
+      }
+
+      // 4️⃣ Cupón válido y no usado
+      setVisible(true);
+      setDesc(cuponValido);
+      toast.success(
+        `Cupón agregado: ${cuponValido.codigo}, ${cuponValido.valor}% de descuento`,
+        { className: "toast-success" }
+      );
     } catch (err) {
-      console.error("Error fetching coupons:", err);
+      console.error("Error verificando cupón:", err);
       toast.error("Error al verificar el cupón", { className: "toast-error" });
     }
   };
 
   const realizarCompra = async () => {
-    // Verificar stock antes de proceder con la compra
+    // Validar que el usuario tenga al menos una dirección
+    if (!user.direccions || user.direccions.length === 0) {
+      toast.info(
+        "Debes registrar al menos una dirección antes de realizar la compra",
+        { className: "toast-info" }
+      );
+      return;
+    }
+
+    // Validar stock
     for (const item of detalles) {
       const stockDisponible = getStockEnSucursal(item.producto.id_producto);
       if (item.cantidad_unidad_medida > stockDisponible) {
@@ -325,30 +370,24 @@ function Carrito() {
     try {
       const total_factura = obtenerTotal();
       const desc = parseFloat(obtenerDescuento());
-
-      console.log("Total factura con promociones:", total_factura);
-      console.log("Descuento total aplicado:", desc);
-      console.log(user.id_usuario);
-      console.log(user.direccions[0].id_direccion);
       const id_direccion = user.direccions[0].id_direccion.toString();
-
       const sucursalId = Number(idSucursal ?? sucursales[0]?.id_sucursal ?? 2);
 
-      // Obtener métodos de pago del usuario
+      // Obtener método de pago predeterminado
       const metodosPagoResponse = await getAllMetodoPago();
       const metodosPago = metodosPagoResponse.data || [];
-
-      // Encontrar el método de pago predeterminado
-      const metodoPagoDefault = metodosPago.find(mp => mp.metodo_predeterminado === true);
+      const metodoPagoDefault = metodosPago.find(
+        (mp) => mp.metodo_predeterminado === true
+      );
 
       if (!metodoPagoDefault) {
-        toast.error("No tienes un método de pago predeterminado configurado", { className: "toast-error" });
+        toast.error("No tienes un método de pago predeterminado configurado", {
+          className: "toast-error",
+        });
         return;
       }
 
-      console.log("Método de pago predeterminado:", metodoPagoDefault);
-      alert(descCupon.uso_maximo_por_usuario);
-
+      // Crear pedido
       const response = await crearPedido(
         user.id_usuario,
         id_direccion,
@@ -356,35 +395,47 @@ function Carrito() {
         promocionAplicada ? promocionAplicada.id_promocion : null,
         desc
       );
+      const id_pedido = response.data.id_pedido;
 
-      let usos=descCupon.uso_maximo_por_usuario-1;
-      if (descCupon.id_cupon !== 0) {
-        if (usos > 0) {
+      // Marcar cupón como usado si se aplicó
+      if (descCupon?.id_cupon) {
+        await usarCuponHistorial(
+          descCupon.id_cupon,
+          user.id_usuario,
+          id_pedido,
+          new Date().toISOString()
+        );
+
+        // Actualizar usos restantes y desactivar si es necesario
+        const usosRestantes = descCupon.uso_maximo_por_usuario - 1;
+        if (usosRestantes > 0) {
           await editarCupon(
             descCupon.id_cupon,
             descCupon.codigo,
             descCupon.descripcion,
             descCupon.tipo,
             descCupon.valor,
-            usos, 
+            usosRestantes,
             descCupon.termina_en,
-            true 
+            true
           );
         } else {
           await desactivarCupon(descCupon.id_cupon);
         }
       }
 
-      // Limpiar promoción aplicada si había una
+      // Limpiar estados de UI
       setPromocionAplicada(null);
       setCount(0);
-      console.log("Pedido creado:", response.data);
-      toast("Pedido creado correctamente!", { className: "toast-default" });
       setShowProd(false);
       setVisible(false);
+
+      toast("Pedido creado correctamente!", { className: "toast-default" });
+      console.log("Pedido creado:", response.data);
     } catch (err) {
-      console.error("Error creating pedido:", err);
-      const errorMessage = err?.response?.data?.error || "No se pudo crear el pedido";
+      console.error("Error creando pedido:", err);
+      const errorMessage =
+        err?.response?.data?.error || "No se pudo crear el pedido";
       toast.error(errorMessage, { className: "toast-error" });
     }
   };
@@ -547,108 +598,122 @@ function Carrito() {
   };
 
   // === Promos por producto (como en Inicio/Categoría) ===
-const [promosPorProducto, setPromosPorProducto] = useState({}); // { id_producto: [id_promocion, ...] }
-const [promosInfo, setPromosInfo] = useState({});               // { id_promocion: {...} }
+  const [promosPorProducto, setPromosPorProducto] = useState({}); // { id_producto: [id_promocion, ...] }
+  const [promosInfo, setPromosInfo] = useState({}); // { id_promocion: {...} }
 
-// /api/promociones/detalles → mapea productos a promociones
-useEffect(() => {
-  const fetchPromosDetalles = async () => {
-    try {
-      const res = await axiosInstance.get("/api/promociones/detalles");
-      const lista = Array.isArray(res?.data) ? res.data : [];
-      const map = {};
-      for (const promo of lista) {
-        const arr = Array.isArray(promo.productos) ? promo.productos : [];
-        for (const pid of arr) {
-          const idNum = Number(pid);
-          if (!map[idNum]) map[idNum] = [];
-          map[idNum].push(Number(promo.id_promocion));
+  // /api/promociones/detalles → mapea productos a promociones
+  useEffect(() => {
+    const fetchPromosDetalles = async () => {
+      try {
+        const res = await axiosInstance.get("/api/promociones/detalles");
+        const lista = Array.isArray(res?.data) ? res.data : [];
+        const map = {};
+        for (const promo of lista) {
+          const arr = Array.isArray(promo.productos) ? promo.productos : [];
+          for (const pid of arr) {
+            const idNum = Number(pid);
+            if (!map[idNum]) map[idNum] = [];
+            map[idNum].push(Number(promo.id_promocion));
+          }
         }
+        setPromosPorProducto(map);
+      } catch (err) {
+        console.error("[PROMOS DETALLES] error:", err?.response?.data || err);
       }
-      setPromosPorProducto(map);
-    } catch (err) {
-      console.error("[PROMOS DETALLES] error:", err?.response?.data || err);
-    }
-  };
-  fetchPromosDetalles();
-}, []);
+    };
+    fetchPromosDetalles();
+  }, []);
 
-// /api/promociones/listarorden → info de descuento/fechas
-useEffect(() => {
-  const fetchPromosInfo = async () => {
-    try {
-      const res = await axiosInstance.get("/api/promociones/listarorden");
-      const arr = Array.isArray(res?.data) ? res.data : [];
-      const map = {};
-      for (const p of arr) {
-        map[Number(p.id_promocion)] = {
-          id_promocion: Number(p.id_promocion),
-          id_tipo_promo: Number(p.id_tipo_promo), // 1=%  2=fijo
-          valor_porcentaje: p.valor_porcentaje != null ? parseFloat(p.valor_porcentaje) : null,
-          valor_fijo: p.valor_fijo != null ? Number(p.valor_fijo) : null,
-          compra_min: p.compra_min != null ? Number(p.compra_min) : null,
-          fecha_inicio: p.fecha_inicio || null,
-          fecha_termina: p.fecha_termina || null,
-          activa: p.activa === true || p.activa === 1 || p.activa === "true",
-        };
+  // /api/promociones/listarorden → info de descuento/fechas
+  useEffect(() => {
+    const fetchPromosInfo = async () => {
+      try {
+        const res = await axiosInstance.get("/api/promociones/listarorden");
+        const arr = Array.isArray(res?.data) ? res.data : [];
+        const map = {};
+        for (const p of arr) {
+          map[Number(p.id_promocion)] = {
+            id_promocion: Number(p.id_promocion),
+            id_tipo_promo: Number(p.id_tipo_promo), // 1=%  2=fijo
+            valor_porcentaje:
+              p.valor_porcentaje != null
+                ? parseFloat(p.valor_porcentaje)
+                : null,
+            valor_fijo: p.valor_fijo != null ? Number(p.valor_fijo) : null,
+            compra_min: p.compra_min != null ? Number(p.compra_min) : null,
+            fecha_inicio: p.fecha_inicio || null,
+            fecha_termina: p.fecha_termina || null,
+            activa: p.activa === true || p.activa === 1 || p.activa === "true",
+          };
+        }
+        setPromosInfo(map);
+      } catch (err) {
+        console.error(
+          "[PROMOS LISTARORDEN] error:",
+          err?.response?.data || err
+        );
       }
-      setPromosInfo(map);
-    } catch (err) {
-      console.error("[PROMOS LISTARORDEN] error:", err?.response?.data || err);
-    }
+    };
+    fetchPromosInfo();
+  }, []);
+
+  // Helpers (mismos que usas en otras vistas)
+  const isDateInRange = (startStr, endStr) => {
+    const today = new Date();
+    const start = startStr ? new Date(startStr) : null;
+    const end = endStr ? new Date(endStr) : null;
+    if (start && today < start) return false;
+    if (end && today > end) return false;
+    return true;
   };
-  fetchPromosInfo();
-}, []);
 
-// Helpers (mismos que usas en otras vistas)
-const isDateInRange = (startStr, endStr) => {
-  const today = new Date();
-  const start = startStr ? new Date(startStr) : null;
-  const end   = endStr   ? new Date(endStr)   : null;
-  if (start && today < start) return false;
-  if (end && today > end) return false;
-  return true;
-};
+  // ⬇️ AHORA valida también la compra mínima contra el subtotal del carrito
+  const computeDiscountedPriceByPromo = (basePrice, pInfo, cartSubtotal) => {
+    if (
+      !pInfo?.activa ||
+      !isDateInRange(pInfo.fecha_inicio, pInfo.fecha_termina)
+    )
+      return null;
 
-// ⬇️ AHORA valida también la compra mínima contra el subtotal del carrito
-const computeDiscountedPriceByPromo = (basePrice, pInfo, cartSubtotal) => {
-  if (!pInfo?.activa || !isDateInRange(pInfo.fecha_inicio, pInfo.fecha_termina)) return null;
+    const price = Number(basePrice) || 0;
+    if (price <= 0) return null;
 
-  const price = Number(basePrice) || 0;
-  if (price <= 0) return null;
+    const min = pInfo.compra_min != null ? Number(pInfo.compra_min) : 0;
+    const subtotal = Number(cartSubtotal) || 0;
 
-  const min = pInfo.compra_min != null ? Number(pInfo.compra_min) : 0;
-  const subtotal = Number(cartSubtotal) || 0;
+    // si la promo tiene compra mínima y el carrito no llega, NO aplica aún
+    if (min > 0 && subtotal < min) return null;
 
-  // si la promo tiene compra mínima y el carrito no llega, NO aplica aún
-  if (min > 0 && subtotal < min) return null;
-
-  // 1 = %; 2 = fijo
-  if (pInfo.id_tipo_promo === 1 && Number(pInfo.valor_porcentaje) > 0) {
-    const pct = Number(pInfo.valor_porcentaje) / 100;
-    return Math.max(0, price * (1 - pct));
-  }
-  if (pInfo.id_tipo_promo === 2 && Number(pInfo.valor_fijo) > 0) {
-    return Math.max(0, price - Number(pInfo.valor_fijo));
-  }
-  return null;
-};
-
-// ⬇️ pásale el subtotal del carrito (por defecto, tu estado `total`)
-const bestPromoPriceForProduct = (prod, cartSubtotal = total) => {
-  const base = Number(prod?.precio_base) || 0;
-  const ids = promosPorProducto[Number(prod?.id_producto)] || [];
-  let best = null;
-  for (const idPromo of ids) {
-    const info = promosInfo[idPromo];
-    const discounted = computeDiscountedPriceByPromo(base, info, cartSubtotal);
-    if (discounted == null) continue;
-    if (best == null || discounted < best.finalPrice) {
-      best = { finalPrice: discounted, promoId: idPromo };
+    // 1 = %; 2 = fijo
+    if (pInfo.id_tipo_promo === 1 && Number(pInfo.valor_porcentaje) > 0) {
+      const pct = Number(pInfo.valor_porcentaje) / 100;
+      return Math.max(0, price * (1 - pct));
     }
-  }
-  return best; // { finalPrice, promoId } | null
-};
+    if (pInfo.id_tipo_promo === 2 && Number(pInfo.valor_fijo) > 0) {
+      return Math.max(0, price - Number(pInfo.valor_fijo));
+    }
+    return null;
+  };
+
+  // ⬇️ pásale el subtotal del carrito (por defecto, tu estado `total`)
+  const bestPromoPriceForProduct = (prod, cartSubtotal = total) => {
+    const base = Number(prod?.precio_base) || 0;
+    const ids = promosPorProducto[Number(prod?.id_producto)] || [];
+    let best = null;
+    for (const idPromo of ids) {
+      const info = promosInfo[idPromo];
+      const discounted = computeDiscountedPriceByPromo(
+        base,
+        info,
+        cartSubtotal
+      );
+      if (discounted == null) continue;
+      if (best == null || discounted < best.finalPrice) {
+        best = { finalPrice: discounted, promoId: idPromo };
+      }
+    }
+    return best; // { finalPrice, promoId } | null
+  };
 
   //Automatico cuando cambie el total
   useEffect(() => {
@@ -827,16 +892,20 @@ const bestPromoPriceForProduct = (prod, cartSubtotal = total) => {
 
                           <div className="flex flex-col w-full text-left font-medium flex-1">
                             <p
-  className="py-2 text-xl cursor-pointer"
-  onClick={() => navigate(`/producto/${p.producto.id_producto}`)}
->
-  {p.producto.nombre}
-  {bestPromoPriceForProduct(p.producto, total) && (
-    <span style={{ ...styles.offerChip, marginLeft: 8 }}>OFERTA</span>
-  )}
-</p>
-
-
+                              className="py-2 text-xl cursor-pointer"
+                              onClick={() =>
+                                navigate(`/producto/${p.producto.id_producto}`)
+                              }
+                            >
+                              {p.producto.nombre}
+                              {bestPromoPriceForProduct(p.producto, total) && (
+                                <span
+                                  style={{ ...styles.offerChip, marginLeft: 8 }}
+                                >
+                                  OFERTA
+                                </span>
+                              )}
+                            </p>
 
                             <div className="flex -mt-1 mb-1">
                               {Array.from({ length: 5 }).map((_, idx) => (
@@ -934,9 +1003,14 @@ const bestPromoPriceForProduct = (prod, cartSubtotal = total) => {
                               {/* Precio a la derecha (subtotal con OFERTA si aplica) */}
                               <div className="flex w-full h-full justify-end items-center">
                                 {(() => {
-                                  const best = bestPromoPriceForProduct(p.producto, total); // 👈
-                                  const qty = Number(p.cantidad_unidad_medida) || 0;
-                                  const unitBase = Number(p.producto.precio_base) || 0;
+                                  const best = bestPromoPriceForProduct(
+                                    p.producto,
+                                    total
+                                  ); // 👈
+                                  const qty =
+                                    Number(p.cantidad_unidad_medida) || 0;
+                                  const unitBase =
+                                    Number(p.producto.precio_base) || 0;
                                   const subBase = unitBase * qty;
 
                                   if (best) {
@@ -953,7 +1027,11 @@ const bestPromoPriceForProduct = (prod, cartSubtotal = total) => {
                                     );
                                   }
 
-                                  return <div className="text-2xl font-bold">L. {subBase.toFixed(2)}</div>;
+                                  return (
+                                    <div className="text-2xl font-bold">
+                                      L. {subBase.toFixed(2)}
+                                    </div>
+                                  );
                                 })()}
                               </div>
                             </div>
@@ -1014,11 +1092,14 @@ const bestPromoPriceForProduct = (prod, cartSubtotal = total) => {
                         <p className="text-xs text-green-600">
                           Descuento:{" "}
                           {promocionAplicada.id_tipo_promo === 1
-                            ? `${promocionAplicada.valor_porcentaje}%`
-                            : `L. ${promocionAplicada.valor_fijo}`}
+                            ? `${promocionAplicada.valor_porcentaje.toFixed(
+                                2
+                              )}%`
+                            : `L. ${promocionAplicada.valor_fijo.toFixed(2)}`}
                         </p>
                         <p className="text-xs text-gray-500">
-                          En compra mínima de: L. {promocionAplicada.compra_min}
+                          En compra mínima de: L.{" "}
+                          {promocionAplicada.compra_min.toFixed(2)}
                         </p>
                       </div>
                     </div>
@@ -1080,9 +1161,18 @@ const bestPromoPriceForProduct = (prod, cartSubtotal = total) => {
                     {/* Descuento de cupón */}
                     {discount && descCupon.valor > 0 && (
                       <li className="flex justify-between text-blue-600">
-                        <span>Descuento cupón ({descCupon.valor}%)</span>
                         <span>
-                          -L. {(total * (descCupon.valor / 100)).toFixed(2)}
+                          Descuento cupón (
+                          {descCupon.tipo === "porcentaje"
+                            ? `${descCupon.valor}%`
+                            : `L. ${descCupon.valor.toFixed(2)}`}
+                          )
+                        </span>
+                        <span>
+                          -L.{" "}
+                          {descCupon.tipo === "porcentaje"
+                            ? (total * (descCupon.valor / 100)).toFixed(2)
+                            : descCupon.valor.toFixed(2)}
                         </span>
                       </li>
                     )}
@@ -1093,8 +1183,10 @@ const bestPromoPriceForProduct = (prod, cartSubtotal = total) => {
                         <span>
                           Promoción (
                           {promocionAplicada.id_tipo_promo === 1
-                            ? `${promocionAplicada.valor_porcentaje}%`
-                            : `L. ${promocionAplicada.valor_fijo} fijo`}
+                            ? `${promocionAplicada.valor_porcentaje.toFixed(
+                                2
+                              )}%`
+                            : `L. ${promocionAplicada.valor_fijo.toFixed(2)}`}
                           )
                         </span>
                         <span>
@@ -1188,8 +1280,10 @@ const bestPromoPriceForProduct = (prod, cartSubtotal = total) => {
                   onClick={() => navigate(`/producto/${p.id_producto}`)}
                 >
                   <div style={styles.topRow}>
-                    {bestPromoPriceForProduct(p) && <span style={styles.offerChip}>OFERTA</span>}
-  <div style={styles.stars}>
+                    {bestPromoPriceForProduct(p) && (
+                      <span style={styles.offerChip}>OFERTA</span>
+                    )}
+                    <div style={styles.stars}>
                       {Array.from({ length: 5 }).map((_, idx) => (
                         <span
                           key={idx}
@@ -1219,20 +1313,28 @@ const bestPromoPriceForProduct = (prod, cartSubtotal = total) => {
                     <div style={styles.productImg}>Imagen no disponible</div>
                   )}
                   <p style={styles.productName}>{p.nombre}</p>
-                   <div style={styles.priceRow}>
-   {(() => {
-     const best = bestPromoPriceForProduct(p);
-     if (best) {
-       return (
-         <>
-           <span style={styles.newPrice}>L. {best.finalPrice.toFixed(2)}</span>
-           <span style={styles.strikePrice}>L. {Number(p.precio_base).toFixed(2)}</span>
-         </>
-       );
-     }
-     return <span style={styles.productPrice}>L. {Number(p.precio_base).toFixed(2)}</span>;
-   })()}
- </div>
+                  <div style={styles.priceRow}>
+                    {(() => {
+                      const best = bestPromoPriceForProduct(p);
+                      if (best) {
+                        return (
+                          <>
+                            <span style={styles.newPrice}>
+                              L. {best.finalPrice.toFixed(2)}
+                            </span>
+                            <span style={styles.strikePrice}>
+                              L. {Number(p.precio_base).toFixed(2)}
+                            </span>
+                          </>
+                        );
+                      }
+                      return (
+                        <span style={styles.productPrice}>
+                          L. {Number(p.precio_base).toFixed(2)}
+                        </span>
+                      );
+                    })()}
+                  </div>
                   <button
                     style={{
                       ...styles.addButton,
@@ -1373,37 +1475,36 @@ const styles = {
     flexDirection: "column",
   },
   priceRow: {
-  width: "100%",
-  display: "flex",
-  alignItems: "baseline",
-  gap: "10px",
-  marginTop: "auto",
-},
+    width: "100%",
+    display: "flex",
+    alignItems: "baseline",
+    gap: "10px",
+    marginTop: "auto",
+  },
 
-newPrice: {
-  fontSize: "17px",
-  fontWeight: 900,
-  color: "#16a34a", // verde
-  lineHeight: 1.1,
-},
+  newPrice: {
+    fontSize: "17px",
+    fontWeight: 900,
+    color: "#16a34a", // verde
+    lineHeight: 1.1,
+  },
 
-strikePrice: {
-  fontSize: "14px",
-  color: "#94a3b8", // gris
-  textDecoration: "line-through",
-  lineHeight: 1.1,
-},
+  strikePrice: {
+    fontSize: "14px",
+    color: "#94a3b8", // gris
+    textDecoration: "line-through",
+    lineHeight: 1.1,
+  },
 
-offerChip: {
-  backgroundColor: "#ff1744",
-  color: "#fff",
-  fontWeight: 800,
-  fontSize: 12,
-  padding: "2px 8px",
-  borderRadius: "999px",
-  letterSpacing: 1,
-},
-
+  offerChip: {
+    backgroundColor: "#ff1744",
+    color: "#fff",
+    fontWeight: 800,
+    fontSize: 12,
+    padding: "2px 8px",
+    borderRadius: "999px",
+    letterSpacing: 1,
+  },
 };
 
 export default Carrito;

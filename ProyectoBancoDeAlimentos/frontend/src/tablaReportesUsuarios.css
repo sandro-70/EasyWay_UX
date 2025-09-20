@@ -71,9 +71,10 @@
 .usuario-toolbar {
   display: flex;
   justify-content: flex-start;
-  align-items: center;
+  align-items: left;
   gap: 20px; /* espacio entre contador y filtro */
   margin-bottom: 15px;
+  margin-left: 0;
 }
 
 .usuario-count {

@@ -10,5 +10,8 @@ router.get('/usuario/:id_usuario', cuponController.allCupones);
 router.patch('/desactivar-cupon/:id_cupon', cuponController.desactivarCupon);
 router.put('/editar-cupon/:id_cupon', cuponController.editarCupon);
 router.post('/crear-cupon/:id_usuario', cuponController.crearCupon);
+router.post("/usar-cupon", cuponController.usarCuponHistorial);
+router.get('/check-uso/:id_cupon/usuario/:id_usuario', cuponController.verificarUsoCupon);
+
 
 module.exports = router;

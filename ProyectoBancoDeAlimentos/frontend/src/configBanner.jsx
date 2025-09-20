@@ -16,20 +16,17 @@ const BACKEND_ORIGIN = (() => {
   }
 })();
 
-// para nombres de archivo tipo "foto.jpg"
 const backendImageUrl = (fileName) =>
   fileName
     ? `${BACKEND_ORIGIN}/api/images/productos/${encodeURIComponent(fileName)}`
     : "";
 
-// adapta la ruta que venga en DB a una URL válida del backend
 const toPublicFotoSrc = (nameOrPath, defaultDir = "productos") => {
   if (!nameOrPath) return "";
   const s = String(nameOrPath).trim();
-  if (/^https?:\/\//i.test(s)) return s; // ya es absoluta
+  if (/^https?:\/\//i.test(s)) return s;
   if (s.startsWith("/api/images/")) return `${BACKEND_ORIGIN}${encodeURI(s)}`;
   if (s.startsWith("/images/")) return `${BACKEND_ORIGIN}/api${encodeURI(s)}`;
-  // nombre suelto => /api/images/<defaultDir>/<archivo>
   return `${BACKEND_ORIGIN}/api/images/${encodeURIComponent(
     defaultDir
   )}/${encodeURIComponent(s)}`;
@@ -49,6 +46,8 @@ const ConfigBanner = () => {
     status: false,
   });
 
+  // Reemplazar la función fetchBanners actual con esta versión corregida:
+
   const fetchBanners = async () => {
     try {
       setLoading(true);
@@ -56,20 +55,19 @@ const ConfigBanner = () => {
       const res = await getPromocionesOrden();
       console.log("Respuesta completa de la API:", res);
 
-      const mappedBanners = res.data.map((item) => {
-        console.log("Item individual:", item);
-        return {
-          id_promocion: item.id_promocion,
-          orden: item.orden,
-          name: item.nombre_promocion,
-          description: item.descripción || item.descripcion,
-          backgroundImage: item.banner_url,
-          status:
-            item.activa === true || item.activa === 1 || item.activa === "true",
-        };
-      });
+      const mappedBanners = res.data.map((item) => ({
+        id_promocion: item.id_promocion,
+        orden: item.orden || 0,
+        name: item.nombre_promocion || "",
+        description: item.descripción || item.descripcion || "",
+        backgroundImage: item.banner_url || "",
+        status:
+          item.activa === true || item.activa === 1 || item.activa === "true",
+      }));
+
       setBanners(mappedBanners);
 
+      // Ajustar índice si es necesario
       if (mappedBanners.length === 0) {
         setCurrentIndex(0);
       } else if (currentIndex >= mappedBanners.length) {
@@ -84,45 +82,42 @@ const ConfigBanner = () => {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     fetchBanners();
   }, []);
 
   const nextBanner = () => {
-    setCurrentIndex((prev) => (prev + 1) % banners.length);
-  };
-
-  const prevBanner = () => {
-    setCurrentIndex((prev) => (prev - 1 + banners.length) % banners.length);
-  };
-
-  // Función para contar banners activos
-  const getActiveBannersCount = () => {
-    return banners.filter((banner) => banner.status && banner.orden > 0).length;
-  };
-
-  // Función para obtener el orden máximo después del cambio
-  const getMaxOrderAfterChange = (willBeActive) => {
-    const currentBanner = banners[currentIndex];
-    const currentlyActiveBanners = getActiveBannersCount();
-
-    if (willBeActive) {
-      // Se está activando un banner inactivo: +1 al total
-      return currentlyActiveBanners + 1;
-    } else if (!willBeActive && currentBanner.status) {
-      // Se está desactivando un banner activo: -1 al total
-      return currentlyActiveBanners - 1;
-    } else {
-      // No cambia el estado, el máximo es el número actual de activos
-      return currentlyActiveBanners;
+    if (banners.length > 0) {
+      setCurrentIndex((prev) => (prev + 1) % banners.length);
     }
   };
 
+  const prevBanner = () => {
+    if (banners.length > 0) {
+      setCurrentIndex((prev) => (prev - 1 + banners.length) % banners.length);
+    }
+  };
+
+  // Función para obtener banners activos ordenados
+  const getActiveBanners = () => {
+    return banners
+      .filter((banner) => banner.status && banner.orden > 0)
+      .sort((a, b) => a.orden - b.orden);
+  };
+
+  // Función para obtener el siguiente orden disponible
+  const getNextAvailableOrder = () => {
+    const activeBanners = getActiveBanners();
+    return activeBanners.length + 1;
+  };
+
   const openEditModal = () => {
+    if (!banners[currentIndex]) return;
+
     const current = banners[currentIndex];
     setEditForm({
-      orden: current.status ? current.orden || 1 : "",
+      orden:
+        current.status && current.orden > 0 ? current.orden.toString() : "",
       name: current.name || "",
       description: current.description || "",
       status: current.status || false,
@@ -140,14 +135,14 @@ const ConfigBanner = () => {
     setEditForm((prev) => {
       const newForm = { ...prev, [field]: value };
 
-      // Si cambia el estado a activo, asignar el siguiente orden disponible (al final)
+      // Lógica para el orden cuando cambia el estado
       if (field === "status") {
         if (value) {
-          // Se activa: poner al final de la secuencia
-          const maxOrder = getMaxOrderAfterChange(true);
-          newForm.orden = maxOrder;
+          // Se activa: asignar el siguiente orden disponible
+          const nextOrder = getNextAvailableOrder();
+          newForm.orden = nextOrder.toString();
         } else {
-          // Se desactiva: orden = 0
+          // Se desactiva: limpiar orden
           newForm.orden = "";
         }
       }
@@ -156,195 +151,245 @@ const ConfigBanner = () => {
     });
   };
 
-  // Función para validar el orden ingresado
-  const validateOrder = (orden, isActive) => {
-    if (!isActive) {
-      return { isValid: true, message: "" };
+  // Función para validar el formulario
+  const validateForm = () => {
+    if (!editForm.name.trim()) {
+      alert("El nombre del banner es obligatorio");
+      return false;
     }
 
-    const orderNum = orden;
-    const maxOrder = getMaxOrderAfterChange(true);
-
-    if (isNaN(orderNum)) {
-      return { isValid: false, message: "El orden debe ser un número" };
+    if (!editForm.description.trim()) {
+      alert("La descripción del banner es obligatoria");
+      return false;
     }
 
-    if (orderNum < 1) {
-      return { isValid: false, message: "El orden mínimo es 1" };
-    }
+    if (editForm.status) {
+      const orderNum = parseInt(editForm.orden);
+      if (isNaN(orderNum) || orderNum < 1) {
+        alert("El orden debe ser un número mayor a 0");
+        return false;
+      }
 
-    if (orderNum > maxOrder) {
-      return {
-        isValid: false,
-        message: `El orden máximo permitido es ${maxOrder}`,
-      };
-    }
+      const activeBanners = getActiveBanners();
+      const currentBanner = banners[currentIndex];
 
-    return { isValid: true, message: "" };
-  };
-
-  // Función para reorganizar banners cuando se cambia el orden
-  const reorganizeBanners = async (newOrder, currentBanner) => {
-    const currentOrder = currentBanner.orden;
-
-    // Si el banner está inactivo y se está activando
-    if (!currentBanner.status && editForm.status) {
-      // Mover todos los banners desde la posición deseada hacia adelante
-      const bannersToMove = banners.filter(
-        (banner) =>
-          banner.id_promocion !== currentBanner.id_promocion &&
-          banner.status &&
-          banner.orden >= newOrder
+      // Filtrar el banner actual si ya está activo
+      const otherActiveBanners = activeBanners.filter(
+        (banner) => banner.id_promocion !== currentBanner.id_promocion
       );
 
-      if (bannersToMove.length > 0) {
-        const confirmMessage = `Al activar "${
-          currentBanner.name
-        }" en la posición ${newOrder}, se moverán los siguientes banners:
+      const maxAllowedOrder = otherActiveBanners.length + 1;
 
-${bannersToMove
-  .map((b) => `"${b.name}" (${b.orden} → ${b.orden + 1})`)
-  .join("\n")}
-
-¿Deseas continuar?`;
-
-        if (!window.confirm(confirmMessage)) {
-          return false;
-        }
-
-        // Mover los banners afectados
-        for (const banner of bannersToMove.sort((a, b) => b.orden - a.orden)) {
-          await actualizarPromocion(banner.id_promocion, {
-            orden: banner.orden + 1,
-            nombre_promocion: banner.name,
-            descripción: banner.description,
-            banner_url: banner.backgroundImage,
-            activa: banner.status,
-          });
-        }
-      }
-      return true;
-    }
-
-    // Si el banner ya está activo y cambia de posición
-    if (currentBanner.status && editForm.status && newOrder !== currentOrder) {
-      let bannersToMove = [];
-      let message = "";
-
-      if (newOrder > currentOrder) {
-        // Moviendo hacia adelante: los banners entre current+1 y newOrder se mueven hacia atrás
-        bannersToMove = banners.filter(
-          (banner) =>
-            banner.id_promocion !== currentBanner.id_promocion &&
-            banner.status &&
-            banner.orden > currentOrder &&
-            banner.orden <= newOrder
-        );
-        message = `Al mover "${
-          currentBanner.name
-        }" del orden ${currentOrder} al ${newOrder}, se moverán hacia atrás:
-
-${bannersToMove
-  .map((b) => `"${b.name}" (${b.orden} → ${b.orden - 1})`)
-  .join("\n")}`;
-      } else {
-        // Moviendo hacia atrás: los banners entre newOrder y current-1 se mueven hacia adelante
-        bannersToMove = banners.filter(
-          (banner) =>
-            banner.id_promocion !== currentBanner.id_promocion &&
-            banner.status &&
-            banner.orden >= newOrder &&
-            banner.orden < currentOrder
-        );
-        message = `Al mover "${
-          currentBanner.name
-        }" del orden ${currentOrder} al ${newOrder}, se moverán hacia adelante:
-
-${bannersToMove
-  .map((b) => `"${b.name}" (${b.orden} → ${b.orden + 1})`)
-  .join("\n")}`;
-      }
-
-      if (bannersToMove.length > 0) {
-        message += "\n\n¿Deseas continuar?";
-        if (!window.confirm(message)) {
-          return false;
-        }
-
-        // Reorganizar los banners afectados
-        for (const banner of bannersToMove) {
-          const newBannerOrder =
-            newOrder > currentOrder ? banner.orden - 1 : banner.orden + 1;
-          await actualizarPromocion(banner.id_promocion, {
-            orden: newBannerOrder,
-            nombre_promocion: banner.name,
-            descripción: banner.description,
-            banner_url: banner.backgroundImage,
-            activa: banner.status,
-          });
-        }
+      if (orderNum > maxAllowedOrder) {
+        alert(`El orden máximo permitido es ${maxAllowedOrder}`);
+        return false;
       }
     }
 
     return true;
   };
 
-  const saveChanges = async () => {
-    // Validaciones básicas
-    if (!editForm.name.trim() || !editForm.description.trim()) {
-      alert("Por favor completa todos los campos requeridos");
-      return;
+  // Función para reorganizar todos los banners activos manteniendo secuencia 1,2,3...
+  const reorganizeAllBanners = async (newOrder, currentBanner) => {
+    const orderNum = parseInt(newOrder);
+    const activeBanners = getActiveBanners();
+
+    if (!editForm.status) {
+      // Si se está desactivando, no hay reorganización aquí
+      return true;
     }
 
-    // Validar orden si está activo
-    const orderValidation = validateOrder(editForm.orden, editForm.status);
-    if (!orderValidation.isValid) {
-      alert(orderValidation.message);
-      return;
+    // Obtener todos los banners activos excluyendo el actual
+    let otherActiveBanners = activeBanners.filter(
+      (banner) => banner.id_promocion !== currentBanner.id_promocion
+    );
+
+    // Crear la nueva secuencia insertando el banner actual en la posición deseada
+    const finalSequence = [...otherActiveBanners];
+    finalSequence.splice(orderNum - 1, 0, {
+      ...currentBanner,
+      orden: orderNum,
+      name: editForm.name.trim(),
+      description: editForm.description.trim(),
+      status: editForm.status,
+    });
+
+    // Calcular qué banners necesitan moverse
+    const changes = [];
+    const bannersToUpdate = [];
+
+    finalSequence.forEach((banner, index) => {
+      const newOrderValue = index + 1;
+
+      if (banner.id_promocion === currentBanner.id_promocion) {
+        // Este es el banner que estamos editando
+        const oldOrder = currentBanner.status ? currentBanner.orden : 0;
+        if (oldOrder !== newOrderValue) {
+          changes.push(
+            `• "${banner.name}" (${
+              oldOrder > 0 ? oldOrder : "Inactivo"
+            } → ${newOrderValue})`
+          );
+        }
+      } else {
+        // Otros banners que pueden necesitar moverse
+        const currentOrderInDB =
+          activeBanners.find((b) => b.id_promocion === banner.id_promocion)
+            ?.orden || 0;
+        if (currentOrderInDB !== newOrderValue) {
+          changes.push(
+            `• "${banner.name}" (${currentOrderInDB} → ${newOrderValue})`
+          );
+          bannersToUpdate.push({
+            ...banner,
+            newOrder: newOrderValue,
+            oldOrder: currentOrderInDB,
+          });
+        }
+      }
+    });
+
+    // Mostrar confirmación si hay otros banners que se van a mover
+    const otherChanges = changes.filter(
+      (change) => !change.includes(currentBanner.name)
+    );
+    if (otherChanges.length > 0) {
+      const confirmMessage = `Para mantener el orden secuencial, se reorganizarán los siguientes banners:
+
+${otherChanges.join("\n")}
+
+¿Deseas continuar?`;
+
+      if (!window.confirm(confirmMessage)) {
+        return false;
+      }
     }
+
+    // Actualizar todos los banners que necesitan cambio (excepto el actual)
+    for (const bannerToUpdate of bannersToUpdate) {
+      try {
+        await actualizarPromocion(bannerToUpdate.id_promocion, {
+          orden: bannerToUpdate.newOrder,
+          nombre_promocion: bannerToUpdate.name,
+          descripción: bannerToUpdate.description,
+          banner_url: bannerToUpdate.backgroundImage,
+          activa: bannerToUpdate.status,
+        });
+        console.log(
+          `Banner "${bannerToUpdate.name}" movido de posición ${bannerToUpdate.oldOrder} a ${bannerToUpdate.newOrder}`
+        );
+      } catch (error) {
+        console.error(
+          `Error reorganizando banner ${bannerToUpdate.name}:`,
+          error
+        );
+        throw error;
+      }
+    }
+
+    return true;
+  };
+
+  // Reemplaza la función saveChanges actual con esta versión mejorada:
+
+  const saveChanges = async () => {
+    if (!validateForm()) return;
 
     try {
       setSaving(true);
       const currentBanner = banners[currentIndex];
       const newOrder = editForm.status ? parseInt(editForm.orden) : 0;
 
-      // Si hay cambio en el orden o estado, reorganizar primero
-      if (
-        editForm.status !== currentBanner.status ||
-        (editForm.status && newOrder !== currentBanner.orden)
+      // Caso 1: Se está desactivando un banner que estaba activo
+      if (!editForm.status && currentBanner.status && currentBanner.orden > 0) {
+        // Primero desactivar el banner actual
+        const updateData = {
+          orden: 0,
+          nombre_promocion: editForm.name.trim(),
+          descripción: editForm.description.trim(),
+          banner_url: currentBanner.backgroundImage,
+          activa: false,
+        };
+
+        await actualizarPromocion(currentBanner.id_promocion, updateData);
+
+        // Reorganizar banners que estaban después del banner desactivado
+        const activeBanners = getActiveBanners();
+        const bannersToMove = activeBanners.filter(
+          (banner) =>
+            banner.id_promocion !== currentBanner.id_promocion &&
+            banner.orden > currentBanner.orden
+        );
+
+        console.log(`Banners que se moverán hacia adelante:`, bannersToMove);
+
+        // Mover cada banner una posición hacia adelante (decrementar orden en 1)
+        for (const banner of bannersToMove) {
+          try {
+            await actualizarPromocion(banner.id_promocion, {
+              orden: banner.orden - 1,
+              nombre_promocion: banner.name,
+              descripción: banner.description,
+              banner_url: banner.backgroundImage,
+              activa: banner.status,
+            });
+            console.log(
+              `Banner "${banner.name}" movido de posición ${banner.orden} a ${
+                banner.orden - 1
+              }`
+            );
+          } catch (error) {
+            console.error(`Error reorganizando banner ${banner.name}:`, error);
+            throw error;
+          }
+        }
+
+        alert("Banner desactivado exitosamente.");
+      }
+      // Caso 2: Se está activando o cambiando orden de un banner activo
+      else if (
+        editForm.status &&
+        (newOrder !== currentBanner.orden || !currentBanner.status)
       ) {
-        const reorganizeResult = await reorganizeBanners(
+        const reorganizeResult = await reorganizeAllBanners(
           newOrder,
           currentBanner
         );
         if (!reorganizeResult) {
           setSaving(false);
-          return; // Usuario canceló
+          return;
         }
+
+        // Actualizar el banner actual
+        const updateData = {
+          orden: newOrder,
+          nombre_promocion: editForm.name.trim(),
+          descripción: editForm.description.trim(),
+          banner_url: currentBanner.backgroundImage,
+          activa: editForm.status,
+        };
+
+        await actualizarPromocion(currentBanner.id_promocion, updateData);
+        alert("Banner actualizado exitosamente");
+      }
+      // Caso 3: Solo se están editando nombre/descripción sin cambios de estado u orden
+      else {
+        const updateData = {
+          orden: newOrder,
+          nombre_promocion: editForm.name.trim(),
+          descripción: editForm.description.trim(),
+          banner_url: currentBanner.backgroundImage,
+          activa: editForm.status,
+        };
+
+        await actualizarPromocion(currentBanner.id_promocion, updateData);
+        alert("Banner actualizado exitosamente");
       }
 
-      // Actualizar el banner actual
-      const updateData = {
-        orden: newOrder,
-        nombre_promocion: editForm.name.trim(),
-        descripción: editForm.description.trim(),
-        banner_url: currentBanner.backgroundImage,
-        activa: editForm.status,
-      };
-
-      console.log(
-        "Actualizando promoción:",
-        currentBanner.id_promocion,
-        updateData
-      );
-      await actualizarPromocion(currentBanner.id_promocion, updateData);
-
-      alert("Banner actualizado exitosamente");
       closeEditModal();
       await fetchBanners();
     } catch (err) {
       console.error("Error completo al guardar:", err);
-      console.error("Respuesta del servidor:", err.response);
 
       let errorMessage = "Error desconocido";
       if (err.response?.data?.message) {
@@ -365,13 +410,16 @@ ${bannersToMove
     fetchBanners();
   };
 
-  if (loading)
+  // Estados de carga y error
+  if (loading) {
     return (
       <div style={{ textAlign: "center", marginTop: 40 }}>
         Cargando banners...
       </div>
     );
-  if (error)
+  }
+
+  if (error) {
     return (
       <div style={{ textAlign: "center", marginTop: 40, color: "#dc2626" }}>
         <div>{error}</div>
@@ -391,7 +439,9 @@ ${bannersToMove
         </button>
       </div>
     );
-  if (banners.length === 0)
+  }
+
+  if (banners.length === 0) {
     return (
       <div style={{ textAlign: "center", marginTop: 40 }}>
         <div>No hay banners disponibles</div>
@@ -411,8 +461,13 @@ ${bannersToMove
         </button>
       </div>
     );
+  }
 
   const currentBanner = banners[currentIndex];
+  const activeBannersCount = getActiveBanners().length;
+  const maxOrder = editForm.status
+    ? activeBannersCount + 1
+    : activeBannersCount;
 
   return (
     <div style={styles.pageWrapper}>
@@ -431,10 +486,13 @@ ${bannersToMove
             <button
               onClick={prevBanner}
               style={{ ...styles.navigationArrow, ...styles.navLeft }}
+              disabled={banners.length <= 1}
               onMouseOver={(e) => {
-                e.target.style.background =
-                  styles.navigationArrowHover.background;
-                e.target.style.color = styles.navigationArrowHover.color;
+                if (banners.length > 1) {
+                  e.target.style.background =
+                    styles.navigationArrowHover.background;
+                  e.target.style.color = styles.navigationArrowHover.color;
+                }
               }}
               onMouseOut={(e) => {
                 e.target.style.background = styles.navigationArrow.background;
@@ -451,7 +509,7 @@ ${bannersToMove
                     currentBanner.backgroundImage,
                     "fotoDePerfil"
                   )}
-                  alt={currentBanner.name}
+                  alt={currentBanner.name || "Banner"}
                   style={styles.bannerImage}
                   onError={(e) => {
                     e.currentTarget.onerror = null;
@@ -463,11 +521,15 @@ ${bannersToMove
               <div style={styles.bannerContent}>
                 <div style={styles.bannerId}>
                   Orden:{" "}
-                  {currentBanner.status ? currentBanner.orden : "Inactivo (0)"}
+                  {currentBanner.status && currentBanner.orden > 0
+                    ? currentBanner.orden
+                    : "Inactivo (0)"}
                 </div>
-                <div style={styles.bannerName}>{currentBanner.name}</div>
+                <div style={styles.bannerName}>
+                  {currentBanner.name || "Sin nombre"}
+                </div>
                 <div style={styles.bannerDescription}>
-                  {currentBanner.description}
+                  {currentBanner.description || "Sin descripción"}
                 </div>
                 <div style={styles.bannerStatus}>
                   Estado: {currentBanner.status ? "Activa" : "Inactiva"}
@@ -478,10 +540,13 @@ ${bannersToMove
             <button
               onClick={nextBanner}
               style={{ ...styles.navigationArrow, ...styles.navRight }}
+              disabled={banners.length <= 1}
               onMouseOver={(e) => {
-                e.target.style.background =
-                  styles.navigationArrowHover.background;
-                e.target.style.color = styles.navigationArrowHover.color;
+                if (banners.length > 1) {
+                  e.target.style.background =
+                    styles.navigationArrowHover.background;
+                  e.target.style.color = styles.navigationArrowHover.color;
+                }
               }}
               onMouseOut={(e) => {
                 e.target.style.background = styles.navigationArrow.background;
@@ -500,7 +565,8 @@ ${bannersToMove
               </span>
             </div>
             <div style={styles.bannerCounter}>
-              Banner {currentIndex + 1} de {banners.length}
+              Banner {currentIndex + 1} de {banners.length} | Activos:{" "}
+              {activeBannersCount}
             </div>
           </div>
 
@@ -514,16 +580,6 @@ ${bannersToMove
                     style={styles.closeButton}
                     onClick={closeEditModal}
                     disabled={saving}
-                    onMouseOver={(e) => {
-                      if (!saving) {
-                        e.target.style.backgroundColor = "#f3f4f6";
-                      }
-                    }}
-                    onMouseOut={(e) => {
-                      if (!saving) {
-                        e.target.style.backgroundColor = "transparent";
-                      }
-                    }}
                   >
                     ×
                   </button>
@@ -539,7 +595,7 @@ ${bannersToMove
                           currentBanner.backgroundImage,
                           "fotoDePerfil"
                         )}
-                        alt={editForm.name || currentBanner.name}
+                        alt={editForm.name || currentBanner.name || "Banner"}
                         style={styles.previewBannerImage}
                         onError={(e) => {
                           e.currentTarget.onerror = null;
@@ -551,8 +607,8 @@ ${bannersToMove
                     <div style={styles.previewBannerContent}>
                       <div style={styles.previewBannerId}>
                         Orden:{" "}
-                        {editForm.status
-                          ? editForm.orden || "1"
+                        {editForm.status && editForm.orden
+                          ? editForm.orden
                           : "Inactivo (0)"}
                       </div>
                       <div style={styles.previewBannerName}>
@@ -569,6 +625,7 @@ ${bannersToMove
                   </div>
                 </div>
 
+                {/* Formulario */}
                 <div style={styles.formGroup}>
                   <div style={styles.statusRow}>
                     <label style={styles.label}>Estado de la Promoción:</label>
@@ -582,7 +639,6 @@ ${bannersToMove
                         style={styles.hiddenCheckbox}
                         disabled={saving}
                       />
-
                       <div
                         style={{
                           ...styles.toggleSlider,
@@ -592,7 +648,6 @@ ${bannersToMove
                         }}
                       >
                         <span>{editForm.status ? "Activa" : "Inactiva"}</span>
-
                         <div
                           style={{
                             ...styles.toggleButton,
@@ -607,7 +662,7 @@ ${bannersToMove
                 </div>
 
                 <div style={styles.formGroup}>
-                  <label style={styles.label}>Orden del Banner </label>
+                  <label style={styles.label}>Orden del Banner</label>
                   <input
                     type="number"
                     value={editForm.orden}
@@ -617,26 +672,11 @@ ${bannersToMove
                       backgroundColor: !editForm.status ? "#f3f4f6" : "white",
                       color: !editForm.status ? "#9ca3af" : "#111827",
                     }}
-                    onFocus={(e) => {
-                      if (editForm.status) {
-                        e.target.style.borderColor =
-                          styles.inputFocus.borderColor;
-                        e.target.style.boxShadow = styles.inputFocus.boxShadow;
-                      }
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = "#d1d5db";
-                      e.target.style.boxShadow = "none";
-                    }}
                     placeholder={
-                      editForm.status
-                        ? `Orden del banner (1-${getMaxOrderAfterChange(
-                            editForm.status
-                          )})`
-                        : "0 (Inactivo)"
+                      editForm.status ? `Orden del banner ` : "0 (Inactivo)"
                     }
                     min="1"
-                    max={getMaxOrderAfterChange(editForm.status)}
+                    max={maxOrder}
                     disabled={saving || !editForm.status}
                     readOnly={!editForm.status}
                   />
@@ -649,15 +689,6 @@ ${bannersToMove
                     value={editForm.name}
                     onChange={(e) => handleInputChange("name", e.target.value)}
                     style={styles.input}
-                    onFocus={(e) => {
-                      e.target.style.borderColor =
-                        styles.inputFocus.borderColor;
-                      e.target.style.boxShadow = styles.inputFocus.boxShadow;
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = "#d1d5db";
-                      e.target.style.boxShadow = "none";
-                    }}
                     placeholder="Ingresa el nombre del banner"
                     maxLength="100"
                     disabled={saving}
@@ -672,15 +703,7 @@ ${bannersToMove
                       handleInputChange("description", e.target.value)
                     }
                     style={{ ...styles.input, ...styles.textarea }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor =
-                        styles.inputFocus.borderColor;
-                      e.target.style.boxShadow = styles.inputFocus.boxShadow;
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = "#d1d5db";
-                      e.target.style.boxShadow = "none";
-                    }}
+                    placeholder="Ingresa la descripción del banner"
                     maxLength="500"
                     disabled={saving}
                   />
@@ -691,18 +714,6 @@ ${bannersToMove
                     style={styles.cancelButton}
                     onClick={closeEditModal}
                     disabled={saving}
-                    onMouseOver={(e) => {
-                      if (!saving) {
-                        e.target.style.backgroundColor = "#f9fafb";
-                        e.target.style.borderColor = "#9ca3af";
-                      }
-                    }}
-                    onMouseOut={(e) => {
-                      if (!saving) {
-                        e.target.style.backgroundColor = "white";
-                        e.target.style.borderColor = "#d1d5db";
-                      }
-                    }}
                   >
                     Cancelar
                   </button>
@@ -714,18 +725,6 @@ ${bannersToMove
                     }}
                     onClick={saveChanges}
                     disabled={saving}
-                    onMouseOver={(e) => {
-                      if (!saving) {
-                        e.target.style.backgroundColor = "#c44d26";
-                        e.target.style.transform = "translateY(-1px)";
-                      }
-                    }}
-                    onMouseOut={(e) => {
-                      if (!saving) {
-                        e.target.style.backgroundColor = "#d8572f";
-                        e.target.style.transform = "translateY(0)";
-                      }
-                    }}
                   >
                     {saving ? "Guardando..." : "Guardar Cambios"}
                   </button>
@@ -801,6 +800,8 @@ const styles = {
     color: "#33363dff",
     transition: "all 0.2s ease",
     zIndex: 10,
+    border: "none",
+    backgroundColor: "transparent",
   },
   navigationArrowHover: {
     color: "#515137ff",
@@ -935,7 +936,7 @@ const styles = {
     borderRadius: "16px",
     padding: "0px 0px 20px 0px",
     width: "90%",
-    maxWidth: "600px", // Aumentado de 500px a 600px
+    maxWidth: "600px",
     boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
     position: "relative",
     maxHeight: "95vh",
@@ -971,8 +972,6 @@ const styles = {
     borderRadius: "50%",
     transition: "background-color 0.2s ease",
   },
-
-  // Estilos mejorados para la previsualización
   previewSection: {
     padding: "0 25px 25px",
     borderBottom: "1px solid #e5e7eb",
@@ -987,7 +986,7 @@ const styles = {
   previewBannerCard: {
     borderRadius: "12px",
     width: "100%",
-    height: "200px", // Altura fija para mejor proporción
+    height: "200px",
     position: "relative",
     boxShadow: "0 4px 15px rgba(0, 0, 0, 0.2)",
     overflow: "hidden",
@@ -1071,7 +1070,6 @@ const styles = {
     border: "1px solid rgba(255,255,255,0.2)",
     textShadow: "none",
   },
-
   formGroup: {
     marginBottom: "20px",
     padding: "0 25px",
@@ -1182,4 +1180,5 @@ const styles = {
     transition: "all 0.2s ease",
   },
 };
+
 export default ConfigBanner;

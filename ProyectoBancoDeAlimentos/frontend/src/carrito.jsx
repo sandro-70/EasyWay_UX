@@ -14,7 +14,7 @@ import {
   eliminarItem,
   AddNewCarrito,
 } from "./api/CarritoApi";
-import { GetCupones, desactivarCupon } from "./api/CuponesApi";
+import { GetCupones, desactivarCupon, editarCupon } from "./api/CuponesApi";
 import { getPromociones } from "./api/PromocionesApi";
 import {
   getProductosRecomendados,
@@ -71,7 +71,6 @@ function Carrito() {
   const productosCarrito = useState(0);
   const [discount, setVisible] = useState(false);
   const [cupon, setCupon] = useState("EMPTY");
-  const [idCuponDesactivar, setIDCuponDesactivar] = useState(0);
   const [descCupon, setDesc] = useState(0);
   const [showProducts, setShowProd] = useState(true);
   const [total, setTotal] = useState(0);
@@ -208,7 +207,7 @@ function Carrito() {
 
   //(cupones + promociones)
   const obtenerDescuentoTotal = () => {
-    const descuentoCupon = descCupon > 0 ? total * (descCupon / 100) : 0;
+    const descuentoCupon = descCupon.valor > 0 ? total * (descCupon.valor / 100) : 0;
     const descuentoPromocion = calcularDescuentoPromocion();
 
     return descuentoCupon + descuentoPromocion;
@@ -294,12 +293,11 @@ function Carrito() {
 
       if (cuponValido) {
         setVisible(true);
-        setDesc(cuponValido.valor);
+        setDesc(cuponValido);
         toast.success(
           `Cupón agregado: ${cuponValido.codigo}, ${cuponValido.valor}% de descuento`,
           { className: "toast-success" }
         );
-        setIDCuponDesactivar(cuponValido.id_cupon);
       } else {
         setVisible(false);
         setDesc(0);
@@ -349,6 +347,7 @@ function Carrito() {
       }
 
       console.log("Método de pago predeterminado:", metodoPagoDefault);
+      alert(descCupon.uso_maximo_por_usuario);
 
       const response = await crearPedido(
         user.id_usuario,
@@ -358,15 +357,31 @@ function Carrito() {
         desc
       );
 
-      setCount(0);
-      if (idCuponDesactivar !== 0) desactivarCupon(idCuponDesactivar);
+      let usos=descCupon.uso_maximo_por_usuario-1;
+      if (descCupon.id_cupon !== 0) {
+        if (usos > 0) {
+          await editarCupon(
+            descCupon.id_cupon,
+            descCupon.codigo,
+            descCupon.descripcion,
+            descCupon.tipo,
+            descCupon.valor,
+            usos, 
+            descCupon.termina_en,
+            true 
+          );
+        } else {
+          await desactivarCupon(descCupon.id_cupon);
+        }
+      }
 
       // Limpiar promoción aplicada si había una
       setPromocionAplicada(null);
-
+      setCount(0);
       console.log("Pedido creado:", response.data);
       toast("Pedido creado correctamente!", { className: "toast-default" });
       setShowProd(false);
+      setVisible(false);
     } catch (err) {
       console.error("Error creating pedido:", err);
       const errorMessage = err?.response?.data?.error || "No se pudo crear el pedido";
@@ -381,6 +396,7 @@ function Carrito() {
   const eliminarProducto = async (idToDelete, idProd) => {
     try {
       await eliminarEnBackend(idProd);
+      decrementCart(1);
       setDetalles((prev) =>
         prev.filter((p) => p.id_carrito_detalle !== idToDelete)
       );
@@ -508,8 +524,6 @@ function Carrito() {
     const diff = n - p.cantidad_unidad_medida;
     try {
       await updateQuantity(p.id_carrito_detalle, p.producto.id_producto, n);
-      if (diff > 0) incrementCart(diff);
-      if (diff < 0) decrementCart(-diff);
     } catch (err) {
       console.error("Error confirmando cantidad:", err);
       toast.error("No se pudo actualizar la cantidad", {
@@ -918,32 +932,30 @@ const bestPromoPriceForProduct = (prod, cartSubtotal = total) => {
                                 </span>
                               </button>
                               {/* Precio a la derecha (subtotal con OFERTA si aplica) */}
-<div className="flex w-full h-full justify-end items-center">
-  {(() => {
-    const best = bestPromoPriceForProduct(p.producto, total); // 👈
-    const qty = Number(p.cantidad_unidad_medida) || 0;
-    const unitBase = Number(p.producto.precio_base) || 0;
-    const subBase = unitBase * qty;
+                              <div className="flex w-full h-full justify-end items-center">
+                                {(() => {
+                                  const best = bestPromoPriceForProduct(p.producto, total); // 👈
+                                  const qty = Number(p.cantidad_unidad_medida) || 0;
+                                  const unitBase = Number(p.producto.precio_base) || 0;
+                                  const subBase = unitBase * qty;
 
-    if (best) {
-      const subPromo = best.finalPrice * qty;
-      return (
-        <div className="text-right">
-          <div className="text-2xl font-extrabold text-green-600">
-            L. {subPromo.toFixed(2)}
-          </div>
-          <div className="text-lg text-slate-400 line-through">
-            L. {subBase.toFixed(2)}
-          </div>
-        </div>
-      );
-    }
+                                  if (best) {
+                                    const subPromo = best.finalPrice * qty;
+                                    return (
+                                      <div className="text-right">
+                                        <div className="text-2xl font-extrabold text-green-600">
+                                          L. {subPromo.toFixed(2)}
+                                        </div>
+                                        <div className="text-lg text-slate-400 line-through">
+                                          L. {subBase.toFixed(2)}
+                                        </div>
+                                      </div>
+                                    );
+                                  }
 
-    return <div className="text-2xl font-bold">L. {subBase.toFixed(2)}</div>;
-  })()}
-</div>
-
-
+                                  return <div className="text-2xl font-bold">L. {subBase.toFixed(2)}</div>;
+                                })()}
+                              </div>
                             </div>
                           </div>
                           <button
@@ -952,7 +964,6 @@ const bestPromoPriceForProduct = (prod, cartSubtotal = total) => {
                                 p.id_carrito_detalle,
                                 p.producto.id_producto
                               );
-                              decrementCart(p.cantidad_unidad_medida);
                             }}
                             className=" text-black hover:bg-red-500 hover:text-white rounded-md p-8"
                           >
@@ -1067,11 +1078,11 @@ const bestPromoPriceForProduct = (prod, cartSubtotal = total) => {
                     </li>
 
                     {/* Descuento de cupón */}
-                    {discount && descCupon > 0 && (
+                    {discount && descCupon.valor > 0 && (
                       <li className="flex justify-between text-blue-600">
-                        <span>Descuento cupón ({descCupon}%)</span>
+                        <span>Descuento cupón ({descCupon.valor}%)</span>
                         <span>
-                          -L. {(total * (descCupon / 100)).toFixed(2)}
+                          -L. {(total * (descCupon.valor / 100)).toFixed(2)}
                         </span>
                       </li>
                     )}

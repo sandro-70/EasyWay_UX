@@ -95,6 +95,29 @@ export default function ReportesInventario() {
     );
   }
 
+  const StatusBadge = ({ value }) => {
+    if (!value) return null; // por si viene null
+
+    // Normalizamos: convertimos el enum a minúsculas
+    const val = String(value).toLowerCase();
+
+    let clase = "";
+    switch (val) {
+      case "activo":
+        clase = "estado-activo"; // 👈 directo
+        break;
+      case "inactivo":
+        clase = "estado-inactivo";
+        break;
+      default:
+        clase = "";
+    }
+
+    const texto = val.charAt(0).toUpperCase() + val.slice(1);
+
+    return <span className={`estado-badge ${clase}`}>{texto}</span>;
+  };
+
   return (
     <div
       className="px-4 "
@@ -167,8 +190,8 @@ export default function ReportesInventario() {
                   <td>{r.categoria}</td>
                   <td>{r.subcategoria}</td>
                   <td>{r.cantidad}</td>
-                  <td>{r.operacion}</td>
-                  <td>{r.estado_producto}</td>
+                  <td>{r.operacion.toUpperCase()}</td>
+                  <td><StatusBadge value={r.estado_producto}/></td>
                 </tr>
               ))
             ) : (

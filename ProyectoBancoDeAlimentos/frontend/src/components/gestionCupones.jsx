@@ -69,12 +69,12 @@ const GestionCupones = () => {
 
         try {
             await crearCupon(
-                3,
+                1,
                 nuevoCupon.codigo.trim(),
                 nuevoCupon.descripcion.trim(),
                 nuevoCupon.tipo,
                 nuevoCupon.valor,
-                nuevoCupon.uso_maximo_por_usuario, // frontend
+                nuevoCupon.uso_maximo_por_usuario, 
                 nuevoCupon.termina_en
             );
 
@@ -290,30 +290,28 @@ const GestionCupones = () => {
     };
 
     const StatusBadge = ({ value }) => {
-    let clase = "";
-    switch (value) {
-        case "activo":
-            clase = "estado-activo";
-            break;
-        case "inactivo":
-            clase = "estado-inactivo";
-            break;
-        case "expirado":
-            clase = "estado-expirado";
-            break;
-        case "usado":
-            clase = "estado-usado";
-            break;
-        default:
-            clase = "";
-    }
+        let clase = "";
+        switch (value) {
+            case "activo":
+                clase = "estado-activo";
+                break;
+            case "inactivo":
+                clase = "estado-inactivo";
+                break;
+            case "expirado":
+                clase = "estado-expirado";
+                break;
+            case "usado":
+                clase = "estado-usado";
+                break;
+            default:
+                clase = "";
+        }
 
-    // Opcional: capitalizar el texto para mostrar bonito
-    const texto = value.charAt(0).toUpperCase() + value.slice(1);
+        const texto = value.charAt(0).toUpperCase() + value.slice(1);
 
-    return <span className={`estado-badge ${clase}`}>{texto}</span>;
-};
-
+        return <span className={`estado-badge ${clase}`}>{texto}</span>;
+    };
 
     async function inactivarCuponRow(id_cupon) {
         if (!window.confirm("¿Marcar este cupón como INACTIVO?")) return;
@@ -375,7 +373,6 @@ const GestionCupones = () => {
                                 <th>Tipo</th>
                                 <th>Valor</th>
                                 <th>Límite de usos</th>
-                                <th>Usos actuales</th>
                                 <th>Fecha de expiración</th>
                                 <th>Estado</th>
                                 <th>Opciónes</th>
@@ -390,7 +387,6 @@ const GestionCupones = () => {
                                     <td className="text-center">{cupon.tipo}</td>
                                     <td className="text-center">{cupon.valor}</td>
                                     <td className="text-center">{cupon.uso_maximo_por_usuario}</td>
-                                    <td className="text-center">{cupon.usos_actuales}</td>
                                     <td className="text-center">{formatDate(cupon.fecha_expiracion)}</td>
                                     <td className="cell-center"><StatusBadge value={cupon.estado} /></td>
                                     <td className="px-3 py-2">
@@ -501,7 +497,7 @@ const GestionCupones = () => {
                     </label>
 
                     <label>
-                    <span>Usos por usuario:</span>
+                    <span>Límite de usos:</span>
                     <input
                         type="number"
                         name="uso_maximo_por_usuario"

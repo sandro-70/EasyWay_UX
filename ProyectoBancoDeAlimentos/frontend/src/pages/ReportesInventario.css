@@ -185,3 +185,23 @@
   line-height: 1.75rem; /* ajusta altura para que coincida con select */
   flex-shrink: 0;       /* evita que se reduzca de tamaño */
 }
+
+.estado-badge {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 20px;
+  display: inline-block;
+  min-width: 80px;
+  text-align: center;
+}
+
+.estado-badge.estado-activo {
+  color: #16a34a;
+  background-color: rgba(22, 163, 74, 0.1);
+}
+
+.estado-badge.estado-inactivo {
+  color: #ff7a2a;
+  background-color: rgba(255, 122, 42, 0.1);
+}

@@ -104,6 +104,16 @@
   background-color: rgba(255, 122, 42, 0.1);
 }
 
+.estado-badge.estado-expirado {
+  color: #ea1818;
+  background-color: rgba(234, 24, 24, 0.1); 
+}
+
+.estado-badge.estado-usado {
+  color: #2B6DAF;
+  background-color: rgba(43, 109, 175, 0.1); 
+}
+
 @media (max-width: 768px) {
     .crear-cupon-container {
         padding: 10px;

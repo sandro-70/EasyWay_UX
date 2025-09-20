@@ -26,7 +26,7 @@ const initialForm = {
   // Banner
   bannerFile: null,
   bannerPreview: "",
-  orden : 0,
+  orden: 0,
 };
 
 const CampanaPromocional = () => {
@@ -46,6 +46,9 @@ const CampanaPromocional = () => {
   const inputRef = useRef(null);
   const navigate = useNavigate();
   // Banner
+
+  const [categoriaSel, setCategoriaSel] = useState("");
+  const [marcaSel, setMarcaSel] = useState("");
   const fileInputRef = useRef(null);
 
   // ===== Cargar productos (id y nombre) =====
@@ -56,10 +59,11 @@ const CampanaPromocional = () => {
         const { data } = await getAllProducts();
         const mapped = Array.isArray(data)
           ? data.map((p) => ({
-              id: String(p.id_producto),
-              name: String(p.nombre),
-              marca: String(p.marca.nombre),
-            }))
+            id: String(p.id_producto),
+            name: String(p.nombre),
+            marca: String(p.marca.nombre),
+            categoria: String(p.categoria?.nombre || p.subcategoria?.categoria?.nombre || ""),
+          }))
           : [];
         setCatalogo(mapped);
       } catch (e) {
@@ -80,13 +84,16 @@ const CampanaPromocional = () => {
   const filtered = useMemo(() => {
     const q = queryProd.toLowerCase();
     return catalogo
-      .filter(
-        (p) =>
-          (p.id.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)) &&
-          !formData.productos.some((sp) => sp.id === p.id)
-      )
+      .filter((p) => {
+        const matchTexto =
+          (p.id.toLowerCase().includes(q) || p.name.toLowerCase().includes(q));
+        const matchCategoria = !categoriaSel || p.categoria === categoriaSel;
+        const matchMarca = !marcaSel || p.marca === marcaSel;
+        const notSelected = !formData.productos.some((sp) => sp.id === p.id);
+        return matchTexto && matchCategoria && matchMarca && notSelected;
+      })
       .slice(0, 8);
-  }, [catalogo, queryProd, formData.productos]);
+  }, [catalogo, queryProd, formData.productos, categoriaSel, marcaSel]);
 
   const addProducto = (prod) => {
     if (!prod) return;
@@ -223,33 +230,33 @@ const CampanaPromocional = () => {
           null;
       }
 
-    // ...dentro de guardar(), antes de armar payload
-const esFijo = formData.tipo === "fijo";
-const esPct = formData.tipo === "porcentaje";
-const esCompraMin = formData.tipo === "compra_min";
+      // ...dentro de guardar(), antes de armar payload
+      const esFijo = formData.tipo === "fijo";
+      const esPct = formData.tipo === "porcentaje";
+      const esCompraMin = formData.tipo === "compra_min";
 
-// Mapeo local: % => 1, fijo => 2, compra mínima => 3
-const id_tipo_promo =
-  esPct ? 1 :
-  esFijo ? 2 : null;
+      // Mapeo local: % => 1, fijo => 2, compra mínima => 3
+      const id_tipo_promo =
+        esPct ? 1 :
+          esFijo ? 2 : null;
 
-const payload = {
-  nombre_promocion: String(formData.nombre).trim(),
-  descripción: String(formData.descripcion).trim(),
-  valor_fijo: esFijo ? Number(formData.valorFijo) : null,
-  valor_porcentaje: esPct ? Number(formData.valorPorcentual) : null,
-  compra_min: Number(formData.compraMin) ,
-  fecha_inicio: formData.validoDesde,
-  fecha_termina: formData.hasta,
-  id_tipo_promo, 
-  banner_url: banner_url || null,
-  orden: Number.isFinite(Number(formData.orden)) ? Number(formData.orden) : 0,
+      const payload = {
+        nombre_promocion: String(formData.nombre).trim(),
+        descripción: String(formData.descripcion).trim(),
+        valor_fijo: esFijo ? Number(formData.valorFijo) : null,
+        valor_porcentaje: esPct ? Number(formData.valorPorcentual) : null,
+        compra_min: Number(formData.compraMin),
+        fecha_inicio: formData.validoDesde,
+        fecha_termina: formData.hasta,
+        id_tipo_promo,
+        banner_url: banner_url || null,
+        orden: Number.isFinite(Number(formData.orden)) ? Number(formData.orden) : 0,
 
-  productos: formData.aplicaA === "lista"
-    ? formData.productos.map((p) => Number(p.id)).filter(Number.isInteger)
-    : [],
-  
-};
+        productos: formData.aplicaA === "lista"
+          ? formData.productos.map((p) => Number(p.id)).filter(Number.isInteger)
+          : [],
+
+      };
 
 
       console.log("Payload a enviar:", payload);
@@ -257,13 +264,14 @@ const payload = {
       console.log("Respuesta servidor:", resp?.data);
       alert("Campaña guardada correctamente.");
       limpiarFormulario();
+        navigate(-1);
     } catch (e) {
       console.error("Error guardando campaña:", e);
       console.log("Server said:", e?.response?.data);
       alert(
         e?.response?.data?.message ||
-          e?.response?.data?.error ||
-          "No se pudo guardar la campaña."
+        e?.response?.data?.error ||
+        "No se pudo guardar la campaña."
       );
     } finally {
       setLoadingSave(false);
@@ -276,11 +284,11 @@ const payload = {
       <div className="container">
         {/* Encabezado */}
         <div className="headerWrapper" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-  <h1 className="header">Crear Campaña Promocional</h1>
-  <div style={{ display: "flex", gap: 8 }}>
-    
-  </div>
-</div>
+          <h1 className="header">Crear Campaña Promocional</h1>
+          <div style={{ display: "flex", gap: 8 }}>
+
+          </div>
+        </div>
         <div className="headerLine" />
 
         {/* Datos campaña (2 columnas) */}
@@ -447,6 +455,7 @@ const payload = {
                 </label>
 
                 <div className={`comboRoot ${openList ? "is-open" : ""}`} ref={comboRef}>
+
                   <input
                     id="combo"
                     ref={inputRef}
@@ -485,6 +494,8 @@ const payload = {
                       ))}
                     </ul>
                   )}
+
+
                 </div>
                 {errors.productos && <p className="errorMsg">{errors.productos}</p>}
 
@@ -505,8 +516,40 @@ const payload = {
                     ))}
                   </div>
                 )}
+                <div className="formGrid2">
+  <div className="ui-field">
+    <label className="ui-label">Categoría</label>
+    <select
+      className="ui-select"
+      value={categoriaSel}
+      onChange={(e) => setCategoriaSel(e.target.value)}
+    >
+      <option value="">Todas</option>
+      {[...new Set(catalogo.map((p) => p.categoria))].map((cat) => (
+        <option key={cat} value={cat}>{cat}</option>
+      ))}
+    </select>
+  </div>
+
+  <div className="ui-field">
+    <label className="ui-label">Marca</label>
+    <select
+      className="ui-select"
+      value={marcaSel}
+      onChange={(e) => setMarcaSel(e.target.value)}
+    >
+      <option value="">Todas</option>
+      {[...new Set(catalogo.map((p) => p.marca))].map((m) => (
+        <option key={m} value={m}>{m}</option>
+      ))}
+    </select>
+  </div>
+</div>
+
               </div>
             )}
+
+
           </div>
         </div>
 
@@ -552,14 +595,17 @@ const payload = {
           <button
             type="button"
             className="saveButton"
-            onClick={guardar}
+             onClick={guardar}
             disabled={loadingSave}
+            
+
           >
             {loadingSave ? "Guardando..." : "Guardar Campaña"}
+           
           </button>
-          
+
         </div>
-        
+
       </div>
     </div>
   );

@@ -78,23 +78,26 @@ const GestionCupones = () => {
                 nuevoCupon.termina_en
             );
 
-            // Refrescar lista de cupones
             const r = await GetCupones();
             const cuponesData = r?.data || [];
             
-            // Formatear los cupones para el estado
             const formattedCupones = cuponesData.map((c, idx) => {
             const ahora = new Date();
+            const hoyStr = `${ahora.getFullYear()}-${String(ahora.getMonth()+1).padStart(2,"0")}-${String(ahora.getDate()).padStart(2,"0")}`;
+
             const fechaExpiracionStr = (c.termina_en || c.fecha_expiracion || "").split("T")[0];
 
             const fechaExpiracion = new Date(fechaExpiracionStr + "T23:59:59");
-            const usosActuales = parseInt(c.usos_actuales) || 0;
             const usoPorUsuario = parseInt(c.uso_maximo_por_usuario) || 1;
 
             let estado = "activo";
-            if (!c.activo) estado = "inactivo";
-            else if (fechaExpiracion < ahora) estado = "expirado";
-            else if (usosActuales >= usoPorUsuario) estado = "usado";
+            if (!c.activo) {
+              estado = "inactivo";
+            } else if (fechaExpiracionStr && fechaExpiracionStr <= hoyStr) {
+                estado = "expirado";
+            } else if (usoPorUsuario === 0) {
+                estado = "usado";
+            }
 
             return {
                 id_cupon: c.id_cupon || idx + 1,
@@ -103,8 +106,7 @@ const GestionCupones = () => {
                 tipo: c.tipo || "porcentaje",
                 valor: c.valor || 0,
                 uso_maximo_por_usuario: usoPorUsuario,
-                usos_actuales: usosActuales,
-                termina_en: fechaExpiracionStr,
+                fecha_expiracion: fechaExpiracionStr,
                 activo: c.activo !== undefined ? c.activo : true,
                 estado: estado
             };
@@ -126,7 +128,7 @@ const GestionCupones = () => {
             
         } catch (err) {
             console.error("CrearCupon error:", err);
-            toast.error("No se pudo crear el cupón. Revisa el backend/logs.");
+            toast.error("No se pudo crear el cupón.");
         }
     };
 
@@ -379,7 +381,7 @@ const GestionCupones = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {cupones.map((cupon) => (
+                            {visible.map((cupon) => (
                                 <tr key={cupon.id_cupon}>
                                     <td className="text-center">{cupon.id_cupon}</td>
                                     <td className="codigo-cupon text-center">{cupon.codigo}</td>

@@ -83,17 +83,17 @@ const GestionCupones = () => {
             
             const formattedCupones = cuponesData.map((c, idx) => {
             const ahora = new Date();
-            const hoyStr = `${ahora.getFullYear()}-${String(ahora.getMonth()+1).padStart(2,"0")}-${String(ahora.getDate()).padStart(2,"0")}`;
 
             const fechaExpiracionStr = (c.termina_en || c.fecha_expiracion || "").split("T")[0];
+            const [y, m, d] = fechaExpiracionStr.split("-").map(Number);
+            const fechaExpiracion = new Date(y, m - 1, d, 0, 0, 0); 
 
-            const fechaExpiracion = new Date(fechaExpiracionStr + "T23:59:59");
             const usoPorUsuario = parseInt(c.uso_maximo_por_usuario) || 1;
 
             let estado = "activo";
             if (!c.activo) {
-              estado = "inactivo";
-            } else if (fechaExpiracionStr && fechaExpiracionStr <= hoyStr) {
+                estado = "inactivo";
+            } else if (ahora >= fechaExpiracion) {
                 estado = "expirado";
             } else if (usoPorUsuario === 0) {
                 estado = "usado";
@@ -150,7 +150,7 @@ const GestionCupones = () => {
     const openEdit = (cupon) => {
         setCuponEditar({
             ...cupon,
-            // asegura que solo tengas YYYY-MM-DD, sin conversión a Date
+
             termina_en: (cupon.termina_en || cupon.fecha_expiracion)?.split("T")[0] || "",
         });
         setEditOpen(true);
@@ -206,23 +206,6 @@ const GestionCupones = () => {
         if (!dateString) return 'N/A';
         const [year, month, day] = dateString.split("-");
         return `${day}/${month}/${year}`;
-    };
-
-    const formatInputDate = (dateString) => {
-    if (!dateString) return "";
-    return dateString.split("T")[0]; // toma solo YYYY-MM-DD
-    };
-
-
-    // Función para determinar clase CSS según estado
-    const getEstadoClass = (estado) => {
-        switch (estado) {
-            case 'activo': return 'estado-activo';
-            case 'inactivo': return 'estado-inactivo';
-            case 'expirado': return 'estado-expirado';
-            case 'usado': return 'estado-usado';
-            default: return '';
-        }
     };
 
     const Iconoptions = {
@@ -291,9 +274,26 @@ const GestionCupones = () => {
     ),
     };
 
-    const StatusBadge = ({ value }) => {
+    const StatusBadge = ({ value, termina_en, activo, uso_maximo_por_usuario }) => {
+        const ahora = new Date();
+        let estado = "activo";
+
+        if (!activo) {
+            estado = "inactivo";
+        } else if (termina_en) {
+            const [y, m, d] = termina_en.split("-").map(Number);
+            const fechaExpiracion = new Date(y, m - 1, d, 0, 0, 0);
+            if (ahora > fechaExpiracion) {
+                estado = "expirado";
+            }
+        }
+
+        if (uso_maximo_por_usuario === 0) {
+            estado = "usado";
+        }
+
         let clase = "";
-        switch (value) {
+        switch (estado) {
             case "activo":
                 clase = "estado-activo";
                 break;
@@ -310,7 +310,7 @@ const GestionCupones = () => {
                 clase = "";
         }
 
-        const texto = value.charAt(0).toUpperCase() + value.slice(1);
+        const texto = estado.charAt(0).toUpperCase() + estado.slice(1);
 
         return <span className={`estado-badge ${clase}`}>{texto}</span>;
     };
@@ -390,7 +390,12 @@ const GestionCupones = () => {
                                     <td className="text-center">{cupon.valor}</td>
                                     <td className="text-center">{cupon.uso_maximo_por_usuario}</td>
                                     <td className="text-center">{formatDate(cupon.fecha_expiracion)}</td>
-                                    <td className="cell-center"><StatusBadge value={cupon.estado} /></td>
+                                    <td className="cell-center"><StatusBadge 
+                                        value={cupon.estado} 
+                                        termina_en={cupon.fecha_expiracion} 
+                                        activo={cupon.activo} 
+                                        uso_maximo_por_usuario={cupon.uso_maximo_por_usuario} 
+                                    /></td> 
                                     <td className="px-3 py-2">
                                         <div className="flex items-center gap-2">
                                         <button

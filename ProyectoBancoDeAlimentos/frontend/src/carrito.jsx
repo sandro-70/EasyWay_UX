@@ -243,7 +243,7 @@ function Carrito() {
   const obtenerTotal = () => {
     const subtotalConDescuento = obtenerSubtotalConDescuento();
     const impuesto = subtotalConDescuento * 0.15;
-    return (subtotalConDescuento + impuesto).toFixed(2);
+    return (subtotalConDescuento + impuesto + 10).toFixed(2);
   };
 
   const obtenerDescuento = () => {
@@ -1199,6 +1199,12 @@ function Carrito() {
                     <li className="flex justify-between">
                       <span>Impuesto (15%)</span>
                       <span>L. {obtenerImpuesto()}</span>
+                    </li>
+
+                    {/* Costo de Envio */}
+                    <li className="flex justify-between">
+                      <span>Costo de Envío</span>
+                      <span>L. 10.00</span>
                     </li>
 
                     <hr className="bg-black h-[3px] w-full" />

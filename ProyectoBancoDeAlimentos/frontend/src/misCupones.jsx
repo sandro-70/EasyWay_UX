@@ -14,76 +14,75 @@ const MisCupones = () => {
   const [usuarioInfo, setUsuarioInfo] = useState(null);
   const [loading, setLoading] = useState(true);
 
-useEffect(() => {
-  const fetchUserDataAndCoupons = async () => {
-    try {
-      const resUsuario = await InformacionUser();
-      if (!resUsuario || !resUsuario.data) {
-        toast.error("No se pudo obtener la información del usuario");
-        return;
-      }
-
-      setUsuarioInfo(resUsuario.data);
-      const id_usuario = resUsuario.data.id_usuario;
-
-      // Traemos el historial de cupones con el cupón asociado
-      const resCupones = await GetALLCupones(id_usuario);
-      if (!resCupones || !resCupones.data) {
-        toast.warning("No se encontraron cupones para este usuario");
-        return;
-      }
-
-      const cupones = resCupones.data;
-
-      // 🔹 función para parsear fechas como locales
-      const parseToLocalDate = (val) => {
-        if (!val) return null;
-        if (val instanceof Date) {
-          return new Date(val.getFullYear(), val.getMonth(), val.getDate());
+  useEffect(() => {
+    const fetchUserDataAndCoupons = async () => {
+      try {
+        const resUsuario = await InformacionUser();
+        if (!resUsuario || !resUsuario.data) {
+          toast.error("No se pudo obtener la información del usuario");
+          return;
         }
-        const dateStr = String(val).split("T")[0]; // "YYYY-MM-DD"
-        const parts = dateStr.split("-");
-        if (parts.length !== 3) return null;
-        const [y, m, d] = parts.map((p) => Number(p));
-        if ([y, m, d].some((n) => Number.isNaN(n))) return null;
-        return new Date(y, m - 1, d); // fecha en medianoche local
-      };
 
-      const hoy = new Date();
-      hoy.setHours(0, 0, 0, 0);
+        setUsuarioInfo(resUsuario.data);
+        const id_usuario = resUsuario.data.id_usuario;
 
-      const noUsados = cupones.filter(
-        (c) => parseToLocalDate(c.fecha_usado) === null && c.Cupon?.activo
-      );
+        // Traemos el historial de cupones con el cupón asociado
+        const resCupones = await GetALLCupones(id_usuario);
+        if (!resCupones || !resCupones.data) {
+          toast.warning("No se encontraron cupones para este usuario");
+          return;
+        }
 
-      const usados = cupones.filter((c) => {
-        const fUso = parseToLocalDate(c.fecha_usado);
-        return fUso !== null && fUso < hoy && c.Cupon?.activo;
-      });
+        const cupones = resCupones.data;
 
-      const caducados = cupones.filter((c) => {
-        if (!c.Cupon?.activo) return true;
-        const fUso = parseToLocalDate(c.fecha_usado);
-        if (fUso !== null) return false;
-        const fechaExp = parseToLocalDate(c.Cupon?.termina_en);
-        return fechaExp !== null && fechaExp < hoy;
-      });
+        // 🔹 función para parsear fechas como locales
+        const parseToLocalDate = (val) => {
+          if (!val) return null;
+          if (val instanceof Date) {
+            return new Date(val.getFullYear(), val.getMonth(), val.getDate());
+          }
+          const dateStr = String(val).split("T")[0]; // "YYYY-MM-DD"
+          const parts = dateStr.split("-");
+          if (parts.length !== 3) return null;
+          const [y, m, d] = parts.map((p) => Number(p));
+          if ([y, m, d].some((n) => Number.isNaN(n))) return null;
+          return new Date(y, m - 1, d); // fecha en medianoche local
+        };
 
-      setCuponesNoUtilizados(noUsados);
-      setCuponesUsados(usados);
-      setCuponesCaducados(caducados);
-      setCuponesMostrados(noUsados);
-    } catch (err) {
-      console.error("Error al obtener datos del usuario o cupones:", err);
-      toast.error("Error al cargar los cupones");
-    } finally {
-      setLoading(false);
-    }
-  };
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
 
-  fetchUserDataAndCoupons();
-}, []);
+        const noUsados = cupones.filter(
+          (c) => parseToLocalDate(c.fecha_usado) === null && c.Cupon?.activo
+        );
 
+        const usados = cupones.filter((c) => {
+          const fUso = parseToLocalDate(c.fecha_usado);
+          return fUso !== null && c.Cupon?.activo;
+        });
+
+        const caducados = cupones.filter((c) => {
+          if (!c.Cupon?.activo) return true;
+          const fUso = parseToLocalDate(c.fecha_usado);
+          if (fUso !== null) return false;
+          const fechaExp = parseToLocalDate(c.Cupon?.termina_en);
+          return fechaExp !== null && fechaExp < hoy;
+        });
+
+        setCuponesNoUtilizados(noUsados);
+        setCuponesUsados(usados);
+        setCuponesCaducados(caducados);
+        setCuponesMostrados(noUsados);
+      } catch (err) {
+        console.error("Error al obtener datos del usuario o cupones:", err);
+        toast.error("Error al cargar los cupones");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserDataAndCoupons();
+  }, []);
 
   const mostrarCupones = (tipo) => {
     if (tipo === "Cupones no utilizados") {

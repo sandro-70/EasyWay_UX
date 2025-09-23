@@ -93,7 +93,7 @@ export default function CampanaDetalleModal({ id, mode = "view", onClose, onSave
     if (!form.nombre_promocion?.trim()) return false;
     if (!form.descripción?.trim()) return false;
     if (!form.fecha_inicio || !form.fecha_termina) return false;
-    if (![1,2].includes(Number(form.id_tipo_promo))) return false;
+    if (![1, 2].includes(Number(form.id_tipo_promo))) return false;
     if (Number(form.id_tipo_promo) === 1 && !(Number(form.valor_porcentaje) > 0)) return false;
     if (Number(form.id_tipo_promo) === 2 && !(Number(form.valor_fijo) > 0)) return false;
     return true;
@@ -150,7 +150,7 @@ export default function CampanaDetalleModal({ id, mode = "view", onClose, onSave
         <div className="cp-modal-header">
           <h2 id="cp-modal-title" className="cp-modal-title">Campaña promocional</h2>
           <div className="cp-modal-actions">
-           
+
           </div>
         </div>
 
@@ -165,19 +165,19 @@ export default function CampanaDetalleModal({ id, mode = "view", onClose, onSave
                 <div className="cp-field">
                   <label className="cp-label">Nombre</label>
                   <input className="cp-input" name="nombre_promocion" value={form.nombre_promocion}
-                         onChange={onChange} disabled={readOnly} type="text" />
+                    onChange={onChange} disabled={readOnly} type="text" />
                 </div>
 
                 <div className="cp-field">
                   <label className="cp-label">Descripción</label>
                   <input className="cp-input" name="descripción" value={form.descripción}
-                         onChange={onChange} disabled={readOnly} type="text" />
+                    onChange={onChange} disabled={readOnly} type="text" />
                 </div>
 
                 <div className="cp-field">
                   <label className="cp-label">Tipo</label>
                   <select className="cp-input" value={tipoToLabel(form.id_tipo_promo)}
-                          onChange={onChangeTipo} disabled={readOnly}>
+                    onChange={onChangeTipo} disabled={readOnly}>
                     <option value="—">Seleccione…</option>
                     <option value="Porcentaje">Porcentaje</option>
                     <option value="Fijo">Fijo</option>
@@ -188,68 +188,94 @@ export default function CampanaDetalleModal({ id, mode = "view", onClose, onSave
                   <div className="cp-field">
                     <label className="cp-label">% Descuento</label>
                     <input className="cp-input" name="valor_porcentaje" value={form.valor_porcentaje ?? ""}
-                           onChange={onChangeNumber} disabled={readOnly} type="number" min={1} max={100} />
+                      onChange={onChangeNumber} disabled={readOnly} type="number" min={1} max={100} />
                   </div>
                 )}
                 {Number(form.id_tipo_promo) === 2 && (
                   <div className="cp-field">
                     <label className="cp-label">Valor fijo</label>
                     <input className="cp-input" name="valor_fijo" value={form.valor_fijo ?? ""}
-                           onChange={onChangeNumber} disabled={readOnly} type="number" min={1} />
+                      onChange={onChangeNumber} disabled={readOnly} type="number" min={1} />
                   </div>
                 )}
 
                 <div className="cp-field">
                   <label className="cp-label">Compra mínima</label>
                   <input className="cp-input" name="compra_min" value={form.compra_min ?? ""}
-                         onChange={onChangeNumber} disabled={readOnly} type="number" min={0} />
+                    onChange={onChangeNumber} disabled={readOnly} type="number" min={0} />
                 </div>
 
                 <div className="cp-field">
                   <label className="cp-label">Válido desde</label>
                   <input className="cp-input" name="fecha_inicio" value={form.fecha_inicio || ""}
-                         onChange={onChange} disabled={readOnly} type="date" />
+                    onChange={onChange} disabled={readOnly} type="date" />
                 </div>
                 <div className="cp-field">
                   <label className="cp-label">Hasta</label>
                   <input className="cp-input" name="fecha_termina" value={form.fecha_termina || ""}
-                         onChange={onChange} disabled={readOnly} type="date" />
+                    onChange={onChange} disabled={readOnly} type="date" />
                 </div>
 
-                <div className="cp-field cp-col-span">
+                <div className="cp-field cp-col-span" style={{ cursor: "pointer", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
                   <label className="cp-label">Banner</label>
                   <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-                    <div style={{ width: 320, height: 120, border: "1px solid #d8dadc", borderRadius: 8, overflow: "hidden", background: "#f8fafc" }}>
+                    <label
+                      htmlFor="bannerInput"
+                      style={{
+                        width: 600,
+                        height: 200,
+                        border: "1px solid #d8dadc",
+                        borderRadius: 8,
+                        overflow: "hidden",
+                        background: "#f8fafc",
+                        cursor: readOnly ? "default" : "pointer",
+                        display: "block"
+                      }}
+                    >
                       {(() => {
                         const src = bannerPreview || toPublicFotoSrc(form.banner_url, "fotoDePerfil");
                         return src ? (
-                          <img src={src} alt="Banner" style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                               onError={(e) => { e.currentTarget.src = "/PlaceHolder.png"; }} />
+                          <img
+                            src={src}
+                            alt="Banner"
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            onError={(e) => { e.currentTarget.src = "/PlaceHolder.png"; }}
+                          />
                         ) : (
-                          <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b" }}>Sin imagen</div>
+                          <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b" }}>
+                            Sin imagen
+                          </div>
                         );
                       })()}
+                    </label>
+
+                    <div>
+                      {!readOnly && (
+
+                        <input
+                          id="bannerInput"
+                          type="file"
+                          accept="image/*"
+                          style={{ display: "none" }}
+                          onChange={(ev) => {
+                            const file = ev.target.files?.[0] || null;
+                            setBannerFile(file);
+                            if (file) {
+                              const url = URL.createObjectURL(file);
+                              setBannerPreview(url);
+                            } else {
+                              setBannerPreview("");
+                            }
+                          }}
+                        />
+
+
+                      )
+                      }
                     </div>
-                    {!readOnly && (
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(ev) => {
-                          const file = ev.target.files?.[0] || null;
-                          setBannerFile(file);
-                          if (file) {
-                            const url = URL.createObjectURL(file);
-                            setBannerPreview(url);
-                          } else {
-                            setBannerPreview("");
-                          }
-                        }}
-                      />
-                    )}
                   </div>
                 </div>
 
-              
               </div>
 
               <div className="cp-modal-footer">

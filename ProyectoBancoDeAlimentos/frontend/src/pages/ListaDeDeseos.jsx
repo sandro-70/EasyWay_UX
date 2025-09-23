@@ -8,7 +8,7 @@ import { getListaDeseos } from "../api/listaDeseosApi";
 import { eliminarDeListaDeseos } from "../api/listaDeseosApi";
 import { vaciarListaDeseos } from "../api/listaDeseosApi";
 import { getProductosRecomendados } from "../api/InventarioApi";
-import { AddNewCarrito } from "../api/CarritoApi";
+import { AddNewCarrito, ViewCar, SumarItem } from "../api/CarritoApi";
 import axiosInstance from "../api/axiosInstance";
 import { UserContext } from "../components/userContext" ;
 import { useCart } from "../utils/CartContext"
@@ -196,6 +196,8 @@ export default function ListaDeDeseos({ id_usuario: idFromProps }) {
   const [recomendados, setRecomendados] = useState([]);
   const [loadingRecomendados, setLoadingRecomendados] = useState(true);
   const { incrementCart } = useCart();
+  const [quantity, setQuantity] = useState(1);
+  const [carrito, setCarrito] = useState(null);
 
   /* ===== Normaliza el favorito al formato del card ===== */
   const normalizeFav = (row) => {
@@ -321,16 +323,107 @@ export default function ListaDeDeseos({ id_usuario: idFromProps }) {
       Math.min(prev + 1, Math.max(0, recomendados.length - visibleCount))
     );
 
-  const agregarAlCarrito = async (id_producto) => {
+  const handleAgregar = async (id_producto, q = quantity) => {
+    if (!id_producto) {
+      toast.error("ID de producto no válido", { className: "toast-error" });
+      return;
+    }
+
     try {
-      await AddNewCarrito(id_producto, 1);
-      incrementCart(1);
-      toast.success("Producto agregado al carrito", { position: "top-right" });
+      console.log("Agregando producto:", id_producto, "cantidad:", q);
+
+      let carritoActual = null;
+      let carritoVacio = false;
+
+      // Obtener carrito actual
+      try {
+        carritoActual = await ViewCar();
+      } catch (error) {
+        if (error?.response?.status === 404) {
+          console.log("Carrito vacío - usuario nuevo");
+          carritoVacio = true;
+        } else {
+          throw error;
+        }
+      }
+
+      let cantidadActual = 0;
+      let productoExistente = null;
+
+      if (!carritoVacio && carritoActual?.data) {
+        const carritoDetalles = carritoActual.data.carrito_detalles ?? [];
+
+        // Buscar si el producto ya existe en el carrito
+        productoExistente = carritoDetalles.find(
+          (item) => String(item.producto.id_producto) === String(id_producto)
+        );
+
+        if (productoExistente) {
+          cantidadActual = productoExistente.cantidad_unidad_medida || 0;
+        }
+      }
+
+      const nuevaCantidad = cantidadActual + q;
+
+      if (productoExistente) {
+        // Usar SumarItem con la cantidad TOTAL que debe quedar
+        await SumarItem(id_producto, nuevaCantidad);
+        toast(`Cantidad actualizada a ${nuevaCantidad} unidades`, {
+          className: "toast-default",
+        });
+      } else {
+        console.log("Producto nuevo, agregando al carrito");
+        await AddNewCarrito(id_producto, q);
+        incrementCart();
+        toast(
+          `Producto agregado al carrito (${q} ${
+            q === 1 ? "unidad" : "unidades"
+          })`,
+          { className: "toast-default" }
+        );
+      }
+
+      // Recargar carrito para verificar cambios
+      try {
+        const actualizado = await ViewCar();
+        const carritoDetalles = actualizado.data.carrito_detalles ?? [];
+        setCarrito(actualizado.data);
+      } catch (error) {}
     } catch (error) {
-      toast.error(
-        error?.response?.data?.message || "Error al agregar al carrito",
-        { position: "top-right" }
-      );
+      console.error("Error completo:", error);
+      console.error("Respuesta del servidor:", error?.response?.data);
+
+      // Si el carrito está vacío, intentar crear uno nuevo
+      if (error?.response?.status === 404) {
+        try {
+          console.log("Intentando crear carrito nuevo...");
+          await AddNewCarrito(id_producto, q);
+
+          // Recargar carrito
+          const carritoNuevo = await ViewCar();
+          setCarrito(carritoNuevo.data);
+
+          toast(
+            `Producto agregado al carrito (${q} ${
+              q === 1 ? "unidad" : "unidades"
+            })`,
+            { className: "toast-default" }
+          );
+        } catch (err) {
+          console.error("Error creando carrito:", err);
+          toast.error("No se pudo agregar el producto al carrito", {
+            className: "toast-error",
+          });
+        }
+      } else {
+        const errorMessage =
+          error?.response?.data?.msg ||
+          error?.response?.data?.message ||
+          error?.message ||
+          "No se pudo procesar el carrito";
+
+        toast.error(errorMessage, { className: "toast-error" });
+      }
     }
   };
 
@@ -386,7 +479,7 @@ export default function ListaDeDeseos({ id_usuario: idFromProps }) {
                   <ProductoCard
                     key={p.id}
                     p={p}
-                    onAdd={() => agregarAlCarrito(p.id)}
+                    onAdd={() => handleAgregar(p.id, 1)}
                     onOpen={() => navigate(`/producto/${p.id}`)}
                   />
                 ))}
@@ -432,7 +525,7 @@ export default function ListaDeDeseos({ id_usuario: idFromProps }) {
                     <ProductoCard
                       key={`rec-${p.id}`}
                       p={p}
-                      onAdd={() => agregarAlCarrito(p.id)}
+                      onAdd={() => handleAgregar(p.id, 1)}
                       onOpen={() => navigate(`/producto/${p.id}`)}
                     />
                   ))}

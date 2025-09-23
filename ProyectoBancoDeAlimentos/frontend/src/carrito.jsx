@@ -504,10 +504,10 @@ function Carrito() {
   const eliminarProducto = async (idToDelete, idProd) => {
     try {
       await eliminarEnBackend(idProd);
-      decrementCart(1);
       setDetalles((prev) =>
         prev.filter((p) => p.id_carrito_detalle !== idToDelete)
       );
+      decrementCart(1);
     } catch (err) {
       console.error("Error eliminando item:", err);
     }

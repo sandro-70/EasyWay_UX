@@ -15,6 +15,37 @@ const {
 } = require("../models");
 const { Op } = require("sequelize");
 
+exports.getPedidosEstado = async (req, res) => {
+  try {
+    const id_usuario = parseInt(req.params.id_usuario, 10);
+    if (Number.isNaN(id_usuario)) {
+      return res.status(400).json({ error: 'id_usuario inválido' });
+    }
+
+    const rows = await pedido.findAll({
+      where: { id_usuario },
+      attributes: [
+        'id_pedido',
+        [col('estado_pedido.nombre_pedido'), 'nombre_pedido'],
+      ],
+      include: [
+        {
+          model: estado_pedido,
+          attributes: [],
+          required: true,
+        },
+      ],
+      order: [['id_pedido', 'ASC']],
+      raw: true,
+    });
+
+    return res.json(rows);
+  } catch (error) {
+    console.error('Error al obtener pedidos por usuario:', error);
+    return res.status(500).json({ error: 'Error al obtener pedidos por usuario' });
+  }
+};
+
 //retorna los pedidos del usuario dado, donde el nombre_pedido sea "Enviado".
 exports.getPedidosEntregados = async (req, res) => {
   try {

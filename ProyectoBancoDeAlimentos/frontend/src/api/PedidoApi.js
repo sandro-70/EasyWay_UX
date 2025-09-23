@@ -8,6 +8,10 @@ export function getPedidosEntregados(id_usuario) {
   return axiosInstance.get(`/api/pedidos/get-pedido/${id_usuario}`);
 }
 
+export function getPedidosEstado(id_usuario) {
+  return axiosInstance.get(`/api/pedidos/get-pedido-estado/${id_usuario}`);
+}
+
 export function crearPedido(
   id_usuario,
   direccion_envio,

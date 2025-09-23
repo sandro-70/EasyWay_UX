@@ -4,6 +4,8 @@ const authenticateJWT = require("../middleware/authenticateJWT");
 
 const pedidoController = require("../controllers/pedidoController");
 
+router.get('/get-pedido-estado/:id_usuario', pedidoController.getPedidosEstado);
+
 // Obtener los pedidos del usuario dado, donde el nombre_pedido sea "Enviado".
 router.get("/get-pedido/:id_usuario", pedidoController.getPedidosEntregados);
 

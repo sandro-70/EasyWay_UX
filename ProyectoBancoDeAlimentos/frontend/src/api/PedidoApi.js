@@ -12,6 +12,10 @@ export function getPedidosEstado(id_usuario) {
   return axiosInstance.get(`/api/pedidos/get-pedido-estado/${id_usuario}`);
 }
 
+export function getEstados() {
+  return axiosInstance.get("/api/pedidos/get-estados");
+}
+
 export function crearPedido(
   id_usuario,
   direccion_envio,

@@ -15,6 +15,16 @@ const {
 } = require("../models");
 const { Op } = require("sequelize");
 
+exports.getEstados = async (req,res) => {
+  try {
+    const pedidos = await estado_pedido.findAll();
+    return res.json(pedidos);
+  }catch(error){
+    console.error(error);
+    return res.status(500).json({ error: 'Error al obtener estados de pedidos' });
+  }
+}
+
 exports.getPedidosEstado = async (req, res) => {
   try {
     const id_usuario = parseInt(req.params.id_usuario, 10);

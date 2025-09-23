@@ -51,7 +51,7 @@ exports.getListaDeseos = async (req, res) => {
       where: { id_usuario },
       include: [{
         model: producto,
-        attributes: ['id_producto', 'nombre', 'descripcion', 'precio_base', 'unidad_medida', 'peso', 'id_marca', 'porcentaje_ganancia', 'estrellas'],
+        attributes: ['id_producto', 'nombre', 'descripcion', 'precio_base', 'unidad_medida', 'peso', 'id_marca', 'porcentaje_ganancia', 'estrellas','activo','etiquetas'],
         include: [{
           model: imagen_producto,
           as: 'imagenes',

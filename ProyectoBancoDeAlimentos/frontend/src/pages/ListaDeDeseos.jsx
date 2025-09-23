@@ -5,6 +5,9 @@ import { toast } from "react-toastify";
 
 import { getProductosFav } from "../api/lista_deseos";
 import { getListaDeseos } from "../api/listaDeseosApi";
+import { eliminarDeListaDeseos } from "../api/listaDeseosApi";
+import { vaciarListaDeseos } from "../api/listaDeseosApi";
+import { getProductosRecomendados } from "../api/InventarioApi";
 import { AddNewCarrito } from "../api/CarritoApi";
 import axiosInstance from "../api/axiosInstance";
 import { UserContext } from "../components/userContext";
@@ -188,18 +191,8 @@ export default function ListaDeDeseos({ id_usuario: idFromProps }) {
   /* ===== Recomendados (mismo diseño) ===== */
   const [startIndex, setStartIndex] = useState(0);
   const visibleCount = 5;
-  const recomendados = [
-    { id: 1, name: "Manzana Roja", price: "L. 14.00", img: appleImage, rating: 2 },
-    { id: 2, name: "Banano",       price: "L. 8.00",  img: appleImage, rating: 3 },
-    { id: 3, name: "Pera",         price: "L. 12.00", img: appleImage, rating: 1 },
-    { id: 4, name: "Uvas",         price: "L. 20.00", img: appleImage, rating: 2 },
-    { id: 5, name: "Sandía",       price: "L. 35.00", img: appleImage, rating: 3 },
-    { id: 6, name: "Melón",        price: "L. 30.00", img: appleImage, rating: 2 },
-    { id: 7, name: "Fresa",        price: "L. 18.00", img: appleImage, rating: 2 },
-    { id: 8, name: "Mango",        price: "L. 25.00", img: appleImage, rating: 3 },
-    { id: 9, name: "Piña",         price: "L. 28.00", img: appleImage, rating: 2 },
-    { id:10, name: "Cereza",       price: "L. 40.00", img: appleImage, rating: 3 },
-  ];
+  const [recomendados, setRecomendados] = useState([]);
+  const [loadingRecomendados, setLoadingRecomendados] = useState(true);
 
   /* ===== Normaliza el favorito al formato del card ===== */
   const normalizeFav = (row) => {
@@ -235,6 +228,9 @@ export default function ListaDeDeseos({ id_usuario: idFromProps }) {
 
     const onSale = Boolean(prod?.en_oferta ?? false);
 
+    // Extraer etiquetas del producto
+    const etiquetas = prod?.etiquetas || [];
+
     return {
       id,
       name: nombre,
@@ -244,6 +240,7 @@ export default function ListaDeDeseos({ id_usuario: idFromProps }) {
       rating,
       available,
       onSale,
+      etiquetas, // Agregar etiquetas al objeto normalizado
       // opcional: raw para debug rápido
       _raw: prod,
     };
@@ -275,9 +272,41 @@ export default function ListaDeDeseos({ id_usuario: idFromProps }) {
     fetchFavs();
   }, [id_usuario]);
 
+  /* ===== Cargar productos recomendados ===== */
+  useEffect(() => {
+    const fetchRecomendados = async () => {
+      try {
+        setLoadingRecomendados(true);
+        const res = await getProductosRecomendados();
+        const arr = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+        const recs = arr.map(normalizeFav).filter((p) => p.id != null);
+        setRecomendados(recs);
+      } catch (error) {
+        console.error("Error al cargar productos recomendados:", error);
+        // No mostrar error al usuario para recomendaciones, solo loguear
+        setRecomendados([]);
+      } finally {
+        setLoadingRecomendados(false);
+      }
+    };
+    fetchRecomendados();
+  }, []);
+
   /* ===== Filtros ===== */
   const filteredProducts = useMemo(() => {
-    if (activeTab === "En Oferta") return products.filter((p) => p.onSale);
+    if (activeTab === "En Oferta") {
+      return products.filter((p) => {
+        // Filtrar por etiquetas que contengan "En Oferta" o similar
+        const hasEnOfertaTag = p.etiquetas && Array.isArray(p.etiquetas) &&
+          p.etiquetas.some(tag =>
+            String(tag).includes('En oferta') ||
+            String(tag).toLowerCase().includes('oferta') ||
+            String(tag).toLowerCase().includes('descuento') ||
+            String(tag).toLowerCase().includes('rebaja')
+          );
+        return hasEnOfertaTag;
+      });
+    }
     if (activeTab === "Disponibles") return products.filter((p) => p.available);
     return products; // Más recientes
   }, [products, activeTab]);
@@ -381,34 +410,54 @@ export default function ListaDeDeseos({ id_usuario: idFromProps }) {
           <h2 className="text-xl font-bold text-orange-400 mb-4">
             Productos que podrían interesarte
           </h2>
-          <div className="relative flex items-center">
-            <button
-              onClick={handlePrev}
-              className="absolute left-[-18px] z-10 bg-white rounded-full p-3 shadow-md"
-            >
-              <img src={izqImage} alt="Izquierda" className="w-6 h-6" />
-            </button>
 
-            <div className="flex gap-6 overflow-hidden w-full px-10">
-              {recomendados
-                .slice(startIndex, startIndex + visibleCount)
-                .map((p) => (
-                  <ProductoCard
-                    key={`rec-${p.id}`}
-                    p={p}
-                    onAdd={() => agregarAlCarrito(p.id)}
-                    onOpen={() => navigate(`/producto/${p.id}`)}
-                  />
-                ))}
+          {loadingRecomendados ? (
+            <div className="h-[200px] flex items-center justify-center text-gray-500">
+              Cargando recomendaciones...
             </div>
+          ) : recomendados.length === 0 ? (
+            <div className="h-[200px] flex items-center justify-center text-gray-500">
+              <div className="text-center">
+                <div className="text-lg font-semibold">No hay recomendaciones disponibles</div>
+                <div className="text-sm">Explora nuestros productos para encontrar algo que te guste</div>
+              </div>
+            </div>
+          ) : (
+            <div className="relative flex items-center">
+              <button
+                onClick={handlePrev}
+                disabled={startIndex === 0}
+                className={`absolute left-[-18px] z-10 bg-white rounded-full p-3 shadow-md ${
+                  startIndex === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+                }`}
+              >
+                <img src={izqImage} alt="Izquierda" className="w-6 h-6" />
+              </button>
 
-            <button
-              onClick={handleNext}
-              className="absolute right-[-18px] z-10 bg-white rounded-full p-3 shadow-md"
-            >
-              <img src={derImage} alt="Derecha" className="w-6 h-6" />
-            </button>
-          </div>
+              <div className="flex gap-6 overflow-hidden w-full px-10">
+                {recomendados
+                  .slice(startIndex, startIndex + visibleCount)
+                  .map((p) => (
+                    <ProductoCard
+                      key={`rec-${p.id}`}
+                      p={p}
+                      onAdd={() => agregarAlCarrito(p.id)}
+                      onOpen={() => navigate(`/producto/${p.id}`)}
+                    />
+                  ))}
+              </div>
+
+              <button
+                onClick={handleNext}
+                disabled={startIndex >= recomendados.length - visibleCount}
+                className={`absolute right-[-18px] z-10 bg-white rounded-full p-3 shadow-md ${
+                  startIndex >= recomendados.length - visibleCount ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+                }`}
+              >
+                <img src={derImage} alt="Derecha" className="w-6 h-6" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

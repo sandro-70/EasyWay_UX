@@ -2,7 +2,6 @@
 import axiosInstance from "../src/api/axiosInstance"; // ⬅️ nuevo
 import { useState, useEffect, useContext } from "react";
 import carrito from "./images/carrito_icon.png";
-
 import { useRef } from "react";
 import arrowL from "./images/arrowL.png";
 import arrowR from "./images/arrowR.png";
@@ -67,7 +66,6 @@ const toPublicFotoSrc = (nameOrPath) => {
 
 function Carrito() {
   const { setCount, incrementCart, decrementCart } = useCart();
-
   const [detalles, setDetalles] = useState([]);
   const [prodRec, setRec] = useState([]);
   const [stockPorSucursal, setStockPorSucursal] = useState({});
@@ -83,10 +81,8 @@ function Carrito() {
   const { user } = useContext(UserContext);
   const navigate = useNavigate();
   const [qtyDraft, setQtyDraft] = useState({});
-
   const [sucursales, setSucursales] = useState([]);
   const [idSucursal, setIdSucursal] = useState(null);
-
   const [promociones, setPromociones] = useState([]);
   const [promocionAplicada, setPromocionAplicada] = useState(null);
 
@@ -142,7 +138,6 @@ function Carrito() {
 
     return hoy >= inicio && hoy <= termina;
   };
-
   //obtener promociones válidas
   const obtenerPromocionesValidas = (promociones) => {
     return promociones.filter(
@@ -151,13 +146,11 @@ function Carrito() {
         validarFechaPromocion(promo.fecha_inicio, promo.fecha_termina)
     );
   };
-
   //encontrar mayor promoción aplicable
   const encontrarMejorPromocion = (totalCarrito, promocionesDisponibles) => {
     const promocionesValidas = obtenerPromocionesValidas(
       promocionesDisponibles
     );
-
     //compra mínima
     const promocionesAplicables = promocionesValidas.filter((promo) => {
       if (promo.compra_min && totalCarrito < promo.compra_min) {
@@ -167,10 +160,8 @@ function Carrito() {
     });
 
     if (promocionesAplicables.length === 0) return null;
-
     let mejorPromocion = null;
     let mayorDescuento = 0;
-
     promocionesAplicables.forEach((promo) => {
       let descuento = 0;
 
@@ -195,37 +186,50 @@ function Carrito() {
   };
 
   const calcularDescuentoPromocion = () => {
-    if (!promocionAplicada) return 0;
+    if (!promocionAplicada) {
+      return { descuento: 0, porcentaje: 0, valorFijo: 0 };
+    }
+
+    const porcentaje = parseFloat(promocionAplicada.valor_porcentaje) || 0;
+    const valorFijo = parseFloat(promocionAplicada.valor_fijo) || 0;
 
     switch (promocionAplicada.id_tipo_promo) {
       case 1: // Descuento porcentual
-        const porcentaje = parseFloat(promocionAplicada.valor_porcentaje) || 0;
-        return total * (porcentaje / 100);
+        return {
+          descuento: total * (porcentaje / 100),
+          porcentaje,
+          valorFijo: 0,
+        };
 
       case 2: // Descuento fijo
-        const valorFijo = parseFloat(promocionAplicada.valor_fijo) || 0;
-        return Math.min(valorFijo, total); // No puede ser mayor al total
+        return {
+          descuento: Math.min(valorFijo, total), // No mayor al total
+          porcentaje: 0,
+          valorFijo,
+        };
 
       default:
-        return 0;
+        return { descuento: 0, porcentaje: 0, valorFijo: 0 };
     }
   };
 
   const obtenerDescuentoTotal = () => {
-    const subtotal = total; // subtotal sin descuentos
+    const subtotal = Number(total) || 0;
 
     let descuentoCupon = 0;
-    if (descCupon) {
+    if (discount && descCupon) {
+      const v = Number(descCupon.valor) || 0;
       if (descCupon.tipo === "porcentaje") {
-        descuentoCupon = subtotal * (descCupon.valor / 100);
+        descuentoCupon = subtotal * (v / 100);
       } else if (descCupon.tipo === "fijo") {
-        descuentoCupon = descCupon.valor;
+        descuentoCupon = Math.min(v, subtotal);
       }
     }
 
-    const descuentoPromocion = promocionAplicada
+    const { descuento: descuentoPromocion } = promocionAplicada
       ? calcularDescuentoPromocion()
-      : 0;
+      : { descuento: 0 };
+
     return descuentoCupon + descuentoPromocion;
   };
 
@@ -295,35 +299,68 @@ function Carrito() {
       });
     }
   };
+  // --- Helpers robustos para fecha ---
+  const parseCouponDateLocal = (input) => {
+    if (!input) return null;
+    const s = String(input).trim();
+    const m = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/.exec(s);
+    if (m) {
+      const y = Number(m[1]),
+        mo = Number(m[2]) - 1,
+        d = Number(m[3]);
+      if (y && mo >= 0 && d) return new Date(y, mo, d, 0, 0, 0, 0); // LOCAL start of day
+    }
+    const d = new Date(s); // fallback
+    return isNaN(d) ? null : d;
+  };
 
+  const endOfDayLocal = (date) => {
+    if (!date || isNaN(date)) return null;
+    const d = new Date(date);
+    d.setHours(23, 59, 59, 999);
+    return d;
+  };
+
+  const isCouponExpired = (termina_en) => {
+    const end = endOfDayLocal(parseCouponDateLocal(termina_en));
+    if (!end) return false; // si no hay fecha valida, no bloquear
+    return new Date() > end; // expira después de fin de día
+  };
   // checkCupon actualizado
   const checkCupon = async (e) => {
     e.preventDefault();
     try {
-      // 1️⃣ Obtener todos los cupones
       const res = await GetCupones();
-      const allCoupons = res.data ?? [];
+      const all = res?.data ?? [];
 
-      // 2️⃣ Buscar cupón por código y activo
-      const cuponValido = allCoupons.find(
-        (c) =>
-          c.codigo.toLowerCase() === cupon.toLowerCase() && c.activo === true
+      // activo puede venir true/1/"true"
+      const normActivo = (v) => v === true || v === 1 || v === "true";
+
+      // Busca por código y activo
+      const c = all.find(
+        (x) =>
+          x.codigo?.toLowerCase() === cupon.toLowerCase() &&
+          normActivo(x.activo)
       );
 
-      if (!cuponValido) {
+      if (!c) {
         setVisible(false);
         setDesc(0);
-        toast.error("Cupón inválido o expirado", { className: "toast-error" });
+        toast.error("Cupón inválido o inactivo", { className: "toast-error" });
         return;
       }
 
-      // 3️⃣ Verificar si el usuario ya lo usó
-      const checkUsuario = await checkCuponUsuario(
-        cuponValido.id_cupon,
-        user.id_usuario
-      );
+      // 🚫 Expirado (soporta 'YYYY-MM-DD' y 'YYYY-MM-DDTHH:mm:ssZ')
+      if (isCouponExpired(c.termina_en || c.fecha_expiracion)) {
+        setVisible(false);
+        setDesc(0);
+        toast.error("El cupón está expirado", { className: "toast-error" });
+        return;
+      }
 
-      if (checkUsuario.data?.usado) {
+      // 🚫 Sin usos disponibles para este usuario (si tu API lo controla)
+      const r = await checkCuponUsuario(c.id_cupon, user.id_usuario);
+      if (r?.data?.usado) {
         setVisible(false);
         setDesc(0);
         toast.info("Ya has usado este cupón anteriormente", {
@@ -332,15 +369,33 @@ function Carrito() {
         return;
       }
 
-      // 4️⃣ Cupón válido y no usado
+      // 🚫 Límite de usos en el cupón (si lo manejas desde el registro)
+      const usosMax = Number(
+        c.uso_maximo_por_usuario ?? c.uso_por_usuario ?? 1
+      );
+      if (usosMax <= 0) {
+        setVisible(false);
+        setDesc(0);
+        toast.info("El cupón ya no tiene usos disponibles.", {
+          className: "toast-info",
+        });
+        return;
+      }
+
+      // ✅ Válido
       setVisible(true);
-      setDesc(cuponValido);
+      setDesc(c);
+      const val = Number(c.valor) || 0;
       toast.success(
-        `Cupón agregado: ${cuponValido.codigo}, ${cuponValido.valor}% de descuento`,
+        `Cupón agregado: ${c.codigo} (${
+          c.tipo === "porcentaje" ? `${val}%` : `L. ${val.toFixed(2)}`
+        })`,
         { className: "toast-success" }
       );
     } catch (err) {
       console.error("Error verificando cupón:", err);
+      setVisible(false);
+      setDesc(0);
       toast.error("Error al verificar el cupón", { className: "toast-error" });
     }
   };
@@ -354,7 +409,6 @@ function Carrito() {
       );
       return;
     }
-
     // Validar stock
     for (const item of detalles) {
       const stockDisponible = getStockEnSucursal(item.producto.id_producto);
@@ -386,7 +440,6 @@ function Carrito() {
         });
         return;
       }
-
       // Crear pedido
       const response = await crearPedido(
         user.id_usuario,
@@ -396,7 +449,6 @@ function Carrito() {
         desc
       );
       const id_pedido = response.data.id_pedido;
-
       // Marcar cupón como usado si se aplicó
       if (descCupon?.id_cupon) {
         await usarCuponHistorial(
@@ -405,7 +457,6 @@ function Carrito() {
           id_pedido,
           new Date().toISOString()
         );
-
         // Actualizar usos restantes y desactivar si es necesario
         const usosRestantes = descCupon.uso_maximo_por_usuario - 1;
         if (usosRestantes > 0) {
@@ -423,13 +474,11 @@ function Carrito() {
           await desactivarCupon(descCupon.id_cupon);
         }
       }
-
       // Limpiar estados de UI
       setPromocionAplicada(null);
       setCount(0);
       setShowProd(false);
       setVisible(false);
-
       toast("Pedido creado correctamente!", { className: "toast-default" });
       console.log("Pedido creado:", response.data);
     } catch (err) {
@@ -466,10 +515,8 @@ function Carrito() {
 
     try {
       console.log("Agregando producto:", id_producto);
-
       const carritoActual = await ViewCar();
       const carritoDetalles = carritoActual.data.carrito_detalles ?? [];
-
       const productoExistente = carritoDetalles.find(
         (item) => item.producto.id_producto === id_producto
       );
@@ -494,7 +541,6 @@ function Carrito() {
         });
 
         await SumarItem(id_producto, nuevaCantidad);
-
         setDetalles((prev) => {
           if (Array.isArray(prev)) {
             return prev.map((item) =>
@@ -511,7 +557,6 @@ function Carrito() {
         });
       } else {
         console.log("Producto nuevo, agregando al carrito");
-
         await AddNewCarrito(id_producto, 1);
         incrementCart(1);
         const carritoActualizado = await ViewCar();
@@ -623,7 +668,6 @@ function Carrito() {
     };
     fetchPromosDetalles();
   }, []);
-
   // /api/promociones/listarorden → info de descuento/fechas
   useEffect(() => {
     const fetchPromosInfo = async () => {
@@ -1092,11 +1136,16 @@ function Carrito() {
                         <p className="text-xs text-green-600">
                           Descuento:{" "}
                           {promocionAplicada.id_tipo_promo === 1
-                            ? `${promocionAplicada.valor_porcentaje.toFixed(
-                                2
-                              )}%`
-                            : `L. ${promocionAplicada.valor_fijo.toFixed(2)}`}
+                            ? `${(
+                                parseFloat(
+                                  promocionAplicada.valor_porcentaje
+                                ) || 0
+                              ).toFixed(2)}%`
+                            : `L. ${(
+                                parseFloat(promocionAplicada.valor_fijo) || 0
+                              ).toFixed(2)}`}
                         </p>
+
                         <p className="text-xs text-gray-500">
                           En compra mínima de: L.{" "}
                           {promocionAplicada.compra_min.toFixed(2)}
@@ -1183,18 +1232,22 @@ function Carrito() {
                         <span>
                           Promoción (
                           {promocionAplicada.id_tipo_promo === 1
-                            ? `${promocionAplicada.valor_porcentaje.toFixed(
-                                2
-                              )}%`
-                            : `L. ${promocionAplicada.valor_fijo.toFixed(2)}`}
+                            ? `${(
+                                parseFloat(
+                                  promocionAplicada.valor_porcentaje
+                                ) || 0
+                              ).toFixed(2)}%`
+                            : `L. ${(
+                                parseFloat(promocionAplicada.valor_fijo) || 0
+                              ).toFixed(2)}`}
                           )
                         </span>
                         <span>
-                          -L. {calcularDescuentoPromocion().toFixed(2)}
+                          -L.{" "}
+                          {calcularDescuentoPromocion().descuento.toFixed(2)}
                         </span>
                       </li>
                     )}
-
                     {/* Impuesto */}
                     <li className="flex justify-between">
                       <span>Impuesto (15%)</span>

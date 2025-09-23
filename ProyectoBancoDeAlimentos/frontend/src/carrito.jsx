@@ -889,6 +889,12 @@ function Carrito() {
     }
   }, [idSucursal]);
 
+  useEffect(() => {
+    if (idSucursal) {
+      localStorage.setItem("sucursalSeleccionada", idSucursal);
+    }
+  }, [idSucursal]);
+
   return (
     <div
       className="bg-gray-100 w-screen min-h-screen py-4 overflow-x-hidden items-center"
@@ -1176,8 +1182,7 @@ function Carrito() {
                         </p>
 
                         <p className="text-xs text-gray-500">
-                          En compra mínima de: L.{" "}
-                          {promocionAplicada.compra_min.toFixed(2)}
+                          En compra mínima de: L. {promocionAplicada.compra_min}
                         </p>
                       </div>
                     </div>
@@ -1296,7 +1301,7 @@ function Carrito() {
                     </li>
 
                     <button
-                      onClick={realizarCompra}
+                      onClick={() => navigate("/procesoCompra")}
                       className="bg-[#F0833E] rounded-md text-white text-xl w-full p-1"
                     >
                       Efectuar Compra

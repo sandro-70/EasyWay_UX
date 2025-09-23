@@ -2,12 +2,10 @@
   padding: 10px;
   display: flex;
   justify-content: center;
-  align-items: center;
   flex-direction: column;
-  align-items: center;
   width: 1200px;
   margin: 0 auto;
-  margin-top: 10px;
+  margin-top: 5px;
   background-color: #ffff;
 }
 
@@ -27,7 +25,7 @@
   justify-content: space-between;
   width: 100%;
   max-width: 1200px;
-  margin-bottom: 10px;
+  margin-bottom: 5px;
 }
 
 .usuario-export-btn {
@@ -73,14 +71,14 @@
   justify-content: flex-start;
   align-items: left;
   gap: 20px; /* espacio entre contador y filtro */
-  margin-bottom: 15px;
+  margin-bottom: 8px;
   margin-left: 0;
 }
 
 .usuario-count {
   display: inline-flex;
   justify-content: flex-start;
-  align-items: center;
+  align-items: left;
   background: var(--ink-500);
   padding: 8px 16px;
   border-radius: 999px;
@@ -93,7 +91,7 @@
 
 .usuario-filtros {
   display: inline-flex;
-  align-items: center;
+  align-items: left;
   gap: 8px; /* espacio entre label y select */
 }
 
@@ -115,13 +113,13 @@
   width: 100%;
   max-width: 1200px;
   border-collapse: collapse;
-  font-size: .875rem;
+  font-size: 0.875rem;
   margin: 0;
 }
 
 .usuario-thead th {
-  background-color:  #2B6DAF;
-  color: #ffffff ;
+  background-color: #2b6daf;
+  color: #ffffff;
   font-weight: 700;
   text-align: center;
   padding: 16px 12px;
@@ -131,7 +129,7 @@
 
 .usuario-table td {
   background: transparent; /* cambia a transparente */
-  padding: .75rem .75rem;
+  padding: 0.75rem 0.75rem;
   vertical-align: middle;
   text-align: center;
 }
@@ -172,7 +170,7 @@
   padding: 0.75rem 1rem;
   background: transparent;
   gap: 0.25rem;
-  flex-wrap: wrap; 
+  flex-wrap: wrap;
 }
 
 .usuario-page-btn {
@@ -187,7 +185,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.06s ease;
+  transition: background 0.15s ease, border-color 0.15s ease,
+    transform 0.06s ease;
 }
 
 .usuario-page-btn:hover {
@@ -196,9 +195,9 @@
 }
 
 .usuario-page-btn-active {
-  background: #fff;          /* fondo blanco */
+  background: #fff; /* fondo blanco */
   border: 2px solid #d8572f; /* borde naranja */
-  color: #d8572f;            /* texto naranja */
+  color: #d8572f; /* texto naranja */
   font-weight: 600;
 }
 
@@ -208,11 +207,11 @@
 }
 
 .usuario-pagination button:active {
-  background: #fff;          /* fondo blanco */
+  background: #fff; /* fondo blanco */
   border: 2px solid #d8572f; /* borde naranja */
-  color: #d8572f;            /* texto naranja */
+  color: #d8572f; /* texto naranja */
   font-weight: 600;
-  box-shadow: none;           /* opcional: quita sombra */
+  box-shadow: none; /* opcional: quita sombra */
 }
 
 .usuario-pagination button:disabled {

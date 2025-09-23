@@ -1,8 +1,13 @@
+//Agregar conexion con reportes administrador
+
 import "./tablaReportesVentas.css";
 import React, { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-import { getVentasConFiltros, exportVentasExcel } from "./api/reporteusuarioApi";
+import {
+  getVentasConFiltros,
+  exportVentasExcel,
+} from "./api/reporteusuarioApi";
 
 const Icon = {
   Search: (props) => (
@@ -64,7 +69,9 @@ function Pagination({ page, pageCount, onPage }) {
         <button
           key={p}
           onClick={() => handlePage(p)}
-          className={`ventas-page-btn ${p === page ? "ventas-page-btn-active" : ""}`}
+          className={`ventas-page-btn ${
+            p === page ? "ventas-page-btn-active" : ""
+          }`}
           title={`Página ${p}`}
         >
           {p}
@@ -90,6 +97,7 @@ function TablaReportesVentas() {
   const [filterText, setFilterText] = useState("");
   const [appliedFilter, setAppliedFilter] = useState("");
   const [orderDesc, setOrderDesc] = useState(true);
+  const [trimestre, setTrimestre] = useState(""); // filtro por trimestre
 
   const itemsPerPage = 8;
 
@@ -106,6 +114,7 @@ function TablaReportesVentas() {
           cantidad: v.total_vendido,
           precioVenta: v.producto.precio_base,
           total: v.total_vendido * v.producto.precio_base,
+          fecha: v.fecha ? new Date(v.fecha) : null, // Aseguramos que sea Date
         }));
         setVentas(formatted);
         setLoading(false);
@@ -122,11 +131,22 @@ function TablaReportesVentas() {
   );
 
   // Filtrar
-  const filteredData = appliedFilter
-    ? sortedData.filter((item) =>
-        item.producto.toLowerCase().includes(appliedFilter.toLowerCase())
-      )
-    : sortedData;
+  const filteredData = sortedData.filter((item) => {
+    // filtro por texto (producto)
+    const matchProducto = appliedFilter
+      ? item.producto.toLowerCase().includes(appliedFilter.toLowerCase())
+      : true;
+
+    // filtro por trimestre
+    let matchTrimestre = true;
+    if (trimestre && item.fecha) {
+      const mes = item.fecha.getMonth() + 1;
+      const trimestreCalculado = Math.ceil(mes / 3);
+      matchTrimestre = trimestreCalculado === parseInt(trimestre);
+    }
+
+    return matchProducto && matchTrimestre;
+  });
 
   // Paginación
   const paginatedData = filteredData.slice(
@@ -167,6 +187,24 @@ function TablaReportesVentas() {
         </header>
         <div className="divider" />
 
+        {/* Filtro por trimestre */}
+        <div className="filtro-trimestre">
+          <label>Filtrar por trimestre:</label>
+          <select
+            value={trimestre}
+            onChange={(e) => {
+              setTrimestre(e.target.value);
+              setPage(1);
+            }}
+          >
+            <option value="">Todos</option>
+            <option value="1">1er Trimestre (Ene - Mar)</option>
+            <option value="2">2do Trimestre (Abr - Jun)</option>
+            <option value="3">3er Trimestre (Jul - Sep)</option>
+            <option value="4">4to Trimestre (Oct - Dic)</option>
+          </select>
+        </div>
+
         {loading ? (
           <div className="ventas-loading">Cargando...</div>
         ) : (
@@ -198,6 +236,7 @@ function TablaReportesVentas() {
                   <th>Sucursal</th>
                   <th>Precio Venta</th>
                   <th>Total Vendido</th>
+                  <th>Fecha</th>
                 </tr>
               </thead>
               <tbody>
@@ -217,6 +256,11 @@ function TablaReportesVentas() {
                       <td>{row.sucursal}</td>
                       <td>L. {row.precioVenta}</td>
                       <td>L. {row.total}</td>
+                      <td>
+                        {row.fecha
+                          ? row.fecha.toLocaleDateString("es-HN")
+                          : "-"}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -266,5 +310,4 @@ function TablaReportesVentas() {
     </div>
   );
 }
-
 export default TablaReportesVentas;

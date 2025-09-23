@@ -4,19 +4,35 @@ import InfoIcon from "../images/info.png";
 import DetallePedido from "../components/DetallePedido";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-import { getPedidosConDetalles } from "../api/PedidoApi";
+import {
+  getPedidosConDetalles,
+  getHistorialComprasProductos,
+} from "../api/PedidoApi";
+import { getMetodosPagoByUserId } from "../api/metodoPagoApi";
 import "./ReportesPedidos.css";
 
 const meses = [
-  "Enero","Febrero","Marzo","Abril","Mayo","Junio",
-  "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
 ];
 
 const ReportesPedidos = () => {
   const [pedidos, setPedidos] = useState([]);
   const [mes, setMes] = useState("");
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
+  const [metodoPago, setMetodoPago] = useState();
   const [paginaActual, setPaginaActual] = useState(1);
+  const [orderDesc, setOrderDesc] = useState(true);
   const pedidosPorPagina = 8;
 
   useEffect(() => {
@@ -42,11 +58,12 @@ const ReportesPedidos = () => {
           };
         });
         setPedidos(formatted);
+        console.log("Reportes de Pedidos:", formatted);
       })
       .catch((err) => console.error("Error al obtener pedidos:", err));
   }, []);
 
-  // Filtrado por mes
+  // Primero filtrar por mes, luego ordenar
   const pedidosFiltrados = mes
     ? pedidos.filter((order) => {
         const [day, month, year] = order.fechaPedido.split("/");
@@ -54,15 +71,37 @@ const ReportesPedidos = () => {
       })
     : pedidos;
 
-  // Paginación
-  const totalPaginas = Math.ceil(pedidosFiltrados.length / pedidosPorPagina);
+  // Ordenar los pedidos filtrados por ID
+  const pedidosOrdenados = [...pedidosFiltrados].sort((a, b) => {
+    const idA = parseInt(a.id);
+    const idB = parseInt(b.id);
+    if (orderDesc) {
+      return idB - idA;
+    } else {
+      return idA - idB;
+    }
+  });
+
+  //ver que trae getHistorialComprasProductos
+  useEffect(() => {
+    getHistorialComprasProductos()
+      .then((res) => {
+        console.log("Datos del historial de compras:", res.data);
+      })
+      .catch((err) =>
+        console.error("Error al obtener datos del historial de compras:", err)
+      );
+  }, []);
+
+  // Paginación usando los pedidos ordenados
+  const totalPaginas = Math.ceil(pedidosOrdenados.length / pedidosPorPagina);
   const indiceInicio = (paginaActual - 1) * pedidosPorPagina;
   const indiceFinal = indiceInicio + pedidosPorPagina;
-  const pedidosPaginados = pedidosFiltrados.slice(indiceInicio, indiceFinal);
+  const pedidosPaginados = pedidosOrdenados.slice(indiceInicio, indiceFinal);
 
   // Exportar a Excel
   const exportToExcel = () => {
-    const exportData = pedidosFiltrados.map((order) => ({
+    const exportData = pedidosOrdenados.map((order) => ({
       "ID de Pedido": order.id,
       Estado: order.estado,
       "Fecha de Pedido": order.fechaPedido,
@@ -90,7 +129,9 @@ const ReportesPedidos = () => {
     };
     return (
       <div className="pedido-pagination">
-        <button onClick={() => handlePage(page - 1)} disabled={page === 1}>{"<"}</button>
+        <button onClick={() => handlePage(page - 1)} disabled={page === 1}>
+          {"<"}
+        </button>
         {pages.map((p) => (
           <button
             key={p}
@@ -100,17 +141,36 @@ const ReportesPedidos = () => {
             {p}
           </button>
         ))}
-        <button onClick={() => handlePage(page + 1)} disabled={page === pageCount}>{">"}</button>
+        <button
+          onClick={() => handlePage(page + 1)}
+          disabled={page === pageCount}
+        >
+          {">"}
+        </button>
       </div>
     );
   };
 
   return (
-    <div className="px-4" style={{ position: "absolute", left: 0, right: 0, width: "100%", display: "flex", flexDirection: "column" }}>
+    <div
+      className="px-4"
+      style={{
+        position: "absolute",
+        left: 0,
+        right: 0,
+        width: "100%",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
       <div className="content-container">
         <header className="page-header">
-          <h1 className="promocion-title"><span>Reportes de Pedidos</span></h1>
-          <button onClick={exportToExcel} className="ventas-export-btn">📊 Exportar a Excel</button>
+          <h1 className="promocion-title">
+            <span>Reportes de Pedidos</span>
+          </h1>
+          <button onClick={exportToExcel} className="ventas-export-btn">
+            📊 Exportar a Excel
+          </button>
         </header>
         <div className="divider" />
 
@@ -132,7 +192,7 @@ const ReportesPedidos = () => {
           </select>
           <div className="pedido-count">
             <span>Total de pedidos: </span>
-            <span className="count-bubble">{pedidosFiltrados.length}</span>
+            <span className="count-bubble">{pedidosOrdenados.length}</span>
           </div>
         </div>
 
@@ -141,9 +201,28 @@ const ReportesPedidos = () => {
           <table className="promocion-table">
             <thead>
               <tr>
-                {["ID","Estado","Fecha de Pedido","Fecha de Entrega","Tiempo promedio de entrega (días)","Método de Pago","Más Información"]
-                  .map((col, idx) => (
-                  <th key={idx} className="px-4 py-3 text-white text-center bg-[#2B6DAF]">
+                <th
+                  className="px-4 py-3 text-white text-center bg-[#2B6DAF] cursor-pointer hover:bg-[#1e5a9a] transition-colors"
+                  onClick={() => {
+                    setOrderDesc(!orderDesc);
+                    setPaginaActual(1); // Resetear a primera página al cambiar orden
+                  }}
+                  title="Hacer clic para cambiar ordenamiento"
+                >
+                  ID de Pedido {orderDesc ? "↓" : "↑"}
+                </th>
+                {[
+                  "Estado",
+                  "Fecha de Pedido",
+                  "Fecha de Entrega",
+                  "Tiempo promedio de entrega (días)",
+                  "Método de Pago",
+                  "Más Información",
+                ].map((col, idx) => (
+                  <th
+                    key={idx}
+                    className="px-4 py-3 text-white text-center bg-[#2B6DAF]"
+                  >
                     {col}
                   </th>
                 ))}
@@ -173,7 +252,10 @@ const ReportesPedidos = () => {
               ))}
               {pedidosPaginados.length === 0 && (
                 <tr>
-                  <td colSpan="7" className="py-4 text-black border-black text-center">
+                  <td
+                    colSpan="7"
+                    className="py-4 text-black border-black text-center"
+                  >
                     No hay pedidos
                   </td>
                 </tr>

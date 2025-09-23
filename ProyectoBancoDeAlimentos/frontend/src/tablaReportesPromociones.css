@@ -36,22 +36,21 @@
   width: 100%;
   border-radius: 0.375rem;
   background-color: #f0833e;
-  margin-top: 0.15rem;
 }
 
 .promocion-count {
-  display: inline-flex;       /* ocupa solo lo necesario */
-  justify-content: flex-start;/* alinear contenido al inicio */
-  align-items: center;        /* centra verticalmente */
+  display: inline-flex; /* ocupa solo lo necesario */
+  justify-content: flex-start; /* alinear contenido al inicio */
+  align-items: center; /* centra verticalmente */
   background: var(--ink-500);
-  padding: 8px 16px;
+  padding: 6px 14px;
   border-radius: 999px;
-  font-size: 14px;
+
   color: var(--card);
   gap: 6px;
-  max-width: fit-content;     /* se adapta al contenido */
-  margin-left: 0;             /* pegado a la izquierda */
-  margin-bottom: 15px;
+  max-width: fit-content; /* se adapta al contenido */
+  margin-left: 0; /* pegado a la izquierda */
+  margin-bottom: 10px;
 }
 
 .promocion-table-wrap {
@@ -70,13 +69,13 @@
   width: 100%;
   max-width: 1200px;
   border-collapse: collapse;
-  font-size: .875rem;
+  font-size: 0.875rem;
   margin: 0;
 }
 
 .promocion-thead th {
-  background-color:  #2B6DAF;
-  color: #ffffff ;
+  background-color: #2b6daf;
+  color: #ffffff;
   font-weight: 700;
   text-align: center;
   padding: 16px 12px;
@@ -86,7 +85,7 @@
 
 .promocion-table td {
   background: transparent; /* cambia a transparente */
-  padding: .75rem .75rem;
+  padding: 0.75rem 0.75rem;
   vertical-align: middle;
   text-align: center;
 }

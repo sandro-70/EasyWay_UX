@@ -1,51 +1,10 @@
 import "./tablaReportesUsuarios.css";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, use } from "react";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-
-// ======= Mock Data =======
-const mockUsuarios = [
-  {
-    id: 1,
-    nombre: "Juan Pérez",
-    estado: "Activo",
-    productoEstrella: "Arroz Premium",
-    cantidadCompras: 12,
-    totalComprado: 3500,
-  },
-  {
-    id: 2,
-    nombre: "María López",
-    estado: "Inactivo",
-    productoEstrella: "Leche Entera",
-    cantidadCompras: 5,
-    totalComprado: 1200,
-  },
-  {
-    id: 3,
-    nombre: "Carlos Rodríguez",
-    estado: "Activo",
-    productoEstrella: "Aceite de Oliva",
-    cantidadCompras: 20,
-    totalComprado: 8700,
-  },
-  {
-    id: 4,
-    nombre: "Ana Torres",
-    estado: "Activo",
-    productoEstrella: "Azúcar Refinada",
-    cantidadCompras: 8,
-    totalComprado: 2100,
-  },
-  {
-    id: 5,
-    nombre: "Luis Fernández",
-    estado: "Inactivo",
-    productoEstrella: "Harina de Trigo",
-    cantidadCompras: 3,
-    totalComprado: 750,
-  },
-];
+import { getAllInformacionUsuario } from "./api/Usuario.Route";
+import { getPedidosConDetallesUsuario } from "./api/PedidoApi";
+import { getAllFacturasByUserwithDetails } from "./api/FacturaApi";
 
 const Icon = {
   Search: (props) => (
@@ -135,25 +94,133 @@ function TablaReportesUsuarios() {
   const [filterText, setFilterText] = useState("");
   const [appliedFilter, setAppliedFilter] = useState("");
   const [estadoFilter, setEstadoFilter] = useState("Todos");
-  const [orderDesc, setOrderDesc] = useState(true);
+  const [orderDesc, setOrderDesc] = useState(false);
 
   const itemsPerPage = 8;
 
-  // Traer los datos (mock)
+  const calcularProductoEstrella = (facturas) => {
+    const conteoProductos = {};
+
+    facturas.forEach((factura) => {
+      if (factura.factura_detalles && Array.isArray(factura.factura_detalles)) {
+        factura.factura_detalles.forEach((detalle) => {
+          const productoId = detalle?.id_producto;
+          const nombreProducto = detalle.producto?.nombre;
+          const cantidad = parseInt(detalle.cantidad_unidad_medida || 1); // Usar la cantidad_unidad_medida
+
+          if (conteoProductos[productoId]) {
+            conteoProductos[productoId].cantidad += cantidad;
+          } else {
+            conteoProductos[productoId] = {
+              nombre: nombreProducto,
+              cantidad: cantidad,
+              unidadMedida: detalle.producto?.unidad_medida,
+            };
+          }
+        });
+      }
+    });
+
+    // Encontrar el producto con mayor cantidad
+    let productoEstrella = "Este usuario no ha comprado";
+    let maxCantidad = 0;
+
+    Object.values(conteoProductos).forEach((producto) => {
+      if (producto.cantidad > maxCantidad) {
+        maxCantidad = producto.cantidad;
+        productoEstrella = `${producto.nombre}`; //${producto.cantidad} ${producto.unidadMedida || ""
+      }
+    });
+
+    return productoEstrella;
+  };
+
+  // Traer los datos del backend
   useEffect(() => {
-    setLoading(true);
-    setTimeout(() => {
-      const formatted = mockUsuarios.map((u) => ({
-        id: u.id,
-        nombre: u.nombre,
-        estado: u.estado,
-        productoEstrella: u.productoEstrella,
-        cantidadCompras: u.cantidadCompras,
-        totalComprado: u.totalComprado,
-      }));
-      setUsuarios(formatted);
-      setLoading(false);
-    }, 500);
+    async function fetchData() {
+      try {
+        setLoading(true);
+        const response = await getAllInformacionUsuario();
+
+        // 🔥 OBTENER TODAS LAS FACTURAS UNA SOLA VEZ
+        console.log("🔄 Obteniendo TODAS las facturas...");
+        const todasLasFacturas = await getAllFacturasByUserwithDetails();
+        console.log(
+          "📦 Total facturas obtenidas:",
+          todasLasFacturas.data?.length || 0
+        );
+        console.log(
+          "📦 Detalles de todas las facturas:",
+          todasLasFacturas.data
+        );
+
+        const usuariosMapeados = await Promise.all(
+          response.data.map(async (user) => {
+            try {
+              console.log(
+                `\n👤 Procesando usuario ${user.id_usuario}: ${user.nombre}`
+              );
+
+              // 🔥 FILTRAR de TODAS las facturas para este usuario específico
+              const facturasDelUsuario =
+                todasLasFacturas.data?.filter((factura) => {
+                  const perteneceAlUsuario =
+                    factura.pedido?.id_usuario === user.id_usuario;
+                  console.log(
+                    `Factura ${factura.id_factura}: usuario=${factura.pedido?.id_usuario}, buscando=${user.id_usuario}, pertenece=${perteneceAlUsuario}`
+                  );
+                  return perteneceAlUsuario;
+                }) || [];
+
+              console.log(
+                `✅ Usuario ${user.id_usuario} tiene ${facturasDelUsuario.length} facturas válidas`
+              );
+
+              const cantidadCompras = facturasDelUsuario.length;
+              const totalComprado = facturasDelUsuario.reduce(
+                (sum, factura) => {
+                  const total = parseFloat(factura.total) || 0;
+                  return sum + total;
+                },
+                0
+              );
+
+              const productoEstrella =
+                calcularProductoEstrella(facturasDelUsuario);
+
+              return {
+                id: user.id_usuario,
+                nombre: user.nombre + " " + user.apellido,
+                estado: user.activo ? "Activo" : "Inactivo",
+                productoEstrella: productoEstrella || "N/A",
+                cantidadCompras: cantidadCompras,
+                totalComprado: totalComprado.toFixed(2),
+              };
+            } catch (error) {
+              console.error(
+                `Error al cargar estadísticas del usuario ${user.id_usuario}:`,
+                error
+              );
+              return {
+                id: user.id_usuario,
+                nombre: user.nombre + " " + (user.apellido || ""),
+                estado: user.activo ? "Activo" : "Inactivo",
+                productoEstrella: "N/A",
+                cantidadCompras: 0,
+                totalComprado: "0.00",
+              };
+            }
+          })
+        );
+
+        setUsuarios(usuariosMapeados);
+      } catch (error) {
+        console.error("Error al cargar los datos de usuarios:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
   }, []);
 
   // Ordenar
@@ -205,7 +272,6 @@ function TablaReportesUsuarios() {
         width: "100%",
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
       }}
     >
       <div className="usuario-container" style={{ maxWidth: "1200px" }}>
@@ -217,11 +283,6 @@ function TablaReportesUsuarios() {
         </header>
         <div className="divider" />
         <div className="usuario-toolbar">
-          <div className="usuario-count">
-            <span>Total Usuarios (Clientes): </span>
-            <span className="count-bubble">{filteredData.length}</span>
-          </div>
-
           {/* Filtro por estado */}
           <div className="usuario-filtros">
             <label htmlFor="estadoFilter">Filtrar por estado:</label>
@@ -232,11 +293,23 @@ function TablaReportesUsuarios() {
                 setEstadoFilter(e.target.value);
                 setPage(1);
               }}
+              style={{
+                fontSize: "16px",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                padding: "4px 8px",
+                backgroundColor: "#E6E6E6",
+              }}
             >
               <option value="Todos">Todos</option>
               <option value="Activo">Activo</option>
               <option value="Inactivo">Inactivo</option>
             </select>
+
+            <div className="usuario-count">
+              <span>Total De Usuarios: </span>
+              <span className="count-bubble">{filteredData.length}</span>
+            </div>
           </div>
         </div>
 
@@ -276,7 +349,7 @@ function TablaReportesUsuarios() {
                 {paginatedData.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="usuario-table-empty">
-                      ⚠ Sin resultados para "{appliedFilter}"
+                      ⚠ Sin resultados que mostrar
                     </td>
                   </tr>
                 ) : (

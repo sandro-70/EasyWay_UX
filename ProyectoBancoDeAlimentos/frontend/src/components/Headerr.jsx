@@ -306,7 +306,7 @@ const Headerr = () => {
                   <div style={styles.userHeader}>
                     <span style={styles.hello}>{t("hello") || "Hola,"}</span>
                     <span style={styles.fullName}>
-                       {user?.nombre || ""} {user?.apellido || ""}
+                       {user?.nombre || ""} 
                     </span>
                   </div>
                   <div style={styles.headerDivider} />

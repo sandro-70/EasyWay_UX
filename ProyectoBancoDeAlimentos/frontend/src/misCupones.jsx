@@ -111,8 +111,8 @@ const MisCupones = () => {
       </section>
 
       <div className="titulo">
-        <p className="titulo_texto">Mis Cupones</p>
-        <hr className="linea"></hr>
+        <h1 className="titulo-cupones">Mis Cupones</h1>
+        <hr className="linea-cupones"/>
       </div>
 
       <div className="titulos_secundarios">

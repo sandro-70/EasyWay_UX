@@ -1,45 +1,31 @@
 .cupones {
-  /* Usa el mismo fondo general */
-  background: #f5f7fa;
-
-  /* Estructura flexible como el layout general */
+  background: #ffffff;
   display: flex;
   flex-direction: column;
   height: 700px;
   width: 800px;
-  margin: 0 auto; /* Centrado horizontal */
-  padding: 2rem; /* Espaciado interno */
-  border-radius: 2rem; /* Bordes redondeados */
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1); /* Sombra ligera */
+  margin: 0 auto; 
+  padding: 2rem; 
+  border-radius: 1rem; 
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1); 
   gap: 20px;
-  margin-left: -120px;
+  margin-left: -50px;
   position: relative;
-  bottom: -13px; /* mueve 30px hacia arriba */
-  position: absolute; /* Posicionamiento absoluto respecto al contenedor padre */
-  top: 95px; /* Altura del header */
-  left: 0;
-  right: 0;
-  margin-left: auto; /* Centrado horizontal */
-  margin-right: auto;
 }
 
-.titulo {
+.titulo-cupones {
+  font-size: 1.8rem;
+  color: #f0833e;
   text-align: center;
-  margin-top: 30px;
+  margin-top: 10px;
   margin-bottom: 10px;
 }
 
-.titulo_texto {
-  color: #f0833e;
-  margin-bottom: 15px;
-  font-size: 1.8rem;
-}
-
-.linea {
+.linea-cupones {
+  width: 60%;
   border: none;
   border-top: 2px solid #f0833e;
-  margin: 0 auto 20px;
-  width: 60%;
+  margin: 0 auto 15px auto;
 }
 
 .titulos_secundarios {
@@ -64,7 +50,7 @@
   justify-content: center;
   align-items: flex-start;
   border-radius: 2rem;
-  background: #fff;
+  background: #f5f7fa;
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
   margin: 0 auto;
   border: 2px solid rgba(0, 0, 0, 0.1);

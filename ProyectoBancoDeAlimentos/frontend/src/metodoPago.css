@@ -15,25 +15,29 @@
 
 .agregar-tarjeta-container {
   display: flex;
-  border-radius: 1rem;
   width: 700px;
   height: 520px;
   background: white;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 0; /* Eliminado margen negativo */
+  margin-bottom: 0; 
+  border-radius: 1rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
 }
 
 .titulo-pago {
-  font-size: 1.5rem;
+  font-size: 1.8rem;
   color: #f0833e;
-  margin: 20px auto 15px;
+  text-align: center;
+  margin-top: 30px;
+  margin-bottom: 10px;
 }
 
-.separador {
+.metodo-separador {
+  width: 60%;
   border: none;
   border-top: 2px solid #f0833e;
-  width: 60%;
+  margin: 0 auto 15px auto;
 }
 
 .contenedor-tarjeta {

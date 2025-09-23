@@ -1,37 +1,47 @@
 .mis-pedidos-container {
   position: absolute;
-  top: 150px; /* offset desde header */
+  top: 140px; /* offset desde header */
   left: 0;
   right: 0;
-  display: flex;
+  display: flex ;
   justify-content: center; /* centro horizontal */
   flex-direction: column;
   align-items: center; /* opcional, centra hijos verticalmente si quieres */
   min-height: calc(100vh - 120px);
   background: #f5f7fa;
-  padding: 20px;
   box-sizing: border-box;
+  margin-left: 50px;
 }
+
 .historial-box {
   width: 700px;
+  justify-content: center;
+  align-items: center;
 }
 
 .content-wrapper {
+  height: 100%;
   display: flex;
   flex: 1;
+  border-radius: 1rem;
+  background-color: white;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
 }
 
-/* Sidebar ya lo tienes, aquí solo acomoda el main-content */
-.main-content {
+.mis-pedidos-content {
   flex: 1;
   padding: 20px;
+  height: auto;
+  border-radius: 1rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
 }
 
 /* === Título naranja === */
 .historial-title {
+  font-size: 1.8rem;
   color: #f0833e;
-  font-size: 1.5rem;
   text-align: center;
+  margin-top: 30px;
   margin-bottom: 10px;
 }
 
@@ -53,7 +63,7 @@
   display: flex;
   flex-direction: column;
   gap: 15px;
-  margin-left: 190px;
+  margin-left: 40px;
 }
 
 /* === Encabezado azul con filtro === */

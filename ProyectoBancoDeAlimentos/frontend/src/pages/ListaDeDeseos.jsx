@@ -10,13 +10,15 @@ import { vaciarListaDeseos } from "../api/listaDeseosApi";
 import { getProductosRecomendados } from "../api/InventarioApi";
 import { AddNewCarrito } from "../api/CarritoApi";
 import axiosInstance from "../api/axiosInstance";
-import { UserContext } from "../components/userContext";
+import { UserContext } from "../components/userContext" ;
+import { useCart } from "../utils/CartContext"
 
 import appleImage from "../images/appleImage.png";
 import carritoImage from "../images/ncarrito.png";
 import izqImage from "../images/izq.png";
 import derImage from "../images/der.png";
 import PerfilSidebar from "../components/perfilSidebar";
+import "./ListaDeDeseos.css";
 
 /* ===== helpers URL imagen (exacto a AgregarCarrito) ===== */
 const BACKEND_ORIGIN = (() => {
@@ -193,6 +195,7 @@ export default function ListaDeDeseos({ id_usuario: idFromProps }) {
   const visibleCount = 5;
   const [recomendados, setRecomendados] = useState([]);
   const [loadingRecomendados, setLoadingRecomendados] = useState(true);
+  const { incrementCart } = useCart();
 
   /* ===== Normaliza el favorito al formato del card ===== */
   const normalizeFav = (row) => {
@@ -321,6 +324,7 @@ export default function ListaDeDeseos({ id_usuario: idFromProps }) {
   const agregarAlCarrito = async (id_producto) => {
     try {
       await AddNewCarrito(id_producto, 1);
+      incrementCart(1);
       toast.success("Producto agregado al carrito", { position: "top-right" });
     } catch (error) {
       toast.error(
@@ -332,18 +336,7 @@ export default function ListaDeDeseos({ id_usuario: idFromProps }) {
 
   /* ===== UI ===== */
   return (
-    <div
-      style={{
-        position: "absolute",
-        top: "180px",
-        left: 0,
-        right: 0,
-        width: "100%",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-      }}
-    >
+    <div className="deseos-container">
       <div className="max-w-6xl w-full px-6 font-sans -mt-12 ml-[130px]">
         <section className="sidebar">
           <PerfilSidebar />
@@ -352,13 +345,10 @@ export default function ListaDeDeseos({ id_usuario: idFromProps }) {
         <div className="w-full max-w-[1080px] bg-white rounded-xl shadow-lg p-6 mb-8 mx-auto">
           {/* Título */}
           <div className="mb-6 text-center">
-            <h1 className="text-2xl font-bold text-orange-400 drop-shadow-md">
+            <h1 className="deseos-titulo">
               Lista de Deseos
             </h1>
-            <div
-              className="mt-2 h-1 bg-orange-400 mx-auto rounded-full"
-              style={{ width: "100%", maxWidth: "1080px" }}
-            />
+            <hr className="lista-deseos-separador"/>
           </div>
 
           {/* Tabs */}
@@ -407,9 +397,10 @@ export default function ListaDeDeseos({ id_usuario: idFromProps }) {
 
         {/* Recomendados */}
         <div className="mt-6 w-full max-w-[1080px] bg-white rounded-xl shadow-lg p-6 mx-auto">
-          <h2 className="text-xl font-bold text-orange-400 mb-4">
+          <h2 className="recomendados-titulo  ">
             Productos que podrían interesarte
           </h2>
+          <hr className="lista-recomendaciones-separador"/>
 
           {loadingRecomendados ? (
             <div className="h-[200px] flex items-center justify-center text-gray-500">

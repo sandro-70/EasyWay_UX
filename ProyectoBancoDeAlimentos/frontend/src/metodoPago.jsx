@@ -203,7 +203,7 @@ export default function MetodoPago() {
         {!showForm ? (
           <div className="agregar-tarjeta-container">
             <h1 className="titulo-pago">Métodos de pago</h1>
-            <hr className="separador" />
+            <hr className="metodo-separador" />
             {error && (
               <div className="error-message">
                 {error}

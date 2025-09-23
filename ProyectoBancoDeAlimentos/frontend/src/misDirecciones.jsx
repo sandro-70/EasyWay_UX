@@ -197,39 +197,15 @@ export default function MisDirecciones() {
         <PerfilSidebar />
       </section>
 
-      {/* Contenido principal - Nuevo contenedor para centrar */}
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          padding: "35px",
-        }}
-      >
-        <div style={{ width: "200%", maxWidth: "800px" }}>
-          <h1
-            style={{
-              textAlign: "center",
-              fontSize: "32px",
-              color: "#f0833e",
-              marginBottom: "20px",
-            }}
-          >
+      <div className="direccion-pago-layout">
+        <div>
+          <h1 className="titulo-direcciones">
             Mis Direcciones
           </h1>
-          <hr className="separador" />
+          <hr className="direccion-separado"/>
 
           {/* Formulario */}
-          <div
-            style={{
-              background: "#fff",
-              padding: "20px",
-              borderRadius: "10px",
-              marginBottom: "20px",
-              border: "1px solid #eee",
-            }}
-          >
+          <div className="formulario-direccion">
             <form onSubmit={handleSave}>
               <div
                 style={{ display: "flex", gap: "20px", marginBottom: "15px" }}

@@ -6,6 +6,7 @@ import Logo from "../images/logo2.png";
 import LogoExport from "../images/logo3.png";
 import CalendarioIcon from "../images/calendario.png";
 import { getAllFacturasByUserwithDetails } from "../api/FacturaApi";
+import "../pages/Facturas.css";
 
 // Librerías para PDF
 import jsPDF from "jspdf";
@@ -218,26 +219,26 @@ class Facturas extends Component {
     const totalPagar = subtotal + isv + costoEnvio;
 
     return (
-      <div className="min-h-screen flex">
+      <div className="facturas-container">
         {/* Sidebar */}
         <section className="sidebar">
           <PerfilSidebar />
         </section>
 
         {/* Contenido principal */}
-        <div className="flex-1 p-6 flex flex-col items-center">
-          <div className="w-[700px] p-4 rounded border border-gray-300 bg-white mt-24">
-            <h1 className="text-[#f0833e] text-3xl mb-2 font-normal text-left mt-8">
+        <div className="flex-1 flex flex-col items-center">
+          <div className="w-[700px] p-4 rounded border bg-white">
+            <h1 className="titulo-facturas">
               Facturas
             </h1>
-            <div className="h-0.5 bg-[#f0833e] mb-4 w-full mx-auto"></div>
+            <hr className="facturas-separado"/>
 
             {cargando ? (
               <p className="text-gray-500 text-center">Cargando facturas...</p>
             ) : (
-              <div className="relative w-full border border-gray-300 rounded bg-white mb-4">
-                <div className="flex justify-between items-center bg-[#2b6daf] text-white px-3 py-1 rounded-t">
-                  <h2 className="font-normal text-lg">Facturas emitidas</h2>
+              <div className="historial-box">
+                <div className="historial-header">
+                  <h2 className="box-titulo">Facturas emitidas</h2>
                   <div className="flex items-center gap-2">
                     <select
                       className="px-2 py-1 text-black font-bold w-32 border border-gray-300 rounded h-8"

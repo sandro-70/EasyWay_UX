@@ -1,32 +1,48 @@
 .mis-direcciones {
-  padding: 20px;
-  position: absolute; /* Posicionamiento absoluto respecto al contenedor padre */
-  top: 100px; /* Altura del header */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 40px;
+  border-radius: 1rem;
+  background: white;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.direccion-pago-layout {
+  position: absolute;
+  top: 140px;
   left: 0;
   right: 0;
-  margin-left: auto; /* Centrado horizontal */
+  margin-left: auto;
   margin-right: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 700px;
+  z-index: 1;
+  min-height: 00px;
+  background: white;
+
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
 }
 
-.titulo {
-  text-align: center;
-  font-size: 40px;
+.titulo-direcciones {
+  font-size: 1.8rem;
   color: #f0833e;
-  margin-bottom: 20px;
-  font-size: 1.5rem;
+  text-align: center;
+  margin-top: 30px;
+  margin-bottom: 10px;
 }
 
-.separador {
+.direccion-separado {
+  width: 60%;
   border: none;
   border-top: 2px solid #f0833e;
-  margin: 0 auto 30px;
-  width: 100%;
+  margin: 0 auto 15px auto;
 }
 
 /* ---------- Formulario ---------- */
 .formulario-direccion {
-  background: #fff;
-  border: 1px solid #eee;
   padding: 20px;
   border-radius: 10px;
   margin-bottom: 25px;
@@ -101,8 +117,6 @@
 
 /* ---------- Tabla ---------- */
 .tabla-direcciones {
-  background: #fff;
-  border: 1px solid #ddd;
   border-radius: 10px;
   overflow: hidden;
 }

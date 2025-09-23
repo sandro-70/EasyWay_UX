@@ -123,7 +123,7 @@ const MisPedidos = () => {
       </section>
 
       <div className="content-wrapper">
-        <div className="main-content">
+        <div className="mis-pedido-content">
           <h2 className="historial-title">Historial de pedidos</h2>
           <hr className="perfil-separator" />
 

@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
 import { getProductosFav } from "../api/lista_deseos";
+import { getListaDeseos } from "../api/listaDeseosApi";
 import { AddNewCarrito } from "../api/CarritoApi";
 import axiosInstance from "../api/axiosInstance";
 import { UserContext } from "../components/userContext";
@@ -257,7 +258,7 @@ export default function ListaDeDeseos({ id_usuario: idFromProps }) {
       }
       try {
         setLoading(true);
-        const res = await getProductosFav(id_usuario);
+        const res = await getListaDeseos(id_usuario);
         const arr = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
         const favs = arr.map(normalizeFav).filter((p) => p.id != null);
         setProducts(favs);

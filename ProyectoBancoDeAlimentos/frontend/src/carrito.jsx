@@ -146,41 +146,49 @@ function Carrito() {
         validarFechaPromocion(promo.fecha_inicio, promo.fecha_termina)
     );
   };
+
   //encontrar mayor promoción aplicable
   const encontrarMejorPromocion = (totalCarrito, promocionesDisponibles) => {
     const promocionesValidas = obtenerPromocionesValidas(
       promocionesDisponibles
     );
-    //compra mínima
+
+    // Filtrar por compra mínima y por presencia de productos (si la promo es de lista)
     const promocionesAplicables = promocionesValidas.filter((promo) => {
-      if (promo.compra_min && totalCarrito < promo.compra_min) {
-        return false;
-      }
+      const compraMin = Number(promo.compra_min) || 0;
+      if (compraMin > 0 && totalCarrito < compraMin) return false;
+
+      // Si esta promo tiene productos asociados, exigir que el carrito tenga al menos uno
+      const idPromo = Number(promo.id_promocion);
+      const esPromoDeLista = promoIdsConProductos.has(idPromo);
+      if (esPromoDeLista && !carritoTieneProductoDePromo(idPromo)) return false;
+
       return true;
     });
 
     if (promocionesAplicables.length === 0) return null;
+
+    // Elegir la de mayor descuento sobre el total del carrito (tu regla actual)
     let mejorPromocion = null;
     let mayorDescuento = 0;
-    promocionesAplicables.forEach((promo) => {
-      let descuento = 0;
 
-      switch (promo.id_tipo_promo) {
-        case 1: // Porcentual
-          descuento = totalCarrito * (parseFloat(promo.valor_porcentaje) / 100);
-          break;
-        case 2: // Fijo
-          descuento = Math.min(parseFloat(promo.valor_fijo), totalCarrito);
-          break;
-        default:
-          descuento = 0;
+    for (const promo of promocionesAplicables) {
+      const tipo = Number(promo.id_tipo_promo);
+      const pct = parseFloat(promo.valor_porcentaje) || 0;
+      const fijo = parseFloat(promo.valor_fijo) || 0;
+
+      let descuento = 0;
+      if (tipo === 1 && pct > 0) {
+        descuento = totalCarrito * (pct / 100);
+      } else if (tipo === 2 && fijo > 0) {
+        descuento = Math.min(fijo, totalCarrito);
       }
 
       if (descuento > mayorDescuento) {
         mayorDescuento = descuento;
         mejorPromocion = promo;
       }
-    });
+    }
 
     return mejorPromocion;
   };
@@ -645,7 +653,31 @@ function Carrito() {
   // === Promos por producto (como en Inicio/Categoría) ===
   const [promosPorProducto, setPromosPorProducto] = useState({}); // { id_producto: [id_promocion, ...] }
   const [promosInfo, setPromosInfo] = useState({}); // { id_promocion: {...} }
-
+  // Set de promos que tienen al menos 1 producto asociado
+  const promoIdsConProductos = React.useMemo(() => {
+    const s = new Set();
+    for (const arr of Object.values(promosPorProducto)) {
+      if (Array.isArray(arr)) {
+        for (const pidPromo of arr) s.add(Number(pidPromo));
+      }
+    }
+    return s;
+  }, [promosPorProducto]);
+  //el carrito si incluye algun producto con promo
+  const carritoTieneProductoDePromo = (promoId) => {
+    const pidPromo = Number(promoId);
+    for (const item of detalles || []) {
+      const pid = Number(item?.producto?.id_producto);
+      const promosDeEsteProducto = promosPorProducto[pid];
+      if (
+        Array.isArray(promosDeEsteProducto) &&
+        promosDeEsteProducto.some((x) => Number(x) === pidPromo)
+      ) {
+        return true;
+      }
+    }
+    return false;
+  };
   // /api/promociones/detalles → mapea productos a promociones
   useEffect(() => {
     const fetchPromosDetalles = async () => {
@@ -764,10 +796,9 @@ function Carrito() {
     if (total > 0 && promociones.length > 0) {
       const mejorPromocion = encontrarMejorPromocion(total, promociones);
 
-      // Solo actualizar si cambió la promoción
+      // Solo actualizar si cambió
       if (mejorPromocion?.id_promocion !== promocionAplicada?.id_promocion) {
         setPromocionAplicada(mejorPromocion);
-
         if (mejorPromocion) {
           console.log(
             `Promoción automática aplicada: ${mejorPromocion.nombre_promocion}`
@@ -777,11 +808,9 @@ function Carrito() {
         }
       }
     } else {
-      if (promocionAplicada) {
-        setPromocionAplicada(null);
-      }
+      if (promocionAplicada) setPromocionAplicada(null);
     }
-  }, [total, promociones]);
+  }, [total, promociones, detalles, promosPorProducto]); // ⬅️ añade estas deps
 
   // Effects existentes
   useEffect(() => {

@@ -529,27 +529,8 @@ const CampanaPromocional = () => {
               </div>
             }
 
-            {/* Aplica a */}
-            <div className="ui-field">
-              <label className="ui-label" htmlFor="aplicaA">
-                Aplica a
-              </label>
-              <div className="selectContainer">
-                <select
-                  id="aplicaA"
-                  name="aplicaA"
-                  className="ui-select"
-                  value={formData.aplicaA}
-                  onChange={handleInputChange}
-                >
-                  <option value="todos">Todos los productos</option>
-                  <option value="lista">Lista de productos</option>
-                </select>
-                <ChevronDown size={16} className="selectIcon" />
-              </div>
-            </div>
+          
 
-            {formData.aplicaA === "lista" && (
               <div className="ui-field ui-field--full">
                 <label className="ui-label" htmlFor="combo">
                   Producto(s) {cargandoProductos && <small>(cargando…)</small>}
@@ -659,7 +640,6 @@ const CampanaPromocional = () => {
                   </div>
                 </div>
               </div>
-            )}
           </div>
         </div>
 

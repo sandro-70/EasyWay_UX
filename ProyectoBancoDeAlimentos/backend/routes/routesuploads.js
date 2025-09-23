@@ -35,7 +35,7 @@ const fileFilter = (_req, file, cb) => {
   cb(null, true);
 };
 
-const upload = multer({ storage, fileFilter, limits: { fileSize: 10 * 1024 * 1024 } });
+const upload = multer({ storage, fileFilter, limits: { fileSize: 20 * 1024 * 1024 } });
 
 const storageCategoria = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, CATEGORIA_DIR),

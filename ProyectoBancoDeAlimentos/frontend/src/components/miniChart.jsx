@@ -82,10 +82,9 @@ const MiniChart = ({ title1, title2, data = [], itemsPerPage = 4, renderRow }) =
                 key={n}
                 onClick={() => setPage(n)}
                 className={`w-7 h-7 rounded-full text-sm leading-7 text-center border transition
-                  ${
-                    page === n
-                      ? "bg-[#f0833e] text-white border-[#f0833e]"
-                      : "bg-white text-gray-700 border-gray-300 hover:bg-orange-100"
+                  ${page === n
+                    ? "bg-[#f0833e] text-white border-[#f0833e]"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-orange-100"
                   }`}
                 aria-current={page === n ? "page" : undefined}
               >

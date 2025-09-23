@@ -4,7 +4,7 @@ const PedidoEmergente = ({ pedido, cerrarModal }) => {
   return (
     <div className="overlay">
       <div className="modal">
-        <h3>Pedido #{pedido.id}</h3>
+        <h3>Pedido #{pedido.id_pedido}</h3>
 
         <table>
           <thead>

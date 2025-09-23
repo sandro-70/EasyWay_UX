@@ -32,7 +32,7 @@ class Facturas extends Component {
         id: f.id_factura,
         numero: f.id_factura,
         fecha: new Date(f.fecha_emision).toLocaleDateString("es-ES"),
-        metodo_pago: f.metodo_pago?.nombre || "Sin especificar",
+        // **CAMBIO 1: Eliminar el método de pago del estado de la factura**
         productos: f.factura_detalles.map((fd) => ({
           codigo: fd.id_producto,
           nombre: fd.producto.nombre,
@@ -107,7 +107,7 @@ class Facturas extends Component {
       (acc, prod) => acc + prod.cantidad * prod.precio,
       0
     );
-    const isv = subtotal * 0.15;
+    const isv = productos.reduce((acc, prod) => acc + prod.cantidad * prod.precio, 0) * 0.15;
     const costoEnvio = 10.0;
     const totalPagar = subtotal + isv + costoEnvio;
 
@@ -123,12 +123,13 @@ class Facturas extends Component {
     doc.text("Supermercado:", 14, 30);
     doc.text("No. Factura:", 14, 36);
     doc.text("Fecha:", 14, 42);
-    doc.text("Método de pago:", 14, 48);
+    // **CAMBIO 2: Eliminar la línea "Método de pago:" de la exportación en PDF**
     doc.setFont(undefined, "normal");
     doc.text("Easy Way", 45, 30);
     doc.text(`#${facturaSeleccionada.numero}`, 45, 36);
     doc.text(this.formatFecha(facturaSeleccionada.fecha), 35, 42);
-    doc.text(facturaSeleccionada.metodo_pago, 50, 48);
+    // **CAMBIO 3: Eliminar la línea del método de pago del PDF**
+    // doc.text(facturaSeleccionada.metodo_pago, 50, 48);
     // Resumen
     doc
       .setFontSize(13)
@@ -204,7 +205,7 @@ class Facturas extends Component {
       cargando,
     } = this.state;
     const facturasFiltradas = fechaFiltro
-      ? facturas.filter((f) => f.fecha.split("/")[1] === fechaFiltro)
+      ? facturas.filter((f) => f.fecha.split("/")[1].padStart(2, '0') === fechaFiltro)
       : facturas;
 
     const productos = facturaSeleccionada ? facturaSeleccionada.productos : [];
@@ -212,7 +213,7 @@ class Facturas extends Component {
       (acc, prod) => acc + prod.cantidad * prod.precio,
       0
     );
-    const isv = subtotal * 0.15;
+    const isv = productos.reduce((acc, prod) => acc + prod.cantidad * prod.precio, 0) * 0.15;
     const costoEnvio = 10.0;
     const totalPagar = subtotal + isv + costoEnvio;
 
@@ -266,11 +267,7 @@ class Facturas extends Component {
                         </option>
                       ))}
                     </select>
-                    <img
-                      src={CalendarioIcon}
-                      alt="Calendario"
-                      className="h-5 w-5"
-                    />
+
                   </div>
                 </div>
 
@@ -278,10 +275,10 @@ class Facturas extends Component {
                   {facturasFiltradas.map((f, index) => (
                     <div
                       key={f.id}
-                      className={`cursor-pointer p-2 hover:bg-blue-50 transition-colors 
+                      className={`cursor-pointer p-2 hover:bg-blue-50 transition-colors
                         ${
                           facturaSeleccionada?.id === f.id ? "bg-blue-100" : ""
-                        } 
+                        }
                         ${
                           index < facturasFiltradas.length - 1
                             ? "border-b border-gray-300"
@@ -294,7 +291,8 @@ class Facturas extends Component {
                           Pedido #{f.numero}
                         </p>
                         <p className="text-gray-500 text-sm">
-                          {f.fecha}- {f.metodo_pago}
+                          {/* **CAMBIO 4: Eliminar el método de pago de la vista de lista** */}
+                          {f.fecha}
                         </p>
                       </div>
                     </div>
@@ -332,10 +330,7 @@ class Facturas extends Component {
                     <span className="font-bold">No. Factura:</span> #
                     {facturaSeleccionada.numero}
                   </p>
-                  <p className="mb-0.5">
-                    <span className="font-bold">Método de Pago:</span>{" "}
-                    {facturaSeleccionada.metodo_pago}
-                  </p>
+                  {/* **CAMBIO 5: Eliminar el párrafo del método de pago del modal** */}
                   <p className="mb-2">
                     <span className="font-bold">Fecha:</span>{" "}
                     {this.formatFecha(facturaSeleccionada.fecha)}

@@ -195,6 +195,7 @@ function Dashboard() {
   }, []);
 
   // Filtrado por sucursal + “críticos”
+  // Filtrado por sucursal + “críticos”
   useEffect(() => {
     const base = inventoryRaw.filter((r) => r.producto && r.producto !== "-");
 
@@ -203,8 +204,8 @@ function Dashboard() {
         ? base
         : base.filter((r) => String(r.id_sucursal) === String(sucursalId));
 
-    // Críticos: <= 5 (si no hay críticos, muestra los más bajos igual)
-    const critical = bySucursal.filter((r) => Number.isFinite(r.stock) && r.stock <= 40);
+    // Críticos: <= 10 (si no hay críticos, muestra los más bajos igual)
+    const critical = bySucursal.filter((r) => Number.isFinite(r.stock) && r.stock <= 10);
     const display = (critical.length ? critical : bySucursal)
       .slice() // copia
       .sort((a, b) => a.stock - b.stock);
@@ -296,7 +297,7 @@ function Dashboard() {
       title="Filtrar por sucursal"
       style={{ cursor: "pointer", userSelect: "none" }}
     >
-      Stock {sucursalId === "all" ? "" : `· ${sucursalTxt}`} ▾
+      {sucursalId === "all" ? "todas las sucursales" : ` ${sucursalTxt}`} ▾
     </span>
   );
 
@@ -305,9 +306,8 @@ function Dashboard() {
   return (
     <div className=" px-12 " style={{ ...styles.fixedShell, backgroundColor: "#f3f4f6" }}>
       <div
-        className={`flex flex-col w-full  pt-2 px-8 transition-all duration-300  ${
-          moveButton ? "ml-44" : "ml-0"
-        }`}
+        className={`flex flex-col w-full  pt-2 px-8 transition-all duration-300  ${moveButton ? "ml-44" : "ml-0"
+          }`}
       >
         <div className="">
           <div className="text-left">
@@ -327,20 +327,26 @@ function Dashboard() {
                 <div style={{ position: "relative " }}>
                   <MiniChart
                     title1="Producto"
-                    title2={stockHeader} // ⬅️ clicable
+                    title2={stockHeader}
                     data={inventory}
                     itemsPerPage={4}
                     renderRow={(item) => (
                       <>
-                        <span>{item.producto}</span>
+                        <span className="overflow-hidden whitespace-nowrap overflow-ellipsis text-left">
+                          {item.producto}
+                          {item.sucursal && (
+                            <span className="ml-2 font-light text-gray-500 text-xs">
+                              ({item.sucursal})
+                            </span>
+                          )}
+                        </span>
                         <span
-                          className={`font-bold ${
-                            item.stock <= 2
+                          className={`font-bold text-right ${item.stock <= 2
                               ? "text-red-600"
                               : item.stock <= 5
-                              ? "text-orange-500"
-                              : "text-yellow-500"
-                          }`}
+                                ? "text-orange-500"
+                                : "text-yellow-500"
+                            }`}
                         >
                           {item.stock}
                         </span>
@@ -448,7 +454,7 @@ function Dashboard() {
                     <>
                       <span>{item.nombre}</span>
                       <span>{item.compras}</span>
-                      <span>{item.gastosTotales+". Lps"}</span>
+                      <span>{item.gastosTotales + ". Lps"}</span>
                     </>
                   )}
                 />

@@ -53,7 +53,7 @@ const MisPedidos = () => {
         const formattedPedidos = response.data.map((p) => ({
           id_pedido: p.id_pedido,
           fecha: p.fecha_pedido ? p.fecha_pedido.split('T')[0] : 'Sin fecha',
-          estado: p.estado_pedido?.nombre_pedido || "Desconocido",
+          estado: p.estado || "Desconocido",
         }));
         setPedidos(formattedPedidos);
         setCargando(false);
@@ -68,43 +68,49 @@ const MisPedidos = () => {
   let pedidosFiltrados = [...pedidos];
 
   if (filtro === "recientes") {
-  pedidosFiltrados.sort((a, b) => {
-    // Primero, compara por fecha
-    const fechaA = new Date(a.fecha);
-    const fechaB = new Date(b.fecha);
+    pedidosFiltrados.sort((a, b) => {
+      // Primero, compara por fecha
+      const fechaA = new Date(a.fecha);
+      const fechaB = new Date(b.fecha);
 
-    if (fechaA.getTime() !== fechaB.getTime()) {
-      // Si las fechas son diferentes, ordena de más reciente a más antiguo
-      return fechaB - fechaA;
-    } else {
-      // Si las fechas son iguales, ordena por ID de pedido (el más alto es el más reciente)
-      return b.id_pedido - a.id_pedido;
-    }
-  });
-} else if (filtro === "antiguos") {
-  pedidosFiltrados.sort((a, b) => {
-    // Primero, compara por fecha
-    const fechaA = new Date(a.fecha);
-    const fechaB = new Date(b.fecha);
+      if (fechaA.getTime() !== fechaB.getTime()) {
+        // Si las fechas son diferentes, ordena de más reciente a más antiguo
+        return fechaB - fechaA;
+      } else {
+        // Si las fechas son iguales, ordena por ID de pedido (el más alto es el más reciente)
+        return b.id_pedido - a.id_pedido;
+      }
+    });
+  } else if (filtro === "antiguos") {
+    pedidosFiltrados.sort((a, b) => {
+      // Primero, compara por fecha
+      const fechaA = new Date(a.fecha);
+      const fechaB = new Date(b.fecha);
 
-    if (fechaA.getTime() !== fechaB.getTime()) {
-      // Si las fechas son diferentes, ordena de más antiguo a más reciente
-      return fechaA - fechaB;
-    } else {
-      // Si las fechas son iguales, ordena por ID de pedido (el más bajo es el más antiguo)
-      return a.id_pedido - b.id_pedido;
-    }
-  });
-} else if (filtro === "exacta" && fechaExacta) {
-  pedidosFiltrados = pedidosFiltrados.filter((p) => p.fecha === fechaExacta);
-}
+      if (fechaA.getTime() !== fechaB.getTime()) {
+        // Si las fechas son diferentes, ordena de más antiguo a más reciente
+        return fechaA - fechaB;
+      } else {
+        // Si las fechas son iguales, ordena por ID de pedido (el más bajo es el más antiguo)
+        return a.id_pedido - b.id_pedido;
+      }
+    });
+  } else if (filtro === "exacta" && fechaExacta) {
+    pedidosFiltrados = pedidosFiltrados.filter((p) => p.fecha === fechaExacta);
+  }
 
   const pedidosMostrados = pedidosFiltrados.slice(0, limite);
 
   const abrirModal = async (pedido) => {
     try {
       const response = await listarPedido(pedido.id_pedido);
-      setPedidoSeleccionado(response.data);
+      const pedidoConId = {
+        ...response.data, // Los productos y otros detalles
+        id_pedido: pedido.id_pedido, // Agrega el id_pedido que ya tienes
+      };
+
+      
+      setPedidoSeleccionado(pedidoConId);
       setModalAbierto(true);
     } catch (error) {
       console.error("Error al obtener los detalles del pedido:", error);
@@ -147,7 +153,7 @@ const MisPedidos = () => {
                   className="filtro-fecha-input" // <--- NUEVA CLASE AQUÍ
                 />
               )}
-              
+
             </div>
             <div className="historial-list">
               {cargando ? (

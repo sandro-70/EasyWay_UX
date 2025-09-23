@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import { getPromocionById, actualizarPromocion } from "../api/PromocionesApi";
+import axiosInstance from "../api/axiosInstance";
 
 const tipoToLabel = (t) => (Number(t) === 1 ? "Porcentaje" : Number(t) === 2 ? "Fijo" : "—");
 const labelToTipoId = (labelOrId) => {
@@ -23,6 +24,8 @@ export default function CampanaDetalleModal({ id, mode = "view", onClose, onSave
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [bannerFile, setBannerFile] = useState(null);
+  const [bannerPreview, setBannerPreview] = useState("");
 
   useEffect(() => {
     let alive = true;
@@ -54,6 +57,24 @@ export default function CampanaDetalleModal({ id, mode = "view", onClose, onSave
     return () => { alive = false; };
   }, [id, onClose]);
 
+  // util: resolver src publica como en ConfigBanner
+  const toPublicFotoSrc = (nameOrPath, defDir = "fotoDePerfil") => {
+    if (!nameOrPath) return "";
+    const s = String(nameOrPath).trim();
+    const base = axiosInstance?.defaults?.baseURL;
+    let origin = "";
+    try {
+      const u = base ? (base.startsWith("http") ? new URL(base) : new URL(base, window.location.origin)) : new URL(window.location.origin);
+      origin = `${u.protocol}//${u.host}`;
+    } catch {
+      origin = window.location.origin;
+    }
+    if (/^https?:\/\//i.test(s)) return s;
+    if (s.startsWith("/api/images/")) return `${origin}${encodeURI(s)}`;
+    if (s.startsWith("/images/")) return `${origin}/api${encodeURI(s)}`;
+    return `${origin}/api/images/${encodeURIComponent(defDir)}/${encodeURIComponent(s)}`;
+  };
+
   const onChange = (e) => {
     const { name, value } = e.target;
     setForm((s) => ({ ...s, [name]: value }));
@@ -81,6 +102,20 @@ export default function CampanaDetalleModal({ id, mode = "view", onClose, onSave
   const guardar = async () => {
     try {
       setSaving(true);
+      let finalBannerUrl = form.banner_url || null;
+
+      // si se seleccionó un archivo, subirlo primero
+      if (bannerFile) {
+        const fd = new FormData();
+        // conservar nombre original para que el backend lo use
+        fd.append("foto", bannerFile, bannerFile.name || "banner.png");
+        const resp = await axiosInstance.post("/api/uploads/profile-photo", fd, { headers: { "Content-Type": "multipart/form-data" } });
+        const filename = resp?.data?.filename;
+        if (filename) {
+          finalBannerUrl = filename; // se resolverá con /api/images/fotoDePerfil/{filename}
+        }
+      }
+
       const payload = {
         nombre_promocion: String(form.nombre_promocion).trim(),
         descripción: String(form.descripción).trim(),
@@ -90,7 +125,7 @@ export default function CampanaDetalleModal({ id, mode = "view", onClose, onSave
         fecha_inicio: form.fecha_inicio,
         fecha_termina: form.fecha_termina,
         id_tipo_promo: Number(form.id_tipo_promo),
-        banner_url: form.banner_url || null,
+        banner_url: finalBannerUrl,
         activa: !!form.activa,
       };
       await actualizarPromocion(id, payload);
@@ -182,9 +217,36 @@ export default function CampanaDetalleModal({ id, mode = "view", onClose, onSave
                 </div>
 
                 <div className="cp-field cp-col-span">
-                  <label className="cp-label">Banner URL</label>
-                  <input className="cp-input" name="banner_url" value={form.banner_url || ""}
-                         onChange={onChange} disabled={readOnly} type="text" placeholder="https://…" />
+                  <label className="cp-label">Banner</label>
+                  <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                    <div style={{ width: 320, height: 120, border: "1px solid #d8dadc", borderRadius: 8, overflow: "hidden", background: "#f8fafc" }}>
+                      {(() => {
+                        const src = bannerPreview || toPublicFotoSrc(form.banner_url, "fotoDePerfil");
+                        return src ? (
+                          <img src={src} alt="Banner" style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                               onError={(e) => { e.currentTarget.src = "/PlaceHolder.png"; }} />
+                        ) : (
+                          <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#64748b" }}>Sin imagen</div>
+                        );
+                      })()}
+                    </div>
+                    {!readOnly && (
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(ev) => {
+                          const file = ev.target.files?.[0] || null;
+                          setBannerFile(file);
+                          if (file) {
+                            const url = URL.createObjectURL(file);
+                            setBannerPreview(url);
+                          } else {
+                            setBannerPreview("");
+                          }
+                        }}
+                      />
+                    )}
+                  </div>
                 </div>
 
               

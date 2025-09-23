@@ -198,7 +198,7 @@ const Headerr = () => {
       if (hasPriv("personalizacion_reportes")) return "/personalizacionReportes";
       return "/EditarPerfilAdmin";
     }
-    return "/";
+    return "/dashboard";
   };
 
  const roleText = isAdmin ? "Administrador" : isConsultor ? "Consultor" : isCliente ? "Cliente" : "Invitado";

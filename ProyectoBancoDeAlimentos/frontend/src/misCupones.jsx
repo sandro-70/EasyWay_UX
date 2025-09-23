@@ -52,23 +52,30 @@ const MisCupones = () => {
         const hoy = new Date();
         hoy.setHours(0, 0, 0, 0);
 
-        const noUsados = cupones.filter(
-          (c) => parseToLocalDate(c.fecha_usado) === null && c.Cupon?.activo
-        );
+        const noUsados = cupones.filter((c) => {
+          const fUso = parseToLocalDate(c.fecha_usado);
+          const fExp = parseToLocalDate(c.Cupon?.termina_en);
+          return (
+            c.Cupon?.activo &&
+            fUso === null && // no usado
+            fExp !== null &&
+            fExp > hoy // aún no caducado
+          );
+        });
 
         const usados = cupones.filter((c) => {
           const fUso = parseToLocalDate(c.fecha_usado);
-          return fUso !== null && c.Cupon?.activo;
+          return fUso !== null; // cualquier cupón usado
         });
 
         const caducados = cupones.filter((c) => {
-          if (!c.Cupon?.activo) return true;
           const fUso = parseToLocalDate(c.fecha_usado);
-          if (fUso !== null) return false;
-          const fechaExp = parseToLocalDate(c.Cupon?.termina_en);
-          return fechaExp !== null && fechaExp < hoy;
+          const fExp = parseToLocalDate(c.Cupon?.termina_en);
+          return (
+            !c.Cupon?.activo || // inactivo
+            (fUso === null && fExp !== null && fExp <= hoy) // caducó sin usarse
+          );
         });
-
         setCuponesNoUtilizados(noUsados);
         setCuponesUsados(usados);
         setCuponesCaducados(caducados);
@@ -112,7 +119,7 @@ const MisCupones = () => {
 
       <div className="titulo">
         <h1 className="titulo-cupones">Mis Cupones</h1>
-        <hr className="linea-cupones"/>
+        <hr className="linea-cupones" />
       </div>
 
       <div className="titulos_secundarios">

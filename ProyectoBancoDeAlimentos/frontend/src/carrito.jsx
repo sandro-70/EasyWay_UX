@@ -307,33 +307,36 @@ function Carrito() {
       });
     }
   };
-  // --- Helpers robustos para fecha ---
-  const parseCouponDateLocal = (input) => {
-    if (!input) return null;
-    const s = String(input).trim();
-    const m = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/.exec(s);
-    if (m) {
-      const y = Number(m[1]),
-        mo = Number(m[2]) - 1,
-        d = Number(m[3]);
-      if (y && mo >= 0 && d) return new Date(y, mo, d, 0, 0, 0, 0); // LOCAL start of day
-    }
-    const d = new Date(s); // fallback
-    return isNaN(d) ? null : d;
-  };
+// --- Helpers de fecha (local, inclusivos para bloquear HOY) ---
+const parseCouponDateLocal = (input) => {
+  if (!input) return null;
+  const s = String(input).trim();
+  // Soporta "YYYY-MM-DD" y también "YYYY-MM-DDTHH:mm:ssZ"
+  const ymd = s.split("T")[0];                  // "YYYY-MM-DD"
+  const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(ymd);
+  if (!m) {
+    // fallback: intentar Date() y normalizar a medianoche local
+    const d = new Date(s);
+    return isNaN(d) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+  }
+  const y = Number(m[1]), mo = Number(m[2]) - 1, d = Number(m[3]);
+  return new Date(y, mo, d, 0, 0, 0, 0);       // inicio del día local
+};
 
-  const endOfDayLocal = (date) => {
-    if (!date || isNaN(date)) return null;
-    const d = new Date(date);
-    d.setHours(23, 59, 59, 999);
-    return d;
-  };
+const startOfDayLocal = (date = new Date()) => {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
 
-  const isCouponExpired = (termina_en) => {
-    const end = endOfDayLocal(parseCouponDateLocal(termina_en));
-    if (!end) return false; // si no hay fecha valida, no bloquear
-    return new Date() > end; // expira después de fin de día
-  };
+// ⛔️ Considera EXPIRADO si la fecha de expiración es HOY o anterior
+const isCouponExpired = (termina_en) => {
+  const exp = parseCouponDateLocal(termina_en);
+  if (!exp) return false;                       // sin fecha válida => no bloquear
+  const today = startOfDayLocal();              // hoy 00:00 local
+  return today.getTime() >= exp.getTime();      // HOY ya no se puede usar
+};
+
   // checkCupon actualizado
   const checkCupon = async (e) => {
     e.preventDefault();
@@ -360,11 +363,11 @@ function Carrito() {
 
       // 🚫 Expirado (soporta 'YYYY-MM-DD' y 'YYYY-MM-DDTHH:mm:ssZ')
       if (isCouponExpired(c.termina_en || c.fecha_expiracion)) {
-        setVisible(false);
-        setDesc(0);
-        toast.error("El cupón está expirado", { className: "toast-error" });
-        return;
-      }
+  setVisible(false);
+  setDesc(0);
+  toast.error("El cupón ya expiró", { className: "toast-error" });
+  return;
+}
 
       // 🚫 Sin usos disponibles para este usuario (si tu API lo controla)
       const r = await checkCuponUsuario(c.id_cupon, user.id_usuario);

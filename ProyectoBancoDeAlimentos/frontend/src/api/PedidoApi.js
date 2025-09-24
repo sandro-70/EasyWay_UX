@@ -54,6 +54,7 @@ export function getReportePedidos() {
   return axiosInstance.get("/api/reportes/reporte-pedidos");
 }
 
+
 export function getTopVendidos({ days = 30, limit = 10, estado } = {}) {
   const params = new URLSearchParams();
   params.set("days", String(days));
@@ -66,3 +67,8 @@ export function getTopVendidos({ days = 30, limit = 10, estado } = {}) {
 
 export const getMasNuevos = (params) =>
   axiosInstance.get("/api/pedidos/reportes/mas-nuevos", { params });
+
+export function getPedidosPorProducto(id_producto) {
+  return axiosInstance.get(`/api/pedidos/get-pedido-producto/${id_producto}`);
+}
+

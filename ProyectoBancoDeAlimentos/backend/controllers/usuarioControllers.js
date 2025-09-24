@@ -71,28 +71,35 @@ exports.validarCodigo = async (req, res) => {
   }
 };
 
-exports.changePassword = async (req,res) => {
-  try{
-    const {mail,new_password} = req.body;
+exports.changePassword = async (req, res) => {
+  try {
+    const { mail, new_password } = req.body;
 
-    const user = await Usuario.findOne({where : { correo: mail }});
+    const user = await Usuario.findOne({ where: { correo: mail } });
 
-    if(!user){
+    if (!user) {
       return res.status(404).send('Usuario no encontrado!');
     }
 
-    const hashPass = await bcrypt.hash(new_password,10);
+    // 🔐 Validación: al menos 1 mayúscula y 1 carácter especial
+    const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).+$/;
+    if (!passwordRegex.test(new_password)) {
+      return res.status(400).json({
+        msg: "La contraseña debe contener al menos 1 letra mayúscula y 1 caracter especial."
+      });
+    }
+
+    const hashPass = await bcrypt.hash(new_password, 10);
 
     user.contraseña = hashPass;
-
     await user.save();
 
     return res.status(200).json({ message: 'Contraseña actualizada!' });
-  }catch(error){
+  } catch (error) {
     console.error(error);
     return res.status(500).json({ message: 'Error, no se pudo cambiar contraseña.' });
   }
-}
+};
 
 exports.createLog = async (req, res) => {
   try {

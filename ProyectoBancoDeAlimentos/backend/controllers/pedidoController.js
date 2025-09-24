@@ -9,6 +9,7 @@ const {
   Usuario,
   carrito,
   carrito_detalle,
+  sucursal,
   sucursal_producto,
   metodo_pago,
   cupon,
@@ -762,5 +763,74 @@ exports.actualizarEstado = async (req, res) => {
   } catch (error) {
     console.error("Error al actualizar estado del pedido:", error);
     res.status(500).json({ error: "Error al actualizar estado del pedido" });
+  }
+};
+
+
+exports.getPedidosPorProducto = async (req, res) => {
+  try {
+    const { id_producto } = req.params;
+
+    const pedidos = await pedido.findAll({
+      attributes: ["id_pedido", "fecha_pedido"],
+      include: [
+        {
+          model: sucursal,
+          attributes: ["nombre_sucursal"],
+        },
+        {
+          model: factura,
+          attributes: ["id_factura"],
+          include: [
+            {
+              model: factura_detalle,
+              where: { id_producto },
+              include: [
+                {
+                  model: producto,
+                  include: [
+                    {
+                      model: subcategoria,
+                      as: "subcategoria",
+                      include: [
+                        {
+                          model: categoria,
+                          as: "categoria",
+                          attributes: ["nombre"],
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      raw: false,
+      nest: true,
+    });
+
+    if (!pedidos.length) {
+      return res.status(404).json({ message: "No hay pedidos con ese producto" });
+    }
+
+    // 👇 para ver la estructura real
+    console.log(JSON.stringify(pedidos, null, 2));
+
+    const resultado = pedidos.map(p => {
+      const detalle = p.factura?.factura_detalles?.[0];
+      return {
+        id_pedido: p.id_pedido,
+        fecha_pedido: p.fecha_pedido,
+        nombre_sucursal: p.sucursal?.nombre_sucursal || null,
+        nombre_categoria: detalle?.producto?.subcategoria?.categoria?.nombre || null,
+      };
+    });
+
+    return res.json(resultado);
+  } catch (error) {
+    console.error("Error obteniendo pedidos por producto:", error);
+    res.status(500).json({ message: "Error interno del servidor" });
   }
 };

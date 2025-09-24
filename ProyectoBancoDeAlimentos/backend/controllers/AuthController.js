@@ -57,10 +57,16 @@ const registrarse = async (req, res) => {
   try {
     let { nombre, apellido, correo, contraseña, telefono, id_rol, foto_perfil_url, genero } = req.body;
 
-    // Normaliza el correo (trim + lowercase)
     correo = (correo || '').trim().toLowerCase();
 
-    // Pre-chequeo (sigue siendo útil para la mayoría de casos)
+    const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).+$/;
+    if (!passwordRegex.test(contraseña)) {
+      return res.status(400).json({
+        msg: "La contraseña debe contener al menos 1 letra mayúscula y 1 caracter especial."
+      });
+    }
+
+    // Pre-chequeo (correo único)
     const user_existence = await Usuario.findOne({ where: { correo } });
     if (user_existence) {
       return res.status(400).json({ msg: 'El correo ya está registrado' });
@@ -94,9 +100,9 @@ const registrarse = async (req, res) => {
     });
 
   } catch (error) {
-     if (
+    if (
       error?.name === 'SequelizeUniqueConstraintError' ||
-      String(error?.original?.detail || '').includes('already exists') // Postgres
+      String(error?.original?.detail || '').includes('already exists')
     ) {
       return res.status(400).json({ msg: 'El correo ya está registrado' });
     }

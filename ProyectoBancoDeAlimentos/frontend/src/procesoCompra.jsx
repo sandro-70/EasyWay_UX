@@ -17,6 +17,7 @@ import { toast } from "react-toastify";
 import { useRef } from "react";
 import arrowL from "./images/arrowL.png";
 import arrowR from "./images/arrowR.png";
+import { enviarCorreo } from "./api/Usuario.Route";
 
 // Helper para construir URL de imágenes
 const BACKEND_ORIGIN = (() => {
@@ -397,6 +398,7 @@ const ProcesoCompra = () => {
   };
 
   // Realizar compra
+  // Realizar compra con envío de correo
   const realizarCompra = async () => {
     if (!user.direccions || user.direccions.length === 0) {
       toast.error(
@@ -437,12 +439,119 @@ const ProcesoCompra = () => {
 
       const id_pedido = response.data.id_pedido;
 
+      // **NUEVO: Enviar correo con resumen de factura**
+      try {
+        // Preparar la lista de productos para el correo
+        const productosResumen = detalles
+          .map(
+            (item) =>
+              `• ${item.producto.nombre} - Cantidad: ${
+                item.cantidad_unidad_medida
+              } - Subtotal: L. ${(item.subtotal_detalle || 0).toFixed(2)}`
+          )
+          .join("\n");
+
+        // Obtener información de la dirección seleccionada
+        const direccionEnvio = user.direccions.find(
+          (dir) => dir.id_direccion.toString() === id_direccion
+        );
+        const direccionTexto = direccionEnvio
+          ? direccionEnvio.direccion_completa ||
+            `${direccionEnvio.calle}, ${direccionEnvio.ciudad}`
+          : "Dirección no especificada";
+
+        // Obtener nombre de la sucursal
+        const sucursalNombre =
+          sucursales.find((s) => s.id_sucursal == sucursalId)
+            ?.nombre_sucursal || `Sucursal ${sucursalId}`;
+
+        // Crear el contenido del correo
+        const asunto = `Confirmación de Pedido #${id_pedido}`;
+
+        const descripcion = `
+Estimado/a ${user.nombre} ${user.apellido},
+
+Su pedido ha sido procesado exitosamente. A continuación encontrará el resumen de su compra:
+
+═══════════════════════════════════════
+INFORMACIÓN DEL PEDIDO
+═══════════════════════════════════════
+• Número de Pedido: #${id_pedido}
+• Fecha: ${new Date().toLocaleDateString("es-HN", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })}
+• Sucursal: ${sucursalNombre}
+
+═══════════════════════════════════════
+PRODUCTOS SOLICITADOS
+═══════════════════════════════════════
+${productosResumen}
+
+═══════════════════════════════════════
+RESUMEN DE PAGO
+═══════════════════════════════════════
+• Subtotal: L. ${subtotal.toFixed(2)}${
+          promocionAplicada
+            ? `
+• Descuento (${
+                promocionAplicada.nombre_promocion
+              }): -L. ${calcularDescuentoPromocion().descuento.toFixed(2)}
+• Subtotal con descuentos: L. ${obtenerSubtotalConDescuento().toFixed(2)}`
+            : ""
+        }
+• Impuesto (15%): L. ${obtenerImpuesto().toFixed(2)}
+• Envío: L. 10.00
+• TOTAL PAGADO: L. ${total_factura.toFixed(2)}
+
+═══════════════════════════════════════
+DIRECCIÓN DE ENVÍO
+═══════════════════════════════════════
+${direccionTexto}
+
+═══════════════════════════════════════
+MÉTODO DE PAGO
+═══════════════════════════════════════
+${(() => {
+  if (metodoPago === "paypal") return "PayPal";
+  if (metodoPago === "efectivo") return "Efectivo (Pago contra entrega)";
+  const metodo = metodosPago.find(
+    (m) => m.id_metodo_pago.toString() === metodoPago
+  );
+  return metodo
+    ? `${metodo.nombre_en_tarjeta} (**** **** **** ${metodo.tarjeta_ultimo})`
+    : "No especificado";
+})()}
+
+Su pedido será procesado y enviado a la brevedad posible. Recibirá actualizaciones sobre el estado de su envío.
+
+¡Gracias por su compra!
+
+Atentamente,
+El equipo de [Nombre de su tienda]
+      `.trim();
+
+        // Enviar el correo
+        await enviarCorreo(user.correo, descripcion, asunto);
+
+        console.log("Correo de confirmación enviado exitosamente");
+      } catch (emailError) {
+        console.error("Error enviando correo de confirmación:", emailError);
+        // No interrumpir el flujo de compra si falla el correo
+        toast.warning(
+          "Pedido creado correctamente, pero no se pudo enviar el correo de confirmación"
+        );
+      }
+
       // Limpiar estados
       setPromocionAplicada(null);
       setCount(0);
 
       toast.success("¡Pedido creado correctamente!");
-      navigate("/pedidos"); // Redirigir a página de pedidos
+      navigate("/misPedidos"); // Redirigir a página de pedidos
     } catch (err) {
       console.error("Error creando pedido:", err);
       const errorMessage =
@@ -452,7 +561,6 @@ const ProcesoCompra = () => {
       setLoading(false);
     }
   };
-
   // Effects
   useEffect(() => {
     const cargarDatosIniciales = async () => {
@@ -675,6 +783,41 @@ const ProcesoCompra = () => {
             <div style={styles.lastSection}>
               <h2 style={styles.sectionTitle}>Método de Pago</h2>
               <div style={styles.radioGroup}>
+                {/* Opción PayPal */}
+                <div style={styles.radioItem}>
+                  <input
+                    type="radio"
+                    id="paypal"
+                    name="metodoPago"
+                    value="paypal"
+                    style={styles.radioInput}
+                    onChange={(e) => setMetodoPago(e.target.value)}
+                    checked={metodoPago === "paypal"}
+                  />
+                  <label htmlFor="paypal" style={styles.radioLabel}>
+                    <span>PayPal</span>
+                    <span>Pago seguro con paypal</span>
+                  </label>
+                </div>
+
+                {/* Opción Efectivo */}
+                <div style={styles.radioItem}>
+                  <input
+                    type="radio"
+                    id="efectivo"
+                    name="metodoPago"
+                    value="efectivo"
+                    style={styles.radioInput}
+                    onChange={(e) => setMetodoPago(e.target.value)}
+                    checked={metodoPago === "efectivo"}
+                  />
+                  <label htmlFor="efectivo" style={styles.radioLabel}>
+                    <span>Efectivo</span>
+                    <span>Pago contra entrega</span>
+                  </label>
+                </div>
+
+                {/* Métodos de pago existentes (tarjetas) */}
                 {metodosPago.map((metodo) => (
                   <div key={metodo.id_metodo_pago} style={styles.radioItem}>
                     <input
@@ -696,6 +839,8 @@ const ProcesoCompra = () => {
                   </div>
                 ))}
               </div>
+
+              {/* Mensaje cuando no hay métodos de pago registrados */}
               {metodosPago.length === 0 && (
                 <p style={{ color: "#dc3545", fontSize: "0.9rem" }}>
                   <span>
@@ -746,6 +891,53 @@ const ProcesoCompra = () => {
                     color: "#495057",
                   }}
                 >
+                  {/* Subtotal original */}
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    <span>Subtotal:</span>
+                    <span>L. {subtotal.toFixed(2)}</span>
+                  </div>
+
+                  {/* Promoción/cupón aplicado */}
+                  {promocionAplicada && (
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: "8px",
+                        color: "#16a34a", // verde para mostrar el descuento
+                      }}
+                    >
+                      <span>
+                        Promoción ({promocionAplicada.nombre_promocion}):
+                      </span>
+                      <span>
+                        -L. {calcularDescuentoPromocion().descuento.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Subtotal con descuentos aplicados */}
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginBottom: "8px",
+                      fontWeight: "500",
+                      paddingTop: "8px",
+                      borderTop: "1px solid #e9ecef",
+                    }}
+                  >
+                    <span>Subtotal con descuentos:</span>
+                    <span>L. {obtenerSubtotalConDescuento().toFixed(2)}</span>
+                  </div>
+
+                  {/* Impuesto */}
                   <div
                     style={{
                       display: "flex",
@@ -757,6 +949,7 @@ const ProcesoCompra = () => {
                     <span>L. {obtenerImpuesto().toFixed(2)}</span>
                   </div>
 
+                  {/* Envío */}
                   <div
                     style={{
                       display: "flex",
@@ -768,16 +961,20 @@ const ProcesoCompra = () => {
                     <span>L. 10.00</span>
                   </div>
 
+                  {/* Total final */}
                   <div
                     style={{
                       display: "flex",
                       justifyContent: "space-between",
                       fontWeight: "bold",
-                      paddingTop: "8px",
-                      borderTop: "1px solid #e9ecef",
+                      fontSize: "1.1rem",
+                      paddingTop: "12px",
+                      marginTop: "8px",
+                      borderTop: "2px solid #2ca9e3",
+                      color: "#2b6daf",
                     }}
                   >
-                    <span>Total:</span>
+                    <span>Total a pagar:</span>
                     <span>L. {obtenerTotal().toFixed(2)}</span>
                   </div>
                 </div>
@@ -1106,6 +1303,7 @@ const styles = {
     fontSize: "0.9rem",
     color: "#495057",
     cursor: "pointer",
+    textAlign: " left",
   },
   button: {
     backgroundColor: "#2ca9e3",

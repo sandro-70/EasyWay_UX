@@ -1,6 +1,44 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+
+import { getInfoUsuario } from "../api/reporteusuarioApi.js";
+import { getPedidosConDetalles } from "../api/PedidoApi.js";
 
 const DetallePedido = ({ order, onClose }) => {
+  const [infoUsuario, setInfoUsuario] = useState(null);
+  const [detallesPedido, setDetallesPedido] = useState([]);
+
+  useEffect(() => {
+    if (!order) return;
+    // obtener info del usuario usando el id del pedido
+    const fetchUsuarioInfo = async () => {
+      try {
+        const userInfoResponse = await getInfoUsuario(order.id);
+        setInfoUsuario(userInfoResponse.data);
+      } catch (error) {
+        console.error("Error al obtener la información del usuario:", error);
+      }
+    };
+
+    // obtener detalles del pedido
+    const fetchPedidoDetalles = async () => {
+      try {
+        const response = await getPedidosConDetalles();
+        // Filtrar para encontrar el pedido específico
+        const pedidoEspecifico = response.data.find(
+          (p) => p.id_pedido === order.id
+        );
+        if (pedidoEspecifico) {
+          setDetallesPedido(pedidoEspecifico);
+        }
+      } catch (error) {
+        console.error("Error al obtener los detalles del pedido:", error);
+      }
+    };
+
+    fetchUsuarioInfo();
+    fetchPedidoDetalles();
+  }, [order]);
+
   if (!order) return null;
 
   return (
@@ -8,11 +46,10 @@ const DetallePedido = ({ order, onClose }) => {
       <div className="bg-white rounded-lg w-[400px] p-0 relative shadow-lg">
         {/* Encabezado */}
         <div className="flex justify-between items-center bg-[#2B6DAF] p-3 rounded-t w-full">
-          <h2 className="text-white font-bold text-base flex-1">Detalle de Pedido</h2>
-          <button
-            className="text-white font-bold text-lg"
-            onClick={onClose}
-          >
+          <h2 className="text-white font-bold text-base flex-1">
+            Detalle de Pedido
+          </h2>
+          <button className="text-white font-bold text-lg" onClick={onClose}>
             X
           </button>
         </div>
@@ -21,7 +58,9 @@ const DetallePedido = ({ order, onClose }) => {
         <div className="p-3 grid grid-cols-2 gap-2 mt-2">
           {/* ID del Pedido */}
           <div>
-            <label className="block text-sm font-medium mb-1 text-left">ID del Pedido</label>
+            <label className="block text-sm font-medium mb-1 text-left">
+              ID del Pedido
+            </label>
             <input
               className="p-1 rounded w-full text-sm text-left border"
               style={{ borderColor: "#80838A", backgroundColor: "#F5F5F5" }}
@@ -32,29 +71,43 @@ const DetallePedido = ({ order, onClose }) => {
 
           {/* Nombre del Cliente */}
           <div>
-            <label className="block text-sm font-medium mb-1 text-left">Nombre Cliente</label>
+            <label className="block text-sm font-medium mb-1 text-left">
+              Nombre Cliente
+            </label>
             <input
               className="p-1 rounded w-full text-sm text-left border"
               style={{ borderColor: "#80838A", backgroundColor: "#F5F5F5" }}
-              value={order.nombreCliente}
+              value={
+                infoUsuario
+                  ? `${infoUsuario.nombre} ${infoUsuario.apellido}`
+                  : order.nombreCliente
+              }
               readOnly
             />
           </div>
 
-          {/* Tiempo de Entrega */}
+          {/* Metodo de pago */}
           <div>
-            <label className="block text-sm font-medium mb-1 text-left">Tiempo de Entrega</label>
+            <label className="block text-sm font-medium mb-1 text-left">
+              Método de Pago
+            </label>
             <input
               className="p-1 rounded w-full text-sm text-left border"
               style={{ borderColor: "#80838A", backgroundColor: "#F5F5F5" }}
-              value={`${order.tiempoPromedio} días`}
+              value={
+                infoUsuario && infoUsuario.ultimos_cuatro
+                  ? `****${infoUsuario.ultimos_cuatro}`
+                  : "No disponible"
+              }
               readOnly
             />
           </div>
 
           {/* Estado */}
           <div>
-            <label className="block text-sm font-medium mb-1 text-left">Estado</label>
+            <label className="block text-sm font-medium mb-1 text-left">
+              Estado
+            </label>
             <input
               className="p-1 rounded w-full text-sm text-left border"
               style={{ borderColor: "#80838A", backgroundColor: "#F5F5F5" }}
@@ -63,20 +116,11 @@ const DetallePedido = ({ order, onClose }) => {
             />
           </div>
 
-          {/* Método de Pago */}
-          <div className="col-span-2">
-            <label className="block text-sm font-medium mb-1 text-left">Método de Pago</label>
-            <input
-              className="p-1 rounded w-full text-sm text-left border"
-              style={{ borderColor: "#80838A", backgroundColor: "#F5F5F5" }}
-              value={order.metodoPago}
-              readOnly
-            />
-          </div>
-
           {/* Fecha de Pedido */}
           <div>
-            <label className="block text-sm font-medium mb-1 text-left">Fecha de Pedido</label>
+            <label className="block text-sm font-medium mb-1 text-left">
+              Fecha de Pedido
+            </label>
             <input
               className="p-1 rounded w-full text-sm text-left border"
               style={{ borderColor: "#80838A", backgroundColor: "#F5F5F5" }}
@@ -87,33 +131,13 @@ const DetallePedido = ({ order, onClose }) => {
 
           {/* Fecha de Entrega */}
           <div>
-            <label className="block text-sm font-medium mb-1 text-left">Fecha de Entrega</label>
-            <input
-              className="p-1 rounded w-full text-sm text-left border"
-              style={{ borderColor: "#80838A", backgroundColor: "#F5F5F5" }}
-              value={order.fechaEntrega}
-              readOnly
-            />
-          </div>
-
-          {/* Frecuencia de Compra */}
-          <div className="col-span-2">
-            <label className="block text-sm font-medium mb-1 text-left">Frecuencia de Compra</label>
+            <label className="block text-sm font-medium mb-1 text-left">
+              Frecuencia de Compra
+            </label>
             <input
               className="p-1 rounded w-full text-sm text-left border"
               style={{ borderColor: "#80838A", backgroundColor: "#F5F5F5" }}
               value={order.frecuenciaCompra}
-              readOnly
-            />
-          </div>
-
-          {/* Motivo de Cancelación */}
-          <div className="col-span-2">
-            <label className="block text-sm font-medium mb-1 text-left">Motivo de Cancelación</label>
-            <textarea
-              className="p-1 rounded w-full text-sm text-left border"
-              style={{ borderColor: "#80838A", backgroundColor: "#F5F5F5" }}
-              value={order.motivoCancelacion || "N/A"}
               readOnly
             />
           </div>

@@ -1,12 +1,16 @@
 import "./tablaReportesPromociones.css";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, use } from "react";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import {
   getPromocionesConDetallesURL,
   getPromociones,
-  getPromocionById,
+  getReportePromociones,
+  productosPorPromocion,
+  getReportePromocionZ,
 } from "./api/PromocionesApi";
+
+import { ListarCategoria } from "./api/CategoriaApi";
 
 const Icon = {
   ChevronLeft: (props) => (
@@ -89,50 +93,89 @@ function TablaReportesPromociones() {
   const [data, setData] = useState([]);
   const [page, setPage] = useState(1);
   const [categoriaFilter, setCategoriaFilter] = useState("");
-  const [showCategoria, setShowCategoria] = useState(false);
+  const [showCategoria, setShowCategoria] = useState([]);
   const [orderDesc, setOrderDesc] = useState(true);
   const [nombreFilter, setNombreFilter] = useState("");
-
+  const [productos, setProductos] = useState([]);
   const itemsPerPage = 8;
 
   // Cargar datos desde la API
   useEffect(() => {
     async function fetchPromociones() {
       try {
-        const response = await getPromocionesConDetallesURL();
-        console.log("Promociones cargadas:", response.data);
-
+        // 🔥 Usando la nueva función que ya calcula cupones usados y categorías
+        const response = await getReportePromociones();
         const promociones = await getPromociones();
-        console.log("Promociones simples cargadas:", promociones.data);
+        console.log("Respuesta de getReportePromociones:", response.data);
+        console.log("Respuesta de getPromociones:", promociones.data);
+
         // Mapear a formato que espera la tabla
-        const promos = promociones.data.map((p) => ({
-          id: p.id_promocion,
-          nombre: p.nombre_promocion || p.nombre || "Sin nombre",
-          tipo: p.valor_fijo > 0 ? "Descuento" : "Monto",
-          categoria: "Sin categoría", // Ajusta si tienes categoría en tu DB
-          descuento: p.valor_porcentaje > 0 ? p.valor_porcentaje : p.valor_fijo,
-          cuponesUsados: p.cuponesUsados || 0, // Si no lo tienes, dejar 0
-        }));
+        const promos = await Promise.all(
+          response.data.map(async (p) => {
+            let totalProductos = 0;
+
+            try {
+              const reporteZ = await getReportePromocionZ(p.id_promocion);
+              console.log(
+                `ReporteZ para promoción ${p.id_promocion}:`,
+                reporteZ.data
+              );
+              totalProductos = reporteZ.data?.total_productos || 0;
+            } catch (error) {
+              console.log(
+                `Error obteniendo productos para promoción ${p.id_promocion}:`,
+                error.message
+              );
+            }
+
+            return {
+              id: p.id_promocion,
+              nombre: p.nombre_promocion || "Sin nombre",
+              tipo: p.tipo_promocion,
+              categoria: p.nombre || "Sin categoría",
+              descuento: p.descuento || "0",
+              productos: totalProductos,
+            };
+          })
+        );
         setData(promos);
       } catch (error) {
         console.error("Error cargando promociones:", error);
+        // Si falla, usar la API original como fallback
+        try {
+          const promociones = await getPromociones();
+          const promos = promociones.data.map((p) => ({
+            id: p.id_promocion,
+            nombre: p.nombre_promocion || p.nombre || "Sin nombre",
+            tipo: p.valor_fijo > 0 ? "Descuento" : "Monto",
+            categoria: p.categoria_promocion || "Sin categoría",
+            descuento:
+              p.valor_porcentaje > 0 ? p.valor_porcentaje : p.valor_fijo,
+            cuponesUsados: "N/A",
+          }));
+          setData(promos);
+        } catch (fallbackError) {
+          console.error("Error con ambas APIs:", fallbackError);
+        }
       }
     }
     fetchPromociones();
   }, []);
 
-  console.log("Datos de promociones:", data);
+  //categorias para filtrar:
 
-  //a ver que trae getPromocionById
   useEffect(() => {
-    getPromocionById(1)
-      .then((res) => {
-        console.log("Datos de la promoción por ID:", res.data);
-      })
-      .catch((err) =>
-        console.error("Error al obtener datos de la promoción por ID:", err)
-      );
+    async function fetchCategorias() {
+      try {
+        const response = await ListarCategoria();
+        setShowCategoria(response.data);
+      } catch (error) {
+        console.error("Error cargando categorías:", error);
+      }
+    }
+    fetchCategorias();
   }, []);
+
   // 🔥 FILTRADO Y ORDENAMIENTO CORREGIDO
   const filteredAndSortedData = data
     .filter((item) => {
@@ -159,21 +202,17 @@ function TablaReportesPromociones() {
     Math.ceil(filteredAndSortedData.length / itemsPerPage) || 1;
 
   const exportToExcel = () => {
-    const worksheet = XLSX.utils.json_to_sheet(filteredAndSortedData);
-    XLSX.utils.sheet_add_aoa(
-      worksheet,
-      [
-        [
-          "ID Promoción",
-          "Nombre Promoción",
-          "Tipo",
-          "Categoría",
-          "Descuento",
-          "Cupones Usados",
-        ],
-      ],
-      { origin: "A1" }
-    );
+    // 🔥 Preparar datos para exportación con todas las columnas
+    const dataForExport = filteredAndSortedData.map((item) => ({
+      "ID Promoción": item.id,
+      "Nombre Promoción": item.nombre,
+      Tipo: item.tipo,
+      Categoría: item.categoria,
+      Descuento: item.descuento,
+      "Total de Productos": item.productos,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dataForExport);
 
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "ReportePromociones");
@@ -183,7 +222,7 @@ function TablaReportesPromociones() {
       type: "array",
     });
     const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
-    saveAs(blob, "Reporte_Promociones.xlsx");
+    saveAs(blob, "Reporte_Promociones_Completo.xlsx");
   };
 
   const toggleOrder = () => {
@@ -231,9 +270,17 @@ function TablaReportesPromociones() {
           }}
         >
           {/* Filtros en una sola fila */}
-          <div className="promocion-filtros">
+          <div
+            className="promocion-filtros"
+            style={{
+              display: "flex",
+              gap: "1rem",
+              flexWrap: "wrap",
+              alignItems: "center",
+            }}
+          >
             {/* Filtro por nombre */}
-            {/* <div
+            <div
               style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
             >
               <label
@@ -253,7 +300,7 @@ function TablaReportesPromociones() {
                   setNombreFilter(e.target.value);
                   setPage(1);
                 }}
-                placeholder="Buscar por nombre..."
+                placeholder="Buscar por nombre Prom..."
                 style={{
                   padding: "0.5rem 0.75rem",
                   border: "2px solid #e5e7eb",
@@ -263,49 +310,9 @@ function TablaReportesPromociones() {
                   transition: "border-color 0.2s",
                   outline: "none",
                 }}
-                onFocus={(e) => (e.target.style.borderColor = "#d8572f")}
+                onFocus={(e) => (e.target.style.borderColor = "#a3908bff")}
                 onBlur={(e) => (e.target.style.borderColor = "#e5e7eb")}
               />
-            </div> */}
-
-            {/* Filtro por categoría */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                marginBottom: "6px",
-              }}
-            >
-              <label
-                style={{
-                  fontSize: "1rem",
-                  fontWeight: "500",
-                }}
-              >
-                Filtrar por Categoría:
-              </label>
-              <select
-                value={categoriaFilter}
-                onChange={(e) => {
-                  setCategoriaFilter(e.target.value);
-                  setPage(1);
-                }}
-                style={{
-                  fontSize: "16px",
-                  border: "1px solid #ccc",
-                  borderRadius: "4px",
-                  padding: "4px 8px",
-                  backgroundColor: "#E6E6E6",
-                }}
-              >
-                <option value="">Todas</option>
-                <option value="Granos">Granos</option>
-                <option value="Lácteos">Lácteos</option>
-                <option value="Bebidas">Bebidas</option>
-                <option value="Dulces">Dulces</option>
-                <option value="Condimentos">Condimentos</option>
-              </select>
             </div>
 
             {/* Botón limpiar filtros */}
@@ -314,17 +321,21 @@ function TablaReportesPromociones() {
                 onClick={clearFilters}
                 style={{
                   padding: "0.5rem 0.75rem",
-                  backgroundColor: "#f3f4f6",
-                  border: "1px solid #d1d5db",
+                  backgroundColor: "#b6adadff",
+                  border: "2px solid #c0a8a8ff",
                   borderRadius: "6px",
                   fontSize: "0.75rem",
-                  color: "#6b7280",
+                  color: "white",
                   cursor: "pointer",
                   transition: "all 0.2s",
                   whiteSpace: "nowrap",
+                  display: "flex",
+                  gap: "0.25rem",
+                  alignItems: "center",
+                  fontWeight: "500",
                 }}
               >
-                ✕ Limpiar
+                ✕ Limpiar filtros
               </button>
             )}
           </div>
@@ -360,25 +371,22 @@ function TablaReportesPromociones() {
                   <span>Tipo</span>
                 </th>
                 <th>
-                  <div>
-                    <span>Categoría</span>
-                    {categoriaFilter && (
-                      <span>{categoriaFilter.toUpperCase()}</span>
-                    )}
-                  </div>
-                </th>
-                <th>
                   <span style={{ fontSize: "0.875rem" }}>Descuento</span>
                 </th>
                 <th>
-                  <span>Cupones Usados</span>
+                  <span style={{ fontSize: "0.875rem" }}>
+                    Total De Productos
+                  </span>
                 </th>
               </tr>
             </thead>
             <tbody>
               {paginatedData.length === 0 ? (
                 <tr>
-                  <td>
+                  <td
+                    colSpan="5"
+                    style={{ textAlign: "center", padding: "2rem" }}
+                  >
                     {nombreFilter || categoriaFilter ? (
                       <div>
                         <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>
@@ -388,6 +396,20 @@ function TablaReportesPromociones() {
                           style={{ fontWeight: "600", marginBottom: "0.5rem" }}
                         >
                           No se encontraron promociones
+                        </div>
+                        <div
+                          style={{
+                            fontSize: "0.875rem",
+                            color: "#6b7280",
+                            marginBottom: "1rem",
+                          }}
+                        >
+                          {nombreFilter && (
+                            <div>• Buscando: "{nombreFilter}"</div>
+                          )}
+                          {categoriaFilter && (
+                            <div>• Categoría: "{categoriaFilter}"</div>
+                          )}
                         </div>
                         <div style={{ fontSize: "0.875rem" }}>
                           Intenta ajustar los filtros de búsqueda
@@ -414,9 +436,6 @@ function TablaReportesPromociones() {
                       <span>{row.tipo}</span>
                     </td>
                     <td>
-                      <span>{row.categoria}</span>
-                    </td>
-                    <td>
                       <span>
                         {row.tipo === "Monto" ? "L." : ""}
                         {row.descuento}
@@ -425,7 +444,7 @@ function TablaReportesPromociones() {
                     </td>
                     <td>
                       <div>
-                        <span>{row.cuponesUsados}</span>
+                        <span>{row.productos}</span>
                       </div>
                     </td>
                   </tr>

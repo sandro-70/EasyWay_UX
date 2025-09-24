@@ -60,3 +60,6 @@ export function aplicarPreciosEscalonados(payload) {
   // payload: { productos:number[], escalones:[{cantidad_min:number, precio:number}] }
   return axiosInstance.post("/api/precios-escalonados/bulk", payload);
 }
+export function getReportePromociones() {
+  return axiosInstance.get(`/api/reportes/promociones`);
+}

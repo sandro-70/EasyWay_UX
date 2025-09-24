@@ -8,7 +8,7 @@ import {
   getPedidosConDetalles,
   getHistorialComprasProductos,
 } from "../api/PedidoApi";
-import { getMetodosPagoByUserId } from "../api/metodoPagoApi";
+import { getInfoUsuario } from "../api/reporteusuarioApi";
 import "./ReportesPedidos.css";
 
 const meses = [
@@ -30,7 +30,7 @@ const ReportesPedidos = () => {
   const [pedidos, setPedidos] = useState([]);
   const [mes, setMes] = useState("");
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
-  const [metodoPago, setMetodoPago] = useState();
+  const [usuariosPorPedido, setUsuariosPorPedido] = useState({});
   const [paginaActual, setPaginaActual] = useState(1);
   const [orderDesc, setOrderDesc] = useState(true);
   const pedidosPorPagina = 8;
@@ -49,19 +49,57 @@ const ReportesPedidos = () => {
 
           return {
             id: p.id_pedido.toString().padStart(3, "0"),
+            idPedido: p.id_pedido, // Mantener el ID original para las consultas
             estado: p.estado_pedido?.nombre_pedido || "Sin estado",
             fechaPedido,
             fechaEntrega,
             tiempoPromedio: p.tiempo_promedio || "-",
-            metodoPago: p.metodo_pago || "-",
+            metodoPago: p.metodo_pago || "",
             detalles: p.factura?.factura_detalles || [],
           };
         });
         setPedidos(formatted);
+
+        // Obtener información del usuario para cada pedido
+        const usuariosPromises = formatted.map((pedido) =>
+          getInfoUsuario(pedido.idPedido)
+            .then((res) => ({
+              idPedido: pedido.idPedido,
+              ultimos_cuatro: res.data?.ultimos_cuatro || null,
+            }))
+            .catch((err) => {
+              console.error(
+                `Error al obtener info de usuario para pedido ${pedido.idPedido}:`,
+                err
+              );
+              return {
+                idPedido: pedido.idPedido,
+                ultimos_cuatro: null,
+              };
+            })
+        );
+
+        Promise.all(usuariosPromises).then((usuariosData) => {
+          const usuariosMap = {};
+          usuariosData.forEach((data) => {
+            usuariosMap[data.idPedido] = data;
+          });
+          setUsuariosPorPedido(usuariosMap);
+        });
+
         console.log("Reportes de Pedidos:", formatted);
       })
       .catch((err) => console.error("Error al obtener pedidos:", err));
   }, []);
+
+  // Función para mostrar método de pago con últimos cuatro dígitos
+  const formatearMetodoPago = (pedido) => {
+    const infoUsuario = usuariosPorPedido[pedido.idPedido];
+    if (infoUsuario?.ultimos_cuatro) {
+      return `${pedido.metodoPago} ****${infoUsuario.ultimos_cuatro}`;
+    }
+    return pedido.metodoPago;
+  };
 
   // Primero filtrar por mes, luego ordenar
   const pedidosFiltrados = mes
@@ -107,7 +145,7 @@ const ReportesPedidos = () => {
       "Fecha de Pedido": order.fechaPedido,
       "Fecha de Entrega": order.fechaEntrega,
       "Tiempo Promedio de Entrega (días)": order.tiempoPromedio,
-      "Método de Pago": order.metodoPago,
+      "Método de Pago": formatearMetodoPago(order),
     }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
@@ -214,8 +252,6 @@ const ReportesPedidos = () => {
                 {[
                   "Estado",
                   "Fecha de Pedido",
-                  "Fecha de Entrega",
-                  "Tiempo promedio de entrega (días)",
                   "Método de Pago",
                   "Más Información",
                 ].map((col, idx) => (
@@ -234,9 +270,7 @@ const ReportesPedidos = () => {
                   <td>{order.id}</td>
                   <td>{order.estado}</td>
                   <td>{order.fechaPedido}</td>
-                  <td>{order.fechaEntrega}</td>
-                  <td>{order.tiempoPromedio}</td>
-                  <td>{order.metodoPago}</td>
+                  <td>{formatearMetodoPago(order)}</td>
                   <td>
                     <button
                       className="flex items-center justify-center w-6 h-6 mx-auto"

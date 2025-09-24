@@ -549,7 +549,7 @@ exports.getPedidosConDetalles = async (req, res) => {
       include: [
         {
           model: estado_pedido,
-          attributes: ["nombre_pedido"], // Incluye solo el nombre del estado del pedido
+          attributes: ["nombre_pedido"],
         },
         {
           model: factura,
@@ -559,7 +559,7 @@ exports.getPedidosConDetalles = async (req, res) => {
               include: [
                 {
                   model: producto,
-                  attributes: ["nombre", "precio_base", "id_producto"], // Incluye solo el nombre y precio del producto
+                  attributes: ["nombre", "precio_base", "id_producto"],
                   include: [
                     {
                       model: subcategoria,
@@ -573,7 +573,7 @@ exports.getPedidosConDetalles = async (req, res) => {
                         },
                       ],
                     },
-                  ], // Incluye la subcategoría y categoría del producto
+                  ],
                 },
               ],
             },

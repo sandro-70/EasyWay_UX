@@ -59,10 +59,10 @@ const registrarse = async (req, res) => {
 
     correo = (correo || '').trim().toLowerCase();
 
-    const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).+$/;
+    const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
     if (!passwordRegex.test(contraseña)) {
       return res.status(400).json({
-        msg: "La contraseña debe contener al menos 1 letra mayúscula y 1 caracter especial."
+        msg: "La contraseña debe tener al menos 8 caracteres, 1 letra mayúscula y 1 caracter especial."
       });
     }
 

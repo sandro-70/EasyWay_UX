@@ -1,7 +1,3 @@
-//CLASE INVETARIO AL 100
-
-//sirve imágenes
-
 import React, { useMemo, useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import axiosInstance from "../api/axiosInstance";
@@ -1096,7 +1092,7 @@ export default function Inventario() {
         className: "toast-info",
       });
     if (!d.imagePreviews || d.imagePreviews.length === 0)
-      return alert("El producto debe tener al menos una imagen");
+      return toast.warn("El producto debe tener al menos una imagen", { className: "toast-warn" });
 
     try {
       setSavingProduct(true);
@@ -1275,7 +1271,7 @@ export default function Inventario() {
         status === 400 &&
         message === "El producto debe tener al menos una imagen"
       ) {
-        alert("El producto debe tener al menos una imagen");
+        toast.warn("El producto debe tener al menos una imagen", { className: "toast-warn" });
       } else {
         toast.error(`Error ${status ?? ""}: ${message}`, {
           className: "toast-error",

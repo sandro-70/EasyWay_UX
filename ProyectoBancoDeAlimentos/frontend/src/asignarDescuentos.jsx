@@ -26,6 +26,8 @@ import {
 import { ListarCategoria } from "./api/CategoriaApi";
 import { listarSubcategoria } from "./api/SubcategoriaApi";
 import { crearPromocion } from "./api/PromocionesApi";
+import { toast } from "react-toastify";
+import "./toast.css";
 /**
  * Paleta:
  * #d8572f (naranja primario)
@@ -192,15 +194,15 @@ export default function AsignarDescuentos() {
     // Validaciones UI
     const v = Number(genValor);
     if (genTipo === "PORCENTAJE" && (isNaN(v) || v < 1 || v > 100)) {
-      alert("El porcentaje debe estar entre 1% y 100%.");
+      toast.warn("El porcentaje debe estar entre 1% y 100%.", { className: "toast-warn" });
       return;
     }
     if (genTipo === "FIJO" && (isNaN(v) || v < 0)) {
-      alert("El monto fijo no puede ser negativo.");
+      toast.warn("El monto fijo no puede ser negativo.", { className: "toast-warn" });
       return;
     }
     if (!selectedItems.length) {
-      alert("Selecciona al menos un producto.");
+      toast.warn("Selecciona al menos un producto.", { className: "toast-warn" });
       return;
     }
 
@@ -215,7 +217,7 @@ export default function AsignarDescuentos() {
     try {
       setSavingGeneral(true);
       await aplicarDescuentoseleccionados(payload);
-      alert("Descuentos aplicados correctamente ✔");
+      toast.success("Descuentos aplicados correctamente", { className: "toast-success" });
       // Limpia UI
       setMode(null);
       setSelectedItems([]);
@@ -228,7 +230,7 @@ export default function AsignarDescuentos() {
         e?.response?.data?.message ||
         e?.response?.data?.error ||
         "No se pudo aplicar el descuento.";
-      alert(msg);
+      toast.error(msg, { className: "toast-error" });
     } finally {
       setSavingGeneral(false);
     }
@@ -242,13 +244,13 @@ export default function AsignarDescuentos() {
     }));
     try {
       await aplicarPreciosEscalonados({ productos, escalones });
-      alert("Precios escalonados aplicados ✔");
+      toast.success("Precios escalonados aplicados", { className: "toast-success" });
       setMode(null);
       setSelectedItems([]);
       refreshProductsBySucursal(selectedSucursalId);
     } catch (e) {
       console.error(e);
-      alert("No se pudieron aplicar los escalonados.");
+      toast.error("No se pudieron aplicar los escalonados.", { className: "toast-error" });
     }
   }
 
@@ -436,7 +438,7 @@ export default function AsignarDescuentos() {
         setCategorias(mappedCategorias);
       } catch (err) {
         console.error("Error cargando inventario:", err);
-        alert("No se pudo cargar el inventario. Revisa la conexión.");
+        toast.error("No se pudo cargar el inventario. Revisa la conexión.", { className: "toast-error" });
       } finally {
         mounted && setLoading(false);
       }
@@ -527,8 +529,8 @@ export default function AsignarDescuentos() {
       setPage(1); // vuelve a la primera página al filtrar
     } catch (e) {
       console.error("Error cargando productos:", e);
-      alert(
-        "No se pudo cargar productos. Verifica la conexión o la URL del API."
+      toast.error(
+        "No se pudo cargar productos. Verifica la conexión o la URL del API.", { className: "toast-error" }
       );
     } finally {
       setLoading(false);

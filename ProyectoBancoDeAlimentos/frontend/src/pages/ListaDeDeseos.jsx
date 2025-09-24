@@ -2,6 +2,7 @@
 import React, { useEffect, useState, useContext, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import "../toast.css";
 
 import { getProductosFav } from "../api/lista_deseos";
 import { getListaDeseos } from "../api/listaDeseosApi";

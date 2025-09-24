@@ -17,6 +17,12 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
     },
+    impuestos: {
+      type: DataTypes.DECIMAL(10, 2),
+    },
+    costo_evio: {
+      type: DataTypes.DECIMAL(10, 2),
+    },
     total: {
       type: DataTypes.DECIMAL(10, 2),
     },

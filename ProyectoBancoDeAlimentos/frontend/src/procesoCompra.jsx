@@ -63,6 +63,11 @@ const ProcesoCompra = () => {
   const [promociones, setPromociones] = useState([]);
   const [promocionAplicada, setPromocionAplicada] = useState(null);
 
+  // Estados para cupones
+  const [codigoCupon, setCodigoCupon] = useState("");
+  const [cuponAplicado, setCuponAplicado] = useState(null);
+  const [cuponValidado, setCuponValidado] = useState(false);
+
   // Estados para productos recomendados
   const [prodRec, setProdRec] = useState([]);
   const [hoveredProductRec, setHoveredProductRec] = useState(null);
@@ -212,8 +217,8 @@ const ProcesoCompra = () => {
   // Validar promoción
   const validarFechaPromocion = (fechaInicio, fechaTermina) => {
     const hoy = new Date();
-    const inicio = new Date(fechaInicio);
-    const termina = new Date(fechaTermina);
+    const inicio = new Date(fechaInicio + 'T00:00:00');
+    const termina = new Date(fechaTermina + 'T00:00:00');
     return hoy >= inicio && hoy <= termina;
   };
 
@@ -277,31 +282,124 @@ const ProcesoCompra = () => {
     }
   };
 
+  // Función para validar cupón
+  const validarCupon = async (codigo) => {
+    if (!codigo.trim()) {
+      setCuponAplicado(null);
+      setCuponValidado(false);
+      return;
+    }
+
+    if (!user || !user.id_usuario) {
+      toast.error("Usuario no autenticado");
+      setCuponAplicado(null);
+      setCuponValidado(false);
+      return;
+    }
+
+    try {
+      // Obtener detalles del cupón
+      const cuponResponse = await axiosInstance.get('/api/cupones/cupones');
+      const cupones = cuponResponse.data;
+      console.log("cupones length:", cupones.length);
+      console.log("codigo to find:", codigo);
+      const cuponEncontrado = cupones.find(c => c.codigo.toLowerCase() === codigo.toLowerCase());
+      console.log("cuponEncontrado:", cuponEncontrado);
+
+      if (!cuponEncontrado) {
+        toast.error("Cupón no encontrado o inválido");
+        setCuponAplicado(null);
+        setCuponValidado(false);
+        return;
+      }
+
+      // Verificar fecha de expiración
+      const hoy = new Date();
+      let fechaStr = cuponEncontrado.fecha_expiracion;
+      if (fechaStr.includes(' ')) {
+        fechaStr = fechaStr.replace(' ', 'T');
+      }
+      const fechaExpiracion = new Date(fechaStr);
+      console.log("fechaStr:", fechaStr);
+      console.log("fechaExpiracion:", fechaExpiracion);
+      console.log("hoy:", hoy);
+      console.log("is expired:", fechaExpiracion < hoy);
+      if (fechaExpiracion < hoy) {
+        toast.error("Este cupón ha expirado");
+        setCuponAplicado(null);
+        setCuponValidado(false);
+        return;
+      }
+
+      // Verificar si está activo
+      if (!cuponEncontrado.activo) {
+        toast.error("Este cupón no está activo");
+        setCuponAplicado(null);
+        setCuponValidado(false);
+        return;
+      }
+
+      // Verificar si el cupón ya fue usado por este usuario
+      const response = await axiosInstance.get(`/api/cupones/check-uso/${cuponEncontrado.id_cupon}/usuario/${user.id_usuario}`);
+      console.log("usos from API:", response.data.usos);
+      console.log("max per user:", cuponEncontrado.uso_maximo_por_usuario);
+      console.log("is over limit:", response.data.usos >= cuponEncontrado.uso_maximo_por_usuario);
+
+      if (response.data.usos >= cuponEncontrado.uso_maximo_por_usuario) {
+        toast.error("Este cupón ha alcanzado su límite de uso por usuario");
+        setCuponAplicado(null);
+        setCuponValidado(false);
+        return;
+      }
+
+      setCuponAplicado(cuponEncontrado);
+      console.log("cuponAplicado set to:", cuponEncontrado);
+      setCuponValidado(true);
+      toast.success("Cupón aplicado correctamente");
+    } catch (error) {
+      console.error("Error validando cupón:", error);
+      toast.error("Error al validar el cupón");
+      setCuponAplicado(null);
+      setCuponValidado(false);
+    }
+  };
+
+  // Función para aplicar cupón
+  const aplicarCupon = () => {
+    validarCupon(codigoCupon);
+  };
+
   const obtenerDescuentoTotal = () => {
     let total = 0;
 
-    // Solo descuento promoción (se eliminó cupón)
-    if (promocionAplicada) {
-      const { descuento } = calcularDescuentoPromocion();
-      total += descuento;
+    // Solo aplicar descuento si hay un cupón válido
+    if (cuponAplicado && cuponValidado) {
+      const tipo = Number(cuponAplicado.tipo);
+      const valor = parseFloat(cuponAplicado.valor) || 0;
+
+      if (tipo === 1 && valor > 0) { // Porcentaje
+        total = subtotal * (valor / 100);
+      } else if (tipo === 2 && valor > 0) { // Valor fijo
+        total = Math.min(valor, subtotal);
+      }
     }
 
     return total;
   };
 
-  const obtenerSubtotalConDescuento = () => {
-    return Math.max(0, subtotal - obtenerDescuentoTotal());
+  const obtenerImpuesto = () => {
+    return subtotal * 0.15;
   };
 
-  const obtenerImpuesto = () => {
-    const subtotalConDescuento = obtenerSubtotalConDescuento();
-    return subtotalConDescuento * 0.15;
+  const obtenerTotalSinDescuento = () => {
+    const impuesto = obtenerImpuesto();
+    return subtotal + impuesto + 10; // +10 por envío
   };
 
   const obtenerTotal = () => {
-    const subtotalConDescuento = obtenerSubtotalConDescuento();
-    const impuesto = obtenerImpuesto();
-    return subtotalConDescuento + impuesto + 10; // +10 por envío
+    const totalSinDescuento = obtenerTotalSinDescuento();
+    const descuento = obtenerDescuentoTotal();
+    return Math.max(0, totalSinDescuento - descuento);
   };
 
   // Helper para estrellas
@@ -429,15 +527,57 @@ const ProcesoCompra = () => {
         direccionSeleccionada || user.direccions[0].id_direccion.toString();
       const sucursalId = Number(idSucursal ?? sucursales[0]?.id_sucursal ?? 2);
 
+      // Debug information - show what we're sending
+      console.log("=== DEBUG INFO - CREANDO PEDIDO ===");
+      console.log("Usuario ID:", user.id_usuario);
+      console.log("Dirección ID:", id_direccion);
+      console.log("Sucursal ID:", sucursalId);
+      console.log("Promoción aplicada:", promocionAplicada ? {
+        id: promocionAplicada.id_promocion,
+        nombre: promocionAplicada.nombre_promocion,
+        tipo: promocionAplicada.id_tipo_promo,
+        valor: promocionAplicada.valor_porcentaje || promocionAplicada.valor_fijo
+      } : null);
+      console.log("Cupón aplicado:", cuponAplicado ? {
+        id: cuponAplicado.id_cupon,
+        codigo: cuponAplicado.codigo,
+        tipo: cuponAplicado.tipo,
+        valor: cuponAplicado.valor
+      } : null);
+      console.log("Descuento total:", descuento);
+      console.log("Total factura:", total_factura);
+      console.log("=====================================");
+
+      console.log("About to send pedido");
+      console.log("cuponAplicado:", cuponAplicado);
+      console.log("id_cupon:", cuponAplicado ? cuponAplicado.id_cupon : null);
+      console.log("descuento:", descuento);
+
       const response = await crearPedido(
         user.id_usuario,
         id_direccion,
         sucursalId,
-        promocionAplicada ? promocionAplicada.id_promocion : null,
+        cuponAplicado ? cuponAplicado.id_cupon : null,
         descuento
       );
 
       const id_pedido = response.data.id_pedido;
+
+      // Marcar el cupón como usado si se aplicó uno
+      if (cuponAplicado) {
+        try {
+          await axiosInstance.post('/api/cupones/usar-cupon', {
+            id_cupon: cuponAplicado.id_cupon,
+            id_usuario: user.id_usuario,
+            id_pedido: id_pedido,
+            fecha_usado: new Date().toISOString()
+          });
+          console.log("Cupón marcado como usado correctamente");
+        } catch (cuponError) {
+          console.error("Error al marcar cupón como usado:", cuponError);
+          // No interrumpir el flujo si falla marcar el cupón
+        }
+      }
 
       // **NUEVO: Enviar correo con resumen de factura**
       try {
@@ -499,10 +639,15 @@ RESUMEN DE PAGO
             ? `
 • Descuento (${
                 promocionAplicada.nombre_promocion
-              }): -L. ${calcularDescuentoPromocion().descuento.toFixed(2)}
-• Subtotal con descuentos: L. ${obtenerSubtotalConDescuento().toFixed(2)}`
+              }): -L. ${calcularDescuentoPromocion().descuento.toFixed(2)}`
+            : ""
+        }${
+          cuponAplicado && cuponValidado
+            ? `
+• Descuento (Cupón ${cuponAplicado.codigo}): -L. ${obtenerDescuentoTotal().toFixed(2)}`
             : ""
         }
+• Subtotal con descuentos: L. ${obtenerTotalSinDescuento().toFixed(2)}
 • Impuesto (15%): L. ${obtenerImpuesto().toFixed(2)}
 • Envío: L. 10.00
 • TOTAL PAGADO: L. ${total_factura.toFixed(2)}
@@ -857,6 +1002,66 @@ El equipo de EasyWay
                 </p>
               )}
             </div>
+
+            {/* Coupon Section */}
+            <div style={styles.section}>
+              <h2 style={styles.sectionTitle}>Cupón de Descuento</h2>
+              <div style={styles.couponContainer}>
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Código del cupón:</label>
+                  <div style={styles.couponInputGroup}>
+                    <input
+                      type="text"
+                      style={styles.couponInput}
+                      value={codigoCupon}
+                      onChange={(e) => setCodigoCupon(e.target.value.toUpperCase())}
+                      placeholder="Ingrese su código de cupón"
+                      disabled={cuponAplicado && cuponValidado}
+                    />
+                    <button
+                      style={{
+                        ...styles.couponButton,
+                        backgroundColor: (cuponAplicado && cuponValidado) ? "#28a745" : "#f0833e",
+                        cursor: (cuponAplicado && cuponValidado) ? "not-allowed" : "pointer"
+                      }}
+                      onClick={aplicarCupon}
+                      disabled={cuponAplicado && cuponValidado}
+                      onMouseEnter={(e) => {
+                        if (!(cuponAplicado && cuponValidado)) {
+                          e.target.style.backgroundColor = "#d8572f";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!(cuponAplicado && cuponValidado)) {
+                          e.target.style.backgroundColor = "#f0833e";
+                        }
+                      }}
+                    >
+                      {cuponAplicado && cuponValidado ? "✓ Aplicado" : "Aplicar"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Coupon Status */}
+                {cuponAplicado && cuponValidado && (
+                  <div style={styles.couponSuccess}>
+                    <div style={styles.couponInfo}>
+                      <strong>Cupón aplicado:</strong> {cuponAplicado.codigo}
+                      <br />
+                      <strong>Descuento:</strong> {cuponAplicado.tipo === 1 ? `${cuponAplicado.valor}%` : `L. ${parseFloat(cuponAplicado.valor).toFixed(2)}`}
+                      <br />
+                      <strong>ID del cupón:</strong> {cuponAplicado.id_cupon}
+                    </div>
+                  </div>
+                )}
+
+                {codigoCupon && !cuponValidado && cuponAplicado === null && (
+                  <div style={styles.couponError}>
+                    Cupón no válido o expirado
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           <div style={styles.rightColumn}>
@@ -903,7 +1108,7 @@ El equipo de EasyWay
                     <span>L. {subtotal.toFixed(2)}</span>
                   </div>
 
-                  {/* Promoción/cupón aplicado */}
+                  {/* Promoción aplicada */}
                   {promocionAplicada && (
                     <div
                       style={{
@@ -922,6 +1127,25 @@ El equipo de EasyWay
                     </div>
                   )}
 
+                  {/* Cupón aplicado */}
+                  {cuponAplicado && cuponValidado && (
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: "8px",
+                        color: "#16a34a", // verde para mostrar el descuento
+                      }}
+                    >
+                      <span>
+                        Cupón ({cuponAplicado.codigo}):
+                      </span>
+                      <span>
+                        -L. {obtenerDescuentoTotal().toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+
                   {/* Subtotal con descuentos aplicados */}
                   <div
                     style={{
@@ -934,7 +1158,7 @@ El equipo de EasyWay
                     }}
                   >
                     <span>Subtotal con descuentos:</span>
-                    <span>L. {obtenerSubtotalConDescuento().toFixed(2)}</span>
+                    <span>L. {obtenerTotalSinDescuento().toFixed(2)}</span>
                   </div>
 
                   {/* Impuesto */}

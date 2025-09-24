@@ -220,6 +220,7 @@ exports.addCuponUsuario = async (req, res) => {
 
 exports.getAllCupones = async (req, res) => {
   try {
+    // First get all coupons
     const cupones = await cupon.findAll({
       attributes: [
         "id_cupon",
@@ -246,10 +247,14 @@ exports.getAllCupones = async (req, res) => {
       return res.status(404).json({ message: "No se encontraron cupones." });
     }
 
-    const resultado = cupones.map((c) => {
+    // Then get usage counts for each coupon
+    const resultado = await Promise.all(cupones.map(async (c) => {
+      const usosActuales = await historial_cupon.count({
+        where: { id_cupon: c.id_cupon }
+      });
+
       const ahora = new Date();
       const fechaExpiracion = new Date(c.termina_en);
-      const usosActuales = parseInt(c.dataValues.usos_actuales) || 0;
 
       let estado = "activo";
       if (!c.activo) estado = "inactivo";
@@ -267,11 +272,13 @@ exports.getAllCupones = async (req, res) => {
         fecha_expiracion: c.termina_en,
         activo: c.activo,
         estado,
+        termina_en: c.termina_en,
       };
-    });
+    }));
 
     return res.status(200).json(resultado);
   } catch (error) {
+    console.error("Error en getAllCupones:", error);
     return res.status(500).json({ message: "Error al obtener cupones." });
   }
 };

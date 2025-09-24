@@ -14,6 +14,8 @@ router.get('/:id', promocionesController.getpromocionById);
 router.get('/usuario/:id_usuario', promocionesController.getpromocionbyusuario);
 router.get('/descuentos/aplicados/:id_usuario', promocionesController.getDescuentosAplicadosPorUsuario);
 router.patch('/descuentosMultiples', verificarToken, promocionesController.aplicarDescuentoseleccionados);
+router.post('/precios-escalonados/bulk', verificarToken, promocionesController.aplicarPreciosEscalonados);
+
 
 router.post('/', verificarToken, promocionesController.crearPromocion);
 router.put('/desactivar/:id', verificarToken, promocionesController.desactivarPromocion);

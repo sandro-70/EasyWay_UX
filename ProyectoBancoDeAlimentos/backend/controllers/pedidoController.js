@@ -15,30 +15,30 @@ const {
 } = require("../models");
 const { Op, col, fn } = require("sequelize");
 
-exports.getEstados = async (req, res) => {
+exports.getEstados = async (req,res) => {
   try {
     const pedidos = await estado_pedido.findAll();
     return res.json(pedidos);
-  } catch (error) {
+  }catch(error){
     console.error(error);
     return res
       .status(500)
       .json({ error: "Error al obtener estados de pedidos" });
   }
-};
+}
 
 exports.getPedidosEstado = async (req, res) => {
   try {
     const id_usuario = parseInt(req.params.id_usuario, 10);
     if (Number.isNaN(id_usuario)) {
-      return res.status(400).json({ error: "id_usuario inválido" });
+      return res.status(400).json({ error: 'id_usuario inválido' });
     }
 
     const rows = await pedido.findAll({
       where: { id_usuario },
       attributes: [
-        "id_pedido",
-        [col("estado_pedido.nombre_pedido"), "nombre_pedido"],
+        'id_pedido',
+        [col('estado_pedido.nombre_pedido'), 'nombre_pedido'],
       ],
       include: [
         {
@@ -47,7 +47,7 @@ exports.getPedidosEstado = async (req, res) => {
           required: true,
         },
       ],
-      order: [["id_pedido", "ASC"]],
+      order: [['id_pedido', 'ASC']],
       raw: true,
     });
 
@@ -348,22 +348,6 @@ exports.crearPedido = async (req, res) => {
     const { id_usuario, direccion_envio, id_sucursal, id_cupon, descuento } =
       req.body;
 
-    // Validar si el cupón existe si se proporciona
-    let id_cupon_valido = null;
-    if (id_cupon) {
-      console.log("Validando cupón con id:", id_cupon);
-      const cuponExistente = await cupon.findByPk(id_cupon, {
-        transaction: t,
-      });
-      if (cuponExistente) {
-        console.log("Cupón válido:", cuponExistente);
-        id_cupon_valido = id_cupon;
-      } else {
-        console.log("Cupón inválido:", id_cupon, "- Procediendo sin cupón");
-        id_cupon_valido = null;
-      }
-    }
-
     // Obtener método de pago predeterminado del usuario
     const metodoPredeterminado = await metodo_pago.findOne({
       where: { id_usuario, metodo_predeterminado: true },
@@ -428,6 +412,50 @@ exports.crearPedido = async (req, res) => {
       }
     }
 
+    //crear detalles preliminares para calcular subtotal
+    const detalles = itemsCarrito.map((item) => ({
+      id_factura: null, // se asigna después
+      id_producto: item.id_producto,
+      cantidad_unidad_medida: item.cantidad_unidad_medida,
+      subtotal_producto:
+        item.cantidad_unidad_medida * item.producto.precio_base,
+    }));
+
+    // Calcular subtotal
+    const subtotal = detalles.reduce((sum, item) => sum + item.subtotal_producto, 0);
+
+    // Calcular costo de envío
+    const costoEnvio = 10.00;
+
+    // Validar si el cupón existe y está activo si se proporciona
+    let descuentoCalculado = descuento || 0;
+    let id_cupon_valido = null;
+
+    let cuponExistente = null;
+    if (id_cupon) {
+      console.log("Validando cupón con id:", id_cupon);
+      cuponExistente = await cupon.findByPk(id_cupon, { transaction: t });
+    }
+
+    console.log("Resultado de búsqueda de cupón:", cuponExistente);
+    if (cuponExistente && cuponExistente.activo) {
+      console.log("Cupón válido:", cuponExistente);
+      id_cupon_valido = cuponExistente.id_cupon;
+      // Calcular descuento basado en el tipo de cupón
+      if (cuponExistente.tipo === 'porcentaje') {
+        descuentoCalculado = subtotal * (cuponExistente.valor / 100);
+      } else if (cuponExistente.tipo === 'monto') {
+        descuentoCalculado = cuponExistente.valor;
+      } else if (cuponExistente.tipo === 'envio') {
+        // Para envío gratis, el descuento será el costo de envío
+        descuentoCalculado = costoEnvio;
+      }
+      console.log("Descuento calculado del cupón:", descuentoCalculado);
+    } else {
+      console.log("Cupón inválido o inactivo:", id_cupon, "- Procediendo sin cupón");
+      id_cupon_valido = null;
+    }
+
     //crear pedido
     const nuevoPedido = await pedido.create(
       {
@@ -436,7 +464,7 @@ exports.crearPedido = async (req, res) => {
         id_sucursal,
         id_cupon: id_cupon_valido,
         id_estado_pedido: 1, // Pendiente
-        descuento: descuento || 0,
+        descuento: descuentoCalculado,
       },
       { transaction: t }
     );
@@ -450,23 +478,35 @@ exports.crearPedido = async (req, res) => {
       await sucProd.save({ transaction: t });
     }
 
-    //crear detalles
-    const detalles = itemsCarrito.map((item) => ({
-      id_factura: null, // se asigna después
-      id_producto: item.id_producto,
-      cantidad_unidad_medida: item.cantidad_unidad_medida,
-      subtotal_producto:
-        item.cantidad_unidad_medida * item.producto.precio_base,
-    }));
-    //crear factura
-    const totalFactura =
-      detalles.reduce((sum, item) => sum + item.subtotal_producto, 0) -
-      (descuento || 0);
+    // Aplicar descuento al subtotal
+    const subtotalConDescuento = Math.max(0, subtotal - descuentoCalculado);
+
+    // Calcular impuestos (15% del subtotal con descuento)
+    const impuestos = subtotalConDescuento * 0.15;
+
+    // Calcular total final (subtotal con descuento + impuestos + envío)
+    const totalFactura = subtotalConDescuento + impuestos + costoEnvio;
+
+    // Debug: Mostrar cálculos
+    console.log("=== DEBUG INFO ===");
+    console.log("Productos en el carrito:");
+    itemsCarrito.forEach((item, index) => {
+      console.log(`Producto ${index + 1}: ID=${item.id_producto}, Nombre=${item.producto.nombre}, Cantidad=${item.cantidad_unidad_medida}, Precio=${item.producto.precio_base}, Subtotal=${item.cantidad_unidad_medida * item.producto.precio_base}`);
+    });
+    console.log(`Subtotal: ${subtotal}`);
+    console.log(`Descuento calculado: ${descuentoCalculado}`);
+    console.log(`Impuestos (15%): ${impuestos}`);
+    console.log(`Costo de envío: ${costoEnvio}`);
+    console.log(`Total calculado: ${totalFactura}`);
+    console.log("=== END DEBUG ===");
+
     const nuevaFactura = await factura.create(
       {
         id_pedido: nuevoPedido.id_pedido,
         id_metodo_pago: metodoPredeterminado.id_metodo_pago,
         fecha_emision: new Date(),
+        impuestos: impuestos,
+        costo_evio: costoEnvio,
         total: totalFactura,
       },
       { transaction: t }
@@ -488,8 +528,13 @@ exports.crearPedido = async (req, res) => {
     res.json({
       message: "Pedido creado correctamente!",
       id_pedido: nuevoPedido.id_pedido,
+      subtotal: subtotal,
+      impuestos: impuestos,
+      costo_envio: costoEnvio,
+      descuento: descuentoCalculado,
       total: totalFactura,
     });
+
   } catch (error) {
     await t.rollback();
     console.error("Error al crear pedido:", error);

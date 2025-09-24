@@ -372,7 +372,69 @@ exports.aplicarDescuentoseleccionados = async (req, res) => {
     res.status(500).json({ error: "Error al aplicar descuentos" });
   }
 };
+exports.aplicarPreciosEscalonados = async (req, res) => {
+  try {
+    const { priceTiers } = req.body; // priceTiers es un array de objetos { id_producto, valor_fijo, valor_porcentaje }
+    if (!req.user || !req.user.id_usuario) {
+      return res.status(401).json({ message: "Usuario no autenticado" });
+    }
+    const currentUserId = req.user.id_usuario;
 
+    // Verificar si el usuario es administrador
+    const user = await Usuario.findByPk(currentUserId, {
+      attributes: ["id_rol"],
+    });
+    if (!user || user.id_rol !== 1) {
+      return res.status(403).json({
+        message: "Solo los administradores pueden aplicar precios escalonados",
+      });
+    }
+    // Resetear la secuencia de id_promocion para evitar conflictos
+    await sequelize.query(
+      "SELECT setval('promocion_id_promocion_seq', (SELECT COALESCE(MAX(id_promocion), 0) + 1 FROM promocion), false);"
+    );
+    // Aplicar los precios escalonados a los productos
+    for (const tier of priceTiers) {
+      const { id_producto, valor_fijo, valor_porcentaje } = tier;
+      const product = await producto.findByPk(id_producto);
+      if (!product) {
+        continue; // Si no se encuentra el producto, continuar con el siguiente
+      }
+      let promocionExistente = await promocion.findOne({
+        include: [
+          {
+            model: producto,
+            where: { id_producto: id_producto },
+            through: { attributes: [] },
+            required: true,
+          },
+        ],
+      });
+      if (!promocionExistente) {
+        promocionExistente = await promocion.create({
+          id_tipo_promo: 3, // Suponiendo que 3 es el ID para precios escalonados
+        });
+        // Crear la asociación en la tabla promocion_producto
+        await promocion_producto.create({
+          id_promocion: promocionExistente.id_promocion,
+          id_producto: id_producto,
+        });
+      }
+      promocionExistente.valor_fijo = valor_fijo
+        ? parseFloat(valor_fijo)
+        : promocionExistente.valor_fijo;
+      promocionExistente.valor_porcentaje = valor_porcentaje
+        ? parseFloat(valor_porcentaje)
+        : promocionExistente.valor_porcentaje;
+      await promocionExistente.save();
+    }
+    res.json({ message: "Precios escalonados aplicados correctamente" });
+  }
+  catch (error) {
+    console.error("Error al aplicar precios escalonados:", error);
+    res.status(500).json({ error: "Error al aplicar precios escalonados" });
+  }
+};
 exports.crearPromocion = async (req, res) => {
   try {
     const {

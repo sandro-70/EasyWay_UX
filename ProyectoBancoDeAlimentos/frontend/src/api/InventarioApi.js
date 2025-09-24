@@ -123,12 +123,8 @@ export function actualizarProducto(
       Array.isArray(etiquetas) ? etiquetas.join(",") : etiquetas
     );
   formData.append("unidad_medida", unidadMedida);
-  if (pesoKg !== "" && pesoKg != null && Number.isFinite(Number(pesoKg))) {
-    formData.append("peso_valor", String(pesoKg)); // el número
-  }
-  if (unidadMedida) {
-    formData.append("unidad_medida", unidadMedida); // la unidad exacta
-  }
+  if (pesoKg !== undefined) formData.append("peso_kg", pesoKg);
+  formData.append("activo", true); // Default to true for updates
 
   // Agregar payload de imágenes
   formData.append("imagenes_payload", JSON.stringify(imagenesPayload));
@@ -172,11 +168,12 @@ export function crearProducto(
   if (porcentajeGanancia !== undefined)
     formData.append("porcentaje_ganancia", porcentajeGanancia);
   formData.append("marca_id", marcaId);
-  if (etiquetas)
+  if (etiquetas) {
     formData.append(
       "etiquetas",
       Array.isArray(etiquetas) ? etiquetas.join(",") : etiquetas
     );
+  }
   formData.append("unidad_medida", unidadMedida);
   formData.append("activo", true); // Default to true for creates
   if (pesoKg !== "" && pesoKg != null && Number.isFinite(Number(pesoKg))) {

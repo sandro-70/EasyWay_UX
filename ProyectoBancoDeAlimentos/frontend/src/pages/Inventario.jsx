@@ -732,7 +732,7 @@ export default function Inventario() {
   // helpers (ponlos una sola vez en el archivo, arriba de saveModal)
   const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 
-  function toKg(valor, unidad) {
+  function toKg(valor, unidad, densidad = 1) {
     const v = Number(valor);
     if (!Number.isFinite(v) || v < 0) return 0;
     switch ((unidad || "").toLowerCase()) {
@@ -758,6 +758,12 @@ export default function Inventario() {
       case "libra":
       case "libras":
         return v * 0.45359237;
+
+      case "ml":
+      case "mililitro":
+      case "mililitros":
+        return (v * densidad) / 1000;
+
       default:
         return v;
     }
@@ -2044,6 +2050,7 @@ export default function Inventario() {
                 <option value="g">Gramos (g)</option>
                 <option value="mg">Miligramos (mg)</option>
                 <option value="oz">Onzas (oz)</option>
+                <option value="ml">Mililitros (ml)</option>
               </select>
               <svg
                 className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500"

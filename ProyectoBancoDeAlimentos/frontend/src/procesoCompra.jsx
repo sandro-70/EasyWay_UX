@@ -531,7 +531,7 @@ Su pedido será procesado y enviado a la brevedad posible. Recibirá actualizaci
 ¡Gracias por su compra!
 
 Atentamente,
-El equipo de [Nombre de su tienda]
+El equipo de EasyWay
       `.trim();
 
         // Enviar el correo

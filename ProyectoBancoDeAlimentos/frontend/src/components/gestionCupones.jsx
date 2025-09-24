@@ -16,6 +16,7 @@ const GestionCupones = () => {
     const [createOpen, setCreateOpen] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
     const [cuponEditar, setCuponEditar] = useState(null);
+    const [estadoFiltro, setEstadoFiltro] = useState("todos");
 
     const [nuevoCupon, setNuevoCupon] = useState({
         codigo: "",
@@ -134,14 +135,23 @@ const GestionCupones = () => {
 
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase();
-        if (!q) return cupones;
-        return cupones.filter((c) =>
-            [c.id_cupon, c.codigo, c.descripcion, c.tipo, c.estado]
-                .join(" ")
-                .toLowerCase()
-                .includes(q)
-        );
-    }, [cupones, query]);
+        let lista = cupones;
+
+        if (q) {
+            lista = lista.filter((c) =>
+                [c.id_cupon, c.codigo, c.descripcion, c.tipo, c.estado]
+                    .join(" ")
+                    .toLowerCase()
+                    .includes(q)
+            );
+        }
+
+        if (estadoFiltro !== "todos") {
+            lista = lista.filter((c) => (c.estado || "").toLowerCase() === estadoFiltro.toLowerCase());
+        }
+
+        return lista;
+    }, [cupones, query, estadoFiltro]);
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
     const pageSafe = Math.min(page, totalPages);
@@ -359,7 +369,20 @@ const GestionCupones = () => {
                 </button>
             </div>
             <div className="cupon-divider"></div>
-            
+            <div className="filtros-cupones-container">
+                <label>Filtrar Por Estado:</label>
+                <select
+                    value={estadoFiltro}
+                    onChange={(e) => setEstadoFiltro(e.target.value)}
+                    className="font-14px border rounded px-3 py-1 bg-[#E6E6E6]"
+                >
+                    <option value="todos">Todos</option>
+                    <option value="activo">Activo</option>
+                    <option value="inactivo">Inactivo</option>
+                    <option value="expirado">Expirado</option>
+                    <option value="usado">Usado</option>
+                </select>
+            </div>
             <div className="cupones-table-wrap">
                 {loading ? (
                     <div className="loading">Cargando cupones...</div>
@@ -376,7 +399,7 @@ const GestionCupones = () => {
                                 <th>Valor</th>
                                 <th>Límite de usos</th>
                                 <th>Fecha de expiración</th>
-                                <th>Estado</th>
+                                <th>Estado </th>
                                 <th>Opciónes</th>
                             </tr>
                         </thead>

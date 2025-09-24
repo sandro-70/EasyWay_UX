@@ -25,6 +25,7 @@
     border-radius: 0.375rem;
     background-color: #f0833e;
     margin-top: 0.15rem;
+    margin-bottom: 10px;
 }
 
 .cupones-table-wrap {
@@ -35,6 +36,21 @@
   box-shadow: var(--shadow-sm);
   overflow: hidden;
   flex-direction: column;
+}
+
+.filtros-cupones-container {
+  display: flex;
+  align-items: center;  /* centra verticalmente todos los elementos */
+  justify-content: flex-start; /* alinea todo a la izquierda */
+  gap: 12px;             /* espacio entre label, select y total */
+  flex-wrap: wrap;       /* permite que baje a la siguiente línea si es necesario */
+  margin-left: 0;        /* elimina desplazamiento extra */
+  margin-bottom: 10px;
+}
+
+.filtros-cupones-container label {
+  line-height: 1.75rem; /* ajusta altura para que coincida con select */
+  flex-shrink: 0;       /* evita que se reduzca de tamaño */
 }
 
 .no-cupones {
@@ -112,6 +128,10 @@
 .estado-badge.estado-usado {
   color: #2B6DAF;
   background-color: rgba(43, 109, 175, 0.1); 
+}
+
+.cupones-table-wrap.dropdown-visible {
+  overflow: visible; /* antes estaba hidden y recortaba el dropdown */
 }
 
 @media (max-width: 768px) {

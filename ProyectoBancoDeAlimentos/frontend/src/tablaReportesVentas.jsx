@@ -188,21 +188,23 @@ function TablaReportesVentas() {
         <div className="divider" />
 
         {/* Filtro por trimestre */}
-        <div className="filtro-trimestre">
-          <label>Filtrar por trimestre:</label>
-          <select
-            value={trimestre}
-            onChange={(e) => {
-              setTrimestre(e.target.value);
-              setPage(1);
-            }}
-          >
-            <option value="">Todos</option>
-            <option value="1">1er Trimestre (Ene - Mar)</option>
-            <option value="2">2do Trimestre (Abr - Jun)</option>
-            <option value="3">3er Trimestre (Jul - Sep)</option>
-            <option value="4">4to Trimestre (Oct - Dic)</option>
-          </select>
+        <div className="filtros-container">
+            <label>Filtrar por trimestre:</label>
+            <select
+              value={trimestre}
+              onChange={(e) => {
+                setTrimestre(e.target.value);
+                setPage(1);
+              }}
+              className="font-14px border rounded px-3 py-1 bg-[#E6E6E6]"
+            >
+              
+              <option value="">Todos</option>
+              <option value="1">1er Trimestre (Ene - Mar)</option>
+              <option value="2">2do Trimestre (Abr - Jun)</option>
+              <option value="3">3er Trimestre (Jul - Sep)</option>
+              <option value="4">4to Trimestre (Oct - Dic)</option>
+            </select>
         </div>
 
         {loading ? (

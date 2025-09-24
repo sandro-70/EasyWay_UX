@@ -616,7 +616,12 @@ async function handleFavorito() {
          </>
        );
      }
-     return <span style={styles.cardPrice}>L. {Number(p.precio_base).toFixed(2)} P/Kilo</span>;
+    return (
+      <span style={styles.cardPrice}>
+        L. {Number(p.precio_base).toFixed(2)}{" "}
+        {p.unidad_medida ? p.unidad_medida : "P/Kilo"}
+      </span>
+    );
    })()}
  </div>
                   <button
@@ -725,8 +730,8 @@ async function handleFavorito() {
    }
    return (
      <div style={styles.detailPrice}>
-       L. {Number(product.precio_base).toFixed(2)}{" "}
-       <span style={styles.detailPriceUnit}>P/Kilo</span>
+       L. {Number(product.precio_base).toFixed(2)}{" "} {product.unidad_medida ? product.unidad_medida : "P/Kilo"}
+       <span style={styles.detailPriceUnit}></span>
      </div>
    );
  })()}

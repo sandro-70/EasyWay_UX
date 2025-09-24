@@ -821,11 +821,11 @@ const bestPromoPriceForProduct = (prod) => {
        return (
          <>
            <span style={styles.newPrice}>L. {best.finalPrice.toFixed(2)}</span>
-           <span style={styles.strikePrice}>L. {Number(p.precio_base).toFixed(2)}</span>
+           <span style={styles.strikePrice}>L. {Number(p.precio_base).toFixed(2)} </span>
          </>
        );
      }
-     return <span style={styles.productPrice}>L. {Number(p.precio_base).toFixed(2)}</span>;
+     return <span style={styles.productPrice}>L. {Number(p.precio_base).toFixed(2)} {" "} {p.unidad_medida ? p.unidad_medida : "P/Kilo"}</span>;
    })()}
  </div>
 

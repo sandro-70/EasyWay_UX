@@ -231,13 +231,7 @@ export default function AdminPedidosTable({
                             >
                               <IconEye /> <span className="text-sm">Pedido</span>
                             </button>
-                            <button
-                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-100"
-                              onClick={() => onVerFactura ? onVerFactura(p?.factura) : toggleRow(p.id_pedido)}
-                              title="Ver factura"
-                            >
-                              <IconEye /> <span className="text-sm">Factura</span>
-                            </button>
+                            
                             
                           </div>
                         </td>
@@ -278,6 +272,7 @@ export default function AdminPedidosTable({
                                       </thead>
                                       <tbody>
                                         {(p?.factura?.factura_detalles || []).map((d, i) => {
+                                          console.log("Detalle producto:", d?.producto);
                                           const cod = String(d?.producto?.id_producto ?? "").padStart(4, "0");
                                           const nombre = d?.producto?.nombre ?? "—";
                                           const cat = d?.producto?.subcategoria?.categoria?.nombre ?? "—";

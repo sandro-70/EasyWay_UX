@@ -341,7 +341,7 @@ exports.getPedidosConDetalles = async (req, res) => {
               include: [
                 {
                   model: producto,
-                  attributes: ["nombre", "precio_base"], // Incluye solo el nombre y precio del producto
+                  attributes: ["nombre", "precio_base", "id_producto"], // Incluye solo el nombre y precio del producto
                   include: [
                     {
                       model: subcategoria,

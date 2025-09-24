@@ -217,6 +217,7 @@ function TablaReportesUsuarios() {
               }
               return {
                 id: user.id_usuario,
+                rol: user.id_rol,
                 nombre: user.nombre + " " + user.apellido,
                 estado: user.activo ? "Activo" : "Inactivo",
                 productoEstrella: productoEstrella || "N/A",
@@ -264,6 +265,10 @@ function TablaReportesUsuarios() {
 
     const matchesEstado =
       estadoFilter === "Todos" ? true : item.estado === estadoFilter;
+
+    const matchesRol = item.rol === 2;
+
+    if (!matchesRol) return false; 
 
     return matchesNombre && matchesEstado;
   });

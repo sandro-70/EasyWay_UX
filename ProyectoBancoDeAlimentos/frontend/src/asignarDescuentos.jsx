@@ -9,6 +9,7 @@ import axiosInstance from "./api/axiosInstance";
 import {
   aplicarDescuentoGeneral,
   aplicarPreciosEscalonados,
+  aplicarDescuentoseleccionados,
 } from "./api/PromocionesApi";
 import {
   getAllProducts,
@@ -188,6 +189,7 @@ export default function AsignarDescuentos() {
   };
 
   async function onApplyGeneral() {
+    // Validaciones UI
     const v = Number(genValor);
     if (genTipo === "PORCENTAJE" && (isNaN(v) || v < 1 || v > 100)) {
       alert("El porcentaje debe estar entre 1% y 100%.");
@@ -197,24 +199,38 @@ export default function AsignarDescuentos() {
       alert("El monto fijo no puede ser negativo.");
       return;
     }
+    if (!selectedItems.length) {
+      alert("Selecciona al menos un producto.");
+      return;
+    }
 
-    const productos = selectedItems.map((p) => Number(p.id));
+    // Mapea al contrato del backend
     const payload = {
-      tipo: genTipo,
-      valor: v,
-      fecha_inicio: genDesde,
-      fecha_fin: genHasta,
-      productos,
+      selectedProductIds: selectedItems.map((p) => Number(p.id)),
+      discountType: genTipo === "PORCENTAJE" ? "percent" : "fixed",
+      discountValue: v,
+      // (Tu controller NO usa fechas; si las quieres persistir, habría que extender el endpoint)
     };
+
     try {
-      await aplicarDescuentoGeneral(payload);
-      alert("Descuento general aplicado ✔");
+      setSavingGeneral(true);
+      await aplicarDescuentoseleccionados(payload);
+      alert("Descuentos aplicados correctamente ✔");
+      // Limpia UI
       setMode(null);
       setSelectedItems([]);
-      refreshProductsBySucursal(selectedSucursalId);
+      setGenValor("");
+      // refresca tabla (si tu API ya calcula precio_venta, volverá actualizado)
+      await refreshProductsBySucursal(selectedSucursalId);
     } catch (e) {
       console.error(e);
-      alert("No se pudo aplicar el descuento.");
+      const msg =
+        e?.response?.data?.message ||
+        e?.response?.data?.error ||
+        "No se pudo aplicar el descuento.";
+      alert(msg);
+    } finally {
+      setSavingGeneral(false);
     }
   }
 
@@ -249,6 +265,8 @@ export default function AsignarDescuentos() {
   const [mode, setMode] = useState(null); // 'general' | 'tiered' | null
 
   // General
+  const [savingGeneral, setSavingGeneral] = useState(false);
+
   const [genTipo, setGenTipo] = useState("PORCENTAJE");
   const [genValor, setGenValor] = useState("");
   const [genDesde, setGenDesde] = useState("");
@@ -927,12 +945,14 @@ export default function AsignarDescuentos() {
                         <button
                           onClick={onApplyGeneral}
                           disabled={
+                            savingGeneral ||
                             !selectedItems.length ||
                             !genValor ||
                             !genDesde ||
                             !genHasta
                           }
                           className={`w-full mt-2 px-4 py-2 rounded-xl text-white ${
+                            !savingGeneral &&
                             selectedItems.length &&
                             genValor &&
                             genDesde &&
@@ -941,7 +961,9 @@ export default function AsignarDescuentos() {
                               : "bg-gray-300 cursor-not-allowed"
                           }`}
                         >
-                          Aplicar a seleccionados ({selectedItems.length})
+                          {savingGeneral
+                            ? "Aplicando..."
+                            : `Aplicar a seleccionados (${selectedItems.length})`}
                         </button>
 
                         <p className="text-[12px] text-gray-500 text-center">

@@ -33,7 +33,7 @@ exports.infoMe = async (req, res) => {
  */
 exports.infoById = async (req, res) => {
   try {
-    const id = getAuthUserId(req);
+    const id = Number(req.params.id);
     if (!Number.isInteger(id) || id <= 0) {
       return res.status(400).json({ message: "id inválido" });
     }

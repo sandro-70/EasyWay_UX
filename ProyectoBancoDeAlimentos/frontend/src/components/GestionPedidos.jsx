@@ -5,6 +5,8 @@ import {
   actualizarEstadoPedido,
   } from '../api/PedidoApi'; 
 
+import { enviarCorreo, InformacionUser } from "../api/Usuario.Route";
+
 // Iconitos inline para no depender de librerías
 const IconEye = (props) => (
   <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
@@ -99,26 +101,81 @@ export default function AdminPedidosTable({
     setOpenRows((s) => ({ ...s, [id]: !s[id] }));
 
   // ---------- acciones ----------
+  // helper para # de pedido
+const numPedido = (id) => `#${String(id).padStart(6, "0")}`;
+
+// envía email al dueño del pedido cuando cambia el estado
+const notificarCambioEstado = async (pedidoObj, nuevoIdEstado) => {
+  try {
+    if (!pedidoObj?.id_usuario) return;
+
+    // nombre de estado nuevo y viejo
+    const estadoNuevo = mapEstadoIdToNombre(nuevoIdEstado) || "Actualizado";
+    const estadoViejo = pedidoObj?.estado_pedido?.nombre_pedido || "—";
+    const numero = numPedido(pedidoObj.id_pedido);
+
+    // trae info del usuario (correo, nombre, apellido)
+    console.log("Trayendo info de usuario para notificación:", pedidoObj.id_usuario);
+    const infoRes = await InformacionUser(pedidoObj.id_usuario);
+    const data = infoRes?.data || {};
+    // algunos back devuelven { usuario: {...} }, otros directo
+    const u = data.usuario || data;
+    const correo = u?.correo || u?.email;
+    const nombreCompleto = [u?.nombre, u?.apellido].filter(Boolean).join(" ") || "cliente";
+
+    if (!correo) return;
+
+    const asunto = `Tu pedido ${numero} cambió a "${estadoNuevo}"`;
+    const descripcion = `
+Hola ${nombreCompleto},
+
+El estado de tu pedido ${numero} ha sido actualizado:
+
+• Estado anterior: ${estadoViejo}
+• Estado nuevo: ${estadoNuevo}
+• Fecha: ${new Date().toLocaleString("es-HN")}
+
+Puedes ver el detalle completo en tu cuenta (Mis pedidos).
+Gracias por comprar en EasyWay.
+    `.trim();
+    console.log("Enviando correo a", correo, "asunto:", asunto, "descripcion:", descripcion);
+    await enviarCorreo(correo, descripcion, asunto);
+  } catch (err) {
+    console.error("No se pudo enviar la notificación por correo:", err);
+    // opcional: alert("Estado cambiado pero no se pudo enviar el correo");
+  }
+};
+
   const handleChangeEstado = async (id_pedido, nuevoIdEstado) => {
-    try {
-      await actualizarEstadoPedido(id_pedido, nuevoIdEstado);
-      // refrescar en memoria el pedido editado
-      setPedidos((prev) =>
-        prev.map((p) =>
-          p.id_pedido === id_pedido
-            ? {
-                ...p,
-                id_estado_pedido: nuevoIdEstado,
-                estado_pedido: { nombre_pedido: mapEstadoIdToNombre(nuevoIdEstado) },
-              }
-            : p
-        )
-      );
-    } catch (e) {
-      console.error(e);
-      alert("No se pudo actualizar el estado del pedido.");
+  try {
+    // guarda una copia del pedido actual para saber el estado viejo y el id_usuario
+    const pedidoActual = pedidos.find((x) => x.id_pedido === id_pedido);
+
+    await actualizarEstadoPedido(id_pedido, nuevoIdEstado);
+
+    // refresca UI local
+    setPedidos((prev) =>
+      prev.map((p) =>
+        p.id_pedido === id_pedido
+          ? {
+              ...p,
+              id_estado_pedido: nuevoIdEstado,
+              estado_pedido: { nombre_pedido: mapEstadoIdToNombre(nuevoIdEstado) },
+            }
+          : p
+      )
+    );
+
+    // dispara correo (no bloquea la UI si falla)
+    if (pedidoActual) {
+      notificarCambioEstado(pedidoActual, nuevoIdEstado);
     }
-  };
+  } catch (e) {
+    console.error(e);
+    alert("No se pudo actualizar el estado del pedido.");
+  }
+};
+
 
   // ---------- Render ----------
   return (

@@ -4,8 +4,11 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { getAllInformacionUsuario } from "./api/Usuario.Route";
 import { getPedidosConDetallesUsuario } from "./api/PedidoApi";
-import { getAllFacturasByUserwithDetails } from "./api/FacturaApi";
-import InfoIcon from "./images/info.png"
+import {
+  getAllFacturasByUserwithDetails,
+  getResumenFacturasUsuario,
+} from "./api/FacturaApi";
+import InfoIcon from "./images/info.png";
 
 const Icon = {
   Search: (props) => (
@@ -143,7 +146,6 @@ function TablaReportesUsuarios() {
         setLoading(true);
         const response = await getAllInformacionUsuario();
 
-        // 🔥 OBTENER TODAS LAS FACTURAS UNA SOLA VEZ
         console.log("🔄 Obteniendo TODAS las facturas...");
         const todasLasFacturas = await getAllFacturasByUserwithDetails();
         console.log(
@@ -158,8 +160,13 @@ function TablaReportesUsuarios() {
         const usuariosMapeados = await Promise.all(
           response.data.map(async (user) => {
             try {
+              // Obtener todas las facturas con detalles para este usuario
+              const facturasUsuario = await getAllFacturasByUserwithDetails(
+                user.id_usuario
+              );
               console.log(
-                `\n👤 Procesando usuario ${user.id_usuario}: ${user.nombre}`
+                `📄 Facturas obtenidas para usuario ${user.id_usuario} with name ${user.nombre}:`,
+                facturasUsuario.data || 0
               );
 
               // 🔥 FILTRAR de TODAS las facturas para este usuario específico
@@ -167,18 +174,12 @@ function TablaReportesUsuarios() {
                 todasLasFacturas.data?.filter((factura) => {
                   const perteneceAlUsuario =
                     factura.pedido?.id_usuario === user.id_usuario;
-                  console.log(
-                    `Factura ${factura.id_factura}: usuario=${factura.pedido?.id_usuario}, buscando=${user.id_usuario}, pertenece=${perteneceAlUsuario}`
-                  );
+
                   return perteneceAlUsuario;
                 }) || [];
 
-              console.log(
-                `✅ Usuario ${user.id_usuario} tiene ${facturasDelUsuario.length} facturas válidas`
-              );
-
-              const cantidadCompras = facturasDelUsuario.length;
-              const totalComprado = facturasDelUsuario.reduce(
+              const cantidadCompras = facturasUsuario.data.length;
+              const totalComprado = facturasUsuario.data.reduce(
                 (sum, factura) => {
                   const total = parseFloat(factura.total) || 0;
                   return sum + total;
@@ -187,33 +188,38 @@ function TablaReportesUsuarios() {
               );
 
               const calcularFrecuenciaCompra = (facturas) => {
-                if (!facturas || facturas.length < 2) return "N/A días"; 
+                if (!facturas || facturas.length < 2) return "N/A días";
 
                 // Extraer fechas y ordenarlas
                 const fechas = facturas
-                  .map(f => new Date(f.fecha_emision)) 
+                  .map((f) => new Date(f.fecha_emision))
                   .sort((a, b) => a - b);
 
                 let diferencias = [];
                 for (let i = 1; i < fechas.length; i++) {
-                  const diff = (fechas[i] - fechas[i - 1]) / (1000 * 60 * 60 * 24); 
+                  const diff =
+                    (fechas[i] - fechas[i - 1]) / (1000 * 60 * 60 * 24);
                   diferencias.push(diff);
                 }
 
                 // Promedio de días entre compras
-                const promedioDias = diferencias.reduce((a, b) => a + b, 0) / diferencias.length;
+                const promedioDias =
+                  diferencias.reduce((a, b) => a + b, 0) / diferencias.length;
                 return `${promedioDias.toFixed(1)} días`;
               };
 
-              const frecuenciaCompra=calcularFrecuenciaCompra(facturasDelUsuario);
+              const frecuenciaCompra =
+                calcularFrecuenciaCompra(facturasDelUsuario);
 
-              const productoEstrella=calcularProductoEstrella(facturasDelUsuario);
+              const productoEstrella = calcularProductoEstrella(
+                facturasUsuario.data
+              );
 
-              if(user.nombre===null){
-                user.nombre="N/A";
-                user.apellido="";
-              }else if(user.apellido===null){
-                user.apellido="";
+              if (user.nombre === null) {
+                user.nombre = "N/A";
+                user.apellido = "";
+              } else if (user.apellido === null) {
+                user.apellido = "";
               }
               return {
                 id: user.id_usuario,
@@ -268,7 +274,7 @@ function TablaReportesUsuarios() {
 
     const matchesRol = item.rol === 2;
 
-    if (!matchesRol) return false; 
+    if (!matchesRol) return false;
 
     return matchesNombre && matchesEstado;
   });

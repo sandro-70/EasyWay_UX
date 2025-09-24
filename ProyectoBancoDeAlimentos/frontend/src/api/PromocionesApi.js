@@ -43,10 +43,20 @@ export function actualizarPromocion(id, data) {
   return axiosInstance.put(`/api/promociones/actualizar/${id}`, data);
 }
 
-export function productosPorPromocion(id_promocion){
-    return axiosInstance.get(`/api/promociones/productos-promo/${id_promocion}`);
+export function productosPorPromocion(id_promocion) {
+  return axiosInstance.get(`/api/promociones/productos-promo/${id_promocion}`);
 }
 
-export function getReportePromocionZ(id_promocion){
-    return axiosInstance.get(`/api/reportes/reporte-promos/${id_promocion}`);
+export function getReportePromocionZ(id_promocion) {
+  return axiosInstance.get(`/api/reportes/reporte-promos/${id_promocion}`);
+}
+export function aplicarDescuentoGeneral(payload) {
+  // payload: { tipo:'PORCENTAJE'|'FIJO', valor:number, fecha_inicio, fecha_fin, productos:number[] }
+  return axiosInstance.post("/api/promociones/descuento-general", payload);
+}
+
+// Precios escalonados (bulk)
+export function aplicarPreciosEscalonados(payload) {
+  // payload: { productos:number[], escalones:[{cantidad_min:number, precio:number}] }
+  return axiosInstance.post("/api/precios-escalonados/bulk", payload);
 }

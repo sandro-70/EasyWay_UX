@@ -1,3 +1,5 @@
+//CLASE INVETARIO AL 100
+
 //sirve imágenes
 
 import React, { useMemo, useState, useEffect, useRef } from "react";
@@ -1465,7 +1467,7 @@ export default function Inventario() {
         </div>
         <div className="h-1 w-full rounded-md bg-[#f0833e] mt-2" />
 
-        <div className="mt-4 overflow-visible rounded-2xl shadow-sm border border-[#d8dadc] bg-white">
+        <div className="mt-4 overflow-hidden rounded-2xl shadow-neutral-600 shadow-sm border border-[#d8dadc] bg-white">
           <div className="overflow-x-auto">
             <table className="w-full text-sm table-auto min-w-[900px]">
               <thead>

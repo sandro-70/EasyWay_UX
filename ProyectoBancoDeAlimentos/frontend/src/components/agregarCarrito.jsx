@@ -14,9 +14,11 @@ import { useCart } from "../utils/CartContext";
 import { height } from "@mui/system";
 import { toast } from "react-toastify";
 import "../toast.css";
-import 'react-toastify/dist/ReactToastify.css';
+import "react-toastify/dist/ReactToastify.css";
 import { agregarAListaDeseos } from "../api/listaDeseosApi";
 import { UserContext } from "../components/userContext";
+import { getTopVendidos } from "../api/PedidoApi";
+
 // ====== helpers para construir la URL absoluta desde el backend ======
 const BACKEND_ORIGIN = (() => {
   const base = axiosInstance?.defaults?.baseURL;
@@ -49,6 +51,8 @@ const toPublicFotoSrc = (nameOrPath) => {
 };
 
 function AgregarCarrito() {
+  const [topSellerId, setTopSellerId] = useState(null);
+
   const { id } = useParams();
   const navigate = useNavigate();
   const { incrementCart } = useCart();
@@ -70,14 +74,14 @@ function AgregarCarrito() {
     totalReviews: 0,
     dist: [0, 0, 0, 0, 0], // [1★,2★,3★,4★,5★]
   });
-  const { user } = useContext(UserContext);   // para tomar id_usuario
+  const { user } = useContext(UserContext); // para tomar id_usuario
   const [myRating, setMyRating] = useState(0);
   const [myComment, setMyComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   // favoritos
   const [favLoading, setFavLoading] = useState(false);
-  const [isFav, setIsFav] = useState(false);   // para rellenar el corazón cuando quede guardado
+  const [isFav, setIsFav] = useState(false); // para rellenar el corazón cuando quede guardado
 
   // ======= Derivados: si backend NO trae resumen, lo calculamos con reviews =======
   const computed = useMemo(() => {
@@ -106,100 +110,140 @@ function AgregarCarrito() {
   // Para porcentajes y totales visuales
   const safeTotal = Math.max(0, Number(effectiveTotal || 0));
   const pct = (n) => (safeTotal > 0 ? Math.round((n * 100) / safeTotal) : 0);
-// === Promos ===
-const [promosPorProducto, setPromosPorProducto] = useState({}); // { id_producto: [id_promocion, ...] }
-const [promosInfo, setPromosInfo] = useState({});               // { id_promocion: { tipo, %/fijo, fechas, activa } }
+  // === Promos ===
+  const [promosPorProducto, setPromosPorProducto] = useState({}); // { id_producto: [id_promocion, ...] }
+  const [promosInfo, setPromosInfo] = useState({}); // { id_promocion: { tipo, %/fijo, fechas, activa } }
 
-// 1) /api/promociones/detalles → mapea productos a promociones
-useEffect(() => {
-  const fetchPromosDetalles = async () => {
-    try {
-      const res = await axiosInstance.get("/api/promociones/detalles");
-      const lista = Array.isArray(res?.data) ? res.data : [];
-      const map = {};
-      for (const promo of lista) {
-        const arr = Array.isArray(promo.productos) ? promo.productos : [];
-        for (const pid of arr) {
-          const idNum = Number(pid);
-          if (!map[idNum]) map[idNum] = [];
-          map[idNum].push(Number(promo.id_promocion));
+  // 1) /api/promociones/detalles → mapea productos a promociones
+  useEffect(() => {
+    const fetchPromosDetalles = async () => {
+      try {
+        const res = await axiosInstance.get("/api/promociones/detalles");
+        const lista = Array.isArray(res?.data) ? res.data : [];
+        const map = {};
+        for (const promo of lista) {
+          const arr = Array.isArray(promo.productos) ? promo.productos : [];
+          for (const pid of arr) {
+            const idNum = Number(pid);
+            if (!map[idNum]) map[idNum] = [];
+            map[idNum].push(Number(promo.id_promocion));
+          }
         }
+        setPromosPorProducto(map);
+      } catch (err) {
+        console.error("[PROMOS DETALLES] error:", err?.response?.data || err);
       }
-      setPromosPorProducto(map);
-    } catch (err) {
-      console.error("[PROMOS DETALLES] error:", err?.response?.data || err);
-    }
-  };
-  fetchPromosDetalles();
-}, []);
+    };
+    fetchPromosDetalles();
+  }, []);
 
-// 2) /api/promociones/listarorden → info de descuento/fechas
-useEffect(() => {
-  const fetchPromosInfo = async () => {
-    try {
-      const res = await axiosInstance.get("/api/promociones/listarorden");
-      const arr = Array.isArray(res?.data) ? res.data : [];
-      const map = {};
-      for (const p of arr) {
-        map[Number(p.id_promocion)] = {
-          id_promocion: Number(p.id_promocion),
-          id_tipo_promo: Number(p.id_tipo_promo),
-          valor_porcentaje: p.valor_porcentaje != null ? parseFloat(p.valor_porcentaje) : null,
-          valor_fijo: p.valor_fijo != null ? Number(p.valor_fijo) : null,
-          compra_min: p.compra_min != null ? Number(p.compra_min) : null,
-          fecha_inicio: p.fecha_inicio || null,
-          fecha_termina: p.fecha_termina || null,
-          activa: p.activa === true || p.activa === 1 || p.activa === "true",
-        };
+  // 2) /api/promociones/listarorden → info de descuento/fechas
+  useEffect(() => {
+    const fetchPromosInfo = async () => {
+      try {
+        const res = await axiosInstance.get("/api/promociones/listarorden");
+        const arr = Array.isArray(res?.data) ? res.data : [];
+        const map = {};
+        for (const p of arr) {
+          map[Number(p.id_promocion)] = {
+            id_promocion: Number(p.id_promocion),
+            id_tipo_promo: Number(p.id_tipo_promo),
+            valor_porcentaje:
+              p.valor_porcentaje != null
+                ? parseFloat(p.valor_porcentaje)
+                : null,
+            valor_fijo: p.valor_fijo != null ? Number(p.valor_fijo) : null,
+            compra_min: p.compra_min != null ? Number(p.compra_min) : null,
+            fecha_inicio: p.fecha_inicio || null,
+            fecha_termina: p.fecha_termina || null,
+            activa: p.activa === true || p.activa === 1 || p.activa === "true",
+          };
+        }
+        setPromosInfo(map);
+      } catch (err) {
+        console.error(
+          "[PROMOS LISTARORDEN] error:",
+          err?.response?.data || err
+        );
       }
-      setPromosInfo(map);
-    } catch (err) {
-      console.error("[PROMOS LISTARORDEN] error:", err?.response?.data || err);
-    }
+    };
+    fetchPromosInfo();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const rep = await getTopVendidos({
+          days: 30,
+          limit: 10,
+          estado: "Enviado", // quítalo si no quieres filtrar por estado
+        });
+        const list = Array.isArray(rep?.data?.topProductos)
+          ? rep.data.topProductos
+          : [];
+        const top = list.reduce((a, b) => {
+          const qa = Number(a?.total_cantidad ?? 0);
+          const qb = Number(b?.total_cantidad ?? 0);
+          return qb > qa ? b : a;
+        }, list[0]);
+        const id = Number(
+          top?.id_producto ??
+            top?.producto_id ??
+            top?.idProducto ??
+            top?.productId ??
+            top?.id
+        );
+        setTopSellerId(Number.isFinite(id) ? id : null);
+      } catch {
+        setTopSellerId(null);
+      }
+    })();
+  }, []);
+
+  // Helpers de precio en promo (igual que en InicioUsuario)
+  const isDateInRange = (startStr, endStr) => {
+    const today = new Date();
+    const start = startStr ? new Date(startStr) : null;
+    const end = endStr ? new Date(endStr) : null;
+    if (start && today < start) return false;
+    if (end && today > end) return false;
+    return true;
   };
-  fetchPromosInfo();
-}, []);
 
-// Helpers de precio en promo (igual que en InicioUsuario)
-const isDateInRange = (startStr, endStr) => {
-  const today = new Date();
-  const start = startStr ? new Date(startStr) : null;
-  const end   = endStr   ? new Date(endStr)   : null;
-  if (start && today < start) return false;
-  if (end && today > end) return false;
-  return true;
-};
+  const computeDiscountedPriceByPromo = (basePrice, pInfo) => {
+    if (
+      !pInfo?.activa ||
+      !isDateInRange(pInfo.fecha_inicio, pInfo.fecha_termina)
+    )
+      return null;
+    const price = Number(basePrice) || 0;
+    if (price <= 0) return null;
 
-const computeDiscountedPriceByPromo = (basePrice, pInfo) => {
-  if (!pInfo?.activa || !isDateInRange(pInfo.fecha_inicio, pInfo.fecha_termina)) return null;
-  const price = Number(basePrice) || 0;
-  if (price <= 0) return null;
-
-  // Solo tipos que afectan al precio unitario
-  if (pInfo.id_tipo_promo === 1 && pInfo.valor_porcentaje > 0) {
-    const pct = pInfo.valor_porcentaje / 100;
-    return Math.max(0, price * (1 - pct));
-  }
-  if (pInfo.id_tipo_promo === 2 && pInfo.valor_fijo > 0) {
-    return Math.max(0, price - pInfo.valor_fijo);
-  }
-  return null; // otros tipos no alteran el unitario aquí
-};
-
-const bestPromoPriceForProduct = (prod) => {
-  const base = Number(prod?.precio_base) || 0;
-  const ids = promosPorProducto[Number(prod?.id_producto)] || [];
-  let best = null;
-  for (const idPromo of ids) {
-    const info = promosInfo[idPromo];
-    const discounted = computeDiscountedPriceByPromo(base, info);
-    if (discounted == null) continue;
-    if (best == null || discounted < best.finalPrice) {
-      best = { finalPrice: discounted, promoId: idPromo };
+    // Solo tipos que afectan al precio unitario
+    if (pInfo.id_tipo_promo === 1 && pInfo.valor_porcentaje > 0) {
+      const pct = pInfo.valor_porcentaje / 100;
+      return Math.max(0, price * (1 - pct));
     }
-  }
-  return best; // { finalPrice, promoId } | null
-};
+    if (pInfo.id_tipo_promo === 2 && pInfo.valor_fijo > 0) {
+      return Math.max(0, price - pInfo.valor_fijo);
+    }
+    return null; // otros tipos no alteran el unitario aquí
+  };
+
+  const bestPromoPriceForProduct = (prod) => {
+    const base = Number(prod?.precio_base) || 0;
+    const ids = promosPorProducto[Number(prod?.id_producto)] || [];
+    let best = null;
+    for (const idPromo of ids) {
+      const info = promosInfo[idPromo];
+      const discounted = computeDiscountedPriceByPromo(base, info);
+      if (discounted == null) continue;
+      if (best == null || discounted < best.finalPrice) {
+        best = { finalPrice: discounted, promoId: idPromo };
+      }
+    }
+    return best; // { finalPrice, promoId } | null
+  };
 
   // ======= Carga inicial de página =======
   useEffect(() => {
@@ -464,46 +508,61 @@ const bestPromoPriceForProduct = (prod) => {
       setFavLoading(false);
     }
   }
-async function handleFavorito() {
-  if (!product?.id_producto) return;
+  async function handleFavorito() {
+    if (!product?.id_producto) return;
 
-  const token = localStorage.getItem("token");
-  if (!token) {
-    toast.info("Inicia sesión para usar Favoritos.", { className: "toast-info" });
-    return navigate("/login");
-  }
-  if (!user?.id_usuario) {
-    toast.error("No se encontró tu usuario en sesión.", { className: "toast-error" });
-    return;
-  }
-
-  try {
-    setFavLoading(true);
-    const res = await agregarAListaDeseos(user.id_usuario, product.id_producto);
-
-    setIsFav(true);
-    toast.success(res?.data?.message || "Producto agregado a tu lista de deseos", {
-      className: "toast-success",
-    });
-  } catch (e) {
-    const status = e?.response?.status;
-    const msg = e?.response?.data?.message || e?.message;
-
-    // ya existe en la lista (tu controller envia 400)
-    if (status === 400 && /ya está en la lista/i.test(msg || "")) {
-      setIsFav(true);
-      toast.info("Este producto ya está en tu lista de deseos.", { className: "toast-info" });
-    } else if (status === 404) {
-      toast.error(msg || "Usuario o producto no encontrado", { className: "toast-error" });
-    } else {
-      toast.error(msg || "No se pudo agregar a favoritos", { className: "toast-error" });
+    const token = localStorage.getItem("token");
+    if (!token) {
+      toast.info("Inicia sesión para usar Favoritos.", {
+        className: "toast-info",
+      });
+      return navigate("/login");
     }
-  } finally {
-    setFavLoading(false);
-  }
-}
+    if (!user?.id_usuario) {
+      toast.error("No se encontró tu usuario en sesión.", {
+        className: "toast-error",
+      });
+      return;
+    }
 
-  
+    try {
+      setFavLoading(true);
+      const res = await agregarAListaDeseos(
+        user.id_usuario,
+        product.id_producto
+      );
+
+      setIsFav(true);
+      toast.success(
+        res?.data?.message || "Producto agregado a tu lista de deseos",
+        {
+          className: "toast-success",
+        }
+      );
+    } catch (e) {
+      const status = e?.response?.status;
+      const msg = e?.response?.data?.message || e?.message;
+
+      // ya existe en la lista (tu controller envia 400)
+      if (status === 400 && /ya está en la lista/i.test(msg || "")) {
+        setIsFav(true);
+        toast.info("Este producto ya está en tu lista de deseos.", {
+          className: "toast-info",
+        });
+      } else if (status === 404) {
+        toast.error(msg || "Usuario o producto no encontrado", {
+          className: "toast-error",
+        });
+      } else {
+        toast.error(msg || "No se pudo agregar a favoritos", {
+          className: "toast-error",
+        });
+      }
+    } finally {
+      setFavLoading(false);
+    }
+  }
+
   // ======= Utilidades UI =======
   const incrementQuantity = () => setQuantity((n) => n + 1);
   const decrementQuantity = () => setQuantity((n) => (n > 1 ? n - 1 : 1));
@@ -563,7 +622,11 @@ async function handleFavorito() {
                 onClick={() => handleProductClick(p.id_producto)}
               >
                 <div style={styles.cardTopRow}>
-   {bestPromoPriceForProduct(p) && <span style={styles.offerChip}>OFERTA</span>}
+                  {Number(p.id_producto) === Number(topSellerId) && (
+                    <span style={{ ...styles.offerChip, marginLeft: 6 }}>
+                      MÁS COMPRADO
+                    </span>
+                  )}
                   <div style={styles.stars}>
                     {Array.from({ length: 5 }, (_, i) => (
                       <span
@@ -606,24 +669,28 @@ async function handleFavorito() {
                 <div style={styles.cardContent}>
                   <h3 style={styles.cardTitle}>{p.nombre}</h3>
                   <div style={styles.priceRow}>
-   {(() => {
-     const best = bestPromoPriceForProduct(p);
-     if (best) {
-       return (
-         <>
-           <span style={styles.newPrice}>L. {best.finalPrice.toFixed(2)}</span>
-           <span style={styles.strikePrice}>L. {Number(p.precio_base).toFixed(2)}</span>
-         </>
-       );
-     }
-    return (
-      <span style={styles.cardPrice}>
-        L. {Number(p.precio_base).toFixed(2)}{" "}
-        {p.unidad_medida ? p.unidad_medida : "P/Kilo"}
-      </span>
-    );
-   })()}
- </div>
+                    {(() => {
+                      const best = bestPromoPriceForProduct(p);
+                      if (best) {
+                        return (
+                          <>
+                            <span style={styles.newPrice}>
+                              L. {best.finalPrice.toFixed(2)}
+                            </span>
+                            <span style={styles.strikePrice}>
+                              L. {Number(p.precio_base).toFixed(2)}
+                            </span>
+                          </>
+                        );
+                      }
+                      return (
+                        <span style={styles.cardPrice}>
+                          L. {Number(p.precio_base).toFixed(2)}{" "}
+                          {p.unidad_medida ? p.unidad_medida : "P/Kilo"}
+                        </span>
+                      );
+                    })()}
+                  </div>
                   <button
                     style={styles.addButton}
                     onClick={(e) => {
@@ -646,6 +713,9 @@ async function handleFavorito() {
             <div style={styles.detailGrid}>
               <div style={styles.ImageSection}>
                 <div style={styles.mainImageWrapper}>
+                  {Number(product.id_producto) === Number(topSellerId) && (
+                    <div style={styles.offerBadge}>MÁS COMPRADO</div>
+                  )}
                   {productImages[selectedImageIndex] &&
                   productImages[selectedImageIndex].url_imagen ? (
                     <img
@@ -713,28 +783,38 @@ async function handleFavorito() {
                 <p style={styles.detailCode}>Código: {product.id_producto}</p>
 
                 <div style={styles.detailStockWrapper}>
-                  
-                    
-                    
-                   {(() => {
-   const best = bestPromoPriceForProduct(product);
-   if (best) {
-     return (
-       <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-         <span style={styles.newPrice}>L. {best.finalPrice.toFixed(2)}</span>
-         <span style={styles.strikePrice}>L. {Number(product.precio_base).toFixed(2)}</span>
-         <span style={styles.detailPriceUnit}>P/Kilo</span>
-         <span style={styles.offerPill}>OFERTA</span>
-       </div>
-     );
-   }
-   return (
-     <div style={styles.detailPrice}>
-       L. {Number(product.precio_base).toFixed(2)}{" "} {product.unidad_medida ? product.unidad_medida : "P/Kilo"}
-       <span style={styles.detailPriceUnit}></span>
-     </div>
-   );
- })()}
+                  {(() => {
+                    const best = bestPromoPriceForProduct(product);
+                    if (best) {
+                      return (
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "baseline",
+                            gap: 10,
+                          }}
+                        >
+                          <span style={styles.newPrice}>
+                            L. {best.finalPrice.toFixed(2)}
+                          </span>
+                          <span style={styles.strikePrice}>
+                            L. {Number(product.precio_base).toFixed(2)}
+                          </span>
+                          <span style={styles.detailPriceUnit}>P/Kilo</span>
+                          <span style={styles.offerPill}>OFERTA</span>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div style={styles.detailPrice}>
+                        L. {Number(product.precio_base).toFixed(2)}{" "}
+                        {product.unidad_medida
+                          ? product.unidad_medida
+                          : "P/Kilo"}
+                        <span style={styles.detailPriceUnit}></span>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div style={styles.actionsRow}>
@@ -757,16 +837,22 @@ async function handleFavorito() {
 
                   <button
                     style={{
-    ...styles.favoriteBtn,
-   // antes estaba fijo
-   opacity: favLoading ? 0.6 : 1,
-   backgroundColor: isFav ? "#e11d48" : "#F0833E", // rojo si ya es favorito
-                     } }
+                      ...styles.favoriteBtn,
+                      // antes estaba fijo
+                      opacity: favLoading ? 0.6 : 1,
+                      backgroundColor: isFav ? "#e11d48" : "#F0833E", // rojo si ya es favorito
+                    }}
                     onClick={handleFavorito}
                     disabled={favLoading}
-                    title={isFav ? "En tu lista de deseos" : "Agregar a Favoritos"}
+                    title={
+                      isFav ? "En tu lista de deseos" : "Agregar a Favoritos"
+                    }
                   >
-                    <Heart size={24} color="white" fill={isFav ? "white" : "none"} />
+                    <Heart
+                      size={24}
+                      color="white"
+                      fill={isFav ? "white" : "none"}
+                    />
                   </button>
                 </div>
                 <div style={styles.detailDescription}>
@@ -1093,6 +1179,7 @@ const styles = {
     gap: "12px",
   },
   mainImageWrapper: {
+    position: "relative",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
@@ -1335,48 +1422,63 @@ const styles = {
   },
   reviewUserDate: { fontSize: "12px", color: "#777" },
   reviewText: { fontSize: "14px", color: "#333", lineHeight: 1.4 },
-   priceRow: {
-   width: "100%",
-   display: "flex",
-   alignItems: "baseline",
-   gap: "10px",
- },
+  priceRow: {
+    width: "100%",
+    display: "flex",
+    alignItems: "baseline",
+    gap: "10px",
+  },
 
- newPrice: {
-   fontSize: "20px",
-   fontWeight: 900,
-   color: "#16a34a",   // verde
-   lineHeight: 1.1,
- },
+  newPrice: {
+    fontSize: "20px",
+    fontWeight: 900,
+    color: "#16a34a", // verde
+    lineHeight: 1.1,
+  },
 
- strikePrice: {
-   fontSize: "14px",
-   color: "#94a3b8",
-   textDecoration: "line-through",
-   lineHeight: 1.1,
-   margin: 0,
- },
+  strikePrice: {
+    fontSize: "14px",
+    color: "#94a3b8",
+    textDecoration: "line-through",
+    lineHeight: 1.1,
+    margin: 0,
+  },
 
- offerChip: {
-   backgroundColor: "#ff1744",
-   color: "#fff",
-   fontWeight: 800,
-   fontSize: 12,
-   padding: "2px 10px",
-   borderRadius: "999px",
-   letterSpacing: 1,
- },
+  offerChip: {
+    backgroundColor: "#ff1744",
+    color: "#fff",
+    fontWeight: 800,
+    fontSize: 12,
+    padding: "2px 10px",
+    borderRadius: "999px",
+    letterSpacing: 1,
+  },
 
- offerPill: {
-   backgroundColor: "#ff1744",
-   color: "#fff",
-   fontWeight: 800,
-   fontSize: 12,
-   padding: "2px 10px",
-   borderRadius: "999px",
-   letterSpacing: 1,
- }
+  offerPill: {
+    backgroundColor: "#ff1744",
+    color: "#fff",
+    fontWeight: 800,
+    fontSize: 12,
+    padding: "2px 10px",
+    borderRadius: "999px",
+    letterSpacing: 1,
+  },
 
+  offerBadge: {
+    position: "absolute",
+    top: 10,
+    left: -6,
+    transform: "rotate(-12deg)",
+    background: "#ff1744",
+    color: "#fff",
+    fontWeight: 800,
+    fontSize: 12,
+    padding: "4px 10px",
+    borderRadius: "10px",
+    boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
+    letterSpacing: 1,
+    zIndex: 2,
+  },
 };
 
 export default AgregarCarrito;

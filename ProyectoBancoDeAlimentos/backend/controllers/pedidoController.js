@@ -13,30 +13,32 @@ const {
   metodo_pago,
   cupon,
 } = require("../models");
-const { Op } = require("sequelize");
+const { Op, col, fn } = require("sequelize");
 
-exports.getEstados = async (req,res) => {
+exports.getEstados = async (req, res) => {
   try {
     const pedidos = await estado_pedido.findAll();
     return res.json(pedidos);
-  }catch(error){
+  } catch (error) {
     console.error(error);
-    return res.status(500).json({ error: 'Error al obtener estados de pedidos' });
+    return res
+      .status(500)
+      .json({ error: "Error al obtener estados de pedidos" });
   }
-}
+};
 
 exports.getPedidosEstado = async (req, res) => {
   try {
     const id_usuario = parseInt(req.params.id_usuario, 10);
     if (Number.isNaN(id_usuario)) {
-      return res.status(400).json({ error: 'id_usuario inválido' });
+      return res.status(400).json({ error: "id_usuario inválido" });
     }
 
     const rows = await pedido.findAll({
       where: { id_usuario },
       attributes: [
-        'id_pedido',
-        [col('estado_pedido.nombre_pedido'), 'nombre_pedido'],
+        "id_pedido",
+        [col("estado_pedido.nombre_pedido"), "nombre_pedido"],
       ],
       include: [
         {
@@ -45,14 +47,16 @@ exports.getPedidosEstado = async (req, res) => {
           required: true,
         },
       ],
-      order: [['id_pedido', 'ASC']],
+      order: [["id_pedido", "ASC"]],
       raw: true,
     });
 
     return res.json(rows);
   } catch (error) {
-    console.error('Error al obtener pedidos por usuario:', error);
-    return res.status(500).json({ error: 'Error al obtener pedidos por usuario' });
+    console.error("Error al obtener pedidos por usuario:", error);
+    return res
+      .status(500)
+      .json({ error: "Error al obtener pedidos por usuario" });
   }
 };
 
@@ -96,6 +100,174 @@ exports.getPedidosEntregados = async (req, res) => {
   } catch (error) {
     console.error("Error al obtener pedidos entregados!", error);
     res.status(500).json({ error: "Error al obtener pedidos entregados!" });
+  }
+};
+
+// TOP VENDIDOS (agregado por producto): últimos N días, opcionalmente filtrado por estado del pedido.
+// Ejemplo: GET /api/pedidos/reportes/top-vendidos?days=30&limit=10&estado=Enviado
+exports.getTopVendidos = async (req, res) => {
+  try {
+    const days = Math.max(1, parseInt(req.query.days || "30", 10)); // por defecto 30 días
+    const limit = Math.max(1, parseInt(req.query.limit || "10", 10)); // por defecto top 10
+    const estado = (req.query.estado || "").trim(); // "Enviado" / "Entregado" / etc.
+
+    const fechaLimite = new Date();
+    fechaLimite.setDate(fechaLimite.getDate() - days);
+
+    const rows = await factura_detalle.findAll({
+      attributes: [
+        "id_producto",
+        [
+          fn("SUM", col("factura_detalle.cantidad_unidad_medida")),
+          "total_cantidad",
+        ],
+        [fn("SUM", col("factura_detalle.subtotal_producto")), "total_ingreso"],
+      ],
+      include: [
+        {
+          model: factura,
+          attributes: [],
+          include: [
+            {
+              model: pedido,
+              attributes: [],
+              where: { fecha_pedido: { [Op.gte]: fechaLimite } },
+              include: estado
+                ? [
+                    {
+                      model: estado_pedido,
+                      required: true,
+                      attributes: [],
+                      where: { nombre_pedido: estado },
+                    },
+                  ]
+                : [
+                    {
+                      model: estado_pedido,
+                      required: false,
+                      attributes: [],
+                    },
+                  ],
+            },
+          ],
+        },
+        {
+          model: producto,
+          attributes: ["id_producto", "nombre", "precio_base"],
+          include: [
+            {
+              model: subcategoria,
+              as: "subcategoria",
+              attributes: ["id_subcategoria", "nombre"],
+              include: [
+                {
+                  model: categoria,
+                  as: "categoria",
+                  attributes: ["id_categoria", "nombre"],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      group: [
+        "factura_detalle.id_producto",
+        "producto.id_producto",
+        "producto->subcategoria.id_subcategoria",
+        "producto->subcategoria->categoria.id_categoria",
+      ],
+      order: [[col("total_cantidad"), "DESC"]],
+      limit,
+      raw: false,
+      subQuery: false,
+    });
+
+    const result = rows.map((r) => ({
+      id_producto: r.id_producto,
+      nombre: r.producto?.nombre || "Sin nombre",
+      precio_base: Number(r.producto?.precio_base ?? 0),
+      subcategoria: r.producto?.subcategoria?.nombre || null,
+      categoria: r.producto?.subcategoria?.categoria?.nombre || null,
+      total_cantidad: Number(r.get("total_cantidad") || 0),
+      total_ingreso: Number(r.get("total_ingreso") || 0),
+    }));
+
+    res.json({ days, limit, estado: estado || null, topProductos: result });
+  } catch (error) {
+    console.error("Error en getTopVendidos:", error);
+    res.status(500).json({ error: "Error al obtener top vendidos" });
+  }
+};
+
+exports.getMasNuevos = async (req, res) => {
+  try {
+    const days = Math.max(1, parseInt(req.query.days || "30", 10));
+    const limit = Math.max(1, parseInt(req.query.limit || "10", 10));
+
+    const fechaLimite = new Date();
+    fechaLimite.setDate(fechaLimite.getDate() - days);
+
+    const rows = await producto.findAll({
+      attributes: [
+        "id_producto",
+        "nombre",
+        "precio_base",
+        "createdAt",
+        "fecha_creacion",
+        "fecha_publicacion",
+      ],
+      where: {
+        [Op.or]: [
+          { createdAt: { [Op.gte]: fechaLimite } },
+          { fecha_creacion: { [Op.gte]: fechaLimite } },
+          { fecha_publicacion: { [Op.gte]: fechaLimite } },
+        ],
+      },
+      include: [
+        {
+          model: subcategoria,
+          as: "subcategoria",
+          attributes: ["id_subcategoria", "nombre"],
+          include: [
+            {
+              model: categoria,
+              as: "categoria",
+              attributes: ["id_categoria", "nombre"],
+            },
+          ],
+        },
+      ],
+      order: [["createdAt", "DESC"]], // si tu tabla usa otro campo, cámbialo
+      limit,
+    });
+
+    const out = rows.map((r) => {
+      const fecha =
+        r.get?.("fecha_creacion") ||
+        r.get?.("fecha_publicacion") ||
+        r.get?.("createdAt") ||
+        r.fecha_creacion ||
+        r.fecha_publicacion ||
+        r.createdAt ||
+        null;
+
+      return {
+        id_producto: r.id_producto,
+        nombre: r.nombre,
+        precio_base: Number(r.precio_base ?? 0),
+        subcategoria: r.subcategoria?.nombre || null,
+        categoria: r.subcategoria?.categoria?.nombre || null,
+        fecha_creacion: fecha,
+        is_nuevo:
+          !!fecha &&
+          Date.now() - new Date(fecha).getTime() <= days * 24 * 60 * 60 * 1000,
+      };
+    });
+
+    res.json({ days, limit, nuevos: out });
+  } catch (e) {
+    console.error("Error en getMasNuevos:", e);
+    res.status(500).json({ error: "Error al obtener más nuevos" });
   }
 };
 

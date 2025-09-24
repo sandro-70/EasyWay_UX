@@ -4,7 +4,10 @@ import axiosInstance from "../api/axiosInstance"; // ⬅️ nuevo
 import { EffectCoverflow, Autoplay } from "swiper/modules";
 import { useNavigate } from "react-router-dom";
 import { getAllProducts, getProductoById } from "../api/InventarioApi";
-import { getProductosDestacados, getProductosTendencias } from "../api/InventarioApi";
+import {
+  getProductosDestacados,
+  getProductosTendencias,
+} from "../api/InventarioApi";
 
 import { ObtenerCategoria, ListarCategoria } from "../api/CategoriaApi";
 import { AddNewCarrito, ViewCar, SumarItem } from "../api/CarritoApi";
@@ -37,6 +40,7 @@ import appleImage from "../images/appleImage.png";
 import banner1 from "../images/banner1.png";
 import banner2 from "../images/banner2.png";
 import banner3 from "../images/banner3.png";
+import { getTopVendidos } from "../api/PedidoApi";
 
 const banners = [
   { idCategoriaEnDescuento: 1, imagen: banner1 },
@@ -44,13 +48,14 @@ const banners = [
   { idCategoriaEnDescuento: 3, imagen: banner3 },
 ];
 
-
 // ====== helpers para construir la URL absoluta desde el backend ======
 const BACKEND_ORIGIN = (() => {
   const base = axiosInstance?.defaults?.baseURL;
   try {
     const u = base
-      ? (base.startsWith("http") ? new URL(base) : new URL(base, window.location.origin))
+      ? base.startsWith("http")
+        ? new URL(base)
+        : new URL(base, window.location.origin)
       : new URL(window.location.origin);
     return `${u.protocol}//${u.host}`;
   } catch {
@@ -60,19 +65,22 @@ const BACKEND_ORIGIN = (() => {
 
 // para nombres de archivo tipo "foto.jpg"
 const backendImageUrl = (fileName) =>
-  fileName ? `${BACKEND_ORIGIN}/api/images/productos/${encodeURIComponent(fileName)}` : "";
+  fileName
+    ? `${BACKEND_ORIGIN}/api/images/productos/${encodeURIComponent(fileName)}`
+    : "";
 
 // adapta la ruta que venga en DB a una URL válida del backend
 const toPublicFotoSrc = (nameOrPath, defaultDir = "productos") => {
-   if (!nameOrPath) return "";
-   const s = String(nameOrPath).trim();
-   if (/^https?:\/\//i.test(s)) return s;                          // ya es absoluta
-   if (s.startsWith("/api/images/")) return `${BACKEND_ORIGIN}${encodeURI(s)}`;
-   if (s.startsWith("/images/"))      return `${BACKEND_ORIGIN}/api${encodeURI(s)}`;
-   // nombre suelto => /api/images/<defaultDir>/<archivo>
-   return `${BACKEND_ORIGIN}/api/images/${encodeURIComponent(defaultDir)}/${encodeURIComponent(s)}`;
- };
-
+  if (!nameOrPath) return "";
+  const s = String(nameOrPath).trim();
+  if (/^https?:\/\//i.test(s)) return s; // ya es absoluta
+  if (s.startsWith("/api/images/")) return `${BACKEND_ORIGIN}${encodeURI(s)}`;
+  if (s.startsWith("/images/")) return `${BACKEND_ORIGIN}/api${encodeURI(s)}`;
+  // nombre suelto => /api/images/<defaultDir>/<archivo>
+  return `${BACKEND_ORIGIN}/api/images/${encodeURIComponent(
+    defaultDir
+  )}/${encodeURIComponent(s)}`;
+};
 
 const InicioUsuario = () => {
   const { searchText } = useSearch();
@@ -95,67 +103,70 @@ const InicioUsuario = () => {
   const [destacados, setDestacados] = useState([]);
   const [tendencias, setTendencias] = useState([]);
   const [promociones, setPromociones] = useState([]);
+  const [topSellerId, setTopSellerId] = useState(null);
 
- useEffect(() => {
-   const fetchDestacados = async () => {
-     try {
-       const res = await getProductosDestacados(); // ⬅️ /api/producto/destacados
-       setDestacados(Array.isArray(res?.data) ? res.data : []);
-     } catch (err) {
-       console.error("[DESTACADOS] error:", err?.response?.data || err);
-       // Fallback suave: toma 10 del catálogo general si falla la API
-       try {
-         const all = await getAllProducts();
-         setDestacados((Array.isArray(all?.data) ? all.data.slice(0, 10) : []));
-       } catch (e2) {
-         toast.error("No se pudieron cargar los destacados", { className: "toast-error" });
-       }
-     }
-   };
-   fetchDestacados();
- }, []);
-
- useEffect(() => {
-   const fetchTendencias = async () => {
-     try {
-       const res = await getProductosTendencias(); // ⬅️ /api/producto/tendencias
-       setTendencias(Array.isArray(res?.data) ? res.data : []);
-     } catch (err) {
-       console.error("[TENDENCIAS] error:", err?.response?.data || err);
-       // Fallback: si falla, mostramos los destacados para no romper UI
-       setTendencias((prev) => (destacados.length ? destacados : prev));
-     }
-   };
-   fetchTendencias();
- }, [destacados]);
-
-// === Productos que están en alguna promoción (por id_producto) ===
-const [promoProductIds, setPromoProductIds] = useState(new Set());
-
-useEffect(() => {
-  const fetchPromosDetalles = async () => {
-    try {
-      // GET http://localhost:3001/api/promociones/detalles
-      const res = await axiosInstance.get("/api/promociones/detalles");
-      const lista = Array.isArray(res?.data) ? res.data : [];
-      const ids = new Set();
-      // Cada promo trae un array de id de productos
-      for (const promo of lista) {
-        for (const pid of (promo.productos || [])) {
-          ids.add(Number(pid));
+  useEffect(() => {
+    const fetchDestacados = async () => {
+      try {
+        const res = await getProductosDestacados(); // ⬅️ /api/producto/destacados
+        setDestacados(Array.isArray(res?.data) ? res.data : []);
+      } catch (err) {
+        console.error("[DESTACADOS] error:", err?.response?.data || err);
+        // Fallback suave: toma 10 del catálogo general si falla la API
+        try {
+          const all = await getAllProducts();
+          setDestacados(Array.isArray(all?.data) ? all.data.slice(0, 10) : []);
+        } catch (e2) {
+          toast.error("No se pudieron cargar los destacados", {
+            className: "toast-error",
+          });
         }
       }
-      setPromoProductIds(ids);
-      console.log("[PROMOS DETALLES] ids con promo:", Array.from(ids));
-    } catch (err) {
-      console.error("[PROMOS DETALLES] error:", err?.response?.data || err);
-    }
-  };
-  fetchPromosDetalles();
-}, []);
+    };
+    fetchDestacados();
+  }, []);
 
-// helper
-const hasPromo = (idProducto) => promoProductIds.has(Number(idProducto));
+  useEffect(() => {
+    const fetchTendencias = async () => {
+      try {
+        const res = await getProductosTendencias(); // ⬅️ /api/producto/tendencias
+        setTendencias(Array.isArray(res?.data) ? res.data : []);
+      } catch (err) {
+        console.error("[TENDENCIAS] error:", err?.response?.data || err);
+        // Fallback: si falla, mostramos los destacados para no romper UI
+        setTendencias((prev) => (destacados.length ? destacados : prev));
+      }
+    };
+    fetchTendencias();
+  }, [destacados]);
+
+  // === Productos que están en alguna promoción (por id_producto) ===
+  const [promoProductIds, setPromoProductIds] = useState(new Set());
+
+  useEffect(() => {
+    const fetchPromosDetalles = async () => {
+      try {
+        // GET http://localhost:3001/api/promociones/detalles
+        const res = await axiosInstance.get("/api/promociones/detalles");
+        const lista = Array.isArray(res?.data) ? res.data : [];
+        const ids = new Set();
+        // Cada promo trae un array de id de productos
+        for (const promo of lista) {
+          for (const pid of promo.productos || []) {
+            ids.add(Number(pid));
+          }
+        }
+        setPromoProductIds(ids);
+        console.log("[PROMOS DETALLES] ids con promo:", Array.from(ids));
+      } catch (err) {
+        console.error("[PROMOS DETALLES] error:", err?.response?.data || err);
+      }
+    };
+    fetchPromosDetalles();
+  }, []);
+
+  // helper
+  const hasPromo = (idProducto) => promoProductIds.has(Number(idProducto));
 
   const [categoriesData, setCategoriesData] = useState([]);
 
@@ -167,7 +178,10 @@ const hasPromo = (idProducto) => promoProductIds.has(Number(idProducto));
         console.log(res.data);
       } catch (err) {
         console.error("[CATEGORIES] error:", err?.response?.data || err);
-        toast.error(err?.response?.data?.message || "Error al cargar categorías", { className: "toast-error" });
+        toast.error(
+          err?.response?.data?.message || "Error al cargar categorías",
+          { className: "toast-error" }
+        );
       }
     };
     fetchCategories();
@@ -176,171 +190,185 @@ const hasPromo = (idProducto) => promoProductIds.has(Number(idProducto));
   const [carrito, setCarrito] = useState([]);
 
   // === productos → [id_promocion] ===
-const [promosPorProducto, setPromosPorProducto] = useState({});
+  const [promosPorProducto, setPromosPorProducto] = useState({});
 
-// === id_promocion → info (porcentaje/fijo, fechas, activa) ===
-const [promosInfo, setPromosInfo] = useState({});
+  // === id_promocion → info (porcentaje/fijo, fechas, activa) ===
+  const [promosInfo, setPromosInfo] = useState({});
 
-// ya tienes este:
+  // ya tienes este:
 
-// 1) /api/promociones/detalles  → mapea productos a promociones
-useEffect(() => {
-  const fetchPromosDetalles = async () => {
-    try {
-      const res = await axiosInstance.get("/api/promociones/detalles");
-      const lista = Array.isArray(res?.data) ? res.data : [];
-      const ids = new Set();
-      const map = {};
+  // 1) /api/promociones/detalles  → mapea productos a promociones
+  useEffect(() => {
+    const fetchPromosDetalles = async () => {
+      try {
+        const res = await axiosInstance.get("/api/promociones/detalles");
+        const lista = Array.isArray(res?.data) ? res.data : [];
+        const ids = new Set();
+        const map = {};
 
-      for (const promo of lista) {
-        const pidArr = Array.isArray(promo.productos) ? promo.productos : [];
-        for (const pid of pidArr) {
-          const idNum = Number(pid);
-          ids.add(idNum);
-          if (!map[idNum]) map[idNum] = [];
-          map[idNum].push(Number(promo.id_promocion));
+        for (const promo of lista) {
+          const pidArr = Array.isArray(promo.productos) ? promo.productos : [];
+          for (const pid of pidArr) {
+            const idNum = Number(pid);
+            ids.add(idNum);
+            if (!map[idNum]) map[idNum] = [];
+            map[idNum].push(Number(promo.id_promocion));
+          }
         }
+        setPromoProductIds(ids);
+        setPromosPorProducto(map);
+        console.log("[DETALLES] promosPorProducto:", map);
+      } catch (err) {
+        console.error("[PROMOS DETALLES] error:", err?.response?.data || err);
       }
-      setPromoProductIds(ids);
-      setPromosPorProducto(map);
-      console.log("[DETALLES] promosPorProducto:", map);
-    } catch (err) {
-      console.error("[PROMOS DETALLES] error:", err?.response?.data || err);
-    }
-  };
-  fetchPromosDetalles();
-}, []);
+    };
+    fetchPromosDetalles();
+  }, []);
 
-// 2) /api/promociones/listarorden → info de descuento/fechas
-useEffect(() => {
-  const fetchPromosInfo = async () => {
-    try {
-      const res = await axiosInstance.get("/api/promociones/listarorden");
-      const arr = Array.isArray(res?.data) ? res.data : [];
-      const map = {};
-      for (const p of arr) {
-        map[Number(p.id_promocion)] = {
-          id_promocion: Number(p.id_promocion),
-          id_tipo_promo: Number(p.id_tipo_promo),
-          valor_porcentaje: p.valor_porcentaje != null ? parseFloat(p.valor_porcentaje) : null,
-          valor_fijo: p.valor_fijo != null ? Number(p.valor_fijo) : null,
-          compra_min: p.compra_min != null ? Number(p.compra_min) : null,
-          fecha_inicio: p.fecha_inicio || null,
-          fecha_termina: p.fecha_termina || null,
-          activa: p.activa === true || p.activa === 1 || p.activa === "true",
-        };
+  // 2) /api/promociones/listarorden → info de descuento/fechas
+  useEffect(() => {
+    const fetchPromosInfo = async () => {
+      try {
+        const res = await axiosInstance.get("/api/promociones/listarorden");
+        const arr = Array.isArray(res?.data) ? res.data : [];
+        const map = {};
+        for (const p of arr) {
+          map[Number(p.id_promocion)] = {
+            id_promocion: Number(p.id_promocion),
+            id_tipo_promo: Number(p.id_tipo_promo),
+            valor_porcentaje:
+              p.valor_porcentaje != null
+                ? parseFloat(p.valor_porcentaje)
+                : null,
+            valor_fijo: p.valor_fijo != null ? Number(p.valor_fijo) : null,
+            compra_min: p.compra_min != null ? Number(p.compra_min) : null,
+            fecha_inicio: p.fecha_inicio || null,
+            fecha_termina: p.fecha_termina || null,
+            activa: p.activa === true || p.activa === 1 || p.activa === "true",
+          };
+        }
+        setPromosInfo(map);
+        console.log("[LISTARORDEN] promosInfo:", map);
+      } catch (err) {
+        console.error(
+          "[PROMOS LISTARORDEN] error:",
+          err?.response?.data || err
+        );
       }
-      setPromosInfo(map);
-      console.log("[LISTARORDEN] promosInfo:", map);
-    } catch (err) {
-      console.error("[PROMOS LISTARORDEN] error:", err?.response?.data || err);
-    }
+    };
+    fetchPromosInfo();
+  }, []);
+
+  const isDateInRange = (startStr, endStr) => {
+    const today = new Date();
+    const start = startStr ? new Date(startStr) : null;
+    const end = endStr ? new Date(endStr) : null;
+    if (start && today < start) return false;
+    if (end && today > end) return false; // inclusivo está bien para este caso
+    return true;
   };
-  fetchPromosInfo();
-}, []);
 
+  const computeDiscountedPriceByPromo = (basePrice, pInfo) => {
+    if (
+      !pInfo?.activa ||
+      !isDateInRange(pInfo.fecha_inicio, pInfo.fecha_termina)
+    )
+      return null;
 
-const isDateInRange = (startStr, endStr) => {
-  const today = new Date();
-  const start = startStr ? new Date(startStr) : null;
-  const end   = endStr   ? new Date(endStr)   : null;
-  if (start && today < start) return false;
-  if (end && today > end) return false; // inclusivo está bien para este caso
-  return true;
-};
+    const price = Number(basePrice) || 0;
+    if (price <= 0) return null;
 
-const computeDiscountedPriceByPromo = (basePrice, pInfo) => {
-  if (!pInfo?.activa || !isDateInRange(pInfo.fecha_inicio, pInfo.fecha_termina)) return null;
-
-  const price = Number(basePrice) || 0;
-  if (price <= 0) return null;
-
-  // Solo aplicamos precio unitario para tipos con descuento directo
-  // 1 = porcentual, 2 = fijo (según tu lógica del carrito)
-  if (pInfo.id_tipo_promo === 1 && pInfo.valor_porcentaje > 0) {
-    const pct = pInfo.valor_porcentaje / 100;
-    return Math.max(0, price * (1 - pct));
-  }
-  if (pInfo.id_tipo_promo === 2 && pInfo.valor_fijo > 0) {
-    return Math.max(0, price - pInfo.valor_fijo);
-  }
-  // Otros tipos (3,4,5) no alteran precio unitario aquí
-  return null;
-};
-
-const bestPromoPriceForProduct = (product) => {
-  const base = Number(product?.precio_base) || 0;
-  const ids = promosPorProducto[Number(product?.id_producto)] || [];
-  let best = null;
-
-  for (const idPromo of ids) {
-    const info = promosInfo[idPromo];
-    const discounted = computeDiscountedPriceByPromo(base, info);
-    if (discounted == null) continue;
-
-    if (best == null || discounted < best.finalPrice) {
-      best = { finalPrice: discounted, promoId: idPromo };
+    // Solo aplicamos precio unitario para tipos con descuento directo
+    // 1 = porcentual, 2 = fijo (según tu lógica del carrito)
+    if (pInfo.id_tipo_promo === 1 && pInfo.valor_porcentaje > 0) {
+      const pct = pInfo.valor_porcentaje / 100;
+      return Math.max(0, price * (1 - pct));
     }
-  }
-  return best; // {finalPrice, promoId} | null
-};
+    if (pInfo.id_tipo_promo === 2 && pInfo.valor_fijo > 0) {
+      return Math.max(0, price - pInfo.valor_fijo);
+    }
+    // Otros tipos (3,4,5) no alteran precio unitario aquí
+    return null;
+  };
+
+  const bestPromoPriceForProduct = (product) => {
+    const base = Number(product?.precio_base) || 0;
+    const ids = promosPorProducto[Number(product?.id_producto)] || [];
+    let best = null;
+
+    for (const idPromo of ids) {
+      const info = promosInfo[idPromo];
+      const discounted = computeDiscountedPriceByPromo(base, info);
+      if (discounted == null) continue;
+
+      if (best == null || discounted < best.finalPrice) {
+        best = { finalPrice: discounted, promoId: idPromo };
+      }
+    }
+    return best; // {finalPrice, promoId} | null
+  };
 
   // Promociones
-useEffect(() => {
-  const fetchPromosOrden = async () => {
-    try {
-      const res = await getPromocionesOrden();
-      const ordered = (Array.isArray(res?.data) ? res.data : [])
-        .map((item) => {
-          const ordenNum = Number(item.orden);
-          return {
-            id_promocion: item.id_promocion,
-            id_tipo_promo: item.id_tipo_promo,
-            orden: Number.isFinite(ordenNum) ? ordenNum : NaN,
-            name: item.nombre_promocion,
-            description: item.descripción || item.descripcion || "",
-            banner_url: item.banner_url,
-            activa:
-              item.activa === true || item.activa === 1 || item.activa === "true",
-          };
-        })
-        // ✅ solo activas y con orden válido > 0
-        .filter((p) => p.activa && Number.isFinite(p.orden) && p.orden > 0)
-        // ✅ orden estable (por orden y luego por id para desempatar)
-        .sort((a, b) => {
-          if (a.orden !== b.orden) return a.orden - b.orden;
-          return (Number(a.id_promocion) || 0) - (Number(b.id_promocion) || 0);
-        });
+  useEffect(() => {
+    const fetchPromosOrden = async () => {
+      try {
+        const res = await getPromocionesOrden();
+        const ordered = (Array.isArray(res?.data) ? res.data : [])
+          .map((item) => {
+            const ordenNum = Number(item.orden);
+            return {
+              id_promocion: item.id_promocion,
+              id_tipo_promo: item.id_tipo_promo,
+              orden: Number.isFinite(ordenNum) ? ordenNum : NaN,
+              name: item.nombre_promocion,
+              description: item.descripción || item.descripcion || "",
+              banner_url: item.banner_url,
+              activa:
+                item.activa === true ||
+                item.activa === 1 ||
+                item.activa === "true",
+            };
+          })
+          // ✅ solo activas y con orden válido > 0
+          .filter((p) => p.activa && Number.isFinite(p.orden) && p.orden > 0)
+          // ✅ orden estable (por orden y luego por id para desempatar)
+          .sort((a, b) => {
+            if (a.orden !== b.orden) return a.orden - b.orden;
+            return (
+              (Number(a.id_promocion) || 0) - (Number(b.id_promocion) || 0)
+            );
+          });
 
-      setPromociones(ordered);
-      console.log("[PROMOS ORDENADAS > 0]", ordered);
-    } catch (err) {
-      console.error("[PROMOS] error:", err?.response?.data || err);
-      toast.error(
-        err?.response?.data?.message || "Error al cargar promociones",
-        { className: "toast-error" }
-      );
-    }
-  };
-  fetchPromosOrden();
-}, []);
+        setPromociones(ordered);
+        console.log("[PROMOS ORDENADAS > 0]", ordered);
+      } catch (err) {
+        console.error("[PROMOS] error:", err?.response?.data || err);
+        toast.error(
+          err?.response?.data?.message || "Error al cargar promociones",
+          { className: "toast-error" }
+        );
+      }
+    };
+    fetchPromosOrden();
+  }, []);
 
+  useEffect(() => {
+    if (!swiperRef.current || promociones.length === 0) return;
 
-useEffect(() => {
-  if (!swiperRef.current || promociones.length === 0) return;
+    // índice del menor orden (típicamente el que tiene orden === 1)
+    const idx = promociones.reduce(
+      (best, p, i) =>
+        (promociones[i].orden ?? Infinity) <
+        (promociones[best].orden ?? Infinity)
+          ? i
+          : best,
+      0
+    );
 
-  // índice del menor orden (típicamente el que tiene orden === 1)
-  const idx = promociones.reduce((best, p, i) =>
-    (promociones[i].orden ?? Infinity) < (promociones[best].orden ?? Infinity)
-      ? i
-      : best
-  , 0);
-
-  // Asegura que Swiper renderice y luego muévete al slide correcto SIN animación
-  swiperRef.current.update?.();
-  swiperRef.current.slideTo(idx, 0, false);
-}, [promociones]);
-
+    // Asegura que Swiper renderice y luego muévete al slide correcto SIN animación
+    swiperRef.current.update?.();
+    swiperRef.current.slideTo(idx, 0, false);
+  }, [promociones]);
 
   const handleAgregar = async (id_producto) => {
     if (!id_producto) {
@@ -365,7 +393,9 @@ useEffect(() => {
         const nuevaCantidad = cantidadActual + 1;
 
         console.log(`Actualizando de ${cantidadActual} a ${nuevaCantidad}`);
-        toast(`Se han agregado ${nuevaCantidad} cantidades del producto`, { className: "toast-default" });
+        toast(`Se han agregado ${nuevaCantidad} cantidades del producto`, {
+          className: "toast-default",
+        });
 
         // Actualizar en backend
         await SumarItem(id_producto, nuevaCantidad);
@@ -414,7 +444,9 @@ useEffect(() => {
           toast(`Producto agregado al carrito`, { className: "toast-default" });
         } catch (err) {
           console.error("Error creando carrito:", err);
-          toast.error("No se pudo agregar el producto al carrito", { className: "toast-error" });
+          toast.error("No se pudo agregar el producto al carrito", {
+            className: "toast-error",
+          });
         }
       } else {
         const errorMessage =
@@ -433,6 +465,23 @@ useEffect(() => {
     navigate(`/producto/${productId}`);
   };
 
+  const extractListFromReport = (rows) => {
+    if (Array.isArray(rows)) return rows;
+    if (Array.isArray(rows?.topProductos)) return rows.topProductos;
+    if (Array.isArray(rows?.data)) return rows.data;
+    return [];
+  };
+
+  // util: devuelve el objeto con mayor "cantidad"
+  const pickMaxFromList = (list) => {
+    if (!Array.isArray(list) || list.length === 0) return null;
+    return list.reduce((a, b) => {
+      const qa = Number(a?.total_cantidad ?? a?.cantidad ?? a?.total ?? 0);
+      const qb = Number(b?.total_cantidad ?? b?.cantidad ?? b?.total ?? 0);
+      return qb > qa ? b : a;
+    }, list[0]);
+  };
+
   const handleCategoryClick = (categoryId) => {
     navigate(`/categoria/${categoryId}`);
   };
@@ -446,11 +495,15 @@ useEffect(() => {
       if (categoria) {
         navigate(`/promocion/${promo.id_promocion}`);
       } else {
-        toast.error("No se encontró la categoría del producto", { className: "toast-error" });
+        toast.error("No se encontró la categoría del producto", {
+          className: "toast-error",
+        });
       }
     } catch (error) {
       console.error("Error obteniendo categoría:", error);
-      toast.error("Hubo un error al obtener la categoría del producto", { className: "toast-error" });
+      toast.error("Hubo un error al obtener la categoría del producto", {
+        className: "toast-error",
+      });
     }
   };
 
@@ -462,6 +515,32 @@ useEffect(() => {
       });
     }
   };
+
+  useEffect(() => {
+    (async () => {
+      try {
+        // usa "Enviado" si quieres contar solo pedidos enviados; quítalo para todos
+        const rep = await getTopVendidos({
+          days: 30,
+          limit: 10,
+          estado: "Enviado",
+        });
+        const list = extractListFromReport(rep?.data) || [];
+        const top = pickMaxFromList(list);
+        const id = Number(
+          top?.id_producto ??
+            top?.producto_id ??
+            top?.idProducto ??
+            top?.productId ??
+            top?.id
+        );
+        setTopSellerId(Number.isFinite(id) ? id : null);
+      } catch (e) {
+        console.error("[HOME TOP-SELLER] error:", e);
+        setTopSellerId(null);
+      }
+    })();
+  }, []);
 
   // Filtrar productos según searchText (ignora mayúsculas/minúsculas)
   const filteredDestacados = destacados.filter((p) =>
@@ -514,14 +593,17 @@ useEffect(() => {
                   onClick={() => handleCategoryClick(cat?.id_categoria)}
                 >
                   <img
-                    src={toPublicFotoSrc(cat?.icono_categoria, "categorias") || "/PlaceHolder.png"}
-                    alt={cat?.nombre ?? "Categoría"}
-                    style={{ width: 70, height: 70, objectFit: "contain" }}
-                    onError={(e) => {
-                      e.currentTarget.onerror = null;
-                      e.currentTarget.src = "/PlaceHolder.png";
-                    }}
-                  />
+                    src={
+                      toPublicFotoSrc(cat?.icono_categoria, "categorias") ||
+                      "/PlaceHolder.png"
+                    }
+                    alt={cat?.nombre ?? "Categoría"}
+                    style={{ width: 70, height: 70, objectFit: "contain" }}
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = "/PlaceHolder.png";
+                    }}
+                  />
                 </div>
                 <span style={styles.catTitle}>{cat?.nombre ?? "-"}</span>
               </div>
@@ -580,7 +662,7 @@ useEffect(() => {
             loop={false}
             autoplay={{ delay: 3000, disableOnInteraction: false }}
             observer={true}
- observeParents={true}
+            observeParents={true}
             coverflowEffect={{
               rotate: 0,
               stretch: 0,
@@ -612,7 +694,10 @@ useEffect(() => {
                     }}
                   >
                     <img
-                      src={toPublicFotoSrc(promo.banner_url, "fotoDePerfil") || "/PlaceHolder.png"}
+                      src={
+                        toPublicFotoSrc(promo.banner_url, "fotoDePerfil") ||
+                        "/PlaceHolder.png"
+                      }
                       alt={promo.nombre_promocion}
                       className="banner-img"
                       style={{
@@ -693,7 +778,20 @@ useEffect(() => {
               onMouseLeave={() => setHoveredProductDest(null)}
               onClick={() => handleProductClick(p.id_producto)}
             >
-              {hasPromo(p.id_producto) && <div style={styles.offerBadge}>OFERTA</div>}
+              {hasPromo(p.id_producto) && (
+                <div style={styles.offerBadge}>OFERTA</div>
+              )}
+
+              {Number(p.id_producto) === Number(topSellerId) && (
+                <div
+                  style={{
+                    ...styles.offerBadge, // mismo estilo que OFERTA
+                    top: hasPromo(p.id_producto) ? 42 : 10, // apílalo si también hay OFERTA
+                  }}
+                >
+                  MÁS COMPRADO
+                </div>
+              )}
               <div style={styles.topRow}>
                 <span></span>
                 <span style={styles.stars}>
@@ -715,33 +813,46 @@ useEffect(() => {
               p.imagenes.length > 0 &&
               p.imagenes[0].url_imagen ? (
                 <img
-  src={toPublicFotoSrc(p?.imagenes?.[0]?.url_imagen) || "/PlaceHolder.png"}
-  alt={p.nombre}
-  style={styles.productImg}
-  onError={(e) => {
-    e.currentTarget.onerror = null;
-    e.currentTarget.src =
-      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
-  }}
-/>
+                  src={
+                    toPublicFotoSrc(p?.imagenes?.[0]?.url_imagen) ||
+                    "/PlaceHolder.png"
+                  }
+                  alt={p.nombre}
+                  style={styles.productImg}
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src =
+                      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
+                  }}
+                />
               ) : (
                 <div style={styles.productImg}>Imagen no disponible</div>
               )}
               <p style={styles.productName}>{p.nombre}</p>
               <div style={styles.priceRow}>
-   {(() => {
-     const best = bestPromoPriceForProduct(p);
-     if (best) {
-       return (
-         <>
-           <span style={styles.newPrice}>L. {best.finalPrice.toFixed(2)}</span>
-           <span style={styles.strikePrice}>L. {Number(p.precio_base).toFixed(2)} {" "} {p.unidad_medida ? p.unidad_medida : "P/Kilo"}</span>
-         </>
-       );
-     }
-     return <span style={styles.productPrice}>L. {Number(p.precio_base).toFixed(2)} {"     "} {p.unidad_medida ? p.unidad_medida : "P/Kilo"}</span>;
-   })()}
- </div>
+                {(() => {
+                  const best = bestPromoPriceForProduct(p);
+                  if (best) {
+                    return (
+                      <>
+                        <span style={styles.newPrice}>
+                          L. {best.finalPrice.toFixed(2)}
+                        </span>
+                        <span style={styles.strikePrice}>
+                          L. {Number(p.precio_base).toFixed(2)}{" "}
+                          {p.unidad_medida ? p.unidad_medida : "P/Kilo"}
+                        </span>
+                      </>
+                    );
+                  }
+                  return (
+                    <span style={styles.productPrice}>
+                      L. {Number(p.precio_base).toFixed(2)} {"     "}{" "}
+                      {p.unidad_medida ? p.unidad_medida : "P/Kilo"}
+                    </span>
+                  );
+                })()}
+              </div>
               <button
                 style={{
                   ...styles.addButton,
@@ -805,7 +916,19 @@ useEffect(() => {
               onMouseLeave={() => setHoveredProductTrend(null)}
               onClick={() => handleProductClick(p.id_producto)}
             >
-              {hasPromo(p.id_producto) && <div style={styles.offerBadge}>OFERTA</div>}
+              {hasPromo(p.id_producto) && (
+                <div style={styles.offerBadge}>OFERTA</div>
+              )}
+              {Number(p.id_producto) === Number(topSellerId) && (
+                <div
+                  style={{
+                    ...styles.offerBadge, // mismo estilo que OFERTA
+                    top: hasPromo(p.id_producto) ? 42 : 10, // apílalo si también hay OFERTA
+                  }}
+                >
+                  MÁS COMPRADO
+                </div>
+              )}
               <div style={styles.topRow}>
                 <span></span>
                 <span style={styles.stars}>
@@ -827,33 +950,45 @@ useEffect(() => {
               p.imagenes.length > 0 &&
               p.imagenes[0].url_imagen ? (
                 <img
-  src={toPublicFotoSrc(p?.imagenes?.[0]?.url_imagen) || "/PlaceHolder.png"}
-  alt={p.nombre}
-  style={styles.productImg}
-  onError={(e) => {
-    e.currentTarget.onerror = null;
-    e.currentTarget.src =
-      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
-  }}
-/>
+                  src={
+                    toPublicFotoSrc(p?.imagenes?.[0]?.url_imagen) ||
+                    "/PlaceHolder.png"
+                  }
+                  alt={p.nombre}
+                  style={styles.productImg}
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src =
+                      'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="12" fill="%23999">Imagen no disponible</text></svg>';
+                  }}
+                />
               ) : (
                 <div style={styles.productImg}>Imagen no disponible</div>
               )}
               <p style={styles.productName}>{p.nombre}</p>
               <div style={styles.priceRow}>
-   {(() => {
-     const best = bestPromoPriceForProduct(p);
-     if (best) {
-       return (
-         <>
-           <span style={styles.newPrice}>L. {best.finalPrice.toFixed(2)}</span>
-           <span style={styles.strikePrice}>L. {Number(p.precio_base).toFixed(2)}</span>
-         </>
-       );
-     }
-     return <span style={styles.productPrice}>L. {Number(p.precio_base).toFixed(2)}{" "} {p.unidad_medida ? p.unidad_medida : " "}</span>;
-   })()}
- </div>
+                {(() => {
+                  const best = bestPromoPriceForProduct(p);
+                  if (best) {
+                    return (
+                      <>
+                        <span style={styles.newPrice}>
+                          L. {best.finalPrice.toFixed(2)}
+                        </span>
+                        <span style={styles.strikePrice}>
+                          L. {Number(p.precio_base).toFixed(2)}
+                        </span>
+                      </>
+                    );
+                  }
+                  return (
+                    <span style={styles.productPrice}>
+                      L. {Number(p.precio_base).toFixed(2)}{" "}
+                      {p.unidad_medida ? p.unidad_medida : " "}
+                    </span>
+                  );
+                })()}
+              </div>
               <button
                 style={{
                   ...styles.addButton,
@@ -1022,66 +1157,84 @@ const styles = {
     fontSize: "22px",
   },
   productBox: {
-  flexShrink: 0,
-  width: "254px",
-  height: "265px",
-  borderRadius: "25px",
-  padding: "10px",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  backgroundColor: "#fff",
-  boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.15)",
-  position: "relative",          // 👈 necesario para posicionar el badge
-},
+    flexShrink: 0,
+    width: "254px",
+    height: "265px",
+    borderRadius: "25px",
+    padding: "10px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.15)",
+    position: "relative", // 👈 necesario para posicionar el badge
+  },
 
-offerBadge: {
-  position: "absolute",
-  top: 10,
-  left: -6,                      // 👈 “pegado” a la izquierda
-  transform: "rotate(-12deg)",
-  background: "#ff1744",         // rojo llamativo
-  color: "#fff",
-  fontWeight: 800,
-  fontSize: 12,
-  padding: "4px 10px",
-  borderRadius: "10px",
-  boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
-  letterSpacing: 1,
-},
+  offerBadge: {
+    position: "absolute",
+    top: 10,
+    left: -6, // 👈 “pegado” a la izquierda
+    transform: "rotate(-12deg)",
+    background: "#ff1744", // rojo llamativo
+    color: "#fff",
+    fontWeight: 800,
+    fontSize: 12,
+    padding: "4px 10px",
+    borderRadius: "10px",
+    boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
+    letterSpacing: 1,
+  },
 
- strikePrice: {
-   fontSize: "14px",
-   color: "#94a3b8",     // gris suave
-   textDecoration: "line-through",
-   lineHeight: 1.1,
-   margin: 0,
- },
-promoTag: {
-  width: "100%",
-  textAlign: "left",
-  fontSize: "17px",
-  fontWeight: 800,
-  color: "#2b6daf",              // azul de tu paleta (llamativo)
-  marginTop: 0,
-},
+  strikePrice: {
+    fontSize: "14px",
+    color: "#94a3b8", // gris suave
+    textDecoration: "line-through",
+    lineHeight: 1.1,
+    margin: 0,
+  },
+  promoTag: {
+    width: "100%",
+    textAlign: "left",
+    fontSize: "17px",
+    fontWeight: 800,
+    color: "#2b6daf", // azul de tu paleta (llamativo)
+    marginTop: 0,
+  },
 
-// (mantén productPrice como lo tienes para los que NO tienen promo)
-priceRow: {
-   width: "100%",
-   display: "flex",
-   alignItems: "baseline",
-   gap: "10px",
-   marginTop: "auto",    // empuja la fila de precios hacia abajo del card
- },
+  // (mantén productPrice como lo tienes para los que NO tienen promo)
+  priceRow: {
+    width: "100%",
+    display: "flex",
+    alignItems: "baseline",
+    gap: "10px",
+    marginTop: "auto", // empuja la fila de precios hacia abajo del card
+  },
 
- newPrice: {
-   fontSize: "20px",
-   fontWeight: 900,
-   color: "#16a34a",     // verde
-   lineHeight: 1.1,
- },
+  newPrice: {
+    fontSize: "20px",
+    fontWeight: 900,
+    color: "#16a34a", // verde
+    lineHeight: 1.1,
+  },
 
+  offerChip: {
+    backgroundColor: "#ff1744",
+    color: "#fff",
+    fontWeight: 800,
+    fontSize: 12,
+    padding: "2px 8px",
+    borderRadius: "999px",
+    letterSpacing: 1,
+    display: "inline-block",
+    transform: "skewX(-12deg)", // ⬅️ misma inclinación
+  },
+  topRow: {
+    width: "100%",
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 3,
+  },
 };
 
 export default InicioUsuario;

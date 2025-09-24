@@ -123,8 +123,12 @@ export function actualizarProducto(
       Array.isArray(etiquetas) ? etiquetas.join(",") : etiquetas
     );
   formData.append("unidad_medida", unidadMedida);
-  if (pesoKg !== undefined) formData.append("peso_kg", pesoKg);
-  formData.append("activo", true); // Default to true for updates
+  if (pesoKg !== "" && pesoKg != null && Number.isFinite(Number(pesoKg))) {
+    formData.append("peso_valor", String(pesoKg)); // el número
+  }
+  if (unidadMedida) {
+    formData.append("unidad_medida", unidadMedida); // la unidad exacta
+  }
 
   // Agregar payload de imágenes
   formData.append("imagenes_payload", JSON.stringify(imagenesPayload));

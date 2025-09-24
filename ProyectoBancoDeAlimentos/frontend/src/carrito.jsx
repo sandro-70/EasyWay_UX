@@ -32,6 +32,12 @@ import { UserContext } from "./components/userContext";
 import { useCart } from "../src/utils/CartContext";
 import { toast } from "react-toastify";
 import "./toast.css";
+import {
+  getPedidosConDetalles,
+  getTopVendidos,
+  getMasNuevos,
+} from "./api/PedidoApi";
+import { useCallback } from "react";
 
 // ====== helpers para construir la URL absoluta desde el backend ======
 const BACKEND_ORIGIN = (() => {
@@ -65,6 +71,9 @@ const toPublicFotoSrc = (nameOrPath) => {
 };
 
 function Carrito() {
+  const [topSellerId, setTopSellerId] = useState(null);
+  const [newestId, setNewestId] = useState(null);
+
   const { setCount, incrementCart, decrementCart } = useCart();
   const [detalles, setDetalles] = useState([]);
   const [prodRec, setRec] = useState([]);
@@ -275,6 +284,25 @@ function Carrito() {
     await SumarItem(id, n);
   };
 
+  // util: intenta leer arreglo cualquiera de reporte
+  const extractListFromReport = (rows) => {
+    if (Array.isArray(rows)) return rows;
+    if (Array.isArray(rows?.topProductos)) return rows.topProductos;
+    if (Array.isArray(rows?.data)) return rows.data;
+    return [];
+  };
+
+  // util: devuelve el objeto con mayor "cantidad" posible
+  // (tolera distintos nombres: total_cantidad, cantidad, total)
+  const pickMaxFromList = (list) => {
+    if (!Array.isArray(list) || list.length === 0) return null;
+    return list.reduce((a, b) => {
+      const qa = Number(a?.total_cantidad ?? a?.cantidad ?? a?.total ?? 0);
+      const qb = Number(b?.total_cantidad ?? b?.cantidad ?? b?.total ?? 0);
+      return qb > qa ? b : a;
+    }, list[0]);
+  };
+
   const updateQuantity = async (idDetalle, id, n) => {
     if (n < 1) return;
 
@@ -307,35 +335,39 @@ function Carrito() {
       });
     }
   };
-// --- Helpers de fecha (local, inclusivos para bloquear HOY) ---
-const parseCouponDateLocal = (input) => {
-  if (!input) return null;
-  const s = String(input).trim();
-  // Soporta "YYYY-MM-DD" y también "YYYY-MM-DDTHH:mm:ssZ"
-  const ymd = s.split("T")[0];                  // "YYYY-MM-DD"
-  const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(ymd);
-  if (!m) {
-    // fallback: intentar Date() y normalizar a medianoche local
-    const d = new Date(s);
-    return isNaN(d) ? null : new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
-  }
-  const y = Number(m[1]), mo = Number(m[2]) - 1, d = Number(m[3]);
-  return new Date(y, mo, d, 0, 0, 0, 0);       // inicio del día local
-};
+  // --- Helpers de fecha (local, inclusivos para bloquear HOY) ---
+  const parseCouponDateLocal = (input) => {
+    if (!input) return null;
+    const s = String(input).trim();
+    // Soporta "YYYY-MM-DD" y también "YYYY-MM-DDTHH:mm:ssZ"
+    const ymd = s.split("T")[0]; // "YYYY-MM-DD"
+    const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(ymd);
+    if (!m) {
+      // fallback: intentar Date() y normalizar a medianoche local
+      const d = new Date(s);
+      return isNaN(d)
+        ? null
+        : new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+    }
+    const y = Number(m[1]),
+      mo = Number(m[2]) - 1,
+      d = Number(m[3]);
+    return new Date(y, mo, d, 0, 0, 0, 0); // inicio del día local
+  };
 
-const startOfDayLocal = (date = new Date()) => {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-};
+  const startOfDayLocal = (date = new Date()) => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
 
-// ⛔️ Considera EXPIRADO si la fecha de expiración es HOY o anterior
-const isCouponExpired = (termina_en) => {
-  const exp = parseCouponDateLocal(termina_en);
-  if (!exp) return false;                       // sin fecha válida => no bloquear
-  const today = startOfDayLocal();              // hoy 00:00 local
-  return today.getTime() >= exp.getTime();      // HOY ya no se puede usar
-};
+  // ⛔️ Considera EXPIRADO si la fecha de expiración es HOY o anterior
+  const isCouponExpired = (termina_en) => {
+    const exp = parseCouponDateLocal(termina_en);
+    if (!exp) return false; // sin fecha válida => no bloquear
+    const today = startOfDayLocal(); // hoy 00:00 local
+    return today.getTime() >= exp.getTime(); // HOY ya no se puede usar
+  };
 
   // checkCupon actualizado
   const checkCupon = async (e) => {
@@ -363,11 +395,11 @@ const isCouponExpired = (termina_en) => {
 
       // 🚫 Expirado (soporta 'YYYY-MM-DD' y 'YYYY-MM-DDTHH:mm:ssZ')
       if (isCouponExpired(c.termina_en || c.fecha_expiracion)) {
-  setVisible(false);
-  setDesc(0);
-  toast.error("El cupón ya expiró", { className: "toast-error" });
-  return;
-}
+        setVisible(false);
+        setDesc(0);
+        toast.error("El cupón ya expiró", { className: "toast-error" });
+        return;
+      }
 
       // 🚫 Sin usos disponibles para este usuario (si tu API lo controla)
       const r = await checkCuponUsuario(c.id_cupon, user.id_usuario);
@@ -898,6 +930,100 @@ const isCouponExpired = (termina_en) => {
     }
   }, [idSucursal]);
 
+  const refreshTopSeller = useCallback(async () => {
+    try {
+      // 1) Reporte agregado del backend (filtra por estado "Enviado")
+      const rep = await getTopVendidos({
+        days: 30,
+        limit: 50,
+        estado: "Enviado",
+      });
+      const list = extractListFromReport(rep?.data);
+      const top = pickMaxFromList(list);
+
+      const id = Number(
+        top?.id_producto ??
+          top?.producto_id ??
+          top?.idProducto ??
+          top?.productId ??
+          top?.id
+      );
+
+      setTopSellerId(Number.isFinite(id) ? id : null);
+    } catch (e1) {
+      console.warn("[TOP-SELLER] usando fallback por detalle:", e1?.message);
+      try {
+        // 2) Fallback: sumar cantidades desde pedidos con detalles
+        const res = await getPedidosConDetalles();
+        const pedidos = Array.isArray(res?.data) ? res.data : [];
+        const counts = new Map();
+
+        for (const ped of pedidos) {
+          const detalles =
+            ped?.factura?.factura_detalles ||
+            ped?.detalles ||
+            ped?.pedidos_detalle ||
+            ped?.items ||
+            ped?.carrito_detalles ||
+            [];
+
+          for (const d of detalles) {
+            const pid = Number(
+              d?.id_producto ??
+                d?.producto_id ??
+                d?.producto?.id_producto ??
+                d?.producto?.id
+            );
+            if (!Number.isFinite(pid)) continue;
+
+            const qty =
+              Number(
+                d?.cantidad_unidad_medida ??
+                  d?.cantidad ??
+                  d?.cantidad_pedida ??
+                  d?.qty ??
+                  d?.quantity
+              ) || 1;
+
+            counts.set(pid, (counts.get(pid) || 0) + qty);
+          }
+        }
+
+        let bestId = null,
+          bestQty = -Infinity;
+        for (const [pid, qty] of counts) {
+          if (qty > bestQty) {
+            bestQty = qty;
+            bestId = pid;
+          }
+        }
+        setTopSellerId(bestId ?? null);
+      } catch (e2) {
+        console.error("[TOP-SELLER fallback] error:", e2);
+        setTopSellerId(null);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshTopSeller();
+  }, [refreshTopSeller]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await getMasNuevos({ days: 30, limit: 1 });
+        const list = Array.isArray(r?.data?.nuevos) ? r.data.nuevos : [];
+        const first = list[0];
+        const id = Number(first?.id_producto ?? first?.id);
+        setNewestId(Number.isFinite(id) ? id : null);
+      } catch (e) {
+        console.error("[MÁS-NUEVOS] error:", e);
+        setNewestId(null);
+      }
+    })();
+  }, []);
+
   return (
     <div
       className="bg-gray-100 w-screen min-h-screen py-4 overflow-x-hidden items-center"
@@ -933,6 +1059,7 @@ const isCouponExpired = (termina_en) => {
               <div className="px-6 py-4">
                 <ul className="flex flex-col space-y-4">
                   {detalles.map((p, i) => {
+                    console.log("PRODUCTO CARRITO →", p.producto);
                     const stockDisponible = getStockEnSucursal(
                       p.producto.id_producto
                     );
@@ -985,6 +1112,23 @@ const isCouponExpired = (termina_en) => {
                                   style={{ ...styles.offerChip, marginLeft: 8 }}
                                 >
                                   OFERTA
+                                </span>
+                              )}
+
+                              {Number(p.producto.id_producto) ===
+                                Number(topSellerId) && (
+                                <span
+                                  style={{ ...styles.offerChip, marginLeft: 8 }}
+                                >
+                                  MÁS COMPRADO
+                                </span>
+                              )}
+                              {Number(p.producto.id_producto) ===
+                                Number(newestId) && (
+                                <span
+                                  style={{ ...styles.offerChip, marginLeft: 6 }}
+                                >
+                                  MÁS NUEVO
                                 </span>
                               )}
                             </p>
@@ -1377,7 +1521,14 @@ const isCouponExpired = (termina_en) => {
                 >
                   <div style={styles.topRow}>
                     {bestPromoPriceForProduct(p) && (
-                      <span style={styles.offerChip}>OFERTA</span>
+                      <span style={{ ...styles.offerChip, marginLeft: 8 }}>
+                        OFERTA
+                      </span>
+                    )}
+                    {Number(p.id_producto) === Number(topSellerId) && (
+                      <span style={{ ...styles.offerChip, marginLeft: 8 }}>
+                        MÁS COMPRADO
+                      </span>
                     )}
                     <div style={styles.stars}>
                       {Array.from({ length: 5 }).map((_, idx) => (
@@ -1600,6 +1751,8 @@ const styles = {
     padding: "2px 8px",
     borderRadius: "999px",
     letterSpacing: 1,
+    display: "inline-block",
+    transform: "skewX(-12deg)", // ⬅️ inclinación del chip (texto incluido)
   },
 };
 

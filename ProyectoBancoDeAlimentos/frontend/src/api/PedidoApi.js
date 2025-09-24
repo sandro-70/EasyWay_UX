@@ -53,3 +53,16 @@ export function actualizarEstadoPedido(id_pedido, id_estado_pedido) {
 export function getReportePedidos() {
   return axiosInstance.get("/api/reportes/reporte-pedidos");
 }
+
+export function getTopVendidos({ days = 30, limit = 10, estado } = {}) {
+  const params = new URLSearchParams();
+  params.set("days", String(days));
+  params.set("limit", String(limit));
+  if (estado) params.set("estado", estado);
+  return axiosInstance.get(
+    `/api/pedidos/reportes/top-vendidos?${params.toString()}`
+  );
+}
+
+export const getMasNuevos = (params) =>
+  axiosInstance.get("/api/pedidos/reportes/mas-nuevos", { params });

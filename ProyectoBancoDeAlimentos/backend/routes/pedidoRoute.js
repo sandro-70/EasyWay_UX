@@ -4,9 +4,9 @@ const authenticateJWT = require("../middleware/authenticateJWT");
 
 const pedidoController = require("../controllers/pedidoController");
 
-router.get('/get-pedido-estado/:id_usuario', pedidoController.getPedidosEstado);
+router.get("/get-pedido-estado/:id_usuario", pedidoController.getPedidosEstado);
 
-router.get('/get-estados', pedidoController.getEstados);
+router.get("/get-estados", pedidoController.getEstados);
 
 // Obtener los pedidos del usuario dado, donde el nombre_pedido sea "Enviado".
 router.get("/get-pedido/:id_usuario", pedidoController.getPedidosEntregados);
@@ -28,6 +28,9 @@ router.get(
 
 // Listar un pedido específico con su ID.
 router.get("/detalles/:id_pedido", pedidoController.listarPedido);
+
+// Top vendidos (agregado por producto) con filtros ?days=&limit=&estado=
+router.get("/reportes/top-vendidos", pedidoController.getTopVendidos);
 
 // Actualizar estado de un pedido (body: { id_estado_pedido })
 router.patch(

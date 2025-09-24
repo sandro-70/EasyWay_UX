@@ -6,8 +6,8 @@ import {
   getDiasCompra,
   getTotalAhorrado,
 } from "./api/reporteusuarioApi";
-import { getProductoById } from "./api/InventarioApi"; // ⬅️ para completar imágenes por id
-import axiosInstance from "./api/axiosInstance";        // ⬅️ mismo que en InicioUsuario
+import { getProductoById } from "./api/InventarioApi"; 
+import axiosInstance from "./api/axiosInstance";       
 import "./SistemaValoracion.css";
 import { UserContext } from "./components/userContext";
 

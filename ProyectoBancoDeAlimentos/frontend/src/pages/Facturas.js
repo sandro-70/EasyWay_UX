@@ -227,7 +227,7 @@ class Facturas extends Component {
 
         {/* Contenido principal */}
         <div className="flex-1 flex flex-col items-center">
-          <div className="w-[700px] p-4 rounded border bg-white">
+          <div className="facturas-wrapper">
             <h1 className="titulo-facturas">
               Facturas
             </h1>
@@ -272,30 +272,20 @@ class Facturas extends Component {
                   </div>
                 </div>
 
-                <div className="max-h-[300px] overflow-y-auto relative pr-4">
+                <div className="factura-item">
                   {facturasFiltradas.map((f, index) => (
                     <div
                       key={f.id}
-                      className={`cursor-pointer p-2 hover:bg-blue-50 transition-colors
-                        ${
-                          facturaSeleccionada?.id === f.id ? "bg-blue-100" : ""
-                        }
-                        ${
-                          index < facturasFiltradas.length - 1
-                            ? "border-b border-gray-300"
-                            : ""
-                        }`}
+                      className="pedido-info clickable"
                       onClick={() => this.handleSelect(f)}
                     >
-                      <div className="flex flex-col text-left">
-                        <p className="text-gray-800 font-bold">
-                          Pedido #{f.numero}
-                        </p>
-                        <p className="text-gray-500 text-sm">
-                          {/* **CAMBIO 4: Eliminar el método de pago de la vista de lista** */}
-                          {f.fecha}
-                        </p>
-                      </div>
+                      <p className="factura-id">
+                        Factura #{f.numero}
+                      </p>
+                      <p className="factura-fecha">
+                        {/* **CAMBIO 4: Eliminar el método de pago de la vista de lista** */}
+                        {f.fecha}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -395,14 +385,9 @@ class Facturas extends Component {
                     <div className="flex justify-end">
                       <button
                         onClick={this.handleExportar}
-                        className="bg-[#2e9fd4] text-white font-semibold px-4 py-1.5 rounded-lg shadow hover:bg-[#16324f] transition-colors flex items-center gap-2"
+                        className="bg-[#f0833e] text-white font-semibold px-4 py-1.5 rounded-lg shadow hover:bg-[#ea6b1c] transition-colors flex items-center gap-2"
                       >
-                        <img
-                          src={LogoExport}
-                          alt="Exportar"
-                          className="h-4 w-4"
-                        />
-                        Exportar
+                        📊 Exportar a Excel
                       </button>
                     </div>
                   </div>

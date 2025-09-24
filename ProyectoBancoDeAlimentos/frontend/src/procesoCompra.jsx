@@ -45,7 +45,7 @@ const toPublicFotoSrc = (nameOrPath) => {
 
 const ProcesoCompra = () => {
   const { user } = useContext(UserContext);
-  const { setCount } = useCart();
+  const { setCount, incrementCart } = useCart();
   const navigate = useNavigate();
 
   // Estados del checkout
@@ -380,7 +380,7 @@ const ProcesoCompra = () => {
           0
         );
         setSubtotal(sub);
-
+        incrementCart(1); 
         toast.success("Producto agregado al carrito");
       }
     } catch (error) {

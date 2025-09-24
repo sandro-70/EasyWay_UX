@@ -46,7 +46,7 @@
 }
 
 .perfil-separator {
-  width: 50%;
+  width: 60%;
   border: none;
   border-top: 2px solid #f0833e;
   margin: 0 auto 15px auto;
@@ -124,14 +124,6 @@
   gap: 10px;
 }
 
-.pedido-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px;
-  border-bottom: 1px solid #eee;
-}
-
 .pedido-item:last-child {
   border-bottom: none;
 }
@@ -144,13 +136,18 @@
 .pedido-id {
   font-weight: bold;
   margin: 0;
-  font-size: 15px;
+  font-size: 1.3rem;
+  background: #f0833e;
+  width: 200px;
+  text-align: center;
 }
 
 .pedido-fecha {
-  font-size: 13px;
+  font-weight: bold;
+  font-size: 1.3rem;
   color: #666;
   margin: 0;
+  margin-left: 120px;
 }
 
 /* === Estados === */

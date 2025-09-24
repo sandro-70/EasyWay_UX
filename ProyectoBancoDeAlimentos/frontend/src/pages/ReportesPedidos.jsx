@@ -29,6 +29,8 @@ const meses = [
 const ReportesPedidos = () => {
   const [pedidos, setPedidos] = useState([]);
   const [mes, setMes] = useState("");
+  const [estadoFilter, setEstadoFilter] = useState("");
+  const [estadosDisponibles, setEstadosDisponibles] = useState([]);
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
   const [usuariosPorPedido, setUsuariosPorPedido] = useState({});
   const [paginaActual, setPaginaActual] = useState(1);
@@ -60,6 +62,16 @@ const ReportesPedidos = () => {
         });
         setPedidos(formatted);
 
+        // 🔥 Extraer estados únicos de pedidos desde los datos cargados
+        const estadosUnicos = [
+          ...new Set(
+            formatted
+              .map((p) => p.estado)
+              .filter((estado) => estado && estado.trim() !== "")
+          ),
+        ];
+        setEstadosDisponibles(estadosUnicos.sort());
+
         // Obtener información del usuario para cada pedido
         const usuariosPromises = formatted.map((pedido) =>
           getInfoUsuario(pedido.idPedido)
@@ -86,8 +98,6 @@ const ReportesPedidos = () => {
           });
           setUsuariosPorPedido(usuariosMap);
         });
-
-        console.log("Reportes de Pedidos:", formatted);
       })
       .catch((err) => console.error("Error al obtener pedidos:", err));
   }, []);
@@ -101,13 +111,21 @@ const ReportesPedidos = () => {
     return pedido.metodoPago;
   };
 
-  // Primero filtrar por mes, luego ordenar
-  const pedidosFiltrados = mes
-    ? pedidos.filter((order) => {
-        const [day, month, year] = order.fechaPedido.split("/");
-        return meses[parseInt(month) - 1].toLowerCase() === mes.toLowerCase();
-      })
-    : pedidos;
+  // Primero filtrar por mes y estado, luego ordenar
+  const pedidosFiltrados = pedidos.filter((order) => {
+    // Filtro por mes
+    const mesMatch = mes
+      ? (() => {
+          const [day, month, year] = order.fechaPedido.split("/");
+          return meses[parseInt(month) - 1].toLowerCase() === mes.toLowerCase();
+        })()
+      : true;
+
+    // Filtro por estado
+    const estadoMatch = estadoFilter ? order.estado === estadoFilter : true;
+
+    return mesMatch && estadoMatch;
+  });
 
   // Ordenar los pedidos filtrados por ID
   const pedidosOrdenados = [...pedidosFiltrados].sort((a, b) => {
@@ -119,17 +137,6 @@ const ReportesPedidos = () => {
       return idA - idB;
     }
   });
-
-  //ver que trae getHistorialComprasProductos
-  useEffect(() => {
-    getHistorialComprasProductos()
-      .then((res) => {
-        console.log("Datos del historial de compras:", res.data);
-      })
-      .catch((err) =>
-        console.error("Error al obtener datos del historial de compras:", err)
-      );
-  }, []);
 
   // Paginación usando los pedidos ordenados
   const totalPaginas = Math.ceil(pedidosOrdenados.length / pedidosPorPagina);
@@ -152,9 +159,16 @@ const ReportesPedidos = () => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Pedidos");
     const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+
+    // Nombre del archivo con filtros aplicados
+    let nombreArchivo = "ReportePedidos";
+    if (mes) nombreArchivo += `_${mes}`;
+    if (estadoFilter) nombreArchivo += `_${estadoFilter.replace(/\s+/g, "")}`;
+    nombreArchivo += ".xlsx";
+
     saveAs(
       new Blob([excelBuffer], { type: "application/octet-stream" }),
-      `ReportePedidos_${mes || "Todos"}.xlsx`
+      nombreArchivo
     );
   };
 
@@ -214,20 +228,85 @@ const ReportesPedidos = () => {
 
         {/* Filtros */}
         <div className="filtros-container">
-          <label>Filtrar Mes de Pedido:</label>
-          <select
-            value={mes}
-            onChange={(e) => {
-              setMes(e.target.value);
-              setPaginaActual(1);
+          <div
+            style={{
+              display: "flex",
+              gap: "1rem",
+              alignItems: "center",
+              flexWrap: "wrap",
             }}
-            className="font-14px border rounded px-3 py-1 bg-[#E6E6E6]"
           >
-            <option value="">Todos</option>
-            {meses.map((m) => (
-              <option key={m}>{m}</option>
-            ))}
-          </select>
+            {/* Filtro por mes */}
+            <div
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            >
+              <label>Filtrar Mes de Pedido:</label>
+              <select
+                value={mes}
+                onChange={(e) => {
+                  setMes(e.target.value);
+                  setPaginaActual(1);
+                }}
+                className="font-14px border rounded px-3 py-1 bg-[#E6E6E6]"
+              >
+                <option value="">Todos</option>
+                {meses.map((m) => (
+                  <option key={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Filtro por estado */}
+            <div
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            >
+              <label>Filtrar por Estado:</label>
+              <select
+                value={estadoFilter}
+                onChange={(e) => {
+                  setEstadoFilter(e.target.value);
+                  setPaginaActual(1);
+                }}
+                className="font-14px border rounded px-3 py-1 bg-[#E6E6E6]"
+              >
+                <option value="">Todos los estados</option>
+                {estadosDisponibles.map((estado) => (
+                  <option key={estado} value={estado}>
+                    {estado}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Botón limpiar filtros */}
+            {(mes || estadoFilter) && (
+              <button
+                onClick={() => {
+                  setMes("");
+                  setEstadoFilter("");
+                  setPaginaActual(1);
+                }}
+                style={{
+                  padding: "0.5rem 0.75rem",
+                  backgroundColor: "#b6adadff",
+                  border: "2px solid #c0a8a8ff",
+                  borderRadius: "6px",
+                  fontSize: "0.75rem",
+                  color: "white",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  whiteSpace: "nowrap",
+                  display: "flex",
+                  gap: "0.25rem",
+                  alignItems: "center",
+                  fontWeight: "500",
+                }}
+              >
+                ✕ Limpiar filtros
+              </button>
+            )}
+          </div>
+
           <div className="pedido-count">
             <span>Total de pedidos: </span>
             <span className="count-bubble">{pedidosOrdenados.length}</span>
@@ -249,19 +328,16 @@ const ReportesPedidos = () => {
                 >
                   ID de Pedido {orderDesc ? "↓" : "↑"}
                 </th>
-                {[
-                  "Estado",
-                  "Fecha de Pedido",
-                  "Método de Pago",
-                  "Más Información",
-                ].map((col, idx) => (
-                  <th
-                    key={idx}
-                    className="px-4 py-3 text-white text-center bg-[#2B6DAF]"
-                  >
-                    {col}
-                  </th>
-                ))}
+                {["Estado", "Fecha de Pedido", "Más Información"].map(
+                  (col, idx) => (
+                    <th
+                      key={idx}
+                      className="px-4 py-3 text-white text-center bg-[#2B6DAF]"
+                    >
+                      {col}
+                    </th>
+                  )
+                )}
               </tr>
             </thead>
             <tbody>
@@ -270,7 +346,6 @@ const ReportesPedidos = () => {
                   <td>{order.id}</td>
                   <td>{order.estado}</td>
                   <td>{order.fechaPedido}</td>
-                  <td>{formatearMetodoPago(order)}</td>
                   <td>
                     <button
                       className="flex items-center justify-center w-6 h-6 mx-auto"
@@ -287,10 +362,38 @@ const ReportesPedidos = () => {
               {pedidosPaginados.length === 0 && (
                 <tr>
                   <td
-                    colSpan="7"
+                    colSpan="4"
                     className="py-4 text-black border-black text-center"
                   >
-                    No hay pedidos
+                    {mes || estadoFilter ? (
+                      <div>
+                        <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>
+                          🔍
+                        </div>
+                        <div
+                          style={{ fontWeight: "600", marginBottom: "0.5rem" }}
+                        >
+                          No se encontraron pedidos
+                        </div>
+                        <div
+                          style={{
+                            fontSize: "0.875rem",
+                            color: "#6b7280",
+                            marginBottom: "1rem",
+                          }}
+                        >
+                          {mes && <div>• Mes: "{mes}"</div>}
+                          {estadoFilter && (
+                            <div>• Estado: "{estadoFilter}"</div>
+                          )}
+                        </div>
+                        <div style={{ fontSize: "0.875rem" }}>
+                          Intenta ajustar los filtros de búsqueda
+                        </div>
+                      </div>
+                    ) : (
+                      "No hay pedidos"
+                    )}
                   </td>
                 </tr>
               )}

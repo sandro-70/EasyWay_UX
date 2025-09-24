@@ -96,7 +96,9 @@ function TablaReportesPromociones() {
   const [showCategoria, setShowCategoria] = useState([]);
   const [orderDesc, setOrderDesc] = useState(true);
   const [nombreFilter, setNombreFilter] = useState("");
+  const [tipoFilter, setTipoFilter] = useState("");
   const [productos, setProductos] = useState([]);
+  const [tiposPromociones, setTiposPromociones] = useState([]);
   const itemsPerPage = 8;
 
   // Cargar datos desde la API
@@ -139,6 +141,16 @@ function TablaReportesPromociones() {
           })
         );
         setData(promos);
+
+        // 🔥 Extraer tipos únicos de promociones desde los datos cargados
+        const tiposUnicos = [
+          ...new Set(
+            promos
+              .map((p) => p.tipo)
+              .filter((tipo) => tipo && tipo.trim() !== "")
+          ),
+        ];
+        setTiposPromociones(tiposUnicos.sort());
       } catch (error) {
         console.error("Error cargando promociones:", error);
         // Si falla, usar la API original como fallback
@@ -154,6 +166,16 @@ function TablaReportesPromociones() {
             cuponesUsados: "N/A",
           }));
           setData(promos);
+
+          // 🔥 Extraer tipos únicos también del fallback
+          const tiposUnicos = [
+            ...new Set(
+              promos
+                .map((p) => p.tipo)
+                .filter((tipo) => tipo && tipo.trim() !== "")
+            ),
+          ];
+          setTiposPromociones(tiposUnicos.sort());
         } catch (fallbackError) {
           console.error("Error con ambas APIs:", fallbackError);
         }
@@ -187,8 +209,10 @@ function TablaReportesPromociones() {
       const nombreMatch = nombreFilter
         ? item.nombre.toLowerCase().includes(nombreFilter.toLowerCase())
         : true;
+      // Filtro por tipo de promoción
+      const tipoMatch = tipoFilter ? item.tipo === tipoFilter : true;
 
-      return categoriaMatch && nombreMatch;
+      return categoriaMatch && nombreMatch && tipoMatch;
     })
     // Ordenamiento por ID
     .sort((a, b) => (orderDesc ? b.id - a.id : a.id - b.id));
@@ -234,6 +258,7 @@ function TablaReportesPromociones() {
   const clearFilters = () => {
     setNombreFilter("");
     setCategoriaFilter("");
+    setTipoFilter("");
     setPage(1);
   };
 
@@ -315,8 +340,49 @@ function TablaReportesPromociones() {
               />
             </div>
 
+            {/* Filtro por tipo de promoción */}
+            <div
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            >
+              <label
+                style={{
+                  fontSize: "0.875rem",
+                  fontWeight: "500",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Tipo:
+              </label>
+              <select
+                value={tipoFilter}
+                onChange={(e) => {
+                  setTipoFilter(e.target.value);
+                  setPage(1);
+                }}
+                style={{
+                  padding: "0.5rem 0.75rem",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "6px",
+                  fontSize: "0.875rem",
+                  minWidth: "140px",
+                  backgroundColor: "#E6E6E6",
+                  cursor: "pointer",
+                  outline: "none",
+                  transition: "border-color 0.2s",
+                }}
+                onFocus={(e) => (e.target.style.borderColor = "#a3908bff")}
+              >
+                <option value="">Todos los tipos</option>
+                {tiposPromociones.map((tipo) => (
+                  <option key={tipo} value={tipo}>
+                    {tipo}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Botón limpiar filtros */}
-            {(nombreFilter || categoriaFilter) && (
+            {(nombreFilter || categoriaFilter || tipoFilter) && (
               <button
                 onClick={clearFilters}
                 style={{
@@ -387,7 +453,7 @@ function TablaReportesPromociones() {
                     colSpan="5"
                     style={{ textAlign: "center", padding: "2rem" }}
                   >
-                    {nombreFilter || categoriaFilter ? (
+                    {nombreFilter || categoriaFilter || tipoFilter ? (
                       <div>
                         <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>
                           🔍
@@ -410,6 +476,7 @@ function TablaReportesPromociones() {
                           {categoriaFilter && (
                             <div>• Categoría: "{categoriaFilter}"</div>
                           )}
+                          {tipoFilter && <div>• Tipo: "{tipoFilter}"</div>}
                         </div>
                         <div style={{ fontSize: "0.875rem" }}>
                           Intenta ajustar los filtros de búsqueda

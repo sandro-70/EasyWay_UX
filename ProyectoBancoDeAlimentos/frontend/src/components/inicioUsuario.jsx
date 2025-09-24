@@ -849,7 +849,7 @@ const InicioUsuario = () => {
                   }
                   return (
                     <span style={styles.productPrice}>
-                      {t("L.")} {Number(p.precio_base).toFixed(2)} {"     "}{" "}
+                      L. {Number(p.precio_base).toFixed(2)} {"     "}{" "}
                       {p.unidad_medida ? p.unidad_medida : "P/Kilo"}
                     </span>
                   );
@@ -975,17 +975,17 @@ const InicioUsuario = () => {
                     return (
                       <>
                         <span style={styles.newPrice}>
-                          {t("L.")} {best.finalPrice.toFixed(2)}
+                          L. {best.finalPrice.toFixed(2)}
                         </span>
                         <span style={styles.strikePrice}>
-                          {t("L.")} {Number(p.precio_base).toFixed(2)}
+                          L. {Number(p.precio_base).toFixed(2)}
                         </span>
                       </>
                     );
                   }
                   return (
                     <span style={styles.productPrice}>
-                      {t("L.")} {Number(p.precio_base).toFixed(2)}{" "}
+                      L. {Number(p.precio_base).toFixed(2)}{" "}
                       {p.unidad_medida ? p.unidad_medida : " "}
                     </span>
                   );

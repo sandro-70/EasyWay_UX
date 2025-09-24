@@ -68,7 +68,7 @@ const insertMetodoPago = require("./Inserts/InsertMetodoPago");
 const insertFactura = require("./Inserts/InsertFactura");
 const insertFacturaDetalle = require("./Inserts/InsertFacturaDetalle");
 const insertRolesPrvilegios = require("./Inserts/InsertRolesPrvilegios");
-
+const insertAuditoria = require("./Inserts/InsertAuditoriaInventario");
 // Conexión y sincronización con la base de datos y seeds secuenciales
 (async () => {
   try {
@@ -220,6 +220,14 @@ const insertRolesPrvilegios = require("./Inserts/InsertRolesPrvilegios");
     //   {
     //     status: () => ({
     //       json: (msg) => console.log("Seed de detalles de facturas:", msg),
+    //     }),
+    //   }
+    // );
+    // await insertAuditoria(
+    //   { app: { locals: { db } } },
+    //   {
+    //     status: () => ({
+    //       json: (msg) => console.log("Seed auditoria:", msg),
     //     }),
     //   }
     // );

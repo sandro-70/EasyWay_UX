@@ -70,6 +70,7 @@ exports.tendencias = async (req, res) => {
         "nombre",
         "descripcion",
         "precio_base",
+        "unidad_medida",
         "estrellas",
         "etiquetas",
       ],

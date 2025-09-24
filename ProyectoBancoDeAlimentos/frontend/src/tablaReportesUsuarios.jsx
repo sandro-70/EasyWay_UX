@@ -1,10 +1,11 @@
 import "./tablaReportesUsuarios.css";
-import React, { useState, useEffect, use } from "react";
+import React, { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { getAllInformacionUsuario } from "./api/Usuario.Route";
 import { getPedidosConDetallesUsuario } from "./api/PedidoApi";
 import { getAllFacturasByUserwithDetails } from "./api/FacturaApi";
+import InfoIcon from "./images/info.png"
 
 const Icon = {
   Search: (props) => (
@@ -185,9 +186,35 @@ function TablaReportesUsuarios() {
                 0
               );
 
-              const productoEstrella =
-                calcularProductoEstrella(facturasDelUsuario);
+              const calcularFrecuenciaCompra = (facturas) => {
+                if (!facturas || facturas.length < 2) return "N/A días"; 
 
+                // Extraer fechas y ordenarlas
+                const fechas = facturas
+                  .map(f => new Date(f.fecha_emision)) 
+                  .sort((a, b) => a - b);
+
+                let diferencias = [];
+                for (let i = 1; i < fechas.length; i++) {
+                  const diff = (fechas[i] - fechas[i - 1]) / (1000 * 60 * 60 * 24); 
+                  diferencias.push(diff);
+                }
+
+                // Promedio de días entre compras
+                const promedioDias = diferencias.reduce((a, b) => a + b, 0) / diferencias.length;
+                return `${promedioDias.toFixed(1)} días`;
+              };
+
+              const frecuenciaCompra=calcularFrecuenciaCompra(facturasDelUsuario);
+
+              const productoEstrella=calcularProductoEstrella(facturasDelUsuario);
+
+              if(user.nombre===null){
+                user.nombre="N/A";
+                user.apellido="";
+              }else if(user.apellido===null){
+                user.apellido="";
+              }
               return {
                 id: user.id_usuario,
                 nombre: user.nombre + " " + user.apellido,
@@ -195,6 +222,7 @@ function TablaReportesUsuarios() {
                 productoEstrella: productoEstrella || "N/A",
                 cantidadCompras: cantidadCompras,
                 totalComprado: totalComprado.toFixed(2),
+                frecuenciaCompra: frecuenciaCompra,
               };
             } catch (error) {
               console.error(
@@ -307,7 +335,7 @@ function TablaReportesUsuarios() {
             </select>
 
             <div className="usuario-count">
-              <span>Total De Usuarios: </span>
+              <span>Total De Usuarios Registrados: </span>
               <span className="count-bubble">{filteredData.length}</span>
             </div>
           </div>
@@ -343,6 +371,8 @@ function TablaReportesUsuarios() {
                   <th>Producto Estrella</th>
                   <th>Cantidad de Compras</th>
                   <th>Total Comprado</th>
+                  <th>Promedio por compra</th>
+                  <th>Frecuencia de compra</th>
                 </tr>
               </thead>
               <tbody>
@@ -376,6 +406,13 @@ function TablaReportesUsuarios() {
                       <td>{row.productoEstrella}</td>
                       <td>{row.cantidadCompras}</td>
                       <td>L. {row.totalComprado}</td>
+                      <td>
+                        L.{" "}
+                        {row.cantidadCompras > 0
+                          ? (row.totalComprado / row.cantidadCompras).toFixed(2)
+                          : "0.00"}
+                      </td>
+                      <td>{row.frecuenciaCompra}</td>
                     </tr>
                   ))
                 )}

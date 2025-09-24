@@ -138,7 +138,7 @@ export default function ReportesInventario() {
       <div className="divider" />
 
       <div className="filtros-container">
-        <label>Filtro</label>
+        <label>Ordenar por:</label>
         <select
           className="font-14px border rounded px-3 py-1 bg-[#E6E6E6]"
           value={filtro}

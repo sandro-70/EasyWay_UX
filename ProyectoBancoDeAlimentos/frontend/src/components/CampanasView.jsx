@@ -4,6 +4,8 @@ import { Icon } from "@iconify/react";
 import { getPromociones, desactivarPromocion } from "../api/PromocionesApi";
 import CampanaDetalleModal from "./CampanaDetalleModal"; 
 import "./campanasview.css"
+import { toast } from "react-toastify";
+import "../toast.css";
 
 const tipoToLabel = (id_tipo_promo) => {
   const v = Number(id_tipo_promo);
@@ -57,10 +59,10 @@ export default function CampanasView() {
     try {
       await desactivarPromocion(id);
       await cargar();
-      alert("Campaña eliminada.");
+      toast.success("Campaña eliminada.", { className: "toast-success" });
     } catch (e) {
       console.error(e);
-      alert("No se pudo eliminar la campaña.");
+      toast.error("No se pudo eliminar la campaña.", { className: "toast-error" });
     }
   };
 

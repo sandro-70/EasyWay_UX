@@ -6,6 +6,8 @@ import {
   } from '../api/PedidoApi'; 
 
 import { enviarCorreo, InformacionUser } from "../api/Usuario.Route";
+import { toast } from "react-toastify";
+import "../toast.css";
 
 // Iconitos inline para no depender de librerías
 const IconEye = (props) => (
@@ -125,24 +127,53 @@ const notificarCambioEstado = async (pedidoObj, nuevoIdEstado) => {
 
     if (!correo) return;
 
-    const asunto = `Tu pedido ${numero} cambió a "${estadoNuevo}"`;
-    const descripcion = `
-Hola ${nombreCompleto},
+const asunto = `Actualización de estado • Pedido ${numero}`;
 
-El estado de tu pedido ${numero} ha sido actualizado:
+const descripcion = `
+Estimado/a ${nombreCompleto},
 
+Tu pedido ha cambiado de estado. A continuación el resumen:
+
+═══════════════════════════════════════
+ACTUALIZACIÓN DE ESTADO
+═══════════════════════════════════════
+• Número de Pedido: ${numero}
 • Estado anterior: ${estadoViejo}
 • Estado nuevo: ${estadoNuevo}
-• Fecha: ${new Date().toLocaleString("es-HN")}
+• Fecha: ${new Date().toLocaleDateString("es-HN", {
+  year: "numeric", month: "long", day: "numeric",
+  hour: "2-digit", minute: "2-digit"
+})}
 
-Puedes ver el detalle completo en tu cuenta (Mis pedidos).
-Gracias por comprar en EasyWay.
-    `.trim();
-    console.log("Enviando correo a", correo, "asunto:", asunto, "descripcion:", descripcion);
-    await enviarCorreo(correo, descripcion, asunto);
+═══════════════════════════════════════
+DETALLE Y SIGUIENTES PASOS
+═══════════════════════════════════════
+Puedes ver el detalle completo desde tu cuenta en la sección "Mis pedidos".
+Si no reconoces este cambio, por favor contáctanos respondiendo a este correo.
+
+¡Gracias por comprar en EasyWay!
+
+Atentamente,
+El equipo de EasyWay
+`.trim();
+
+const descripcionHTML =
+  `<div style="white-space:pre-wrap; font-family:Arial, sans-serif; font-size:14px; line-height:1.5">` +
+  descripcion
+    .replace(/&/g, "&amp;")   // escape básico por si hay < o &
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\r?\n/g, "<br/>") // << aquí forzamos los saltos en HTML
+  + `</div>`;
+
+console.log("Enviando correo a", correo, "asunto:", asunto, "descripcion (HTML):", descripcion);
+await enviarCorreo(correo, descripcionHTML, asunto);
+
+toast.success(`Pedido ${numero} actualizado a "${estadoNuevo}". Se envió un correo de notificación.`, { className: "toast-success" });
+
   } catch (err) {
     console.error("No se pudo enviar la notificación por correo:", err);
-    // opcional: alert("Estado cambiado pero no se pudo enviar el correo");
+    toast.error("Estado cambiado pero no se pudo enviar el correo", { className: "toast-error" });
   }
 };
 
@@ -172,7 +203,7 @@ Gracias por comprar en EasyWay.
     }
   } catch (e) {
     console.error(e);
-    alert("No se pudo actualizar el estado del pedido.");
+    toast.error("No se pudo actualizar el estado del pedido.", { className: "toast-error" });
   }
 };
 

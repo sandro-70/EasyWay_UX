@@ -36,13 +36,13 @@ const GestionCupones = () => {
         try {
             const resCupones = await GetCupones();
             if (!resCupones || !resCupones.data) {
-                toast.warning("No se encontraron cupones");
+                toast.warning("No se encontraron cupones", { className: "toast-warn" });
                 return;
             }
             setCupones(resCupones.data);
         } catch (err) {
             console.error("Error al obtener cupones:", err);
-            toast.error("Error al cargar los cupones");
+            toast.error("Error al cargar los cupones", { className: "toast-error" });
         } finally {
             setLoading(false);
         }
@@ -52,19 +52,19 @@ const GestionCupones = () => {
         const { codigo, descripcion, tipo, valor, uso_maximo_por_usuario, termina_en, activo } = nuevoCupon;
         
         if (!codigo.trim()) {
-            toast.error("El código del cupón es obligatorio.");
+            toast.info("El código del cupón es obligatorio.", { className: "toast-info" });
             return;
         }
         if (!descripcion.trim()) {
-            toast.error("La descripción del cupón es obligatoria.");
+            toast.info("La descripción del cupón es obligatoria.", { className: "toast-info" });
             return;
         }
         if (!valor || valor <= 0) {
-            toast.error("El valor del cupón debe ser mayor a 0.");
+            toast.info("El valor del cupón debe ser mayor a 0.", { className: "toast-info" });
             return;
         }
         if (!termina_en) {
-            toast.error("La fecha de expiración es obligatoria.");
+            toast.info("La fecha de expiración es obligatoria.", { className: "toast-info" });
             return;
         }
 
@@ -125,11 +125,11 @@ const GestionCupones = () => {
                 activo: true
             });
             
-            toast.success("Cupón creado exitosamente");
+            toast.success("Cupón creado exitosamente", { className: "toast-success" });
             
         } catch (err) {
             console.error("CrearCupon error:", err);
-            toast.error("No se pudo crear el cupón.");
+            toast.error("No se pudo crear el cupón.", { className: "toast-error" });
         }
     };
 
@@ -196,10 +196,10 @@ const GestionCupones = () => {
 
             setEditOpen(false);
             setCuponEditar(null);
-            toast.success("Cupón actualizado correctamente");
+            toast.success("Cupón actualizado correctamente", { className: "toast-success" });
         } catch (err) {
             console.error("Error al actualizar cupón:", err);
-            toast.error("No se pudo actualizar el cupón");
+            toast.error("No se pudo actualizar el cupón", { className: "toast-error" });
         }
     };
 

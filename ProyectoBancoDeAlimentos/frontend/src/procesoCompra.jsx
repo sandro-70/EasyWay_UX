@@ -13,6 +13,7 @@ import { getAllMetodoPago } from "./api/metodoPagoApi";
 import { crearPedido } from "./api/PedidoApi";
 import { getPromociones } from "./api/PromocionesApi";
 import { toast } from "react-toastify";
+import "./toast.css";
 import arrowL from "./images/arrowL.png";
 import arrowR from "./images/arrowR.png";
 import { enviarCorreo } from "./api/Usuario.Route";
@@ -309,7 +310,7 @@ const ProcesoCompra = () => {
       if (!coupon || !user?.id_usuario) return;
 
       if (isCouponExpired(coupon.termina_en)) {
-        toast.info("El cupón expiró antes de finalizar la compra.");
+        toast.info("El cupón expiró antes de finalizar la compra.", { className: "toast-info" });
         localStorage.removeItem("checkout.coupon");
         setCoupon(null);
         return;
@@ -318,7 +319,7 @@ const ProcesoCompra = () => {
       try {
         const r = await checkCuponUsuario(coupon.id_cupon, user.id_usuario);
         if (r?.data?.usado) {
-          toast.info("Este cupón ya fue usado en otra compra.");
+          toast.info("Este cupón ya fue usado en otra compra.", { className: "toast-info" });
           localStorage.removeItem("checkout.coupon");
           setCoupon(null);
         }
@@ -400,13 +401,13 @@ const ProcesoCompra = () => {
   // Agregar desde recomendados
   const handleAgregar = async (id_producto) => {
     if (!id_producto) {
-      toast.error("ID de producto no válido");
+      toast.error("ID de producto no válido", { className: "toast-error" });
       return;
     }
 
     const stockDisponible = getStockEnSucursal(id_producto);
     if (stockDisponible === 0) {
-      toast.error("Sin stock disponible en esta sucursal");
+      toast.error("Sin stock disponible en esta sucursal", { className: "toast-error" });
       return;
     }
 
@@ -423,7 +424,7 @@ const ProcesoCompra = () => {
 
         if (nuevaCantidad > stockDisponible) {
           toast.info(
-            `Solo hay ${stockDisponible} unidades disponibles en esta sucursal`
+            `Solo hay ${stockDisponible} unidades disponibles en esta sucursal`, { className: "toast-info" }
           );
           return;
         }
@@ -437,7 +438,7 @@ const ProcesoCompra = () => {
           0
         );
         setSubtotal(sub);
-        toast.success("Producto actualizado en el carrito");
+        toast.success("Producto actualizado en el carrito", { className: "toast-success" });
       } else {
         await AddNewCarrito(id_producto, 1);
         const carritoActualizado = await ViewCar();
@@ -449,11 +450,11 @@ const ProcesoCompra = () => {
         );
         setSubtotal(sub);
         incrementCart(1);
-        toast.success("Producto agregado al carrito");
+        toast.success("Producto agregado al carrito", { className: "toast-success" });
       }
     } catch (error) {
       console.error("Error:", error);
-      toast.error("No se pudo agregar el producto al carrito");
+      toast.error("No se pudo agregar el producto al carrito", { className: "toast-error" });
     }
   };
 
@@ -461,12 +462,12 @@ const ProcesoCompra = () => {
   const realizarCompra = async () => {
     if (!user.direccions || user.direccions.length === 0) {
       toast.error(
-        "Debes registrar al menos una dirección antes de realizar la compra"
+        "Debes registrar al menos una dirección antes de realizar la compra", { className: "toast-error" }
       );
       return;
     }
     if (!metodoPago) {
-      toast.error("Selecciona un método de pago");
+      toast.error("Selecciona un método de pago", { className: "toast-error" });
       return;
     }
 
@@ -474,7 +475,7 @@ const ProcesoCompra = () => {
     for (const item of detalles) {
       const stockDisponible = getStockEnSucursal(item.producto.id_producto);
       if (item.cantidad_unidad_medida > stockDisponible) {
-        toast.error(`No hay suficiente stock de ${item.producto.nombre}`);
+        toast.error(`No hay suficiente stock de ${item.producto.nombre}`, { className: "toast-error" });
         return;
       }
     }
@@ -647,20 +648,20 @@ const descripcionHTML =
       } catch (emailError) {
         console.error("Error enviando correo de confirmación:", emailError);
         toast.warning(
-          "Pedido creado correctamente, pero no se pudo enviar el correo de confirmación"
+          "Pedido creado correctamente, pero no se pudo enviar el correo de confirmación", { className: "toast-warn" }
         );
       }
 
       // Limpiar estados UI
       setPromocionAplicada(null);
       setCount(0);
-      toast.success(`¡Pedido #${id_pedido} creado correctamente!`);
+      toast.success(`¡Pedido #${id_pedido} creado correctamente!`, { className: "toast-success" });
       navigate("/misPedidos");
     } catch (err) {
       console.error("Error creando pedido:", err);
       const errorMessage =
         err?.response?.data?.error || "No se pudo crear el pedido";
-      toast.error(errorMessage);
+      toast.error(errorMessage, { className: "toast-error" });
     } finally {
       setLoading(false);
     }
@@ -701,7 +702,7 @@ const descripcionHTML =
         }
       } catch (error) {
         console.error("Error cargando datos iniciales:", error);
-        toast.error("Error cargando datos del checkout");
+        toast.error("Error cargando datos del checkout", { className: "toast-error" });
       }
     };
 

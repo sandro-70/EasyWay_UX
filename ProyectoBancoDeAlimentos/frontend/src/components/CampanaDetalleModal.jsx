@@ -3,6 +3,8 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Icon } from "@iconify/react";
 import { getPromocionById, actualizarPromocion } from "../api/PromocionesApi";
 import axiosInstance from "../api/axiosInstance";
+import { toast } from "react-toastify";
+import "../toast.css";
 
 const tipoToLabel = (t) => (Number(t) === 1 ? "Porcentaje" : Number(t) === 2 ? "Fijo" : "—");
 const labelToTipoId = (labelOrId) => {
@@ -48,7 +50,7 @@ export default function CampanaDetalleModal({ id, mode = "view", onClose, onSave
         });
       } catch (e) {
         console.error("Error cargando campaña:", e);
-        alert("No se pudo cargar la campaña.");
+        toast.error("No se pudo cargar la campaña.", { className: "toast-error" });
         onClose?.();
       } finally {
         setLoading(false);
@@ -129,11 +131,11 @@ export default function CampanaDetalleModal({ id, mode = "view", onClose, onSave
         activa: !!form.activa,
       };
       await actualizarPromocion(id, payload);
-      alert("Campaña actualizada correctamente.");
+      toast.success("Campaña actualizada correctamente.", { className: "toast-success" });
       onSaved?.();
     } catch (e) {
       console.error("No se pudo actualizar la campaña:", e);
-      alert(e?.response?.data?.error || "No se pudo actualizar.");
+      toast.error(e?.response?.data?.error || "No se pudo actualizar.", { className: "toast-error" });
     } finally {
       setSaving(false);
     }

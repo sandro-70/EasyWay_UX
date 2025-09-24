@@ -11,6 +11,8 @@ import {
   getPromociones,
   actualizarPromocion,
 } from "../api/PromocionesApi";
+import { toast } from "react-toastify";
+import "../toast.css";
 
 const initialForm = {
   nombre: "",
@@ -328,10 +330,10 @@ const CampanaPromocional = () => {
     } catch (e) {
       console.error("Error guardando campaña:", e);
       console.log("Server said:", e?.response?.data);
-      alert(
+      toast.error(
         e?.response?.data?.message ||
           e?.response?.data?.error ||
-          "No se pudo guardar la campaña."
+          "No se pudo guardar la campaña.", { className: "toast-error" }
       );
     } finally {
       setLoadingSave(false);

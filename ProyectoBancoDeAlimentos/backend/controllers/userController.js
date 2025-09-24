@@ -1,5 +1,6 @@
 const { Usuario, pedido, factura, direccion} = require('../models');
 const { fn, col } = require('sequelize');
+const nodemailer = require('nodemailer');
 
 exports.estadosUsuarios = async (req, res) => {
   try {
@@ -154,5 +155,41 @@ exports.editarPerfil = async (req, res) => {
   } catch (error) {
     console.error("Error al editar perfil:", error);
     return res.status(500).json({ message: "No se pudo actualizar el perfil", error: error.message });
+  }
+};
+
+exports.enviarCorreo = async (req, res) => {
+  try {
+    const { correo, descripcion, asunto } = req.body;
+
+    if (!correo || typeof correo !== 'string') {
+      return res.status(400).json({ message: 'correo es requerido' });
+    }
+    if (!descripcion || typeof descripcion !== 'string') {
+      return res.status(400).json({ message: 'descripcion (string) es requerida' });
+    }
+
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false, // STARTTLS
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    await transporter.sendMail({
+      from: `"EasyWay Soporte" <${process.env.EMAIL_USER}>`,
+      to: correo,
+      subject: asunto || 'Mensaje de EasyWay',
+      text: descripcion, // ← ya es string
+      html: `<p style="white-space:pre-wrap;margin:0">${descripcion}</p>`,
+    });
+
+    return res.status(200).json({ message: 'Correo enviado correctamente' });
+  } catch (err) {
+    console.error('[enviarCorreoLibre] Error:', err);
+    return res.status(500).json({ message: 'Error al enviar el correo' });
   }
 };

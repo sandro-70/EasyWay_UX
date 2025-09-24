@@ -203,3 +203,9 @@ export function editarPerfil(
     id_municipio,
   });
 }
+
+export function enviarCorreo(correo, descripcion, asunto) {
+  return axiosInstance.post("/api/usuarios/enviar-correo", {
+    correo,descripcion,asunto
+  });
+}

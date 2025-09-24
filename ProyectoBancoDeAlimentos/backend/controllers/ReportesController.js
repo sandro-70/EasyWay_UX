@@ -1,6 +1,6 @@
 const { Sequelize,Op, fn, col, literal  } = require('sequelize');
 const { factura_detalle, producto, factura, pedido, estado_pedido, promocion, promocion_pedido, Usuario, categoria, 
-  subcategoria, promocion_producto, metodo_pago } = require("../models");
+  subcategoria, promocion_producto, metodo_pago, sequelize } = require("../models");
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 
@@ -493,5 +493,82 @@ exports.getReportePedidos = async (req, res) => {
   } catch (err) {
     console.error('Error en getReportePedidos:', err);
     return res.status(500).json({ message: 'Error interno al generar reporte de pedidos' });
+  }
+};
+
+exports.getReportePromocionZ = async (req, res) => {
+  try {
+    const id_promocion = parseInt(req.params.id_promocion, 10);
+    if (Number.isNaN(id_promocion)) {
+      return res.status(400).json({ message: 'id_promocion inválido' });
+    }
+
+    const promo = await promocion.findByPk(id_promocion, {
+      attributes: ['id_promocion', 'nombre_promocion'],
+    });
+    if (!promo) {
+      return res.status(404).json({ message: 'Promoción no encontrada' });
+    }
+
+    const total_productos = await promocion_producto.count({
+      where: { id_promocion },
+    });
+
+    return res.json({
+      id_promocion: promo.id_promocion,
+      nombre_promocion: promo.nombre_promocion,
+      total_productos,
+    });
+  } catch (err) {
+    console.error('[getResumenPromocionProductos] Error:', err);
+    return res.status(500).json({ message: 'Error al obtener resumen de promoción' });
+  }
+};
+
+exports.getInfoUsuario = async (req, res) => {
+  try {
+    const id_pedido = Number(req.params.id_pedido ?? req.params.id);
+    if (!Number.isInteger(id_pedido)) {
+      return res.status(400).json({ message: 'id_pedido inválido' });
+    }
+
+    const row = await pedido.findOne({
+      where: { id_pedido },
+      attributes: [],
+      include: [
+        { model: Usuario, attributes: ['id_usuario', 'nombre', 'apellido'], required: false },
+        {
+          model: factura,
+          attributes: [],
+          required: false,
+          include: [{ model: metodo_pago, attributes: ['tarjeta_ultimo'], required: false }],
+        },
+      ],
+    });
+
+    if (!row) return res.status(404).json({ message: 'Pedido no encontrado' });
+    if (!row.Usuario) {
+      return res.status(404).json({ message: 'Usuario del pedido no encontrado' });
+    }
+
+    let ultimos_cuatro = row.factura?.metodo_pago?.tarjeta_ultimo ?? null;
+
+    if (!ultimos_cuatro) {
+      const mp = await metodo_pago.findOne({
+        where: { id_usuario: row.Usuario.id_usuario, metodo_predeterminado: true },
+        attributes: ['tarjeta_ultimo'],
+        order: [['fecha_creacion', 'DESC']],
+      });
+      if (mp) ultimos_cuatro = mp.tarjeta_ultimo ?? null;
+    }
+
+    return res.json({
+      nombre: row.Usuario.nombre,
+      apellido: row.Usuario.apellido,
+      ultimos_cuatro: ultimos_cuatro,
+    });
+  } catch (err) {
+    console.error('[getInfoUsuario] Error:', err);
+    return res.status(500).json({ message: 'Error al obtener datos' });
   }
 };

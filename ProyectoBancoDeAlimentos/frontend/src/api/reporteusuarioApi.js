@@ -55,3 +55,7 @@ export function usuariosMasGastos(){
 export function getStock(){
     return axiosInstance.get('/api/producto/get-stock-sucursal');
 }
+
+export function getInfoUsuario(id_pedido){
+    return axiosInstance.get(`/api/reportes/get-info-usuario/${id_pedido}`);
+}

@@ -11,6 +11,8 @@ router.get('/ingresos-promocion', reportesController.ingresosPromocionesUltimos4
 router.get('/usuarios-gastos', reportesController.usuariosMasGastos);
 router.get('/promociones', reportesController.getReportePromociones);
 router.get('/reporte-pedidos', reportesController.getReportePedidos);
+router.get('/reporte-promos/:id_promocion', reportesController.getReportePromocionZ);
+router.get('/get-info-usuario/:id_pedido', reportesController.getInfoUsuario);
 
 module.exports = router;
 

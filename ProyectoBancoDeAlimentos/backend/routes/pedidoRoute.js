@@ -4,6 +4,8 @@ const authenticateJWT = require("../middleware/authenticateJWT");
 
 const pedidoController = require("../controllers/pedidoController");
 
+router.get('/get-pedidoz/:id_usuario', pedidoController.getPedidosByUsuario);
+
 router.get("/get-pedido-estado/:id_usuario", pedidoController.getPedidosEstado);
 
 router.get('/get-pedido-producto/:id_producto', pedidoController.getPedidosPorProducto);

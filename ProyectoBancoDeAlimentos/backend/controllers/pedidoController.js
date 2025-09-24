@@ -834,3 +834,23 @@ exports.getPedidosPorProducto = async (req, res) => {
     res.status(500).json({ message: "Error interno del servidor" });
   }
 };
+
+exports.getPedidosByUsuario = async (req, res) => {
+  try {
+    const { id_usuario } = req.params;
+
+    const pedidos = await pedido.findAll({
+      where: { id_usuario },
+      attributes: { exclude: [] }
+    });
+
+    if (!pedidos.length) {
+      return res.status(404).json({ message: "Este usuario no tiene pedidos" });
+    }
+
+    return res.status(200).json(pedidos);
+  } catch (error) {
+    console.error("Error obteniendo pedidos del usuario:", error);
+    return res.status(500).json({ message: "Error interno del servidor" });
+  }
+};

@@ -72,3 +72,6 @@ export function getPedidosPorProducto(id_producto) {
   return axiosInstance.get(`/api/pedidos/get-pedido-producto/${id_producto}`);
 }
 
+export function getPedidosByUsuario(id_usuario) {
+  return axiosInstance.get(`/api/pedidos/detalles/${id_usuario}`);
+}

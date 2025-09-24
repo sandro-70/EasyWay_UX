@@ -2,7 +2,7 @@ const { categoria, producto } = require('../models');
 
 exports.listar = async (req, res) => {
   try {
-    const data = await categoria.findAll({ attributes: ['id_categoria', 'nombre', 'icono_categoria'] });
+    const data = await categoria.findAll({ attributes: ['id_categoria', 'nombre', 'icono_categoria', 'PorcentajeDeGananciaMinimo'] });
     res.json(data);
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -11,7 +11,7 @@ exports.listar = async (req, res) => {
 
 exports.obtener = async (req, res) => {
   try {
-    const item = await categoria.findByPk(req.params.id, { attributes: ['id_categoria', 'nombre', 'icono_categoria'] });
+    const item = await categoria.findByPk(req.params.id, { attributes: ['id_categoria', 'nombre', 'icono_categoria','PorcentajeDeGananciaMinimo'] });
     if (!item) return res.status(404).json({ msg: 'Categoría no encontrada' });
     res.json(item);
   } catch (e) {

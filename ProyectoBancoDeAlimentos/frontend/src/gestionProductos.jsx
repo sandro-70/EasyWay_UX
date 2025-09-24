@@ -401,6 +401,7 @@ function GestionProductos() {
   const [editCatFile, setEditCatFile] = useState(null);
   const [editSubName, setEditSubName] = useState("");
   const [editSubId, setEditSubId] = useState(null);
+  const  [PorcentajeDeGananciaMinimo, setPorcentajeDeGananciaMinimo] = useState(0);
 
   // Datos
   const [categories, setCategories] = useState([]);
@@ -416,6 +417,7 @@ function GestionProductos() {
           name: c.nombre,
           icono_categoria: c.icono_categoria || "",
           subcategories: [],
+          PorcentajeDeGananciaMinimo: c.PorcentajeDeGananciaMinimo,
         }));
         setCategories(mapped);
 
@@ -464,6 +466,7 @@ function GestionProductos() {
           name: category,
           icono_categoria: "",
           subcategories: [],
+          PorcentajeDeGananciaMinimo: 0,
         },
       ]);
     } else {
@@ -474,6 +477,7 @@ function GestionProductos() {
           name: category.nombre,
           icono_categoria: category.icono_categoria || "",
           subcategories: [],
+          PorcentajeDeGananciaMinimo: category.PorcentajeDeGananciaMinimo || 0,
         },
       ]);
     }
@@ -497,6 +501,7 @@ function GestionProductos() {
               ...c,
               name: newName ?? c.name,
               icono_categoria: newIconUrl ?? c.icono_categoria,
+              PorcentajeDeGananciaMinimo: PorcentajeDeGananciaMinimo ?? c.PorcentajeDeGananciaMinimo,
             }
           : c
       )
@@ -585,13 +590,14 @@ function GestionProductos() {
           icono_categoria = `/images/categorias/${uploadData.filename}`;
         }
       }
-      const res = await CrearCategoria(newCategory.trim(), icono_categoria);
+      const res = await CrearCategoria(newCategory.trim(), icono_categoria, PorcentajeDeGananciaMinimo );
       const created = res?.data;
       if (created) {
         addCategoryLocal({
           id_categoria: created.id_categoria,
           nombre: newCategory.trim(),
           icono_categoria: created.icono_categoria || "",
+          PorcentajeDeGananciaMinimo: created.PorcentajeDeGananciaMinimo || PorcentajeDeGananciaMinimo,
         });
         setCategoria(newCategory.trim());
         await loadSubcategories(created.id_categoria);
@@ -647,6 +653,7 @@ function GestionProductos() {
     setEditCatName(cat.name);
     setEditCatFile(null);
     setShowEditCat(true);
+    setPorcentajeDeGananciaMinimo(cat.PorcentajeDeGananciaMinimo || 0);
   }
 
   async function submitEditCategory(e) {
@@ -666,7 +673,7 @@ function GestionProductos() {
           icono_categoria = `/images/categorias/${uploadData.filename}`;
         }
       }
-      await ActualizarCategoria(editCatId, editCatName.trim(), icono_categoria);
+      await ActualizarCategoria(editCatId, editCatName.trim(), icono_categoria, PorcentajeDeGananciaMinimo);
       updateCategoryLocal(editCatId, editCatName.trim(), icono_categoria);
       setShowEditCat(false);
       setEditCatFile(null);
@@ -694,7 +701,7 @@ function GestionProductos() {
       await actualizarSubcategoria(
         editSubId,
         editSubName.trim(),
-        cat.id_categoria
+        cat.id_categoria, PorcentajeDeGananciaMinimo
       );
       updateSubcategoryLocal(cat.id_categoria, editSubId, editSubName.trim());
       setShowEditSub(false);
@@ -848,6 +855,22 @@ function GestionProductos() {
                   onChange={(e) => setNew(e.target.value)}
                   required
                 />
+
+
+<label
+                  htmlFor="nombreCat"
+                  className="block text-sm font-medium text-gray-700 text-left"
+                >
+                  Porcentaje de ganancia mínimo
+                </label>
+                <input
+                  id="porcentajeGananciaMinimo"
+                  type="number"
+                  className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => setPorcentajeDeGananciaMinimo(e.target.value)}
+                  required
+                />
+
               </div>
               <div className="col-span-2 mt-2 flex justify-end gap-3">
                 <button
@@ -951,6 +974,20 @@ function GestionProductos() {
                   className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   value={editCatName}
                   onChange={(e) => setEditCatName(e.target.value)}
+                  required
+                />
+                <label  
+                  htmlFor="nombreCat"
+                  className="block text-sm font-medium text-gray-700 text-left mt-4"
+                >
+                  Porcentaje de ganancia mínimo
+                </label>
+                <input
+                  id="porcentajeGananciaMinimo"
+                  type="number"
+                  className="mt-1 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={PorcentajeDeGananciaMinimo}
+                  onChange={(e) => setPorcentajeDeGananciaMinimo(e.target.value)}
                   required
                 />
               </div>

@@ -1,4 +1,3 @@
-// src/Carrito.jsx
 import axiosInstance from "../src/api/axiosInstance"; // ⬅️ nuevo
 import { useState, useEffect, useContext } from "react";
 import carrito from "./images/carrito_icon.png";
@@ -230,24 +229,39 @@ function Carrito() {
     }
   };
 
+  // ---------- NUEVO: helpers para stacking Promoción -> Cupón ----------
+  const obtenerDescuentoPromocionSolo = () => {
+    const { descuento } = promocionAplicada
+      ? calcularDescuentoPromocion()
+      : { descuento: 0 };
+    return Number(descuento) || 0;
+  };
+
+  const calcularDescuentoCupon = (base) => {
+    if (!discount || !descCupon) return 0;
+    const v = Number(descCupon.valor) || 0;
+    if (v <= 0) return 0;
+
+    if (descCupon.tipo === "porcentaje") {
+      return Math.max(0, base * (v / 100));
+    } else if (descCupon.tipo === "fijo") {
+      return Math.min(v, Math.max(0, base));
+    }
+    return 0;
+  };
+  // --------------------------------------------------------------------
+
   const obtenerDescuentoTotal = () => {
     const subtotal = Number(total) || 0;
 
-    let descuentoCupon = 0;
-    if (discount && descCupon) {
-      const v = Number(descCupon.valor) || 0;
-      if (descCupon.tipo === "porcentaje") {
-        descuentoCupon = subtotal * (v / 100);
-      } else if (descCupon.tipo === "fijo") {
-        descuentoCupon = Math.min(v, subtotal);
-      }
-    }
+    // 1) descuento de promoción sobre subtotal
+    const descPromo = obtenerDescuentoPromocionSolo();
 
-    const { descuento: descuentoPromocion } = promocionAplicada
-      ? calcularDescuentoPromocion()
-      : { descuento: 0 };
+    // 2) cupón sobre el subtotal ya con la promo aplicada
+    const baseParaCupon = Math.max(0, subtotal - descPromo);
+    const descCup = calcularDescuentoCupon(baseParaCupon);
 
-    return descuentoCupon + descuentoPromocion;
+    return descPromo + descCup;
   };
 
   const obtenerSubtotalConDescuento = () => {
@@ -425,9 +439,16 @@ function Carrito() {
         return;
       }
 
-      // ✅ Válido
       setVisible(true);
       setDesc(c);
+      const payload = {
+        id_cupon: c.id_cupon,
+        codigo: c.codigo,
+        tipo: c.tipo, // "porcentaje" | "fijo"
+        valor: Number(c.valor) || 0,
+        termina_en: c.termina_en || c.fecha_expiracion || null,
+      };
+      localStorage.setItem("checkout.coupon", JSON.stringify(payload));
       const val = Number(c.valor) || 0;
       toast.success(
         `Cupón agregado: ${c.codigo} (${
@@ -522,7 +543,9 @@ function Carrito() {
       setCount(0);
       setShowProd(false);
       setVisible(false);
-      toast("Pedido creado correctamente!", { className: "toast-default" });
+      toast(`¡Pedido #${id_pedido} creado correctamente!`, {
+        className: "toast-default",
+      });
       console.log("Pedido creado:", response.data);
     } catch (err) {
       console.error("Error creando pedido:", err);
@@ -1388,21 +1411,29 @@ function Carrito() {
                       <span>L. {total.toFixed(2)}</span>
                     </li>
 
-                    {/* Descuento de cupón */}
-                    {discount && descCupon.valor > 0 && (
+                    {/* Descuento de cupón (aplicado DESPUÉS de la promo) */}
+                    {discount && descCupon?.valor > 0 && (
                       <li className="flex justify-between text-blue-600">
                         <span>
-                          Descuento cupón (
-                          {descCupon.tipo === "porcentaje"
-                            ? `${descCupon.valor}%`
-                            : `L. ${descCupon.valor.toFixed(2)}`}
-                          )
+                          Descuento cupón{" "}
+                          {descCupon?.codigo
+                            ? `(${descCupon.codigo})`
+                            : descCupon.tipo === "porcentaje"
+                            ? `(${descCupon.valor}%)`
+                            : `(L. ${Number(descCupon.valor).toFixed(2)})`}
                         </span>
                         <span>
                           -L.{" "}
-                          {descCupon.tipo === "porcentaje"
-                            ? (total * (descCupon.valor / 100)).toFixed(2)
-                            : descCupon.valor.toFixed(2)}
+                          {(() => {
+                            const descPromo = obtenerDescuentoPromocionSolo();
+                            const baseParaCupon = Math.max(
+                              0,
+                              Number(total) - descPromo
+                            );
+                            const montoCupon =
+                              calcularDescuentoCupon(baseParaCupon);
+                            return montoCupon.toFixed(2);
+                          })()}
                         </span>
                       </li>
                     )}
@@ -1448,7 +1479,12 @@ function Carrito() {
                     </li>
 
                     <button
-                      onClick={() => navigate("/procesoCompra")}
+                      onClick={() => {
+                        const coupon = JSON.parse(
+                          localStorage.getItem("checkout.coupon") || "null"
+                        );
+                        navigate("/procesoCompra", { state: { coupon } });
+                      }}
                       className="bg-[#F0833E] rounded-md text-white text-xl w-full p-1"
                     >
                       Efectuar Compra

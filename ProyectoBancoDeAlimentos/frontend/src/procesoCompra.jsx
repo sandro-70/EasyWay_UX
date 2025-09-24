@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useContext } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useContext, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import axiosInstance from "./api/axiosInstance";
 import { UserContext } from "./components/userContext";
 import { useCart } from "./utils/CartContext";
-import { ViewCar } from "./api/CarritoApi";
+import { ViewCar, AddNewCarrito, SumarItem } from "./api/CarritoApi";
 import {
   getAllSucursales,
   listarProductosporsucursal,
@@ -12,12 +12,16 @@ import {
 import { getAllMetodoPago } from "./api/metodoPagoApi";
 import { crearPedido } from "./api/PedidoApi";
 import { getPromociones } from "./api/PromocionesApi";
-import { AddNewCarrito, SumarItem } from "./api/CarritoApi";
 import { toast } from "react-toastify";
-import { useRef } from "react";
 import arrowL from "./images/arrowL.png";
 import arrowR from "./images/arrowR.png";
 import { enviarCorreo } from "./api/Usuario.Route";
+import {
+  usarCuponHistorial,
+  editarCupon,
+  desactivarCupon,
+  checkCuponUsuario,
+} from "./api/CuponesApi";
 
 // Helper para construir URL de imágenes
 const BACKEND_ORIGIN = (() => {
@@ -47,12 +51,51 @@ const ProcesoCompra = () => {
   const { user } = useContext(UserContext);
   const { setCount, incrementCart } = useCart();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Lee cupón desde navigate(state) o desde localStorage
+  const [coupon, setCoupon] = useState(() => {
+    return (
+      location.state?.coupon ||
+      JSON.parse(localStorage.getItem("checkout.coupon") || "null")
+    );
+  });
+
+  // ==== Helpers fecha cupón (mismos criterios que en Carrito) ====
+  const parseCouponDateLocal = (input) => {
+    if (!input) return null;
+    const s = String(input).trim();
+    const ymd = s.split("T")[0];
+    const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(ymd);
+    if (!m) {
+      const d = new Date(s);
+      return isNaN(d)
+        ? null
+        : new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+    }
+    const y = Number(m[1]),
+      mo = Number(m[2]) - 1,
+      d = Number(m[3]);
+    return new Date(y, mo, d, 0, 0, 0, 0);
+  };
+
+  const startOfDayLocal = (date = new Date()) => {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+
+  const isCouponExpired = (termina_en) => {
+    const exp = parseCouponDateLocal(termina_en);
+    if (!exp) return false;
+    const today = startOfDayLocal();
+    return today.getTime() >= exp.getTime(); // HOY ya no se puede usar
+  };
 
   // Estados del checkout
   const [direccionSeleccionada, setDireccionSeleccionada] = useState("");
   const [metodoPago, setMetodoPago] = useState("");
   const [mostrarResumen, setMostrarResumen] = useState(false);
-  const [checklistCompleto, setChecklistCompleto] = useState({});
 
   // Estados de datos
   const [detalles, setDetalles] = useState([]);
@@ -63,17 +106,12 @@ const ProcesoCompra = () => {
   const [promociones, setPromociones] = useState([]);
   const [promocionAplicada, setPromocionAplicada] = useState(null);
 
-  // Estados para cupones
-  const [codigoCupon, setCodigoCupon] = useState("");
-  const [cuponAplicado, setCuponAplicado] = useState(null);
-  const [cuponValidado, setCuponValidado] = useState(false);
-
-  // Estados para productos recomendados
+  // Productos recomendados
   const [prodRec, setProdRec] = useState([]);
   const [hoveredProductRec, setHoveredProductRec] = useState(null);
   const prodRefRecomendados = useRef(null);
 
-  // Estados para promociones por producto (igual que en Carrito)
+  // Promos por producto
   const [promosPorProducto, setPromosPorProducto] = useState({});
   const [promosInfo, setPromosInfo] = useState({});
 
@@ -98,7 +136,7 @@ const ProcesoCompra = () => {
     return producto ? producto.stock_en_sucursal : 0;
   };
 
-  // Funciones para promociones por producto (igual que en Carrito)
+  // ==== Promos por producto ====
   const isDateInRange = (startStr, endStr) => {
     const today = new Date();
     const start = startStr ? new Date(startStr) : null;
@@ -152,7 +190,7 @@ const ProcesoCompra = () => {
     return best;
   };
 
-  // Funciones auxiliares para cargar promociones
+  // Cargar promos
   const cargarPromosDetalles = async () => {
     try {
       const res = await axiosInstance.get("/api/promociones/detalles");
@@ -175,7 +213,7 @@ const ProcesoCompra = () => {
   const cargarPromosInfo = async () => {
     try {
       const res = await axiosInstance.get("/api/promociones/listarorden");
-      const arr = Array.isArray(res?.data) ? res.data : [];
+    const arr = Array.isArray(res?.data) ? res.data : [];
       const map = {};
       for (const p of arr) {
         map[Number(p.id_promocion)] = {
@@ -214,11 +252,11 @@ const ProcesoCompra = () => {
     }
   };
 
-  // Validar promoción
+  // ====== Promociones globales ======
   const validarFechaPromocion = (fechaInicio, fechaTermina) => {
     const hoy = new Date();
-    const inicio = new Date(fechaInicio + 'T00:00:00');
-    const termina = new Date(fechaTermina + 'T00:00:00');
+    const inicio = new Date(fechaInicio);
+    const termina = new Date(fechaTermina);
     return hoy >= inicio && hoy <= termina;
   };
 
@@ -230,7 +268,6 @@ const ProcesoCompra = () => {
     );
   };
 
-  // Encontrar mejor promoción
   const encontrarMejorPromocion = (totalCarrito, promocionesDisponibles) => {
     const promocionesValidas = obtenerPromocionesValidas(
       promocionesDisponibles
@@ -266,143 +303,83 @@ const ProcesoCompra = () => {
     return mejorPromocion;
   };
 
-  // Calcular descuentos
-  const calcularDescuentoPromocion = () => {
-    if (!promocionAplicada) return { descuento: 0 };
+  // ====== Revalidar cupón al entrar ======
+  useEffect(() => {
+    (async () => {
+      if (!coupon || !user?.id_usuario) return;
+
+      if (isCouponExpired(coupon.termina_en)) {
+        toast.info("El cupón expiró antes de finalizar la compra.");
+        localStorage.removeItem("checkout.coupon");
+        setCoupon(null);
+        return;
+      }
+
+      try {
+        const r = await checkCuponUsuario(coupon.id_cupon, user.id_usuario);
+        if (r?.data?.usado) {
+          toast.info("Este cupón ya fue usado en otra compra.");
+          localStorage.removeItem("checkout.coupon");
+          setCoupon(null);
+        }
+      } catch {
+        // Si falla el check, no bloquees; el backend validará igual
+      }
+    })();
+  }, [coupon, user?.id_usuario]);
+
+  // ====== Cálculo de descuentos/totales ======
+
+  // Descuento de promoción solo
+  const obtenerDescuentoPromocionSolo = () => {
+    if (!promocionAplicada) return 0;
     const porcentaje = parseFloat(promocionAplicada.valor_porcentaje) || 0;
     const valorFijo = parseFloat(promocionAplicada.valor_fijo) || 0;
-
-    switch (promocionAplicada.id_tipo_promo) {
-      case 1:
-        return { descuento: subtotal * (porcentaje / 100) };
-      case 2:
-        return { descuento: Math.min(valorFijo, subtotal) };
-      default:
-        return { descuento: 0 };
+    if (promocionAplicada.id_tipo_promo === 1) {
+      return subtotal * (porcentaje / 100);
+    } else if (promocionAplicada.id_tipo_promo === 2) {
+      return Math.min(valorFijo, subtotal);
     }
+    return 0;
   };
 
-  // Función para validar cupón
-  const validarCupon = async (codigo) => {
-    if (!codigo.trim()) {
-      setCuponAplicado(null);
-      setCuponValidado(false);
-      return;
+  // Descuento de cupón sobre un subtotal base
+  const calcularDescuentoCupon = (base) => {
+    if (!coupon) return 0;
+    const v = Number(coupon.valor) || 0;
+    if (v <= 0) return 0;
+    if (coupon.tipo === "porcentaje") {
+      return Math.max(0, base * (v / 100));
+    } else if (coupon.tipo === "fijo") {
+      return Math.min(v, Math.max(0, base));
     }
-
-    if (!user || !user.id_usuario) {
-      toast.error("Usuario no autenticado");
-      setCuponAplicado(null);
-      setCuponValidado(false);
-      return;
-    }
-
-    try {
-      // Obtener detalles del cupón
-      const cuponResponse = await axiosInstance.get('/api/cupones/cupones');
-      const cupones = cuponResponse.data;
-      console.log("cupones length:", cupones.length);
-      console.log("codigo to find:", codigo);
-      const cuponEncontrado = cupones.find(c => c.codigo.toLowerCase() === codigo.toLowerCase());
-      console.log("cuponEncontrado:", cuponEncontrado);
-
-      if (!cuponEncontrado) {
-        toast.error("Cupón no encontrado o inválido");
-        setCuponAplicado(null);
-        setCuponValidado(false);
-        return;
-      }
-
-      // Verificar fecha de expiración
-      const hoy = new Date();
-      let fechaStr = cuponEncontrado.fecha_expiracion;
-      if (fechaStr.includes(' ')) {
-        fechaStr = fechaStr.replace(' ', 'T');
-      }
-      const fechaExpiracion = new Date(fechaStr);
-      console.log("fechaStr:", fechaStr);
-      console.log("fechaExpiracion:", fechaExpiracion);
-      console.log("hoy:", hoy);
-      console.log("is expired:", fechaExpiracion < hoy);
-      if (fechaExpiracion < hoy) {
-        toast.error("Este cupón ha expirado");
-        setCuponAplicado(null);
-        setCuponValidado(false);
-        return;
-      }
-
-      // Verificar si está activo
-      if (!cuponEncontrado.activo) {
-        toast.error("Este cupón no está activo");
-        setCuponAplicado(null);
-        setCuponValidado(false);
-        return;
-      }
-
-      // Verificar si el cupón ya fue usado por este usuario
-      const response = await axiosInstance.get(`/api/cupones/check-uso/${cuponEncontrado.id_cupon}/usuario/${user.id_usuario}`);
-      console.log("usos from API:", response.data.usos);
-      console.log("max per user:", cuponEncontrado.uso_maximo_por_usuario);
-      console.log("is over limit:", response.data.usos >= cuponEncontrado.uso_maximo_por_usuario);
-
-      if (response.data.usos >= cuponEncontrado.uso_maximo_por_usuario) {
-        toast.error("Este cupón ha alcanzado su límite de uso por usuario");
-        setCuponAplicado(null);
-        setCuponValidado(false);
-        return;
-      }
-
-      setCuponAplicado(cuponEncontrado);
-      console.log("cuponAplicado set to:", cuponEncontrado);
-      setCuponValidado(true);
-      toast.success("Cupón aplicado correctamente");
-    } catch (error) {
-      console.error("Error validando cupón:", error);
-      toast.error("Error al validar el cupón");
-      setCuponAplicado(null);
-      setCuponValidado(false);
-    }
+    return 0;
   };
 
-  // Función para aplicar cupón
-  const aplicarCupon = () => {
-    validarCupon(codigoCupon);
-  };
-
+  // Pipeline: promo -> cupón -> impuesto -> envío
   const obtenerDescuentoTotal = () => {
-    let total = 0;
+    const descPromo = obtenerDescuentoPromocionSolo();
+    const subtotalTrasPromo = Math.max(0, subtotal - descPromo);
+    const descCupon = calcularDescuentoCupon(subtotalTrasPromo);
+    return descPromo + descCupon;
+  };
 
-    // Solo aplicar descuento si hay un cupón válido
-    if (cuponAplicado && cuponValidado) {
-      const tipo = Number(cuponAplicado.tipo);
-      const valor = parseFloat(cuponAplicado.valor) || 0;
-
-      if (tipo === 1 && valor > 0) { // Porcentaje
-        total = subtotal * (valor / 100);
-      } else if (tipo === 2 && valor > 0) { // Valor fijo
-        total = Math.min(valor, subtotal);
-      }
-    }
-
-    return total;
+  const obtenerSubtotalConDescuento = () => {
+    const descPromo = obtenerDescuentoPromocionSolo();
+    const subtotalTrasPromo = Math.max(0, subtotal - descPromo);
+    const descCupon = calcularDescuentoCupon(subtotalTrasPromo);
+    return Math.max(0, subtotalTrasPromo - descCupon);
   };
 
   const obtenerImpuesto = () => {
-    return subtotal * 0.15;
-  };
-
-  const obtenerTotalSinDescuento = () => {
-    const impuesto = obtenerImpuesto();
-    return subtotal + impuesto + 10; // +10 por envío
+    return obtenerSubtotalConDescuento() * 0.15;
   };
 
   const obtenerTotal = () => {
-    const totalSinDescuento = obtenerTotalSinDescuento();
-    const descuento = obtenerDescuentoTotal();
-    return Math.max(0, totalSinDescuento - descuento);
+    return obtenerSubtotalConDescuento() + obtenerImpuesto() + 10; // envío fijo 10
   };
 
-  // Helper para estrellas
+  // Helper estrellas
   const getStars = (obj) => {
     const n = Math.round(
       Number(obj?.estrellas ?? obj?.rating ?? obj?.valoracion ?? 0)
@@ -410,7 +387,7 @@ const ProcesoCompra = () => {
     return Math.max(0, Math.min(5, isNaN(n) ? 0 : n));
   };
 
-  // Función de scroll para productos recomendados
+  // Scroll recomendaciones
   const scroll = (direction, ref, itemWidth) => {
     if (ref.current) {
       ref.current.scrollBy({
@@ -420,7 +397,7 @@ const ProcesoCompra = () => {
     }
   };
 
-  // Función para agregar productos al carrito desde recomendados
+  // Agregar desde recomendados
   const handleAgregar = async (id_producto) => {
     if (!id_producto) {
       toast.error("ID de producto no válido");
@@ -434,7 +411,6 @@ const ProcesoCompra = () => {
     }
 
     try {
-      console.log("Agregando producto:", id_producto);
       const carritoActual = await ViewCar();
       const carritoDetalles = carritoActual.data.carrito_detalles ?? [];
       const productoExistente = carritoDetalles.find(
@@ -453,32 +429,26 @@ const ProcesoCompra = () => {
         }
 
         await SumarItem(id_producto, nuevaCantidad);
-        // Recargar el carrito
         const carritoActualizado = await ViewCar();
         const nuevosDetalles = carritoActualizado.data.carrito_detalles ?? [];
         setDetalles(nuevosDetalles);
-
-        // Recalcular subtotal
         const sub = nuevosDetalles.reduce(
           (acc, item) => acc + (item.subtotal_detalle || 0),
           0
         );
         setSubtotal(sub);
-
         toast.success("Producto actualizado en el carrito");
       } else {
         await AddNewCarrito(id_producto, 1);
         const carritoActualizado = await ViewCar();
         const nuevosDetalles = carritoActualizado.data.carrito_detalles ?? [];
         setDetalles(nuevosDetalles);
-
-        // Recalcular subtotal
         const sub = nuevosDetalles.reduce(
           (acc, item) => acc + (item.subtotal_detalle || 0),
           0
         );
         setSubtotal(sub);
-        incrementCart(1); 
+        incrementCart(1);
         toast.success("Producto agregado al carrito");
       }
     } catch (error) {
@@ -487,16 +457,7 @@ const ProcesoCompra = () => {
     }
   };
 
-  // Manejar checkbox del checklist
-  const handleCheckboxChange = (index) => {
-    setChecklistCompleto((prev) => ({
-      ...prev,
-      [index]: !prev[index],
-    }));
-  };
-
   // Realizar compra
-  // Realizar compra con envío de correo
   const realizarCompra = async () => {
     if (!user.direccions || user.direccions.length === 0) {
       toast.error(
@@ -504,7 +465,6 @@ const ProcesoCompra = () => {
       );
       return;
     }
-
     if (!metodoPago) {
       toast.error("Selecciona un método de pago");
       return;
@@ -527,61 +487,54 @@ const ProcesoCompra = () => {
         direccionSeleccionada || user.direccions[0].id_direccion.toString();
       const sucursalId = Number(idSucursal ?? sucursales[0]?.id_sucursal ?? 2);
 
-      // Debug information - show what we're sending
-      console.log("=== DEBUG INFO - CREANDO PEDIDO ===");
-      console.log("Usuario ID:", user.id_usuario);
-      console.log("Dirección ID:", id_direccion);
-      console.log("Sucursal ID:", sucursalId);
-      console.log("Promoción aplicada:", promocionAplicada ? {
-        id: promocionAplicada.id_promocion,
-        nombre: promocionAplicada.nombre_promocion,
-        tipo: promocionAplicada.id_tipo_promo,
-        valor: promocionAplicada.valor_porcentaje || promocionAplicada.valor_fijo
-      } : null);
-      console.log("Cupón aplicado:", cuponAplicado ? {
-        id: cuponAplicado.id_cupon,
-        codigo: cuponAplicado.codigo,
-        tipo: cuponAplicado.tipo,
-        valor: cuponAplicado.valor
-      } : null);
-      console.log("Descuento total:", descuento);
-      console.log("Total factura:", total_factura);
-      console.log("=====================================");
-
-      console.log("About to send pedido");
-      console.log("cuponAplicado:", cuponAplicado);
-      console.log("id_cupon:", cuponAplicado ? cuponAplicado.id_cupon : null);
-      console.log("descuento:", descuento);
-
       const response = await crearPedido(
         user.id_usuario,
         id_direccion,
         sucursalId,
-        cuponAplicado ? cuponAplicado.id_cupon : null,
+        promocionAplicada ? promocionAplicada.id_promocion : null,
         descuento
       );
 
       const id_pedido = response.data.id_pedido;
 
-      // Marcar el cupón como usado si se aplicó uno
-      if (cuponAplicado) {
-        try {
-          await axiosInstance.post('/api/cupones/usar-cupon', {
-            id_cupon: cuponAplicado.id_cupon,
-            id_usuario: user.id_usuario,
-            id_pedido: id_pedido,
-            fecha_usado: new Date().toISOString()
-          });
-          console.log("Cupón marcado como usado correctamente");
-        } catch (cuponError) {
-          console.error("Error al marcar cupón como usado:", cuponError);
-          // No interrumpir el flujo si falla marcar el cupón
+      // === Registrar cupón en historial y actualizar usos ===
+      try {
+        if (coupon?.id_cupon) {
+          await usarCuponHistorial(
+            coupon.id_cupon,
+            user.id_usuario,
+            id_pedido,
+            new Date().toISOString()
+          );
+
+          if (typeof coupon.uso_maximo_por_usuario !== "undefined") {
+            const usosRestantes =
+              Number(coupon.uso_maximo_por_usuario) - 1;
+            if (usosRestantes > 0) {
+              await editarCupon(
+                coupon.id_cupon,
+                coupon.codigo,
+                coupon.descripcion || "",
+                coupon.tipo,
+                coupon.valor,
+                usosRestantes,
+                coupon.termina_en,
+                true
+              );
+            } else {
+              await desactivarCupon(coupon.id_cupon);
+            }
+          }
+          localStorage.removeItem("checkout.coupon");
+          setCoupon(null);
         }
+      } catch (cupErr) {
+        console.error("Cupón: error registrando/actualizando:", cupErr);
+        // No abortar la compra; el pedido ya existe
       }
 
-      // **NUEVO: Enviar correo con resumen de factura**
+      // ===== Preparar correo con los mismos cálculos =====
       try {
-        // Preparar la lista de productos para el correo
         const productosResumen = detalles
           .map(
             (item) =>
@@ -591,7 +544,6 @@ const ProcesoCompra = () => {
           )
           .join("\n");
 
-        // Obtener información de la dirección seleccionada
         const direccionEnvio = user.direccions.find(
           (dir) => dir.id_direccion.toString() === id_direccion
         );
@@ -600,12 +552,28 @@ const ProcesoCompra = () => {
             `${direccionEnvio.calle}, ${direccionEnvio.ciudad}`
           : "Dirección no especificada";
 
-        // Obtener nombre de la sucursal
         const sucursalNombre =
           sucursales.find((s) => s.id_sucursal == sucursalId)
             ?.nombre_sucursal || `Sucursal ${sucursalId}`;
 
-        // Crear el contenido del correo
+        // Cálculos coherentes con el resumen UI
+        const descPromo = obtenerDescuentoPromocionSolo();
+        const subtotalTrasPromo = Math.max(0, subtotal - descPromo);
+        const descCupon = calcularDescuentoCupon(subtotalTrasPromo);
+        const subtotalConDesc = obtenerSubtotalConDescuento();
+        const impuestoHN = obtenerImpuesto();
+        const totalFactura = obtenerTotal();
+
+        const lineaPromo = promocionAplicada
+          ? `\n• Descuento Promoción (${promocionAplicada.nombre_promocion}): -L. ${descPromo.toFixed(2)}`
+          : "";
+
+        const lineaCupon = coupon
+          ? `\n• Descuento Cupón (${coupon.codigo}${
+              coupon.tipo === "porcentaje" ? ` ${Number(coupon.valor)}%` : ""
+            }): -L. ${descCupon.toFixed(2)}`
+          : "";
+
         const asunto = `Confirmación de Pedido #${id_pedido}`;
 
         const descripcion = `
@@ -634,23 +602,11 @@ ${productosResumen}
 ═══════════════════════════════════════
 RESUMEN DE PAGO
 ═══════════════════════════════════════
-• Subtotal: L. ${subtotal.toFixed(2)}${
-          promocionAplicada
-            ? `
-• Descuento (${
-                promocionAplicada.nombre_promocion
-              }): -L. ${calcularDescuentoPromocion().descuento.toFixed(2)}`
-            : ""
-        }${
-          cuponAplicado && cuponValidado
-            ? `
-• Descuento (Cupón ${cuponAplicado.codigo}): -L. ${obtenerDescuentoTotal().toFixed(2)}`
-            : ""
-        }
-• Subtotal con descuentos: L. ${obtenerTotalSinDescuento().toFixed(2)}
-• Impuesto (15%): L. ${obtenerImpuesto().toFixed(2)}
+• Subtotal: L. ${subtotal.toFixed(2)}${lineaPromo}${lineaCupon}
+• Subtotal con descuentos: L. ${subtotalConDesc.toFixed(2)}
+• Impuesto (15%): L. ${impuestoHN.toFixed(2)}
 • Envío: L. 10.00
-• TOTAL PAGADO: L. ${total_factura.toFixed(2)}
+• TOTAL PAGADO: L. ${totalFactura.toFixed(2)}
 
 ═══════════════════════════════════════
 DIRECCIÓN DE ENVÍO
@@ -671,32 +627,35 @@ ${(() => {
     : "No especificado";
 })()}
 
-Su pedido será procesado y enviado a la brevedad posible. Recibirá actualizaciones sobre el estado de su envío.
-
 ¡Gracias por su compra!
 
 Atentamente,
 El equipo de EasyWay
-      `.trim();
+`.trim();
 
-        // Enviar el correo
-        await enviarCorreo(user.correo, descripcion, asunto);
+// Convierte texto plano -> HTML respetando saltos de línea
+const descripcionHTML =
+  `<div style="white-space:pre-wrap; font-family:Arial, sans-serif; font-size:14px; line-height:1.5">` +
+  descripcion
+    .replace(/&/g, "&amp;")   // escape básico por si hay < o &
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\r?\n/g, "<br/>") // << aquí forzamos los saltos en HTML
+  + `</div>`;
 
-        console.log("Correo de confirmación enviado exitosamente");
+        await enviarCorreo(user.correo, descripcionHTML, asunto);
       } catch (emailError) {
         console.error("Error enviando correo de confirmación:", emailError);
-        // No interrumpir el flujo de compra si falla el correo
         toast.warning(
           "Pedido creado correctamente, pero no se pudo enviar el correo de confirmación"
         );
       }
 
-      // Limpiar estados
+      // Limpiar estados UI
       setPromocionAplicada(null);
       setCount(0);
-
-      toast.success("¡Pedido creado correctamente!");
-      navigate("/misPedidos"); // Redirigir a página de pedidos
+      toast.success(`¡Pedido #${id_pedido} creado correctamente!`);
+      navigate("/misPedidos");
     } catch (err) {
       console.error("Error creando pedido:", err);
       const errorMessage =
@@ -706,44 +665,37 @@ El equipo de EasyWay
       setLoading(false);
     }
   };
-  // Effects
+
+  // ===== Effects iniciales =====
   useEffect(() => {
     const cargarDatosIniciales = async () => {
       try {
-        // Cargar carrito
         const carritoRes = await ViewCar();
         const carritoDetalles = carritoRes.data.carrito_detalles ?? [];
         setDetalles(carritoDetalles);
 
-        // Calcular subtotal
         const sub = carritoDetalles.reduce(
           (acc, item) => acc + (item.subtotal_detalle || 0),
           0
         );
         setSubtotal(sub);
 
-        // Cargar sucursales
         const sucursalesRes = await getAllSucursales();
         const sucursalesData = sucursalesRes?.data ?? [];
         setSucursales(sucursalesData);
 
-        // Cargar métodos de pago
         const metodosRes = await getAllMetodoPago();
         setMetodosPago(metodosRes.data || []);
 
-        // Cargar promociones
         const promocionesRes = await getPromociones();
         setPromociones(promocionesRes.data || []);
 
-        // Cargar productos recomendados
         const recRes = await getProductosRecomendados();
         setProdRec(recRes.data || []);
 
-        // Cargar promociones por producto
         await cargarPromosDetalles();
         await cargarPromosInfo();
 
-        // Seleccionar primera dirección si existe
         if (user.direccions && user.direccions.length > 0) {
           setDireccionSeleccionada(user.direccions[0].id_direccion.toString());
         }
@@ -758,14 +710,12 @@ El equipo de EasyWay
     }
   }, [user]);
 
-  // Cargar stock cuando cambie la sucursal
   useEffect(() => {
     if (idSucursal) {
       cargarStockPorSucursal(idSucursal);
     }
   }, [idSucursal]);
 
-  // Aplicar promoción automática cuando cambie el subtotal
   useEffect(() => {
     if (subtotal > 0 && promociones.length > 0) {
       const mejorPromocion = encontrarMejorPromocion(subtotal, promociones);
@@ -777,7 +727,6 @@ El equipo de EasyWay
     }
   }, [subtotal, promociones]);
 
-  // Verificar si hay productos sin stock
   const hayProductoSinStock = detalles.some(
     (p) => getStockEnSucursal(p.producto.id_producto) === 0
   );
@@ -874,8 +823,7 @@ El equipo de EasyWay
                   <div style={styles.productInfo}>
                     <div style={styles.productName}>{item.producto.nombre}</div>
                     <div style={styles.productQuantity}>
-                      Cantidad: {item.cantidad_unidad_medida} | Stock
-                      disponible:{" "}
+                      Cantidad: {item.cantidad_unidad_medida} | Stock disponible:{" "}
                       {getStockEnSucursal(item.producto.id_producto)}
                     </div>
                   </div>
@@ -928,7 +876,7 @@ El equipo de EasyWay
             <div style={styles.lastSection}>
               <h2 style={styles.sectionTitle}>Método de Pago</h2>
               <div style={styles.radioGroup}>
-                {/* Opción PayPal */}
+                {/* PayPal */}
                 <div style={styles.radioItem}>
                   <input
                     type="radio"
@@ -945,7 +893,7 @@ El equipo de EasyWay
                   </label>
                 </div>
 
-                {/* Opción Efectivo */}
+                {/* Efectivo */}
                 <div style={styles.radioItem}>
                   <input
                     type="radio"
@@ -962,7 +910,7 @@ El equipo de EasyWay
                   </label>
                 </div>
 
-                {/* Métodos de pago existentes (tarjetas) */}
+                {/* Tarjetas registradas */}
                 {metodosPago.map((metodo) => (
                   <div key={metodo.id_metodo_pago} style={styles.radioItem}>
                     <input
@@ -985,7 +933,6 @@ El equipo de EasyWay
                 ))}
               </div>
 
-              {/* Mensaje cuando no hay métodos de pago registrados */}
               {metodosPago.length === 0 && (
                 <p style={{ color: "#dc3545", fontSize: "0.9rem" }}>
                   <span>
@@ -1001,66 +948,6 @@ El equipo de EasyWay
                   </button>
                 </p>
               )}
-            </div>
-
-            {/* Coupon Section */}
-            <div style={styles.section}>
-              <h2 style={styles.sectionTitle}>Cupón de Descuento</h2>
-              <div style={styles.couponContainer}>
-                <div style={styles.formGroup}>
-                  <label style={styles.label}>Código del cupón:</label>
-                  <div style={styles.couponInputGroup}>
-                    <input
-                      type="text"
-                      style={styles.couponInput}
-                      value={codigoCupon}
-                      onChange={(e) => setCodigoCupon(e.target.value.toUpperCase())}
-                      placeholder="Ingrese su código de cupón"
-                      disabled={cuponAplicado && cuponValidado}
-                    />
-                    <button
-                      style={{
-                        ...styles.couponButton,
-                        backgroundColor: (cuponAplicado && cuponValidado) ? "#28a745" : "#f0833e",
-                        cursor: (cuponAplicado && cuponValidado) ? "not-allowed" : "pointer"
-                      }}
-                      onClick={aplicarCupon}
-                      disabled={cuponAplicado && cuponValidado}
-                      onMouseEnter={(e) => {
-                        if (!(cuponAplicado && cuponValidado)) {
-                          e.target.style.backgroundColor = "#d8572f";
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!(cuponAplicado && cuponValidado)) {
-                          e.target.style.backgroundColor = "#f0833e";
-                        }
-                      }}
-                    >
-                      {cuponAplicado && cuponValidado ? "✓ Aplicado" : "Aplicar"}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Coupon Status */}
-                {cuponAplicado && cuponValidado && (
-                  <div style={styles.couponSuccess}>
-                    <div style={styles.couponInfo}>
-                      <strong>Cupón aplicado:</strong> {cuponAplicado.codigo}
-                      <br />
-                      <strong>Descuento:</strong> {cuponAplicado.tipo === 1 ? `${cuponAplicado.valor}%` : `L. ${parseFloat(cuponAplicado.valor).toFixed(2)}`}
-                      <br />
-                      <strong>ID del cupón:</strong> {cuponAplicado.id_cupon}
-                    </div>
-                  </div>
-                )}
-
-                {codigoCupon && !cuponValidado && cuponAplicado === null && (
-                  <div style={styles.couponError}>
-                    Cupón no válido o expirado
-                  </div>
-                )}
-              </div>
             </div>
           </div>
 
@@ -1079,10 +966,22 @@ El equipo de EasyWay
                   <br />
                   Descuento:{" "}
                   {promocionAplicada.id_tipo_promo === 1
-                    ? `${parseFloat(promocionAplicada.valor_porcentaje)}%`
-                    : `L. ${parseFloat(promocionAplicada.valor_fijo).toFixed(
-                        2
-                      )}`}
+                    ? `${parseFloat(
+                        promocionAplicada.valor_porcentaje
+                      )}%`
+                    : `L. ${parseFloat(
+                        promocionAplicada.valor_fijo
+                      ).toFixed(2)}`}
+                </div>
+              )}
+
+              {/* Cupón aplicado */}
+              {coupon && (
+                <div style={styles.couponSuccess}>
+                  Cupón aplicado: <strong>{coupon.codigo}</strong>{" "}
+                  {coupon.tipo === "porcentaje"
+                    ? `(${Number(coupon.valor)}%)`
+                    : `(L. ${Number(coupon.valor).toFixed(2)})`}
                 </div>
               )}
 
@@ -1115,38 +1014,45 @@ El equipo de EasyWay
                         display: "flex",
                         justifyContent: "space-between",
                         marginBottom: "8px",
-                        color: "#16a34a", // verde para mostrar el descuento
+                        color: "#16a34a",
                       }}
                     >
                       <span>
                         Promoción ({promocionAplicada.nombre_promocion}):
                       </span>
-                      <span>
-                        -L. {calcularDescuentoPromocion().descuento.toFixed(2)}
-                      </span>
+                      <span>-L. {obtenerDescuentoPromocionSolo().toFixed(2)}</span>
                     </div>
                   )}
 
                   {/* Cupón aplicado */}
-                  {cuponAplicado && cuponValidado && (
+                  {coupon && (
                     <div
                       style={{
                         display: "flex",
                         justifyContent: "space-between",
                         marginBottom: "8px",
-                        color: "#16a34a", // verde para mostrar el descuento
+                        color: "#16a34a",
                       }}
                     >
                       <span>
-                        Cupón ({cuponAplicado.codigo}):
+                        Cupón ({coupon.codigo}
+                        {coupon.tipo === "porcentaje"
+                          ? ` ${Number(coupon.valor)}%`
+                          : ""}):
                       </span>
                       <span>
-                        -L. {obtenerDescuentoTotal().toFixed(2)}
+                        -L.{" "}
+                        {calcularDescuentoCupon(
+                          Math.max(
+                            0,
+                            subtotal - obtenerDescuentoPromocionSolo()
+                          )
+                        ).toFixed(2)}
                       </span>
                     </div>
                   )}
 
-                  {/* Subtotal con descuentos aplicados */}
+                  {/* Subtotal con descuentos */}
                   <div
                     style={{
                       display: "flex",
@@ -1158,7 +1064,7 @@ El equipo de EasyWay
                     }}
                   >
                     <span>Subtotal con descuentos:</span>
-                    <span>L. {obtenerTotalSinDescuento().toFixed(2)}</span>
+                    <span>L. {obtenerSubtotalConDescuento().toFixed(2)}</span>
                   </div>
 
                   {/* Impuesto */}
@@ -1271,7 +1177,8 @@ El equipo de EasyWay
         </div>
       </div>
 
-      {/* Sección de productos recomendados */}
+
+      {/* Recomendaciones */}
       <div style={styles.recommendationsSection}>
         <div style={styles.content}>
           <div style={styles.recommendationsHeader}>

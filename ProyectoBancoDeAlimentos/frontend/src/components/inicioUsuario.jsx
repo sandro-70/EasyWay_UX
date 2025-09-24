@@ -15,6 +15,7 @@ import { getPromocionesOrden } from "../api/PromocionesApi";
 import { useCart } from "../utils/CartContext";
 import { useSearch } from "../searchContext";
 import { toast } from "react-toastify";
+import { useTranslation } from "react-i18next";
 import "../toast.css";
 
 import "swiper/css";
@@ -91,6 +92,9 @@ const InicioUsuario = () => {
   const prodRefDestacados = useRef(null);
   const prodRefTendencias = useRef(null);
   const swiperRef = useRef(null);
+
+  //transalation
+  const { t } = useTranslation();
 
   const { incrementCart } = useCart();
 
@@ -715,9 +719,7 @@ const InicioUsuario = () => {
                 </SwiperSlide>
               ))
             ) : (
-              <p style={{ textAlign: "center" }}>
-                No hay promociones disponibles
-              </p>
+              <p style={{ textAlign: "center" }}>{t("noPromotion")}</p>
             )}
           </Swiper>
         </div>
@@ -745,7 +747,7 @@ const InicioUsuario = () => {
       </div>
 
       {/* Productos Destacados */}
-      <h2 style={styles.sectionTitle}>Productos Destacados</h2>
+      <h2 style={styles.sectionTitle}>{t("featured")}</h2>
 
       <div style={styles.scrollWrapper}>
         <button
@@ -779,7 +781,7 @@ const InicioUsuario = () => {
               onClick={() => handleProductClick(p.id_producto)}
             >
               {hasPromo(p.id_producto) && (
-                <div style={styles.offerBadge}>OFERTA</div>
+                <div style={styles.offerBadge}>{t("Oferta")}</div>
               )}
 
               {Number(p.id_producto) === Number(topSellerId) && (
@@ -789,7 +791,7 @@ const InicioUsuario = () => {
                     top: hasPromo(p.id_producto) ? 42 : 10, // apílalo si también hay OFERTA
                   }}
                 >
-                  MÁS COMPRADO
+                  {t("MostBought")}
                 </div>
               )}
               <div style={styles.topRow}>
@@ -826,7 +828,7 @@ const InicioUsuario = () => {
                   }}
                 />
               ) : (
-                <div style={styles.productImg}>Imagen no disponible</div>
+                <div style={styles.productImg}>{t("imageNotAvailable")}</div>
               )}
               <p style={styles.productName}>{p.nombre}</p>
               <div style={styles.priceRow}>
@@ -847,7 +849,7 @@ const InicioUsuario = () => {
                   }
                   return (
                     <span style={styles.productPrice}>
-                      L. {Number(p.precio_base).toFixed(2)} {"     "}{" "}
+                      {t("L.")} {Number(p.precio_base).toFixed(2)} {"     "}{" "}
                       {p.unidad_medida ? p.unidad_medida : "P/Kilo"}
                     </span>
                   );
@@ -883,7 +885,7 @@ const InicioUsuario = () => {
       </div>
 
       {/* Tendencias del mes */}
-      <h2 style={styles.sectionTitle}>Tendencias del mes</h2>
+      <h2 style={styles.sectionTitle}>{t("trending")}</h2>
 
       <div style={styles.scrollWrapper}>
         <button
@@ -917,7 +919,7 @@ const InicioUsuario = () => {
               onClick={() => handleProductClick(p.id_producto)}
             >
               {hasPromo(p.id_producto) && (
-                <div style={styles.offerBadge}>OFERTA</div>
+                <div style={styles.offerBadge}>{t("Oferta")}</div>
               )}
               {Number(p.id_producto) === Number(topSellerId) && (
                 <div
@@ -926,7 +928,7 @@ const InicioUsuario = () => {
                     top: hasPromo(p.id_producto) ? 42 : 10, // apílalo si también hay OFERTA
                   }}
                 >
-                  MÁS COMPRADO
+                  {t("MostBought")}
                 </div>
               )}
               <div style={styles.topRow}>
@@ -963,7 +965,7 @@ const InicioUsuario = () => {
                   }}
                 />
               ) : (
-                <div style={styles.productImg}>Imagen no disponible</div>
+                <div style={styles.productImg}>{t("imageNotAvailable")}</div>
               )}
               <p style={styles.productName}>{p.nombre}</p>
               <div style={styles.priceRow}>
@@ -973,17 +975,17 @@ const InicioUsuario = () => {
                     return (
                       <>
                         <span style={styles.newPrice}>
-                          L. {best.finalPrice.toFixed(2)}
+                          {t("L.")} {best.finalPrice.toFixed(2)}
                         </span>
                         <span style={styles.strikePrice}>
-                          L. {Number(p.precio_base).toFixed(2)}
+                          {t("L.")} {Number(p.precio_base).toFixed(2)}
                         </span>
                       </>
                     );
                   }
                   return (
                     <span style={styles.productPrice}>
-                      L. {Number(p.precio_base).toFixed(2)}{" "}
+                      {t("L.")} {Number(p.precio_base).toFixed(2)}{" "}
                       {p.unidad_medida ? p.unidad_medida : " "}
                     </span>
                   );
@@ -1000,7 +1002,7 @@ const InicioUsuario = () => {
                   handleAgregar(p.id_producto, 1);
                 }}
               >
-                Agregar
+                {t("add")}
               </button>
             </div>
           ))}

@@ -35,5 +35,134 @@
   "dark_theme": "深色 主题",
   "theme_description": "选择一个主题：",
   "rating_system": "评级系统",
-  "vocab_title": "词汇列表"
+  "vocab_title": "词汇列表",
+  "editProfile": "编辑个人资料",
+  "generalData": "一般数据",
+  "historial_pedidos": "订单历史",
+  "metodospago": "支付方式",
+  "predeterminada": "默认",
+  "Delete": "删除",
+  "newCard": "新卡",
+  "offers secure payment processing": "提供安全的支付处理",
+  "m1": "我们在传输卡数据时遵循PCI DSS标准",
+  "m2": "所有信息保持安全且不受损",
+  "m3": "所有数据均已加密",
+  "m4": "您的数据永远不会被操纵或出售",
+  "unusedCoupons": "未使用的优惠券",
+  "usedCoupons": "已使用",
+  "expiredCoupons": "已过期的优惠券",
+  "noCoupons": "此类别中没有优惠券。",
+  "OrderBY": "排序方式：",
+  "textRecomendado": "推荐的产品",
+  "featured": "精选",
+  "trending": "趋势",
+  "noPromotion": "没有可用的促销活动",
+  "noFoundOrders": "未找到订单",
+  "recientes": "最新",
+  "antiguos": "最旧",
+  "exacta": "确切日期",
+  "codigoPostal": "邮政编码",
+  "street": "街道",
+  "select": "选择",
+  "Department": "部门",
+  "City/Town": "城市/城镇",
+  "setDefaultAddress": "设为默认送货地址",
+  "cancel": "取消",
+  "City": "城市",
+  "options": "选项",
+  "Predetermined": "默认",
+  "code": "代码",
+  "addCart": "添加到购物车",
+  "description": "描述",
+  "reviews": "评论",
+  "clickStars": "点击星星进行评分",
+  "starts": "星级",
+  "yourRating": "您的评分",
+  "yourComment": "您的评论",
+  "FrecuentlyBuys": "频繁购买",
+  "noReviewsYet": "尚无评论。成为第一个！",
+  "submitReview": "提交评论",
+  "sending...": "发送中...",
+  "opinions": "评论",
+  "opinion": "评论",
+  "tellUs": "告诉我们您对该产品的看法...",
+  "add": "添加",
+  "cart": "购物车",
+  "outofstock": "该分支机构缺货",
+  "imageNotAvailable": "图片不可用",
+  "Oferta": "优惠",
+  "L.": "¥.",
+  "MostBought": "最常购买",
+
+  "perfil": {
+    "title": "我的个人资料",
+    "dataTitle": "个人信息",
+    "configuration": "配置",
+    "changePassword": "更改密码",
+    "editPhoto": "编辑照片",
+    "myOrders": "我的订单",
+    "myPaymentMethods": "我的支付方式",
+    "myAddresses": "我的地址",
+    "myCoupons": "我的优惠券",
+    "myInvoices": "我的发票",
+    "wishlist": "愿望清单",
+
+    "field": {
+      "nombre": "名字",
+      "apellidos": "姓氏",
+      "correo": "电子邮件",
+      "telefono": "电话",
+      "genero": "性别"
+    },
+    "placeholder": {
+      "nombre": "输入你的名字",
+      "apellidos": "输入你的姓氏",
+      "correo": "输入你的电子邮件",
+      "telefono": "输入你的电话"
+    },
+    "gender": {
+      "masculino": "男性",
+      "femenino": "女性",
+      "otro": "其他"
+    },
+    "button": {
+      "editar": "编辑",
+      "guardar": "保存",
+      "cancelar": "取消"
+    },
+    "modal": {
+      "changePassword": {
+        "title": "修改密码",
+        "oldPassword": "当前密码",
+        "newPassword": "新密码",
+        "confirmPassword": "确认新密码",
+        "completeFields": "请填写所有字段",
+        "mismatch": "密码不匹配",
+        "minLength": "密码长度至少为6个字符",
+        "wrongOld": "当前密码不正确"
+      },
+      "2fa": {
+        "title": "两步验证",
+        "sendCode": "发送代码",
+        "instruction": "输入您收到的电子邮件中的代码",
+        "verify": "验证",
+        "resend": "重新发送代码"
+      }
+    },
+    "toast": {
+      "passwordChanged": "密码修改成功"
+    },
+    "history": {
+      "title": "访问历史",
+      "loading": "加载历史记录...",
+      "noRecords": "没有记录"
+    }
+  },
+  "Whishlist": {
+    "title": "愿望清单",
+    "sortBy": "排序方式：",
+    "mostRecent": "最新",
+    "onSale": "促销中",
+    "available": "可用"
+  }
 }

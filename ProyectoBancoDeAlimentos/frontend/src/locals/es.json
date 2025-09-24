@@ -31,5 +31,134 @@
   "dark_theme": "Tema Oscuro",
   "theme_description": "Selecciona un tema:",
   "rating_system": "Sistema de Valoración",
-  "vocab_title": "Lista de Vocabulario"
+  "vocab_title": "Lista de Vocabulario",
+  "editProfile": "Editar Perfil",
+  "generalData": "Datos Generales",
+  "historial_pedidos": "Historial de Pedidos",
+  "metodospago": "Métodos de Pago",
+  "predeterminada": "Predeterminada",
+  "Delete": "Eliminar",
+  "newCard": "Nueva Tarjeta",
+  "offers secure payment processing": "ofrece un procesamiento de pagos seguro",
+  "m1": "Seguimos el estándar PCI DSS al transmitir datos de tarjeta",
+  "m2": "Toda la información permanece segura y sin compromisos",
+  "m3": "Todos los datos están encriptados",
+  "m4": "Tus datos nunca serán manipulados o vendidos",
+  "unusedCoupons": "Cupones no utilizados",
+  "usedCoupons": "Usados",
+  "expiredCoupons": "Cupones expirados",
+  "noCoupons": "No hay cupones en esta categoría.",
+  "OrderBY": "Ordenar Por:",
+  "textRecomendado": "Productos que podrían interesarte",
+  "featured": "Destacados",
+  "trending": "Tendencias",
+  "noPromotion": "No hay promociones disponibles",
+  "noFoundOrders": "No se encontraron pedidos.",
+  "recientes": "Más recientes",
+  "antiguos": "Más antiguos",
+  "exacta": "Fecha exacta",
+  "codigoPostal": "Código postal",
+  "Department": "Departamento",
+  "City/Town": "Ciudad/Municipio",
+  "street": "Calle",
+  "select": "Seleccionar",
+  "setDefaultAddress": "Establecer como dirección de envío predeterminada",
+  "cancel": "Cancelar",
+  "city": "Ciudad",
+  "options": "Opciones",
+  "Predetermined": "Predeterminada",
+  "code": "Código",
+  "addCart": "AGREGAR AL CARRITO",
+  "description": "Descripción",
+  "reviews": "Valoraciones y comentarios",
+  "clickStars": "Haz clic en las estrellas para calificar",
+  "starts": "estrellas",
+  "yourRating": "Tu calificación",
+  "yourComment": "Tu comentario",
+  "FrecuentlyBuys": "Compras Frecuentes",
+  "noReviewsYet": "Aún no hay opiniones. ¡Sé el primero!",
+  "submitReview": "Enviar opinión",
+  "sending...": "Enviando…",
+  "tellUs": "Cuéntanos qué te gustó o no del producto…",
+  "opinions": "Opiniones",
+  "opinion": "Opinión",
+  "add": "Agregar",
+  "cart": "Carrito",
+  "outofstock": "Agotado en esta sucursal",
+  "imageNotAvailable": "Imagen no disponible",
+  "Oferta": "OFERTA",
+  "MostBought": "MÁS COMPRADO",
+  "L.": "L.",
+
+  "perfil": {
+    "title": "Mi Perfil",
+    "dataTitle": "Datos Personales",
+    "configuration": "Configuración",
+    "changePassword": "Cambiar Contraseña",
+    "editPhoto": "Editar Foto",
+    "myOrders": "Mis Pedidos",
+    "myPaymentMethods": "Métodos de Pago",
+    "myAddresses": "Mis Direcciones",
+    "myCoupons": "Mis Cupones",
+    "myInvoices": "Mis Facturas",
+    "wishlist": "Lista de Deseos",
+
+    "field": {
+      "nombre": "Nombre",
+      "apellidos": "Apellidos",
+      "correo": "Correo electrónico",
+      "telefono": "Teléfono",
+      "genero": "Género"
+    },
+    "placeholder": {
+      "nombre": "Ingresa tu nombre",
+      "apellidos": "Ingresa tus apellidos",
+      "correo": "Ingresa tu correo",
+      "telefono": "Ingresa tu teléfono"
+    },
+    "gender": {
+      "masculino": "Masculino",
+      "femenino": "Femenino",
+      "otro": "Otro"
+    },
+    "button": {
+      "editar": "Editar",
+      "guardar": "Guardar",
+      "cancelar": "Cancelar"
+    },
+    "modal": {
+      "changePassword": {
+        "title": "Cambiar contraseña",
+        "oldPassword": "Contraseña actual",
+        "newPassword": "Nueva contraseña",
+        "confirmPassword": "Confirmar nueva contraseña",
+        "completeFields": "Completa todos los campos",
+        "mismatch": "Las contraseñas no coinciden",
+        "minLength": "La contraseña debe tener al menos 6 caracteres",
+        "wrongOld": "Contraseña actual incorrecta"
+      },
+      "2fa": {
+        "title": "Autenticación en dos pasos",
+        "sendCode": "Enviar código",
+        "instruction": "Ingresa el código que recibiste por correo",
+        "verify": "Verificar",
+        "resend": "Reenviar código"
+      }
+    },
+    "toast": {
+      "passwordChanged": "Contraseña cambiada correctamente"
+    },
+    "history": {
+      "title": "Historial de acceso",
+      "loading": "Cargando historial...",
+      "noRecords": "No hay registros"
+    }
+  },
+  "Whishlist": {
+    "title": "Lista de Deseos",
+    "sortBy": "Ordenar por:",
+    "mostRecent": "Más reciente",
+    "onSale": "En oferta",
+    "available": "Disponibles"
+  }
 }

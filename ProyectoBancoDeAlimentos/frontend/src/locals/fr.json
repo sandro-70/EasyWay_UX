@@ -24,7 +24,6 @@
   "checkout": "Passer à la caisse",
   "support": "Support",
   "view_profile": "Voir mon profil",
-  "guest": "Invité",
   "cart_empty": "Votre panier est vide",
   "go_home": "Retourner à l'accueil",
   "select_department": "Sélectionner un département",
@@ -35,5 +34,134 @@
   "light_theme": "Clair Thème",
   "dark_theme": "Sombre Thème",
   "theme_description": "Sélectionnez un thème :",
-  "vocab_title": "Liste de vocabulaire"
+  "vocab_title": "Liste de vocabulaire",
+  "editProfile": "Éditer Profil",
+  "generalData": "Données Générales",
+  "historial_pedidos": "Historique des commandes",
+  "metodospago": "Méthodes de paiement",
+  "predeterminada": "Méthode prédéfinie",
+  "Delete": "Supprimer",
+  "newCard": "Nouvelle carte",
+  "offers secure payment processing": "offre un traitement sécurisé des paiements",
+  "m1": "Nous suivons la norme PCI DSS lors de la transmission des données de carte",
+  "m2": "Toutes les informations restent sécurisées et sans compromis",
+  "m3": "Toutes les données sont cryptées",
+  "m4": "Vos données ne seront jamais manipulées ou vendues",
+  "unusedCoupons": "Coupons non utilisés",
+  "usedCoupons": "Utilisés",
+  "expiredCoupons": "Coupons expirés",
+  "noCoupons": "Il n'y a pas de coupons dans cette catégorie.",
+  "OrderBY": "Trier par:",
+  "textRecomendado": "Produits recommandés",
+  "featured": "En vedette",
+  "trending": "Tendances",
+  "noPromotion": "Aucune promotion disponible",
+  "noFoundOrders": "Aucune commande trouvée",
+  "recientes": "Plus récents",
+  "antiguos": "Les plus anciens",
+  "exacta": "Date exacte",
+  "codigoPostal": "Code postal",
+  "Department": "Département",
+  "City/Town": "Ville",
+  "street": "Rue",
+  "select": "Sélectionner",
+  "setDefaultAddress": "Définir comme adresse de livraison par défaut",
+  "cancel": "Annuler",
+  "city": "Ville",
+  "options": "Options",
+  "Predetermined": "Prédéfinie",
+  "code": "Code",
+  "addCart": "AJOUTER AU PANIER",
+  "description": "Description",
+  "reviews": "Avis",
+  "clickStars": "Cliquez sur les étoiles pour évaluer",
+  "starts": "étoiles",
+  "yourRating": "Votre évaluation",
+  "yourComment": "Votre commentaire",
+  "FrecuentlyBuys": "Achats fréquents",
+  "noReviewsYet": "Pas encore d'avis. Soyez le premier !",
+  "submitReview": "Soumettre un avis",
+  "sending...": "Envoi en cours…",
+  "opinions": "avis",
+  "opinion": "avis",
+  "tellUs": "Dites-nous ce que vous avez pensé du produit…",
+  "add": "Ajouter",
+  "cart": "Panier",
+  "outofstock": "Rupture de stock dans cette succursale",
+  "imageNotAvailable": "Image non disponible",
+  "Oferta": "OFFRE",
+  "L.": "$.",
+  "MostBought": "Le plus acheté",
+
+  "perfil": {
+    "title": "Mon Profil",
+    "dataTitle": "Informations Personnelles",
+    "configuration": "Configuration",
+    "changePassword": "Changer de mot de passe",
+    "editPhoto": "Éditer Photo",
+    "myOrders": "Mes Commandes",
+    "myPaymentMethods": "Mes Méthodes de Paiement",
+    "myAddresses": "Mes Adresses",
+    "myCoupons": "Mes Coupons",
+    "myInvoices": "Mes Factures",
+    "wishlist": "Liste de Souhaits",
+
+    "field": {
+      "nombre": "Nom",
+      "apellidos": "Prénom",
+      "correo": "E-mail",
+      "telefono": "éléphone",
+      "genero": "Genre"
+    },
+    "placeholder": {
+      "nombre": "Entrez votre nom",
+      "apellidos": "Entrez vos prénoms",
+      "correo": "Entrez votre e-mail",
+      "telefono": "Entrez votre téléphone"
+    },
+    "gender": {
+      "masculino": "Masculin",
+      "femenino": "Féminin",
+      "otro": "Autre"
+    },
+    "button": {
+      "editar": "Éditer",
+      "guardar": "Enregistrer",
+      "cancelar": "Annuler"
+    },
+    "modal": {
+      "changePassword": {
+        "title": "Changer de mot de passe",
+        "oldPassword": "Mot de passe actuel",
+        "newPassword": "Nouveau mot de passe",
+        "confirmPassword": "Confirmer le nouveau mot de passe",
+        "completeFields": "Veuillez remplir tous les champs",
+        "mismatch": "Les mots de passe ne correspondent pas",
+        "minLength": "Le mot de passe doit comporter au moins 6 caractères",
+        "wrongOld": "Mot de passe actuel incorrect"
+      },
+      "2fa": {
+        "title": "Authentification à deux facteurs",
+        "sendCode": "Envoyer le code",
+        "instruction": "Entrez le code que vous avez reçu par e-mail",
+        "verify": "Vérifier",
+        "resend": "Renvoyer le code"
+      }
+    },
+    "toast": {
+      "passwordChanged": "Mot de passe changé avec succès"
+    },
+    "history": {
+      "title": "Historique d'accès",
+      "loading": "Chargement de l'historique...",
+      "noRecords": "Aucun enregistrement trouvé"
+    }
+  },
+  "Whishlist": {
+    "title": "Liste de Souhaits",
+    "sortBy": "Trier par:",
+    "mostRecent": "Plus récent",
+    "onSale": "En solde",
+    "available": "Disponible"
+  }
 }

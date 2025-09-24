@@ -35,5 +35,134 @@
   "dark_theme": "Dark Theme",
   "theme_description": "Select a theme:",
   "rating_system": "Rating System",
-  "vocab_title": "Vocabulary List"
+  "vocab_title": "Vocabulary List",
+  "editProfile": "Edit Profile",
+  "generalData": "General Data",
+  "historial_pedidos": "Order History",
+  "metodospago": "Payment Methods",
+  "predeterminada": "Default",
+  "Delete": "Delete",
+  "newCard": "New Card",
+  "offers secure payment processing": "offers secure payment processing",
+  "m1": "We follow the PCI DSS standard when transmitting card data",
+  "m2": "All information remains secure and uncompromised",
+  "m3": "All data is encrypted",
+  "m4": "Your data will never be manipulated or sold",
+  "unusedCoupons": "Unused Coupons",
+  "usedCoupons": "Used",
+  "expiredCoupons": "Expired Coupons",
+  "noCoupons": "There are no coupons in this category.",
+  "OrderBY": "Sort by:",
+  "textRecomendado": "Recommended Products",
+  "featured": "Featured",
+  "trending": "Trending",
+  "noPromotion": "No promotions available",
+  "noFoundOrders": "No orders found",
+  "recientes": "Most Recent",
+  "antiguos": "Oldest",
+  "exacta": "Exact Date",
+  "codigoPostal": "Postal Code",
+  "Department": "Department",
+  "City/Town": "City/Town",
+  "street": "Street",
+  "select": "Select",
+  "setDefaultAddress": "Set as default shipping address",
+  "cancel": "Cancel",
+  "city": "City",
+  "options": "Options",
+  "Predetermined": "Default",
+  "code": "Code",
+  "addCart": "ADD TO CART",
+  "description": "Description",
+  "reviews": "Reviews",
+  "clickStars": "Click on the stars to rate",
+  "starts": "stars",
+  "yourRating": "Your Rating",
+  "yourComment": "Your Comment",
+  "FrecuentlyBuys": "Frecuently Buys",
+  "noReviewsYet": "No reviews yet. Be the first!",
+  "submitReview": "Submit Review",
+  "sending...": "Sending...",
+  "opinions": "opinions",
+  "opinion": "opinion",
+  "tellUs": "Tell us what you thought about the product...",
+  "add": "Add",
+  "cart": "Cart",
+  "outofstock": "Out of stock in this branch",
+  "imageNotAvailable": "Image not available",
+  "Oferta": "OFFER",
+  "MostBought": "Most Bought",
+  "L.": "$.",
+
+  "perfil": {
+    "title": "My Profile",
+    "dataTitle": "Personal Information",
+    "configuration": "Configuration",
+    "changePassword": "Change Password",
+    "editPhoto": "Edit Photo",
+    "myOrders": "My Orders",
+    "myPaymentMethods": "My Payment Methods",
+    "myAddresses": "My Addresses",
+    "myCoupons": "My Coupons",
+    "myInvoices": "My Invoices",
+    "wishlist": "Wishlist",
+
+    "field": {
+      "nombre": "First Name",
+      "apellidos": "Last Name",
+      "correo": "Email",
+      "telefono": "Phone",
+      "genero": "Gender"
+    },
+    "placeholder": {
+      "nombre": "Enter your first name",
+      "apellidos": "Enter your last name",
+      "correo": "Enter your email",
+      "telefono": "Enter your phone"
+    },
+    "gender": {
+      "masculino": "Male",
+      "femenino": "Female",
+      "otro": "Other"
+    },
+    "button": {
+      "editar": "Edit",
+      "guardar": "Save",
+      "cancelar": "Cancel"
+    },
+    "modal": {
+      "changePassword": {
+        "title": "Change Password",
+        "oldPassword": "Current Password",
+        "newPassword": "New Password",
+        "confirmPassword": "Confirm New Password",
+        "completeFields": "Complete all fields",
+        "mismatch": "Passwords do not match",
+        "minLength": "Password must be at least 6 characters long",
+        "wrongOld": "Current password is incorrect"
+      },
+      "2fa": {
+        "title": "Two-Factor Authentication",
+        "sendCode": "Send Code",
+        "instruction": "Enter the code you received by email",
+        "verify": "Verify",
+        "resend": "Resend Code"
+      }
+    },
+    "toast": {
+      "passwordChanged": "Password changed successfully"
+    },
+    "history": {
+      "title": "Access History",
+      "loading": "Loading history...",
+      "noRecords": "No records found"
+    }
+  },
+  "Whishlist": {
+    "title": "Wishlist",
+    "sortBy": "Sort by:",
+    "mostRecent": "Most Recent",
+    "onSale": "On Sale",
+    "available": "Available"
+  }
 }

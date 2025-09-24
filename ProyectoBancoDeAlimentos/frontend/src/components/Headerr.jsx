@@ -35,6 +35,16 @@ const BACKEND_ORIGIN = (() => {
   }
 })();
 
+// --- WhatsApp helpers ---
+const WHATSAPP_PHONE =
+  process.env.REACT_APP_WHATSAPP_PHONE ||
+  "50494959376"; // <-- cámbialo o usa .env
+
+const buildWaUrl = ({ phone, text }) => {
+  const digits = String(phone || "").replace(/[^\d]/g, ""); // solo números
+  const msg = encodeURIComponent(text || "");
+  return `https://wa.me/${digits}?text=${msg}`;
+};
 const backendImageUrl = (fileName) =>
   fileName ? `${BACKEND_ORIGIN}/api/images/fotoDePerfil/${encodeURIComponent(fileName)}` : "";
 
@@ -170,6 +180,27 @@ const Headerr = () => {
     };
     if (!loading) fetchCartCount();
   }, [isAuthenticated, isAdmin, isConsultor, loading, setCount]);
+
+  
+
+  const openWhatsAppSupport = () => {
+  const nombre = [user?.nombre, user?.apellido].filter(Boolean).join(" ") || "invitado";
+  const id = getUserId(user) || "N/A";
+  const path = window.location?.pathname || "/";
+
+  const texto = [
+    "Hola, necesito ayuda con mi cuenta/compra.",
+    `Nombre: ${nombre}`,
+    `ID Usuario: ${id}`,
+    `Página: ${path}`
+  ].join("\n");
+
+  const url = buildWaUrl({ phone: WHATSAPP_PHONE, text: texto });
+
+  // abre en nueva pestaña; si el navegador bloquea, redirige en la misma
+  const win = window.open(url, "_blank", "noopener,noreferrer");
+  if (!win) window.location.href = url;
+};
 
   const handleLogout = () => {
     logout();
@@ -381,10 +412,15 @@ const Headerr = () => {
               )}
             </div>
 
-            <a href="#" style={styles.navLink}>
-              <img src={soporte} alt="" style={styles.navIcon} />
-              {t("support") || "Soporte"}
-            </a>
+            <button
+  type="button"
+  style={{ ...styles.navLink, background: "transparent", border: "none", cursor: "pointer" }}
+  onClick={openWhatsAppSupport}
+  title="Chatear por WhatsApp"
+>
+  <img src={soporte} alt="" style={styles.navIcon} />
+  {t("support") || "Soporte"}
+</button>
             <a href="/idioma" style={styles.navLink}>
               <img src={idioma} alt="" style={styles.navIcon} />
               {t("language") || "Idioma"}

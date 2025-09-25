@@ -89,6 +89,12 @@
   "Oferta": "OFERTA",
   "MostBought": "MÁS COMPRADO",
   "L.": "L.",
+  "ver_mas": "Ver más",
+  "pedido": "Pedido",
+  "nombre_producto": "Nombre del producto",
+  "cantidad": "Cantidad",
+  "codigo": "Código",
+  "volver": "Volver",
 
   "perfil": {
     "title": "Mi Perfil",

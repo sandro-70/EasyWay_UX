@@ -1,17 +1,22 @@
 import "./pedidoEmergente.css";
+import { useTranslation } from "react-i18next";
 
 const PedidoEmergente = ({ pedido, cerrarModal }) => {
+  const { t } = useTranslation();
+
   return (
     <div className="overlay">
       <div className="modal">
-        <h3>Pedido #{pedido.id_pedido}</h3>
+        <h3>
+          {t("pedido")} #{pedido.id_pedido}
+        </h3>
 
         <table>
           <thead>
             <tr>
-              <th>Código</th>
-              <th>Nombre del producto</th>
-              <th>Cantidad</th>
+              <th>{t("codigo")}</th>
+              <th>{t("nombre_producto")}</th>
+              <th>{t("cantidad")}</th>
             </tr>
           </thead>
           <tbody>
@@ -26,9 +31,8 @@ const PedidoEmergente = ({ pedido, cerrarModal }) => {
         </table>
 
         <div className="botones">
-          
           <button className="btn-volver" onClick={cerrarModal}>
-            Volver
+            {t("volver")}
           </button>
         </div>
       </div>

@@ -5,6 +5,7 @@ import PedidoEmergente from "./components/pedidoEmergente";
 import PerfilSidebar from "./components/perfilSidebar";
 import { jwtDecode } from "jwt-decode";
 import { getPedidosConDetallesUsuario, listarPedido } from "./api/PedidoApi";
+import { useTranslation } from "react-i18next";
 
 const MisPedidos = () => {
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -14,14 +15,15 @@ const MisPedidos = () => {
   const [limite, setLimite] = useState(10);
   const [pedidos, setPedidos] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const { t } = useTranslation();
 
   // Mapeo de estados a clases CSS
   const estadoClases = {
-    'Pendiente': 'estado-pendiente',
-    'Procesando': 'estado-procesando',
-    'Enviado': 'estado-enviado',
-    'Entregado': 'estado-entregado',
-    'Cancelado': 'estado-cancelado'
+    Pendiente: "estado-pendiente",
+    Procesando: "estado-procesando",
+    Enviado: "estado-enviado",
+    Entregado: "estado-entregado",
+    Cancelado: "estado-cancelado",
   };
 
   // ✨ Función para obtener el ID del usuario del token JWT
@@ -52,7 +54,7 @@ const MisPedidos = () => {
         const response = await getPedidosConDetallesUsuario(idUsuarioActual);
         const formattedPedidos = response.data.map((p) => ({
           id_pedido: p.id_pedido,
-          fecha: p.fecha_pedido ? p.fecha_pedido.split('T')[0] : 'Sin fecha',
+          fecha: p.fecha_pedido ? p.fecha_pedido.split("T")[0] : "Sin fecha",
           estado: p.estado_pedido?.nombre_pedido || "Desconocido",
         }));
         setPedidos(formattedPedidos);
@@ -68,36 +70,36 @@ const MisPedidos = () => {
   let pedidosFiltrados = [...pedidos];
 
   if (filtro === "recientes") {
-  pedidosFiltrados.sort((a, b) => {
-    // Primero, compara por fecha
-    const fechaA = new Date(a.fecha);
-    const fechaB = new Date(b.fecha);
+    pedidosFiltrados.sort((a, b) => {
+      // Primero, compara por fecha
+      const fechaA = new Date(a.fecha);
+      const fechaB = new Date(b.fecha);
 
-    if (fechaA.getTime() !== fechaB.getTime()) {
-      // Si las fechas son diferentes, ordena de más reciente a más antiguo
-      return fechaB - fechaA;
-    } else {
-      // Si las fechas son iguales, ordena por ID de pedido (el más alto es el más reciente)
-      return b.id_pedido - a.id_pedido;
-    }
-  });
-} else if (filtro === "antiguos") {
-  pedidosFiltrados.sort((a, b) => {
-    // Primero, compara por fecha
-    const fechaA = new Date(a.fecha);
-    const fechaB = new Date(b.fecha);
+      if (fechaA.getTime() !== fechaB.getTime()) {
+        // Si las fechas son diferentes, ordena de más reciente a más antiguo
+        return fechaB - fechaA;
+      } else {
+        // Si las fechas son iguales, ordena por ID de pedido (el más alto es el más reciente)
+        return b.id_pedido - a.id_pedido;
+      }
+    });
+  } else if (filtro === "antiguos") {
+    pedidosFiltrados.sort((a, b) => {
+      // Primero, compara por fecha
+      const fechaA = new Date(a.fecha);
+      const fechaB = new Date(b.fecha);
 
-    if (fechaA.getTime() !== fechaB.getTime()) {
-      // Si las fechas son diferentes, ordena de más antiguo a más reciente
-      return fechaA - fechaB;
-    } else {
-      // Si las fechas son iguales, ordena por ID de pedido (el más bajo es el más antiguo)
-      return a.id_pedido - b.id_pedido;
-    }
-  });
-} else if (filtro === "exacta" && fechaExacta) {
-  pedidosFiltrados = pedidosFiltrados.filter((p) => p.fecha === fechaExacta);
-}
+      if (fechaA.getTime() !== fechaB.getTime()) {
+        // Si las fechas son diferentes, ordena de más antiguo a más reciente
+        return fechaA - fechaB;
+      } else {
+        // Si las fechas son iguales, ordena por ID de pedido (el más bajo es el más antiguo)
+        return a.id_pedido - b.id_pedido;
+      }
+    });
+  } else if (filtro === "exacta" && fechaExacta) {
+    pedidosFiltrados = pedidosFiltrados.filter((p) => p.fecha === fechaExacta);
+  }
 
   const pedidosMostrados = pedidosFiltrados.slice(0, limite);
 
@@ -124,20 +126,20 @@ const MisPedidos = () => {
 
       <div className="content-wrapper">
         <div className="mis-pedido-content">
-          <h2 className="historial-title">Historial de pedidos</h2>
+          <h2 className="historial-title">{t("historial_pedidos")}</h2>
           <hr className="perfil-separator" />
 
           <div className="historial-box">
             <div className="historial-header">
-              <h3>Historial de pedidos</h3>
+              <h3>{t("historial_pedidos")}</h3>
               <select
                 className="filtro-fecha"
                 value={filtro}
                 onChange={(e) => setFiltro(e.target.value)}
               >
-                <option value="recientes">Más recientes</option>
-                <option value="antiguos">Más antiguos</option>
-                <option value="exacta">Fecha exacta</option>
+                <option value="recientes">{t("recientes")}</option>
+                <option value="antiguos">{t("antiguos")}</option>
+                <option value="exacta">{t("exacta")}</option>
               </select>
               {filtro === "exacta" && (
                 <input
@@ -147,7 +149,6 @@ const MisPedidos = () => {
                   className="filtro-fecha-input" // <--- NUEVA CLASE AQUÍ
                 />
               )}
-              
             </div>
             <div className="historial-list">
               {cargando ? (
@@ -160,7 +161,9 @@ const MisPedidos = () => {
                     onClick={() => abrirModal(pedido)}
                   >
                     <div className="pedido-info clickable">
-                      <p className="pedido-id">Pedido #{pedido.id_pedido}</p>
+                      <p className="pedido-id">
+                        {t("pedido")} #{pedido.id_pedido}
+                      </p>
                       <p className="pedido-fecha">{pedido.fecha}</p>
                     </div>
                     <span
@@ -171,7 +174,7 @@ const MisPedidos = () => {
                   </div>
                 ))
               ) : (
-                <p>No se encontraron pedidos.</p>
+                <p>{t("noFoundOrders")}</p>
               )}
             </div>
             {limite < pedidosFiltrados.length && (
@@ -180,7 +183,7 @@ const MisPedidos = () => {
                   className="btn-ver-mas"
                   onClick={() => setLimite(limite + 10)}
                 >
-                  Ver más
+                  {t("ver_mas")}
                 </button>
               </div>
             )}

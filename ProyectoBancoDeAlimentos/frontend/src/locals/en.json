@@ -93,6 +93,12 @@
   "Oferta": "OFFER",
   "MostBought": "Most Bought",
   "L.": "$.",
+  "ver_mas": "View More",
+  "pedido": "Order",
+  "codigo": "Code",
+  "nombre_producto": "Product Name",
+  "cantidad": "Quantity",
+  "volver": "Go Back",
 
   "perfil": {
     "title": "My Profile",

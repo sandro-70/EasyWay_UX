@@ -93,6 +93,12 @@
   "Oferta": "优惠",
   "L.": "¥.",
   "MostBought": "最常购买",
+  "ver_mas": "查看更多",
+  "pedido": "订单",
+  "nombre_producto": "产品名称",
+  "codigo": "代码",
+  "cantidad": "数量",
+  "volver": "返回",
 
   "perfil": {
     "title": "我的个人资料",

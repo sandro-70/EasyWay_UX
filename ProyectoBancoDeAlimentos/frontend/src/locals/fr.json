@@ -92,6 +92,12 @@
   "Oferta": "OFFRE",
   "L.": "$.",
   "MostBought": "Le plus acheté",
+  "ver_mas": "Voir plus",
+  "pedido": "Commande",
+  "nombre_producto": "Nom du produit",
+  "cantidad": "Quantité",
+  "codigo": "Code",
+  "volver": "Retour",
 
   "perfil": {
     "title": "Mon Profil",

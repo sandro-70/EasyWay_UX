@@ -15,13 +15,16 @@ import {
 import axiosInstance from "./api/axiosInstance";
 import { toast } from "react-toastify";
 import "./toast.css";
+import { useTranslation } from "react-i18next";
 
 /* ===================== ORIGIN backend + helpers ===================== */
 const BACKEND_ORIGIN = (() => {
   const base = axiosInstance?.defaults?.baseURL;
   try {
     const u = base
-      ? (base.startsWith("http") ? new URL(base) : new URL(base, window.location.origin))
+      ? base.startsWith("http")
+        ? new URL(base)
+        : new URL(base, window.location.origin)
       : new URL(window.location.origin);
     return `${u.protocol}//${u.host}`;
   } catch {
@@ -30,7 +33,9 @@ const BACKEND_ORIGIN = (() => {
 })();
 
 const backendImageUrl = (fileName) =>
-  fileName ? `${BACKEND_ORIGIN}/images/fotoDePerfil/${encodeURIComponent(fileName)}` : "";
+  fileName
+    ? `${BACKEND_ORIGIN}/images/fotoDePerfil/${encodeURIComponent(fileName)}`
+    : "";
 
 // adapta la ruta que venga en DB a una URL válida del backend
 const toPublicFotoSrc = (nameOrPath) => {
@@ -59,14 +64,17 @@ const getExt = (file) => {
   return (map[file?.type] || ".png").toLowerCase();
 };
 
-const getUserId = (u) => u?.id_usuario ?? u?.id ?? u?.usuario_id ?? u?.userId ?? null;
+const getUserId = (u) =>
+  u?.id_usuario ?? u?.id ?? u?.usuario_id ?? u?.userId ?? null;
 const safeBaseName = (file) =>
   (file?.name && file.name.replace(/\s+/g, "_").replace(/[^\w.\-]/g, "")) ||
   `user_${Date.now()}`;
 const buildIdProfileFileName = (userObj, file) => {
   const id = getUserId(userObj);
   const ext = getExt(file);
-  return id ? `user_${id}${ext}` : `${safeBaseName(file).replace(/\.(\w{1,8})$/i, "")}${ext}`;
+  return id
+    ? `user_${id}${ext}`
+    : `${safeBaseName(file).replace(/\.(\w{1,8})$/i, "")}${ext}`;
 };
 
 /* ===================== UI helpers ===================== */
@@ -74,28 +82,48 @@ function Icon({ name, className = "icon" }) {
   switch (name) {
     case "user":
       return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          className={className}
+        >
           <circle cx="12" cy="8" r="4" strokeWidth="1.8" />
           <path d="M4 20c2-4 14-4 16 0" strokeWidth="1.8" />
         </svg>
       );
     case "mail":
       return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          className={className}
+        >
           <rect x="3" y="5" width="18" height="14" rx="2" strokeWidth="1.8" />
           <path d="M3 7l9 6 9-6" strokeWidth="1.8" />
         </svg>
       );
     case "camera":
       return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          className={className}
+        >
           <path d="M4 8h4l2-2h4l2 2h4v12H4z" strokeWidth="1.8" />
           <circle cx="12" cy="14" r="3.5" strokeWidth="1.8" />
         </svg>
       );
     case "number":
       return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          className={className}
+        >
           <path d="M6 2h12v20H6z" strokeWidth="1.8" />
           <circle cx="12" cy="18" r="1.5" strokeWidth="1.8" />
         </svg>
@@ -164,6 +192,9 @@ export default function MiPerfil() {
   // snapshot para cancelar
   const [snapshot, setSnapshot] = useState(null);
 
+  //translations
+  const { t } = useTranslation();
+
   // Context helper
   const pushUserToContext = (payload) => {
     const cleanName = fileNameFromPath(
@@ -195,7 +226,8 @@ export default function MiPerfil() {
     push(ctx?.foto);
 
     // probar convenciones por id
-    if (uid) ["jpg", "png", "webp"].forEach((ext) => push(`user_${uid}.${ext}`));
+    if (uid)
+      ["jpg", "png", "webp"].forEach((ext) => push(`user_${uid}.${ext}`));
     return list;
   };
 
@@ -203,58 +235,72 @@ export default function MiPerfil() {
     setFotoIdx((i) => (i + 1 < fotoCandidates.length ? i + 1 : i));
   };
 
- // dentro de miPerfil.jsx
-const handleFotoChange = async (e) => {
-  const file = e.target.files?.[0];
-  e.target.value = ""; // permite volver a seleccionar el mismo archivo
-  if (!file) return;
+  // dentro de miPerfil.jsx
+  const handleFotoChange = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permite volver a seleccionar el mismo archivo
+    if (!file) return;
 
-  // si no estabas en edición, activamos edición para todos
-  if (!editMode) setEditMode(true);
+    // si no estabas en edición, activamos edición para todos
+    if (!editMode) setEditMode(true);
 
-  // preview inmediata
-  const preview = URL.createObjectURL(file);
-  setFotoUrl(preview);
+    // preview inmediata
+    const preview = URL.createObjectURL(file);
+    setFotoUrl(preview);
 
-  const fileNameById = buildIdProfileFileName(user, file);
+    const fileNameById = buildIdProfileFileName(user, file);
 
-  try {
-    // 1) Subir archivo
-    const { data } = await uploadProfilePhoto1(file, fileNameById);
-    const filename = data?.filename || fileNameById;
+    try {
+      // 1) Subir archivo
+      const { data } = await uploadProfilePhoto1(file, fileNameById);
+      const filename = data?.filename || fileNameById;
 
-    // 2) Persistir en BD el nombre del archivo (¡clave!)
-     await axiosInstance.put("/api/MiPerfil/perfil/", {
-      foto_perfil_url: filename,
-    });
+      // 2) Persistir en BD el nombre del archivo (¡clave!)
+      await axiosInstance.put("/api/MiPerfil/perfil/", {
+        foto_perfil_url: filename,
+      });
 
-    // 3) Releer usuario para sincronizar y refrescar cache
-    const res = await InformacionUser();
-    const data1 = res?.data?.user ?? res?.data ?? {};
-    const stored = data1.foto_perfil_url || data1.foto_perfil || data1.foto || filename;
-    const justName = String(stored).split("/").pop();
+      // 3) Releer usuario para sincronizar y refrescar cache
+      const res = await InformacionUser();
+      const data1 = res?.data?.user ?? res?.data ?? {};
+      const stored =
+        data1.foto_perfil_url || data1.foto_perfil || data1.foto || filename;
+      const justName = String(stored).split("/").pop();
 
-    // 4) Actualiza candidatos y UI
-    const cands = buildFotoCandidates({ ...data1, foto_perfil_url: justName }, user);
-    setFotoCandidates(cands);
-    setFotoIdx(0);
+      // 4) Actualiza candidatos y UI
+      const cands = buildFotoCandidates(
+        { ...data1, foto_perfil_url: justName },
+        user
+      );
+      setFotoCandidates(cands);
+      setFotoIdx(0);
 
-    setFotoFileName(justName);
-    setFotoUrl(`${toPublicFotoSrc(justName)}?t=${Date.now()}`);
+      setFotoFileName(justName);
+      setFotoUrl(`${toPublicFotoSrc(justName)}?t=${Date.now()}`);
 
-    // 5) Context (header)
-    setUser((prev) => ({ ...(prev || {}), ...data1, foto_perfil_url: justName, avatar_rev: Date.now() }));
+      // 5) Context (header)
+      setUser((prev) => ({
+        ...(prev || {}),
+        ...data1,
+        foto_perfil_url: justName,
+        avatar_rev: Date.now(),
+      }));
 
-    URL.revokeObjectURL(preview);
-    toast.success("Foto actualizada", { className: "toast-success" });
-  } catch (err) {
-    console.error("Error subiendo/guardando foto:", err?.response?.data || err);
-    toast.error("No se pudo actualizar la foto.", { className: "toast-error" });
-    URL.revokeObjectURL(preview);
-    // si falla, intenta el siguiente candidato (jpg/png/webp)
-    advanceCandidate();
-  }
-};
+      URL.revokeObjectURL(preview);
+      toast.success("Foto actualizada", { className: "toast-success" });
+    } catch (err) {
+      console.error(
+        "Error subiendo/guardando foto:",
+        err?.response?.data || err
+      );
+      toast.error("No se pudo actualizar la foto.", {
+        className: "toast-error",
+      });
+      URL.revokeObjectURL(preview);
+      // si falla, intenta el siguiente candidato (jpg/png/webp)
+      advanceCandidate();
+    }
+  };
 
   /* =================== HISTORIAL =================== */
   const tryParseDate = (value) => {
@@ -337,7 +383,11 @@ const handleFotoChange = async (e) => {
       const rawList = Array.isArray(res.data)
         ? res.data
         : res.data?.rows ?? res.data?.data ?? [];
-      const items = Array.isArray(rawList) ? rawList : res.data ? [res.data] : [];
+      const items = Array.isArray(rawList)
+        ? rawList
+        : res.data
+        ? [res.data]
+        : [];
       const logs = items.map((item) => {
         const candidates = [
           item.fecha_conexion,
@@ -355,13 +405,19 @@ const handleFotoChange = async (e) => {
         ];
         let parsedDate = null;
         for (const cand of candidates) {
-          if (cand !== undefined && cand !== null && String(cand).trim() !== "") {
+          if (
+            cand !== undefined &&
+            cand !== null &&
+            String(cand).trim() !== ""
+          ) {
             parsedDate = tryParseDate(cand);
             if (parsedDate) break;
           }
         }
-        if (!parsedDate && typeof item === "string") parsedDate = tryParseDate(item);
-        if (!parsedDate) return { fecha: "Fecha desconocida", hora: "", raw: item };
+        if (!parsedDate && typeof item === "string")
+          parsedDate = tryParseDate(item);
+        if (!parsedDate)
+          return { fecha: "Fecha desconocida", hora: "", raw: item };
         const fh = formatToFechaHora(parsedDate);
         return { ...fh, raw: item };
       });
@@ -417,7 +473,10 @@ const handleFotoChange = async (e) => {
         // snapshot
         setSnapshot({
           telefono:
-            data.telefono || data.numero_telefono || data.telefono_usuario || "",
+            data.telefono ||
+            data.numero_telefono ||
+            data.telefono_usuario ||
+            "",
           nombre: data.nombre || data.nombre_usuario || data.nombres || "",
           apellidos:
             data.apellido || data.apellidos || data.apellido_usuario || "",
@@ -493,10 +552,16 @@ const handleFotoChange = async (e) => {
       const fullRes = await InformacionUser();
       const data = fullRes?.data?.user ?? fullRes?.data ?? {};
       const fromApi =
-        data.foto_perfil_url || data.foto_perfil || data.foto || nombreParaBD || "";
+        data.foto_perfil_url ||
+        data.foto_perfil ||
+        data.foto ||
+        nombreParaBD ||
+        "";
       const freshName = fileNameFromPath(fromApi) || "";
 
-      const freshUrl = freshName ? `${toPublicFotoSrc(freshName)}?t=${Date.now()}` : "";
+      const freshUrl = freshName
+        ? `${toPublicFotoSrc(freshName)}?t=${Date.now()}`
+        : "";
       setFotoFileName(freshName);
       setFotoUrl(freshUrl);
       setUser({ ...data, foto_perfil_url: freshName, avatar_rev: Date.now() });
@@ -513,8 +578,13 @@ const handleFotoChange = async (e) => {
       setEditMode(false);
       toast.success("Perfil guardado", { className: "toast-success" });
     } catch (err) {
-      console.error("Error guardando perfil:", err?.response?.data || err.message || err);
-      toast.error("No se pudo guardar el perfil.", { className: "toast-error" });
+      console.error(
+        "Error guardando perfil:",
+        err?.response?.data || err.message || err
+      );
+      toast.error("No se pudo guardar el perfil.", {
+        className: "toast-error",
+      });
     }
   };
 
@@ -537,18 +607,24 @@ const handleFotoChange = async (e) => {
     if (!correo) return;
     try {
       await enviarCorreoDosPasos(correo);
-      toast.info("Se ha enviado el código a tu correo", { className: "toast-info" });
+      toast.info("Se ha enviado el código a tu correo", {
+        className: "toast-info",
+      });
       setShowTwoFactorModal(false);
       setShowTwoFactorCodeModal(true);
     } catch (err) {
       console.error("Error enviando código:", err);
-      toast.error("No se pudo enviar el código. Intenta nuevamente.", { className: "toast-error" });
+      toast.error("No se pudo enviar el código. Intenta nuevamente.", {
+        className: "toast-error",
+      });
     }
   };
 
   const handleVerifyCode = async () => {
     if (!twoFactorCode)
-      return toast.info("Ingresa el código recibido", { className: "toast-info" });
+      return toast.info("Ingresa el código recibido", {
+        className: "toast-info",
+      });
     try {
       await validarCodigoDosPasos(correo, twoFactorCode);
       toast.success("Autenticación de dos pasos activada correctamente", {
@@ -567,7 +643,9 @@ const handleFotoChange = async (e) => {
   const handleResendCode = async () => {
     try {
       await enviarCorreoDosPasos(correo);
-      toast.info("Se ha reenviado el código a tu correo", { className: "toast-info" });
+      toast.info("Se ha reenviado el código a tu correo", {
+        className: "toast-info",
+      });
     } catch (err) {
       console.error("Error reenviando código:", err);
       toast.error("No se pudo reenviar el código. Intenta más tarde.", {
@@ -584,9 +662,9 @@ const handleFotoChange = async (e) => {
       <section className="sidebar">
         <PerfilSidebar />
       </section>
-      <h1 className="perfil-title">Editar Perfil</h1>
+      <h1 className="perfil-title">{t("perfil.title")}</h1>
       <hr className="perfil-separator" />
-      <p className="Datos-text">Datos Generales</p>
+      <p className="Datos-text">{t("perfil.dataTitle")}</p>
 
       <div className="perfil-content">
         <aside className="perfil-sidebar">
@@ -620,13 +698,13 @@ const handleFotoChange = async (e) => {
             title="Cambiar foto"
           >
             <Icon name="camera" className="icon-small" />
-            <span>Editar Foto</span>
+            <span>{t("perfil.editPhoto")}</span>
           </button>
         </aside>
 
         <section className="perfil-card">
           <div className="fields-grid">
-            <Field label="Nombre" icon={<Icon name="user" />}>
+            <Field label={t("perfil.field.nombre")} icon={<Icon name="user" />}>
               <input
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
@@ -635,7 +713,10 @@ const handleFotoChange = async (e) => {
               />
             </Field>
 
-            <Field label="Apellidos" icon={<Icon name="user" />}>
+            <Field
+              label={t("perfil.field.apellidos")}
+              icon={<Icon name="user" />}
+            >
               <input
                 value={apellidos}
                 onChange={(e) => setApellidos(e.target.value)}
@@ -644,7 +725,7 @@ const handleFotoChange = async (e) => {
               />
             </Field>
 
-            <Field label="Correo" icon={<Icon name="mail" />}>
+            <Field label={t("perfil.field.correo")} icon={<Icon name="mail" />}>
               <input
                 value={correo}
                 onChange={(e) => setCorreo(e.target.value)}
@@ -653,39 +734,42 @@ const handleFotoChange = async (e) => {
               />
             </Field>
 
-            <Field label="Telefono" icon={<Icon name="number" />}>
+            <Field
+              label={t("perfil.field.telefono")}
+              icon={<Icon name="number" />}
+            >
               <input
                 value={telefono}
                 onChange={(e) => setTelefono(e.target.value)}
-                placeholder="Telefono"
+                placeholder={t("perfil.placeholder.telefono")}
                 disabled={!editMode}
               />
             </Field>
 
-            <Field label="Género">
+            <Field label={t("perfil.field.genero")}>
               <select
                 value={genero}
                 onChange={(e) => setGenero(e.target.value)}
                 disabled={!editMode}
               >
-                <option>Masculino</option>
-                <option>Femenino</option>
-                <option>Otro</option>
+                <option>{t("perfil.gender.masculino")}</option>
+                <option>{t("perfil.gender.femenino")}</option>
+                <option>{t("perfil.gender.otro")}</option>
               </select>
             </Field>
           </div>
 
           {!editMode ? (
             <button className="boton-editar" onClick={enterEdit}>
-              Editar
+              {t("perfil.editProfile")}
             </button>
           ) : (
             <div className="botones-accion">
               <button className="boton-guardar" onClick={handleSave}>
-                Guardar
+                {t("perfil.save")}
               </button>
               <button className="boton-cancelar" onClick={handleCancel}>
-                Cancelar
+                {t("perfil.cancel")}
               </button>
             </div>
           )}
@@ -695,7 +779,9 @@ const handleFotoChange = async (e) => {
             <div className="modal-overlay">
               <div className="mPerfil-modal">
                 <div className="modal-headerr">
-                  <h3 className="label-modal-confirm">Cambio de Contraseña</h3>
+                  <h3 className="label-modal-confirm">
+                    {t("perfil.modal.changePassword.title")}
+                  </h3>
                   <button
                     className="mPerfil-cancel-button"
                     onClick={() => setShowPasswordModal(false)}
@@ -704,26 +790,32 @@ const handleFotoChange = async (e) => {
                   </button>
                 </div>
                 <div className="modal-body">
-                  <label>Contraseña Anterior</label>
+                  <label>{t("perfil.modal.changePassword.oldPassword")}</label>
                   <input
                     type="password"
                     value={oldPassword}
                     onChange={(e) => setOldPassword(e.target.value)}
                   />
-                  <label>Nueva Contraseña</label>
+                  <label>{t("perfil.modal.changePassword.newPassword")}</label>
                   <input
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                   />
-                  <label>Confirmación de Nueva Contraseña</label>
+                  <label>
+                    {t("perfil.modal.changePassword.confirmPassword")}
+                  </label>
                   <input
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                   />
                   {passwordError && (
-                    <p className="password-error" role="alert" aria-live="assertive">
+                    <p
+                      className="password-error"
+                      role="alert"
+                      aria-live="assertive"
+                    >
                       {passwordError}
                     </p>
                   )}
@@ -733,7 +825,7 @@ const handleFotoChange = async (e) => {
                     onClick={() => setShowPasswordModal(false)}
                     className="btn-danger"
                   >
-                    Cancelar
+                    {t("perfil.cancel")}
                   </button>
                   <button
                     className="MPbtn-secondary"
@@ -780,7 +872,11 @@ const handleFotoChange = async (e) => {
                       }
                     }}
                   >
-                    {passwordLoading ? "Guardando..." : "Guardar"}
+                    {passwordLoading ? (
+                      <span>{t("perfil.saving")}</span>
+                    ) : (
+                      t("perfil.save")
+                    )}
                   </button>
                 </div>
               </div>
@@ -793,7 +889,7 @@ const handleFotoChange = async (e) => {
               <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-0 relative">
                 <div className="bg-[#2b6daf] text-white text-center py-2">
                   <h2 className="font-semibold text-lg">
-                    Activar Autenticación en Dos Pasos
+                    {t("perfil.modal.2fa.title")}
                   </h2>
                 </div>
                 <button
@@ -808,9 +904,13 @@ const handleFotoChange = async (e) => {
                   </div>
                   <div className="flex flex-col gap-3 mb-4">
                     <label className="flex items-center gap-2 border border-[#2b6daf] p-2 rounded">
-                      <input type="radio" name="twofactor" className="accent-[#2b6daf] align-middle m-0" />
+                      <input
+                        type="radio"
+                        name="twofactor"
+                        className="accent-[#2b6daf] align-middle m-0"
+                      />
                       <span className="align-middle">
-                        Enviar código al ***@gmail.com
+                        {t("perfil.modal.2fa.email")} ***@gmail.com
                       </span>
                     </label>
                   </div>
@@ -818,7 +918,7 @@ const handleFotoChange = async (e) => {
                     className="w-full bg-[#2b6daf] hover:bg-blue-700 text-white py-2 rounded-md"
                     onClick={handleSendCode}
                   >
-                    Enviar código
+                    {t("perfil.modal.2fa.sendCode")}
                   </button>
                 </div>
               </div>
@@ -830,7 +930,7 @@ const handleFotoChange = async (e) => {
               <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-0 relative">
                 <div className="bg-[#2b6daf] text-white text-center py-2">
                   <h2 className="font-semibold text-lg">
-                    Activar Autenticación en Dos Pasos
+                    {t("perfil.modal.2fa.active")}
                   </h2>
                 </div>
                 <button
@@ -841,9 +941,13 @@ const handleFotoChange = async (e) => {
                 </button>
                 <div className="p-6">
                   <div className="flex flex-col items-center mb-4">
-                    <img src="two-factor.png" alt="2FA" className="w-24 h-24 mb-2" />
+                    <img
+                      src="two-factor.png"
+                      alt="2FA"
+                      className="w-24 h-24 mb-2"
+                    />
                     <p className="text-center text-gray-700 text-sm">
-                      Por tu seguridad, ingresa el código que te hemos enviado
+                      {t("perfil.modal.2fa.enterCode")}
                     </p>
                   </div>
                   <div className="mb-4">
@@ -851,7 +955,7 @@ const handleFotoChange = async (e) => {
                       type="text"
                       value={twoFactorCode}
                       onChange={(e) => setTwoFactorCode(e.target.value)}
-                      placeholder="Ingresa el código"
+                      placeholder={t("perfil.modal.2fa.codePlaceholder")}
                       className="w-full border border-[#2b6daf] rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-[#2b6daf]"
                     />
                   </div>
@@ -859,14 +963,14 @@ const handleFotoChange = async (e) => {
                     className="w-full bg-[#2b6daf] hover:bg-blue-700 text-white py-2 rounded-md mb-2"
                     onClick={handleVerifyCode}
                   >
-                    Verificar
+                    {t("perfil.modal.2fa.verify")}
                   </button>
                   <div className="text-center">
                     <button
                       className="text-[#2b6daf] text-sm hover:underline"
                       onClick={handleResendCode}
                     >
-                      Reenviar Código
+                      {t("perfil.modal.2fa.resendCode")}
                     </button>
                   </div>
                 </div>
@@ -882,7 +986,9 @@ const handleFotoChange = async (e) => {
                 style={{ marginTop: "80px" }}
               >
                 <div className="bg-[#2b6daf] text-white text-center py-3 rounded-t-lg">
-                  <h2 className="font-semibold text-lg">Historial de accesos</h2>
+                  <h2 className="font-semibold text-lg">
+                    {t("perfil.history.title")}
+                  </h2>
                 </div>
                 <button
                   className="absolute top-3 right-3 text-white hover:text-gray-200"
@@ -903,16 +1009,24 @@ const handleFotoChange = async (e) => {
                     <div style={{ padding: "8px 16px" }}>
                       {loadingHistorial ? (
                         <p className="text-center text-gray-500">
-                          Cargando historial...
+                          {t("perfil.history.loading")}
                         </p>
                       ) : errorHistorial ? (
-                        <p className="text-center text-red-500">{errorHistorial}</p>
+                        <p className="text-center text-red-500">
+                          {errorHistorial}
+                        </p>
                       ) : (
                         <div
                           className="historial-list"
-                          style={{ maxHeight: 260, overflowY: "auto", paddingRight: 8 }}
+                          style={{
+                            maxHeight: 260,
+                            overflowY: "auto",
+                            paddingRight: 8,
+                          }}
                         >
-                          <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+                          <ul
+                            style={{ listStyle: "none", margin: 0, padding: 0 }}
+                          >
                             {historial.length > 0 ? (
                               historial.map((item, idx) => (
                                 <li
@@ -927,7 +1041,7 @@ const handleFotoChange = async (e) => {
                               ))
                             ) : (
                               <li className="flex justify-center text-gray-500 py-2">
-                                No hay registros de acceso.
+                                {t("perfil.history.noRecords")}
                               </li>
                             )}
                           </ul>
@@ -944,7 +1058,7 @@ const handleFotoChange = async (e) => {
       </div>
 
       <section className="configuracion-container">
-        <h1 className="Config">Configuracion</h1>
+        <h1 className="Config">{t("perfil.configuration")}</h1>
         <div className="candado-link">
           <img src="/Vector.png" alt="imagen" className="candado" />
           <Link
@@ -952,7 +1066,7 @@ const handleFotoChange = async (e) => {
             className="new-link"
             onClick={() => setShowPasswordModal(true)}
           >
-            Cambiar Contraseña
+            {t("perfil.changePassword")}
           </Link>
         </div>
         <div className="f2-autenticacion">
@@ -965,7 +1079,7 @@ const handleFotoChange = async (e) => {
               setShowTwoFactorModal(true);
             }}
           >
-            Autenticación en Dos Pasos
+            {t("perfil.modal.2fa.title")}
           </Link>
         </div>
         <div className="historial">
@@ -983,7 +1097,7 @@ const handleFotoChange = async (e) => {
               setShowHistorial(true);
             }}
           >
-            Historial de Acceso
+            {t("perfil.history.title")}
           </Link>
         </div>
       </section>

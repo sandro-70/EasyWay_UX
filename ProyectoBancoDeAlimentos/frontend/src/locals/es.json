@@ -108,6 +108,10 @@
     "myCoupons": "Mis Cupones",
     "myInvoices": "Mis Facturas",
     "wishlist": "Lista de Deseos",
+    "editProfile": "Editar Perfil",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "saving": "Guardando...",
 
     "field": {
       "nombre": "Nombre",
@@ -145,10 +149,15 @@
       },
       "2fa": {
         "title": "Autenticación en dos pasos",
+        "email": "Enviar código al",
         "sendCode": "Enviar código",
         "instruction": "Ingresa el código que recibiste por correo",
         "verify": "Verificar",
-        "resend": "Reenviar código"
+        "resend": "Reenviar código",
+        "enterCode": "Por tu seguridad, ingresa el código que te hemos enviado",
+        "resendCode": "Reenviar Código",
+        "codePlaceholder": "Ingresa el código",
+        "active": "Activar Autenticación en Dos Pasos"
       }
     },
     "toast": {

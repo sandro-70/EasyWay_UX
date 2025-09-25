@@ -1,3 +1,4 @@
+import { t } from "i18next";
 import { Link } from "react-router-dom";
 export default function PerfilSidebar() {
   return (
@@ -9,7 +10,7 @@ export default function PerfilSidebar() {
             to="/miPerfil"
             className="block p-2 rounded hover:bg-[#f0833e] text-gray-700"
           >
-            Editar perfil
+            {t("perfil.editProfile")}
           </Link>
         </li>
         <li>
@@ -17,7 +18,7 @@ export default function PerfilSidebar() {
             to="/misPedidos"
             className="block p-2 rounded hover:bg-[#f0833e] text-gray-700"
           >
-            Mis Pedidos
+            {t("perfil.myOrders")}
           </Link>
         </li>
         <li>
@@ -25,7 +26,7 @@ export default function PerfilSidebar() {
             to="/metodoPago"
             className="block p-2 rounded hover:bg-[#f0833e] text-gray-700"
           >
-            Métodos de Pago
+            {t("perfil.myPaymentMethods")}
           </Link>
         </li>
 
@@ -34,7 +35,7 @@ export default function PerfilSidebar() {
             to="/misDirecciones"
             className="block p-2 rounded hover:bg-[#f0833e] text-gray-700"
           >
-            Mis Direcciones
+            {t("perfil.myAddresses")}
           </Link>
         </li>
         <li>
@@ -42,7 +43,7 @@ export default function PerfilSidebar() {
             to="/misCupones"
             className="block p-2 rounded hover:bg-[#f0833e] text-gray-700"
           >
-            Mis Cupones
+            {t("perfil.myCoupons")}
           </Link>
         </li>
         <li>
@@ -50,7 +51,7 @@ export default function PerfilSidebar() {
             to="/facturas"
             className="block p-2 rounded hover:bg-[#f0833e] text-gray-700"
           >
-            Mis Facturas
+            {t("perfil.myInvoices")}
           </Link>
         </li>
         <li>
@@ -58,7 +59,7 @@ export default function PerfilSidebar() {
             to="/ListaDeDeseos"
             className="block p-2 rounded hover:bg-[#f0833e] text-gray-700"
           >
-            Lista de Deseos
+            {t("perfil.wishlist")}
           </Link>
         </li>
       </ul>

@@ -112,6 +112,10 @@
     "myCoupons": "My Coupons",
     "myInvoices": "My Invoices",
     "wishlist": "Wishlist",
+    "editProfile": "Edit Profile",
+    "save": "Save",
+    "cancel": "Cancel",
+    "saving": "Saving...",
 
     "field": {
       "nombre": "First Name",
@@ -152,7 +156,12 @@
         "sendCode": "Send Code",
         "instruction": "Enter the code you received by email",
         "verify": "Verify",
-        "resend": "Resend Code"
+        "resend": "Resend Code",
+        "email": "Send code to",
+        "enterCode": "For your security, enter the code we have sent you",
+        "resendCode": "Resend Code",
+        "codePlaceholder": "Enter the code",
+        "active": "Activate Two-Factor Authentication"
       }
     },
     "toast": {

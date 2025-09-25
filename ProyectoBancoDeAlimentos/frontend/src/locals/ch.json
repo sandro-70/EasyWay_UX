@@ -112,6 +112,10 @@
     "myCoupons": "我的优惠券",
     "myInvoices": "我的发票",
     "wishlist": "愿望清单",
+    "editProfile": "编辑个人资料",
+    "save": "保存",
+    "cancel": "取消",
+    "saving": "保存中...",
 
     "field": {
       "nombre": "名字",
@@ -152,7 +156,12 @@
         "sendCode": "发送代码",
         "instruction": "输入您收到的电子邮件中的代码",
         "verify": "验证",
-        "resend": "重新发送代码"
+        "resend": "重新发送代码",
+        "email": "发送代码到",
+        "enterCode": "为了您的安全，请输入我们发送给您的代码",
+        "resendCode": "重新发送代码",
+        "codePlaceholder": "输入代码",
+        "active": "激活两步验证"
       }
     },
     "toast": {

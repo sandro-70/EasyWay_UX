@@ -111,6 +111,10 @@
     "myCoupons": "Mes Coupons",
     "myInvoices": "Mes Factures",
     "wishlist": "Liste de Souhaits",
+    "editProfile": "Éditer Profil",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "saving": "Enregistrement...",
 
     "field": {
       "nombre": "Nom",
@@ -135,6 +139,7 @@
       "guardar": "Enregistrer",
       "cancelar": "Annuler"
     },
+
     "modal": {
       "changePassword": {
         "title": "Changer de mot de passe",
@@ -151,7 +156,12 @@
         "sendCode": "Envoyer le code",
         "instruction": "Entrez le code que vous avez reçu par e-mail",
         "verify": "Vérifier",
-        "resend": "Renvoyer le code"
+        "resend": "Renvoyer le code",
+        "email": "Envoyer le code à",
+        "enterCode": "Pour votre sécurité, entrez le code que nous vous avons envoyé",
+        "resendCode": "Renvoyer le code",
+        "codePlaceholder": "Entrez le code",
+        "active": "Activer l'authentification à deux facteurs"
       }
     },
     "toast": {

@@ -489,7 +489,7 @@ const ProcesoCompra = () => {
           id_usuario,
           idSucursalPedido,
           item.cantidad_unidad_medida,
-          'SALIDA' // Operación de salida por venta
+          'salida' // Operación de salida por venta
         );
       }
       

@@ -1442,7 +1442,7 @@ export default function Inventario() {
       
       // 2. Registrar auditoría de ENTRADA usando getUserId()
       const id_usuario = getUserId();
-      
+
       if (!id_usuario) {
         toast.warn("No se pudo identificar al usuario para la auditoría", {
           className: "toast-warn",
@@ -1453,7 +1453,7 @@ export default function Inventario() {
           id_usuario,
           sucId,
           qty,
-          'ENTRADA'
+          'entrada'
         );
       }
       

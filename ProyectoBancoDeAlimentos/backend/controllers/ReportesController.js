@@ -572,3 +572,58 @@ exports.getInfoUsuario = async (req, res) => {
     return res.status(500).json({ message: 'Error al obtener datos' });
   }
 };
+
+exports.getPedidosDeUsuario = async (req, res) => {
+  try {
+    const id_usuario = Number(req.params.id_usuario);
+    if (!Number.isInteger(id_usuario)) {
+      return res.status(400).json({ message: "id_usuario inválido" });
+    }
+
+    const pedidos = await pedido.findAll({
+      where: { id_usuario },
+      attributes: ["id_pedido", "fecha_pedido"],
+      include: [
+        {
+          model: estado_pedido,
+          attributes: ["nombre_pedido"],
+        },
+        {
+          model: factura,
+          attributes: ["id_factura", "total"],
+          include: [
+            {
+              model: metodo_pago,
+              attributes: ["brand_tarjeta", "tarjeta_ultimo"],
+            },
+          ],
+        },
+      ],
+      order: [["fecha_pedido", "DESC"]],
+    });
+
+    if (!pedidos || pedidos.length === 0) {
+      return res.status(404).json({ message: "No se encontraron pedidos para este usuario." });
+    }
+
+    const resultado = pedidos.map((p) => ({
+      id_pedido: p.id_pedido,
+      fecha_pedido: p.fecha_pedido,
+      estado: p.estado_pedido?.nombre_pedido || null,
+      factura: p.factura
+        ? {
+            id_factura: p.factura.id_factura,
+            total: p.factura.total,
+            metodo_pago: p.factura.metodo_pago
+              ? `${p.factura.metodo_pago.brand_tarjeta} ****${p.factura.metodo_pago.tarjeta_ultimo}`
+              : null,
+          }
+        : null,
+    }));
+
+    return res.json(resultado);
+  } catch (err) {
+    console.error("[getPedidosDeUsuario] Error:", err);
+    return res.status(500).json({ message: "Error interno al obtener pedidos del usuario" });
+  }
+};

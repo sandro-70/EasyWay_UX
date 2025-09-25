@@ -7,8 +7,6 @@ import FilterIcon from "../images/FilterIcon.png";
 import logo from "../images/logo.png";
 import SearchIcon from "../images/SearchIcon.png";
 import UserIcon from "../images/UserIcon.png";
-import historialAct from "../images/historialAct.png";
-import sistemaVal from "../images/sistemaVal.png";
 import reportesPer from "../images/reportesPer.png";
 // import checkout from "../images/checkout.png"; // no se usa
 import soporte from "../images/soporte.png";
@@ -382,14 +380,6 @@ const Headerr = () => {
       {isCliente && (
         <div style={styles.bottomBar}>
           <nav style={styles.nav} aria-label="Categorías">
-            <a href="#" style={styles.navLink}>
-              <img src={historialAct} alt="" style={styles.navIcon} />
-              {t("history") || "Historial"}
-            </a>
-            <a href="#" style={styles.navLink}>
-              <img src={sistemaVal} alt="" style={styles.navIcon} />
-              {t("rating_system") || "Sistema de Valoracion"}
-            </a>
             <div style={{ position: "relative" }} ref={reportesMenuRef}>
               <button
                 style={{ ...styles.navLink, background: "none", border: "none" }}
@@ -401,26 +391,28 @@ const Headerr = () => {
 
               {reportesMenu && (
                 <div style={styles.dropdownReportes}>
-      
                   <Link to="/descuentos_aplicados" style={styles.dropdownLink} onClick={() => setReportesMenu(false)}>
                     Descuentos aplicados
                   </Link>
                   <Link to="/SistemaValoracion" style={styles.dropdownLink} onClick={() => setReportesMenu(false)}>
                     Resumen de Actividad
                   </Link>
+                  <Link to="/Historial" style={styles.dropdownLink} onClick={() => setReportesMenu(false)}>
+                    Historial
+                  </Link>
                 </div>
               )}
             </div>
 
             <button
-  type="button"
-  style={{ ...styles.navLink, background: "transparent", border: "none", cursor: "pointer" }}
-  onClick={openWhatsAppSupport}
-  title="Chatear por WhatsApp"
->
-  <img src={soporte} alt="" style={styles.navIcon} />
-  {t("support") || "Soporte"}
-</button>
+              type="button"
+              style={{ ...styles.navLink, background: "transparent", border: "none", cursor: "pointer" }}
+              onClick={openWhatsAppSupport}
+              title="Chatear por WhatsApp"
+            >
+              <img src={soporte} alt="" style={styles.navIcon} />
+              {t("support") || "Soporte"}
+            </button>
             <a href="/idioma" style={styles.navLink}>
               <img src={idioma} alt="" style={styles.navIcon} />
               {t("language") || "Idioma"}
@@ -567,7 +559,7 @@ const styles = {
   },
   nav: {
     display: "grid",
-    gridTemplateColumns: "repeat(5, 1fr)",
+    gridTemplateColumns: "repeat(3, 1fr)",
     width: "100%",
     height: "100%",
   },

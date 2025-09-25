@@ -137,8 +137,8 @@
   font-weight: bold;
   margin: 0;
   font-size: 1.3rem;
-  background: #f0833e;
-  width: 200px;
+  background: #f1f1f1;
+  width: 300px;
   text-align: center;
 }
 
@@ -147,40 +147,9 @@
   font-size: 1.3rem;
   color: #666;
   margin: 0;
-  margin-left: 120px;
+  margin-left: 20px;
 }
 
-/* === Estados === */
-.pedido-estado {
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: bold;
-  min-width: 90px;
-  text-align: center;
-  color: white; /* Color de texto base, para que se lea en cualquier fondo */
-}
-
-/* Colores para cada estado */
-.estado-pendiente {
-  background: #f0ad4e; /* Amarillo-naranja para pendiente */
-}
-
-.estado-procesando {
-  background: #5bc0de; /* Azul claro para procesando */
-}
-
-.estado-enviado {
-  background: #337ab7; /* Azul oscuro para enviado */
-}
-
-.estado-entregado {
-  background: #5cb85c; /* Verde para entregado */
-}
-
-.estado-cancelado {
-  background: #d9534f; /* Rojo para cancelado */
-}
 .clickable {
   cursor: pointer;
   transition: background 0.2s ease;

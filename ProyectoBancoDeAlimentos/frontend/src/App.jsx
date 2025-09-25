@@ -39,6 +39,7 @@ import LayoutSidebar from "./layoutSidebar.jsx";
 import AsignarDescuentos from "./asignarDescuentos.jsx";
 import TablaPromociones from "./tablaReportesPromociones.jsx";
 import SistemaValoracion from "./SistemaValoracion.jsx";
+import Historial from "./Historial.jsx";
 import PersonalizacionReportes from "./PersonalizacionReportes.jsx";
 import DescuentosAplicados from "./descuentos_aplicados.jsx";
 import Categoria from "./categoria.jsx";
@@ -352,6 +353,14 @@ function App() {
                 element={
                   <ProtectedRoute rolesPermitidos={["cliente"]}>
                     <SistemaValoracion />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/Historial"
+                element={
+                  <ProtectedRoute rolesPermitidos={["cliente"]}>
+                    <Historial />
                   </ProtectedRoute>
                 }
               />

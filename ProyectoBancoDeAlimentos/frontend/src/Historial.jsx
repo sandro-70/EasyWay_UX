@@ -86,7 +86,7 @@ function Pagination({ page, pageCount, onPage }) {
   );
 }
 
-function TablaReportesVentas() {
+function Historial() {
   const [ventas, setVentas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -345,4 +345,4 @@ function TablaReportesVentas() {
   );
 };
 
-export default TablaReportesVentas;
+export default Historial;

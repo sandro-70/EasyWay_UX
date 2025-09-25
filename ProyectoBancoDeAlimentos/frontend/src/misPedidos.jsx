@@ -162,15 +162,10 @@ const MisPedidos = () => {
                   >
                     <div className="pedido-info clickable">
                       <p className="pedido-id">
-                        {t("pedido")} #{pedido.id_pedido}
+                        {t("pedido")} #{pedido.id_pedido}-{pedido.estado}
                       </p>
                       <p className="pedido-fecha">{pedido.fecha}</p>
                     </div>
-                    <span
-                      className={`pedido-estado ${estadoClases[pedido.estado]}`}
-                    >
-                      {pedido.estado}
-                    </span>
                   </div>
                 ))
               ) : (

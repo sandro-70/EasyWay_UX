@@ -19,6 +19,8 @@ import {
 } from "../api/InventarioApi";
 import { ListarCategoria } from "../api/CategoriaApi";
 import { listarSubcategoria } from "../api/SubcategoriaApi";
+import { agregarAuditoria } from '../api/auditoriaApi';
+import { jwtDecode } from "jwt-decode";
 
 /* ===================== ORIGIN backend + helper URL imagen ===================== */
 const BACKEND_ORIGIN = (() => {
@@ -226,6 +228,18 @@ export default function Inventario() {
     litro: () => "L",
     // fallback por si viene vacío o desconocido
     default: () => "kg",
+  };
+
+  const getUserId = () => {
+    const token = localStorage.getItem("token");
+    if (!token) return null;
+    try {
+      const decoded = jwtDecode(token);
+      return decoded.id;
+    } catch {
+      console.error("Token JWT inválido");
+      return null;
+    }
   };
 
   function unitSuffix(unidad, cantidad) {
@@ -1078,209 +1092,196 @@ export default function Inventario() {
   }
 
   async function saveModal() {
-    const d = modal.draft;
+  const d = modal.draft;
 
-    // Validaciones mínimas
-    if (!d.producto?.trim())
-      return toast.info("El nombre del producto es obligatorio.", {
-        className: "toast-info",
-      });
-    if (!d.marcaId && !d.marca)
-      return toast.info("Selecciona una marca.", { className: "toast-error" });
-    if (!d.subcategoriaId && !d.subcategoria)
-      return toast.info("Selecciona una subcategoría.", {
-        className: "toast-info",
-      });
-    if (!d.imagePreviews || d.imagePreviews.length === 0)
-      return toast.warn("El producto debe tener al menos una imagen", { className: "toast-warn" });
+  // Validaciones mínimas (mantén las existentes)
+  if (!d.producto?.trim())
+    return toast.info("El nombre del producto es obligatorio.", {
+      className: "toast-info",
+    });
+  if (!d.marcaId && !d.marca)
+    return toast.info("Selecciona una marca.", { className: "toast-error" });
+  if (!d.subcategoriaId && !d.subcategoria)
+    return toast.info("Selecciona una subcategoría.", {
+      className: "toast-info",
+    });
+  if (!d.imagePreviews || d.imagePreviews.length === 0)
+    return toast.warn("El producto debe tener al menos una imagen", { className: "toast-warn" });
 
-    try {
-      setSavingProduct(true);
-      const pesoKg = toKg(d.pesoValor, d.pesoUnidad);
+  try {
+    setSavingProduct(true);
+    const pesoKg = toKg(d.pesoValor, d.pesoUnidad);
+    const id_usuario = getUserId();
 
-      // Preparar etiquetas
-      const etiquetas = (d.etiquetasText || "")
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean);
-      // 👇 NUEVO: arma el payload de imágenes con NOMBRE + ORDEN + is_file para nuevos, y URL para existentes
-      const imagenesPayload = (d.imagePreviews || []).map((src, idx) => {
-        const isBlob = src.startsWith("blob:");
+    // Preparar etiquetas
+    const etiquetas = (d.etiquetasText || "")
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
 
-        if (isBlob) {
-          // Nueva imagen subida
-          const fileName = d.imageUploadsNames?.[idx] || `image_${idx}.jpg`;
-          return {
-            url_imagen: fileName,
-            orden_imagen: idx,
-            is_file: true,
-          };
-        } else {
-          // Imagen existente
-          const relativePath = src
-            .replace(BACKEND_ORIGIN, "")
-            .replace(/^\/api/, "");
-          return {
-            url_imagen: relativePath,
-            orden_imagen: idx,
-            is_file: false,
-          };
-        }
-      });
-
-      console.debug("[DEBUG] imagenesPayload", imagenesPayload);
-
-      console.groupCollapsed("[DEBUG] Imagenes que voy a enviar");
-      console.log(
-        "draft.imageFiles →",
-        (d.imageFiles || []).map((f) => ({
-          name: f?.name,
-          size: f?.size,
-          type: f?.type,
-        }))
-      );
-      console.log(
-        "draft.imagePreviews (conteo) →",
-        d.imagePreviews?.length || 0
-      );
-      console.log("imagenesPayload →", imagenesPayload);
-      console.groupEnd();
-
-      setRows((prev) =>
-        prev.map((row) => {
-          if (String(row.id) !== String(d.id)) return row;
-
-          // IDs finales (si no vienen en d, usa lo que ya tiene la fila)
-          const nextMarcaId = String(d.marcaId ?? d.marca ?? row.marcaId ?? "");
-          const nextCategoriaId = String(
-            d.categoriaId ?? d.categoria ?? row.categoriaId ?? ""
-          );
-          const nextSubcatId = String(
-            d.subcategoriaId ?? d.subcategoria ?? row.subcategoriaId ?? ""
-          );
-
-          // Nombres finales a partir de catálogos
-          const nextMarca = nameById(marcas, nextMarcaId) ?? row.marca;
-          const nextCategoria =
-            nameById(categorias, nextCategoriaId) ?? row.categoria;
-          const nextSubcategoria =
-            nameById(subcategorias, nextSubcatId) ?? row.subcategoria;
-
-          // Precio base y venta
-          const nextPrecioBase = Number.isFinite(Number(d.precioBase))
-            ? Number(d.precioBase)
-            : row.precioBase;
-
-          const porc = Number(d.porcentajeGanancia);
-          const nextPrecioVenta = Number.isFinite(porc)
-            ? round2(nextPrecioBase * (1 + porc / 100))
-            : row.precioVenta;
-
-          // Unidad y peso (si tienes estos campos en el draft)
-          const nextUnidadMedida = d.unidadMedida ?? row.unidadMedida; // ej. "kg", "g", "mg", "oz"
-          const nextPesoKg =
-            d.pesoValor !== undefined || d.pesoUnidad !== undefined
-              ? toKg(
-                  d.pesoValor ?? row.pesoValor,
-                  d.pesoUnidad ?? row.pesoUnidad
-                )
-              : row.pesoKg;
-
-          return {
-            ...row,
-
-            // básicos
-            producto: (d.producto ?? row.producto) || row.producto,
-            descripcion: d.descripcion ?? row.descripcion,
-
-            // relación marca/categoría/subcategoría
-            marcaId: nextMarcaId || row.marcaId,
-            marca: nextMarca,
-            categoriaId: nextCategoriaId || row.categoriaId,
-            categoria: nextCategoria,
-            subcategoriaId: nextSubcatId || row.subcategoriaId,
-            subcategoria: nextSubcategoria,
-
-            // precios
-            precioBase: nextPrecioBase,
-            precioVenta: nextPrecioVenta,
-
-            // peso / unidad (si usas estos en la tabla o en el row)
-            unidadMedida: nextUnidadMedida,
-            pesoKg: Number.isFinite(nextPesoKg) ? nextPesoKg : row.pesoKg,
-            pesoValor: d.pesoValor ?? row.pesoValor,
-            pesoUnidad: d.pesoUnidad ?? row.pesoUnidad,
-
-            // estado
-            activo: typeof d.activo === "boolean" ? d.activo : row.activo,
-
-            // opcional: etiquetas si las guardas en el row
-            etiquetas: Array.isArray(d.etiquetas)
-              ? d.etiquetas
-              : row.etiquetas ?? [],
-          };
-        })
-      );
-
-      if (modal.mode === "edit") {
-        // --- 1) Llamada al backend ---
-        await actualizarProducto(
-          d.id,
-          d.producto,
-          d.descripcion ?? "",
-          Number(d.precioBase ?? 0),
-          Number(d.subcategoriaId ?? d.subcategoria ?? 0),
-          Number(d.porcentajeGanancia ?? 0),
-          Number(d.marcaId ?? d.marca ?? 0),
-          etiquetas,
-          d.unidadMedida ?? "unidad",
-          pesoKg,
-          d.imageFiles,
-          imagenesPayload
-        );
+    const imagenesPayload = (d.imagePreviews || []).map((src, idx) => {
+      const isBlob = src.startsWith("blob:");
+      if (isBlob) {
+        const fileName = d.imageUploadsNames?.[idx] || `image_${idx}.jpg`;
+        return {
+          url_imagen: fileName,
+          orden_imagen: idx,
+          is_file: true,
+        };
       } else {
-        // CREAR producto
-        const etiquetas = ["Nuevo"];
-        await crearProducto(
-          d.producto, // <-- aquí aseguras que se envía como 'nombre'
-          d.descripcion ?? "",
-          Number(d.precioBase ?? 0),
-          Number(d.subcategoriaId ?? d.subcategoria ?? 0),
-          Number(d.porcentajeGanancia ?? 0),
-          Number(d.marcaId ?? d.marca ?? 0),
-          etiquetas,
-          d.unidadMedida ?? "unidad",
-          pesoKg,
-          d.imageFiles,
-          imagenesPayload
+        const relativePath = src
+          .replace(BACKEND_ORIGIN, "")
+          .replace(/^\/api/, "");
+        return {
+          url_imagen: relativePath,
+          orden_imagen: idx,
+          is_file: false,
+        };
+      }
+    });
+
+    let productId = d.id;
+
+    if (modal.mode === "edit") {
+      // Solo actualizar, sin auditoría para ediciones
+      await actualizarProducto(
+        d.id,
+        d.producto,
+        d.descripcion ?? "",
+        Number(d.precioBase ?? 0),
+        Number(d.subcategoriaId ?? d.subcategoria ?? 0),
+        Number(d.porcentajeGanancia ?? 0),
+        Number(d.marcaId ?? d.marca ?? 0),
+        etiquetas,
+        d.unidadMedida ?? "unidad",
+        pesoKg,
+        d.imageFiles,
+        imagenesPayload
+      );
+    } else {
+      // Crear nuevo producto con auditoría de ENTRADA inicial
+      const etiquetas = ["Nuevo"]; // Etiquetas por defecto para nuevo producto
+      const createResponse = await crearProducto(
+        d.producto,
+        d.descripcion ?? "",
+        Number(d.precioBase ?? 0),
+        Number(d.subcategoriaId ?? d.subcategoria ?? 0),
+        Number(d.porcentajeGanancia ?? 0),
+        Number(d.marcaId ?? d.marca ?? 0),
+        etiquetas,
+        d.unidadMedida ?? "unidad",
+        pesoKg,
+        d.imageFiles,
+        imagenesPayload
+      );
+      
+      // Obtener el ID del producto recién creado
+      const newProduct = createResponse?.data;
+      productId = newProduct?.id_producto || newProduct?.id || d.id;
+      
+      // Registrar auditoría de ENTRADA inicial solo si tenemos usuario
+      if (id_usuario) {
+        await agregarAuditoria(
+          productId,
+          id_usuario,
+          null, // sucursalId
+          0,    // cantidad - 0 para creación
+          'ENTRADA'
         );
-
-        // Recargar productos después de crear
-        const prodRes = await getAllProducts();
-        const mapped = ((prodRes?.data ?? prodRes) || []).map(mapApiProduct);
-        setRows(mapped);
       }
-
-      closeModal();
-    } catch (err) {
-      const status = err?.response?.status;
-      const data = err?.response?.data;
-      const message =
-        data?.message || data?.detail || data?.error || err.message;
-      if (
-        status === 400 &&
-        message === "El producto debe tener al menos una imagen"
-      ) {
-        toast.warn("El producto debe tener al menos una imagen", { className: "toast-warn" });
-      } else {
-        toast.error(`Error ${status ?? ""}: ${message}`, {
-          className: "toast-error",
-        });
-      }
-    } finally {
-      setSavingProduct(false);
+      
+      // Actualizar la lista de productos
+      const prodRes = await getAllProducts();
+      const mapped = ((prodRes?.data ?? prodRes) || []).map(mapApiProduct);
+      setRows(mapped);
     }
+
+    // Actualizar la fila en la tabla
+    setRows((prev) =>
+      prev.map((row) => {
+        if (String(row.id) !== String(productId)) return row;
+
+        const nextMarcaId = String(d.marcaId ?? d.marca ?? row.marcaId ?? "");
+        const nextCategoriaId = String(
+          d.categoriaId ?? d.categoria ?? row.categoriaId ?? ""
+        );
+        const nextSubcatId = String(
+          d.subcategoriaId ?? d.subcategoria ?? row.subcategoriaId ?? ""
+        );
+
+        const nextMarca = nameById(marcas, nextMarcaId) ?? row.marca;
+        const nextCategoria =
+          nameById(categorias, nextCategoriaId) ?? row.categoria;
+        const nextSubcategoria =
+          nameById(subcategorias, nextSubcatId) ?? row.subcategoria;
+
+        const nextPrecioBase = Number.isFinite(Number(d.precioBase))
+          ? Number(d.precioBase)
+          : row.precioBase;
+
+        const porc = Number(d.porcentajeGanancia);
+        const nextPrecioVenta = Number.isFinite(porc)
+          ? round2(nextPrecioBase * (1 + porc / 100))
+          : row.precioVenta;
+
+        const nextUnidadMedida = d.unidadMedida ?? row.unidadMedida;
+        const nextPesoKg =
+          d.pesoValor !== undefined || d.pesoUnidad !== undefined
+            ? toKg(
+                d.pesoValor ?? row.pesoValor,
+                d.pesoUnidad ?? row.pesoUnidad
+              )
+            : row.pesoKg;
+
+        return {
+          ...row,
+          producto: (d.producto ?? row.producto) || row.producto,
+          descripcion: d.descripcion ?? row.descripcion,
+          marcaId: nextMarcaId || row.marcaId,
+          marca: nextMarca,
+          categoriaId: nextCategoriaId || row.categoriaId,
+          categoria: nextCategoria,
+          subcategoriaId: nextSubcatId || row.subcategoriaId,
+          subcategoria: nextSubcategoria,
+          precioBase: nextPrecioBase,
+          precioVenta: nextPrecioVenta,
+          unidadMedida: nextUnidadMedida,
+          pesoKg: Number.isFinite(nextPesoKg) ? nextPesoKg : row.pesoKg,
+          pesoValor: d.pesoValor ?? row.pesoValor,
+          pesoUnidad: d.pesoUnidad ?? row.pesoUnidad,
+          activo: typeof d.activo === "boolean" ? d.activo : row.activo,
+          etiquetas: Array.isArray(d.etiquetas)
+            ? d.etiquetas
+            : row.etiquetas ?? [],
+        };
+      })
+    );
+
+    closeModal();
+    toast.success(`Producto ${modal.mode === 'edit' ? 'actualizado' : 'creado'} correctamente`, {
+      className: "toast-success",
+    });
+    
+  } catch (err) {
+    const status = err?.response?.status;
+    const data = err?.response?.data;
+    const message =
+      data?.message || data?.detail || data?.error || err.message;
+    if (
+      status === 400 &&
+      message === "El producto debe tener al menos una imagen"
+    ) {
+      toast.warn("El producto debe tener al menos una imagen", { className: "toast-warn" });
+    } else {
+      toast.error(`Error ${status ?? ""}: ${message}`, {
+        className: "toast-error",
+      });
+    }
+    console.error("Error al guardar producto:", err);
+  } finally {
+    setSavingProduct(false);
   }
+}
 
   async function removeRow(id) {
     if (!window.confirm("¿Desactivar este producto?")) return;
@@ -1308,6 +1309,7 @@ export default function Inventario() {
       setDeletingId(null);
     }
   }
+  
   async function inactivarRow(id) {
     if (!window.confirm("¿Marcar este producto como INACTIVO?")) return;
 
@@ -1319,14 +1321,33 @@ export default function Inventario() {
 
     try {
       setDeletingId(prodId);
+      const id_usuario = getUserId(); // 👈 Usa la misma función
+      
+      // 1. Desactivar producto
       await desactivarProducto(prodId);
 
-      // ✅ Mantiene el registro en la tabla
+      // 2. Registrar auditoría de SALIDA solo si tenemos usuario
+      if (id_usuario) {
+        await agregarAuditoria(
+          prodId,
+          id_usuario,
+          null, // sucursalId
+          0,    // cantidad
+          'SALIDA'
+        );
+      }
+
+      // 3. Actualizar UI
       setRows((prev) =>
         prev.map((x) =>
           String(x.id) === String(prodId) ? { ...x, activo: false } : x
         )
       );
+
+      toast.success("Producto marcado como inactivo", {
+        className: "toast-success",
+      });
+      
     } catch (err) {
       const s = err?.response?.status;
       const d = err?.response?.data;
@@ -1399,6 +1420,7 @@ export default function Inventario() {
     const prodId = Number(String(id).trim());
     const sucId = Number(String(sucursalId).trim());
     const qty = Number(String(cantidad).trim());
+    
     if (!Number.isFinite(prodId) || prodId <= 0)
       return toast.error("ID de producto inválido.", {
         className: "toast-error",
@@ -1414,11 +1436,37 @@ export default function Inventario() {
 
     try {
       setSavingSupply(true);
+      
+      // 1. Realizar el abastecimiento
       await abastecerPorSucursalProducto(sucId, prodId, qty);
+      
+      // 2. Registrar auditoría de ENTRADA usando getUserId()
+      const id_usuario = getUserId();
+      
+      if (!id_usuario) {
+        toast.warn("No se pudo identificar al usuario para la auditoría", {
+          className: "toast-warn",
+        });
+      } else {
+        await agregarAuditoria(
+          prodId,
+          id_usuario,
+          sucId,
+          qty,
+          'ENTRADA'
+        );
+      }
+      
+      // 3. Actualizar la lista de productos
       const prodRes = await getAllProducts();
       const mapped = ((prodRes?.data ?? prodRes) || []).map(mapApiProduct);
       setRows(mapped);
+      
       closeSupply();
+      toast.success("Abastecimiento registrado correctamente", {
+        className: "toast-success",
+      });
+      
     } catch (err) {
       const status = err?.response?.status;
       const data = err?.response?.data;

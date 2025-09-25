@@ -11,6 +11,7 @@ import {
 } from "./api/InventarioApi";
 import { getAllMetodoPago } from "./api/metodoPagoApi";
 import { crearPedido } from "./api/PedidoApi";
+import { agregarAuditoria } from "./api/auditoriaApi";
 import { getPromociones } from "./api/PromocionesApi";
 import { toast } from "react-toastify";
 import "./toast.css";
@@ -23,6 +24,7 @@ import {
   desactivarCupon,
   checkCuponUsuario,
 } from "./api/CuponesApi";
+import { jwtDecode } from "jwt-decode";
 
 // Helper para construir URL de imágenes
 const BACKEND_ORIGIN = (() => {
@@ -61,6 +63,18 @@ const ProcesoCompra = () => {
       JSON.parse(localStorage.getItem("checkout.coupon") || "null")
     );
   });
+
+  const getUserId = () => {
+    const token = localStorage.getItem("token");
+    if (!token) return null;
+    try {
+      const decoded = jwtDecode(token);
+      return decoded.id;
+    } catch {
+      console.error("Token JWT inválido");
+      return null;
+    }
+  };
 
   // ==== Helpers fecha cupón (mismos criterios que en Carrito) ====
   const parseCouponDateLocal = (input) => {
@@ -458,6 +472,34 @@ const ProcesoCompra = () => {
     }
   };
 
+  // ====== Función para registrar auditorías de SALIDA ======
+  const registrarAuditoriasVenta = async (detallesPedido, idSucursalPedido) => {
+    const id_usuario = getUserId();
+    
+    if (!id_usuario) {
+      console.warn("No se pudo obtener ID de usuario para auditoría");
+      return;
+    }
+
+    try {
+      // Registrar una auditoría por cada producto vendido
+      for (const item of detallesPedido) {
+        await agregarAuditoria(
+          item.producto.id_producto,
+          id_usuario,
+          idSucursalPedido,
+          item.cantidad_unidad_medida,
+          'SALIDA' // Operación de salida por venta
+        );
+      }
+      
+      console.log(`Auditorías registradas para ${detallesPedido.length} productos`);
+    } catch (error) {
+      console.error("Error registrando auditorías de venta:", error);
+      // No bloquear la compra si falla la auditoría
+    }
+  };
+
   // Realizar compra
   const realizarCompra = async () => {
     if (!user.direccions || user.direccions.length === 0) {
@@ -497,6 +539,9 @@ const ProcesoCompra = () => {
       );
 
       const id_pedido = response.data.id_pedido;
+
+      // ===== REGISTRAR AUDITORÍAS DE SALIDA =====
+      await registrarAuditoriasVenta(detalles, sucursalId);
 
       // === Registrar cupón en historial y actualizar usos ===
       try {

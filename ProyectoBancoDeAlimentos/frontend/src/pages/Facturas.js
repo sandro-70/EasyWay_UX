@@ -387,7 +387,7 @@ class Facturas extends Component {
                         onClick={this.handleExportar}
                         className="bg-[#f0833e] text-white font-semibold px-4 py-1.5 rounded-lg shadow hover:bg-[#ea6b1c] transition-colors flex items-center gap-2"
                       >
-                        📊 Exportar a Excel
+                        📊 Exportar a PDF
                       </button>
                     </div>
                   </div>

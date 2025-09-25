@@ -6,6 +6,7 @@ import Logo from "../images/logo2.png";
 import LogoExport from "../images/logo3.png";
 import CalendarioIcon from "../images/calendario.png";
 import { getAllFacturasByUserwithDetails } from "../api/FacturaApi";
+import { listarPedido } from "../api/PedidoApi";
 import "../pages/Facturas.css";
 
 // Librerías para PDF
@@ -33,7 +34,8 @@ class Facturas extends Component {
         id: f.id_factura,
         numero: f.id_factura,
         fecha: new Date(f.fecha_emision).toLocaleDateString("es-ES"),
-        // **CAMBIO 1: Eliminar el método de pago del estado de la factura**
+        id_pedido: f.pedido?.id_pedido || null,
+        descuento: f.pedido ? Number(f.pedido.descuento || 0) : 0,
         productos: f.factura_detalles.map((fd) => ({
           codigo: fd.id_producto,
           nombre: fd.producto.nombre,
@@ -108,9 +110,11 @@ class Facturas extends Component {
       (acc, prod) => acc + prod.cantidad * prod.precio,
       0
     );
-    const isv = productos.reduce((acc, prod) => acc + prod.cantidad * prod.precio, 0) * 0.15;
+    const descuento = facturaSeleccionada.descuento || 0;
+    const subtotalAfterDiscount = subtotal - descuento;
+    const isv = subtotalAfterDiscount * 0.15;
     const costoEnvio = 10.0;
-    const totalPagar = subtotal + isv + costoEnvio;
+    const totalPagar = subtotalAfterDiscount + isv + costoEnvio;
 
     const doc = new jsPDF();
     const logoBase64 = await this.getBase64Image(Logo);
@@ -176,21 +180,31 @@ class Facturas extends Component {
       .line(14, finalY + 2, 196, finalY + 2);
 
     // Totales
+    let yOffset = finalY + 12;
     doc.setFontSize(11).setFont(undefined, "normal");
-    doc.text(`Subtotal: Lps. ${subtotal.toFixed(2)}`, 196, finalY + 12, {
+    doc.text(`Subtotal: Lps. ${subtotal.toFixed(2)}`, 196, yOffset, {
       align: "right",
     });
-    doc.text(`ISV 15%: Lps. ${isv.toFixed(2)}`, 196, finalY + 19, {
+    yOffset += 7;
+    doc.text(`ISV 15%: Lps. ${isv.toFixed(2)}`, 196, yOffset, {
       align: "right",
     });
+    yOffset += 7;
+    if (descuento > 0) {
+      doc.text(`Descuento: -Lps. ${descuento.toFixed(2)}`, 196, yOffset, {
+        align: "right",
+      });
+      yOffset += 7;
+    }
     doc.text(
       `Costo de envío: Lps. ${costoEnvio.toFixed(2)}`,
       196,
-      finalY + 26,
+      yOffset,
       { align: "right" }
     );
+    yOffset += 8;
     doc.setFont(undefined, "bold");
-    doc.text(`Total a pagar: Lps. ${totalPagar.toFixed(2)}`, 196, finalY + 34, {
+    doc.text(`Total a pagar: Lps. ${totalPagar.toFixed(2)}`, 196, yOffset, {
       align: "right",
     });
 
@@ -214,9 +228,11 @@ class Facturas extends Component {
       (acc, prod) => acc + prod.cantidad * prod.precio,
       0
     );
-    const isv = productos.reduce((acc, prod) => acc + prod.cantidad * prod.precio, 0) * 0.15;
+    const descuento = facturaSeleccionada ? facturaSeleccionada.descuento || 0 : 0;
+    const subtotalAfterDiscount = subtotal - descuento;
+    const isv = subtotalAfterDiscount * 0.15;
     const costoEnvio = 10.0;
-    const totalPagar = subtotal + isv + costoEnvio;
+    const totalPagar = subtotalAfterDiscount + isv + costoEnvio;
 
     return (
       <div className="facturas-container">
@@ -359,6 +375,16 @@ class Facturas extends Component {
                             </div>
                           </td>
                         </tr>
+                        {descuento > 0 && (
+                          <tr>
+                            <td className="p-0">
+                              <div className="flex justify-between py-1 text-red-600">
+                                <span>Descuento</span>
+                                <span className="text-right">-Lps. {descuento.toFixed(2)}</span>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
                         <tr>
                           <td className="p-0">
                             <div className="flex justify-between py-1">

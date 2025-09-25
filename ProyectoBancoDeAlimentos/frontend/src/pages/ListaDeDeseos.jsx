@@ -15,7 +15,6 @@ import { UserContext } from "../components/userContext" ;
 import { useCart } from "../utils/CartContext"
 
 import appleImage from "../images/appleImage.png";
-import carritoImage from "../images/ncarrito.png";
 import izqImage from "../images/izq.png";
 import derImage from "../images/der.png";
 import PerfilSidebar from "../components/perfilSidebar";
@@ -124,9 +123,7 @@ function ProductoCard({ p, onAdd, onOpen }) {
         aria-label={`Abrir ${p.name}`}
         style={{ zIndex: 1 }}
       />
-      <div className="absolute top-2 left-2 w-5 h-5">
-        <img src={carritoImage} alt="" className="w-full h-full object-contain" />
-      </div>
+
 
       <div className="absolute top-2 right-2 flex items-center gap-1 z-10">
         {Array.from({ length: 5 }).map((_, i) => (

@@ -5,6 +5,7 @@ import Logo from "../images/logo2.png";
 import LogoExport from "../images/logo3.png";
 import PerfilSidebar from "../components/perfilSidebar";
 import { getAllFacturasByUserwithDetails } from "../api/FacturaApi";
+import { listarPedido } from "../api/PedidoApi";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
@@ -60,6 +61,7 @@ class DetalleFactura extends Component {
         numero: f.id_factura,
         fecha: new Date(f.fecha_emision).toLocaleDateString("es-ES"),
         metodo_pago: f.metodo_pago?.nombre || "Sin especificar",
+        id_pedido: f.id_pedido || null,
         productos: (f.factura_detalles || []).map((fd) => ({
           codigo: fd.id_producto,
           nombre: fd.producto?.nombre ?? `#${fd.id_producto}`,
@@ -67,6 +69,20 @@ class DetalleFactura extends Component {
           precio: Number(fd.producto?.precio_base ?? 0),
         })),
       };
+
+      // Fetch descuento from pedido if id_pedido exists
+      if (factura.id_pedido) {
+        try {
+          const resPedido = await listarPedido(factura.id_pedido);
+          const pedido = resPedido.data;
+          factura.descuento = Number(pedido.descuento || 0);
+        } catch (e) {
+          console.error("Error fetching pedido:", e);
+          factura.descuento = 0;
+        }
+      } else {
+        factura.descuento = 0;
+      }
 
       this.setState({ factura, cargando: false });
     } catch (error) {
@@ -130,7 +146,8 @@ class DetalleFactura extends Component {
     );
     const isv = subtotal * 0.15;
     const costoEnvio = 10.0;
-    const totalPagar = subtotal + isv + costoEnvio;
+    const descuento = factura.descuento || 0;
+    const totalPagar = subtotal + isv + costoEnvio - descuento;
 
     // ---- Layout principal ----
     if (compact) {
@@ -188,6 +205,16 @@ class DetalleFactura extends Component {
                       </div>
                     </td>
                   </tr>
+                  {descuento > 0 && (
+                    <tr>
+                      <td className="border-none p-0">
+                        <div className="flex justify-between py-1 text-red-600">
+                          <span>Descuento</span>
+                          <span>-Lps. {descuento.toFixed(2)}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                   <tr>
                     <td className="border-none p-0">
                       <div className="flex justify-between py-1">
@@ -282,6 +309,16 @@ class DetalleFactura extends Component {
                         </div>
                       </td>
                     </tr>
+                    {descuento > 0 && (
+                      <tr>
+                        <td className="border-none p-0">
+                          <div className="flex justify-between py-1 text-red-600">
+                            <span>Descuento</span>
+                            <span>-Lps. {descuento.toFixed(2)}</span>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                     <tr>
                       <td className="border-none p-0">
                         <div className="flex justify-between py-1">

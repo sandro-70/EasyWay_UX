@@ -1,5 +1,6 @@
 // AgregarCarrito.jsx
 import React, { useState, useEffect, useMemo, useContext } from "react";
+import { useTranslation } from "react-i18next";
 import { Minus, Plus, Heart } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
@@ -52,6 +53,7 @@ const toPublicFotoSrc = (nameOrPath) => {
 
 function AgregarCarrito() {
   const [topSellerId, setTopSellerId] = useState(null);
+  const { t } = useTranslation();
 
   const { id } = useParams();
   const navigate = useNavigate();
@@ -613,7 +615,7 @@ function AgregarCarrito() {
       <div style={styles.container}>
         {/* Sidebar: Compras Frecuentes */}
         <div style={styles.sidebar}>
-          <h2 style={styles.sidebarTitle}>Compras Frecuentes</h2>
+          <h2 style={styles.sidebarTitle}>{t("FrecuentlyBuys")}</h2>
           <div style={styles.List}>
             {products.map((p, index) => (
               <div
@@ -624,7 +626,7 @@ function AgregarCarrito() {
                 <div style={styles.cardTopRow}>
                   {Number(p.id_producto) === Number(topSellerId) && (
                     <span style={{ ...styles.offerChip, marginLeft: 6 }}>
-                      MÁS COMPRADO
+                      {t("MostBought")}
                     </span>
                   )}
                   <div style={styles.stars}>
@@ -699,7 +701,7 @@ function AgregarCarrito() {
                       handleAgregar(p.id_producto, 1);
                     }}
                   >
-                    Agregar
+                    {t("add")}
                   </button>
                 </div>
               </div>
@@ -715,7 +717,7 @@ function AgregarCarrito() {
               <div style={styles.ImageSection}>
                 <div style={styles.mainImageWrapper}>
                   {Number(product.id_producto) === Number(topSellerId) && (
-                    <div style={styles.offerBadge}>MÁS COMPRADO</div>
+                    <div style={styles.offerBadge}>{t("MostBought")}</div>
                   )}
                   {productImages[selectedImageIndex] &&
                   productImages[selectedImageIndex].url_imagen ? (
@@ -781,9 +783,12 @@ function AgregarCarrito() {
               {/* Info */}
               <div style={styles.detailInfo}>
                 <h1 style={styles.detailTitle}>
-                  {product.nombre} {product.unidad_medida ? product.unidad_medida : "P/Kilo"}
+                  {product.nombre}{" "}
+                  {product.unidad_medida ? product.unidad_medida : "P/Kilo"}
                 </h1>
-                <p style={styles.detailCode}>Código: {product.id_producto}</p>
+                <p style={styles.detailCode}>
+                  {t("code")}: {product.id_producto}
+                </p>
 
                 <div style={styles.detailStockWrapper}>
                   {(() => {
@@ -803,7 +808,7 @@ function AgregarCarrito() {
                           <span style={styles.strikePrice}>
                             L. {Number(product.precio_base).toFixed(2)}
                           </span>
-                          <span style={styles.offerPill}>OFERTA</span>
+                          <span style={styles.offerPill}>{t("offer")}</span>
                         </div>
                       );
                     }
@@ -830,7 +835,7 @@ function AgregarCarrito() {
                     style={styles.cartBtn}
                     onClick={() => handleAgregar(product.id_producto, quantity)}
                   >
-                    AGREGAR AL CARRITO
+                    {t("addCart")}
                   </button>
 
                   <button
@@ -854,7 +859,7 @@ function AgregarCarrito() {
                   </button>
                 </div>
                 <div style={styles.detailDescription}>
-                  Descripción: {product.descripcion}
+                  {t("description")}: {product.descripcion}
                 </div>
               </div>
             </div>
@@ -864,7 +869,7 @@ function AgregarCarrito() {
 
             {/* Valoraciones y comentarios – parte del mismo card */}
             <div style={styles.reviewsSection}>
-              <h2 style={styles.reviewsTitle}>Valoraciones y comentarios</h2>
+              <h2 style={styles.reviewsTitle}>{t("reviews")}</h2>
 
               <div style={styles.reviewsGrid}>
                 {/* Resumen de estrellas */}
@@ -886,13 +891,11 @@ function AgregarCarrito() {
                           />
                         ))}
                       </div>
-                      <small style={{ color: "#666" }}>
-                        Haz clic en las estrellas para calificar
-                      </small>
+                      <small style={{ color: "#666" }}>{t("clickStars")}</small>
 
                       <div style={styles.totalReviewsText}>
                         {effectiveTotal}{" "}
-                        {effectiveTotal === 1 ? "opinión" : "opiniones"}
+                        {effectiveTotal === 1 ? t("opinion") : t("opinions")}
                       </div>
                     </div>
                   </div>
@@ -906,7 +909,7 @@ function AgregarCarrito() {
                       return (
                         <div style={styles.distRow} key={stars}>
                           <span style={styles.distLabel}>
-                            {stars} estrellas
+                            {stars} {t("starts")}
                           </span>
                           <div style={styles.distBar}>
                             <div
@@ -947,7 +950,7 @@ function AgregarCarrito() {
                     }}
                   >
                     <div style={styles.formGroup}>
-                      <label style={styles.formLabel}>Tu calificación</label>
+                      <label style={styles.formLabel}>{t("yourRating")}</label>
                       <div>
                         {[1, 2, 3, 4, 5].map((n) => (
                           <Star
@@ -961,18 +964,18 @@ function AgregarCarrito() {
                     </div>
 
                     <div style={styles.formGroup}>
-                      <label style={styles.formLabel}>Tu comentario</label>
+                      <label style={styles.formLabel}>{t("yourComment")}</label>
                       <textarea
                         rows={4}
                         value={myComment}
                         onChange={(e) => setMyComment(e.target.value)}
-                        placeholder="Cuéntanos qué te gustó o no del producto…"
+                        placeholder={t("tellUs")}
                         style={styles.textarea}
                       />
                     </div>
 
                     <button type="submit" style={styles.submitBtn}>
-                      {submitting ? "Enviando…" : "Enviar opinión"}
+                      {submitting ? t("sending...") : t("submitReview")}
                     </button>
                   </form>
                 </div>
@@ -981,9 +984,7 @@ function AgregarCarrito() {
               {/* Lista de comentarios */}
               <div style={styles.reviewList}>
                 {effectiveTotal === 0 ? (
-                  <div style={styles.noReviews}>
-                    Aún no hay opiniones. ¡Sé el primero!
-                  </div>
+                  <div style={styles.noReviews}>{t("noReviewsYet")}</div>
                 ) : (
                   reviews
                     .slice()
@@ -1135,26 +1136,23 @@ const styles = {
 
   // ====== Columna derecha (con scroll propio) ======
   detailWrapper: {
-  flex: 1,
-  display: "flex",
-  alignItems: "stretch",
-  overflowY: "visible",  // o auto si quieres scroll interno
-}
-,
-
+    flex: 1,
+    display: "flex",
+    alignItems: "stretch",
+    overflowY: "visible", // o auto si quieres scroll interno
+  },
   // Card principal: producto + valoraciones
-detailCard: {
-  backgroundColor: "white",
-  borderRadius: "16px",
-  padding: "20px",
-  boxShadow: "0px 4px 10px rgba(0,0,0,0.1)",
-  width: "100%",
-  display: "flex",
-  flexDirection: "column",
-  boxSizing: "border-box",
-  minHeight: "600px",   // opcional, solo como base
-}
-,
+  detailCard: {
+    backgroundColor: "white",
+    borderRadius: "16px",
+    padding: "20px",
+    boxShadow: "0px 4px 10px rgba(0,0,0,0.1)",
+    width: "100%",
+    display: "flex",
+    flexDirection: "column",
+    boxSizing: "border-box",
+    minHeight: "600px", // opcional, solo como base
+  },
   cardDivider: {
     border: "none",
     height: "1px",

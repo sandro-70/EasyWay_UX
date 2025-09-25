@@ -866,7 +866,7 @@ const InicioUsuario = () => {
                   handleAgregar(p.id_producto, 1);
                 }}
               >
-                Agregar
+                {t("add")}
               </button>
             </div>
           ))}

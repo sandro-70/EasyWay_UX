@@ -82,7 +82,7 @@ const MisCupones = () => {
         setCuponesMostrados(noUsados);
       } catch (err) {
         console.error("Error al obtener datos del usuario o cupones:", err);
-        toast.error("Error al cargar los cupones");
+        //toast.error("Error al cargar los cupones");
       } finally {
         setLoading(false);
       }

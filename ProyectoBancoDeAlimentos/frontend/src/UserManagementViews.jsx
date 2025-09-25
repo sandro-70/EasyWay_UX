@@ -13,6 +13,8 @@ import {
   asignarPrivilegioARol,
   getPrivilegios,
 } from "./api/Usuario.Route";
+import { toast } from "react-toastify";
+import "./toast.css";
 
 import { manejoUsuarioPrivilegios, getRolesYPrivilegiosDeUsuario } from "./api/roles_privilegiosApi";
 
@@ -291,11 +293,11 @@ export default function UserManagementViews() {
   const handleCreate = async () => {
     const { firstName, lastName, role, correo, contraseña } = newUser;
     if (!firstName.trim() || !lastName.trim()) {
-      alert("Nombre y Apellido son obligatorios.");
+      toast.info("Nombre y Apellido son obligatorios.", { className: "toast-info" });
       return;
     }
     if (!correo.trim() || !contraseña.trim()) {
-      alert("Correo y Contraseña son obligatorios.");
+      toast.info("Correo y Contraseña son obligatorios.", { className: "toast-info" });
       return;
     }
 
@@ -347,7 +349,7 @@ export default function UserManagementViews() {
       setPage(1);
     } catch (err) {
       console.error("RegistrarUser error:", err);
-      alert("No se pudo crear el usuario. Revisa el backend/logs.");
+      toast.error("No se pudo crear el usuario.", { className: "toast-error" });
     }
   };
 
@@ -487,7 +489,7 @@ export default function UserManagementViews() {
 
       // Evita mandar payload vacío (dispararía "Nada que actualizar")
       if (Object.keys(payload).length === 0) {
-        alert("No hay cambios válidos para enviar.");
+        toast.warn("No hay cambios válidos para actualizar.", { className: "toast-warn" });
         return;
       }
 
@@ -534,7 +536,7 @@ export default function UserManagementViews() {
           await manejoUsuarioPrivilegios(editUser.dbId, selectedIds);
         } catch (e) {
           console.error("No se pudo actualizar privilegios del rol:", e);
-          alert("No se pudieron guardar los privilegios. Revisa backend/logs.");
+          toast.error("No se pudieron guardar los privilegios.", { className: "toast-error" });
         }
       }
 
@@ -542,7 +544,7 @@ export default function UserManagementViews() {
       closeEdit();
     } catch (err) {
       console.error("Error guardando edición:", err);
-      alert("No se pudo guardar. Revisa permisos y datos válidos.");
+      toast.error("No se pudo guardar. Revisa permisos y datos válidos.", { className: "toast-error" });
     }
   };
   // === Iconos SVG locales (idéntico al de inventario) ===

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { getPromocionesOrden, actualizarPromocion } from "./api/PromocionesApi";
 import axiosInstance from "./api/axiosInstance";
+import { toast } from "react-toastify";
+import "./toast.css";
 
 const BACKEND_ORIGIN = (() => {
   const base = axiosInstance?.defaults?.baseURL;
@@ -154,19 +156,19 @@ const ConfigBanner = () => {
   // Función para validar el formulario
   const validateForm = () => {
     if (!editForm.name.trim()) {
-      alert("El nombre del banner es obligatorio");
+      toast.info("El nombre del banner es obligatorio", { className: "toast-info" });
       return false;
     }
 
     if (!editForm.description.trim()) {
-      alert("La descripción del banner es obligatoria");
+      toast.info("La descripción del banner es obligatoria", { className: "toast-info" });
       return false;
     }
 
     if (editForm.status) {
       const orderNum = parseInt(editForm.orden);
       if (isNaN(orderNum) || orderNum < 1) {
-        alert("El orden debe ser un número mayor a 0");
+        toast.warn("El orden debe ser un número mayor a 0", { className: "toast-warn" });
         return false;
       }
 
@@ -181,7 +183,7 @@ const ConfigBanner = () => {
       const maxAllowedOrder = otherActiveBanners.length + 1;
 
       if (orderNum > maxAllowedOrder) {
-        alert(`El orden máximo permitido es ${maxAllowedOrder}`);
+        toast.info(`El orden máximo permitido es ${maxAllowedOrder}`, { className: "toast-info" });
         return false;
       }
     }
@@ -344,7 +346,7 @@ ${otherChanges.join("\n")}
           }
         }
 
-        alert("Banner desactivado exitosamente.");
+        toast.success("Banner desactivado exitosamente.", { className: "toast-success" });
       }
       // Caso 2: Se está activando o cambiando orden de un banner activo
       else if (
@@ -370,7 +372,7 @@ ${otherChanges.join("\n")}
         };
 
         await actualizarPromocion(currentBanner.id_promocion, updateData);
-        alert("Banner actualizado exitosamente");
+        toast.success("Banner actualizado exitosamente", { className: "toast-success" });
       }
       // Caso 3: Solo se están editando nombre/descripción sin cambios de estado u orden
       else {
@@ -383,7 +385,7 @@ ${otherChanges.join("\n")}
         };
 
         await actualizarPromocion(currentBanner.id_promocion, updateData);
-        alert("Banner actualizado exitosamente");
+        toast.success("Banner actualizado exitosamente", { className: "toast-success" });
       }
 
       closeEditModal();
@@ -400,7 +402,7 @@ ${otherChanges.join("\n")}
         errorMessage = err.message;
       }
 
-      alert("Error al guardar cambios: " + errorMessage);
+      toast.error("Error al guardar cambios" , { className: "toast-error" });
     } finally {
       setSaving(false);
     }

@@ -5,6 +5,8 @@ import LoginUser, { validarCodigo, InformacionUser } from "./api/Usuario.Route";
 import axiosInstance from "./api/axiosInstance";
 import "./verificarcodigo.css";
 import { UserContext } from "./components/userContext";
+import { toast } from "react-toastify";
+import "./toast.css";
 
 export default function VerificarCodigoAuth() {
   const navigate = useNavigate();
@@ -78,7 +80,7 @@ export default function VerificarCodigoAuth() {
 
   async function handleVerify(e) {
     e.preventDefault();
-    if (!correo || !codigo) return alert("Completa correo y código.");
+    if (!correo || !codigo) return toast.info("Completa correo y código.", { className: "toast-info" });
 
     try {
       setLoading(true);
@@ -87,13 +89,13 @@ export default function VerificarCodigoAuth() {
       const { data } = await validarCodigo(correo, codigo); // tu helper arma {correo,codigo}
       const ok = data?.ok === true || data === "Codigo valido!" || data?.valid === true;
       if (!ok) {
-        alert("El código no es válido.");
+        toast.error("El código no es válido.", { className: "toast-error" });
         return;
       }
 
       // 2) Tomar la contraseña guardada por Login
       if (!pass) {
-        alert("Sesión temporal expirada. Vuelve a iniciar sesión.");
+        toast.info("Sesión temporal expirada. Vuelve a iniciar sesión.", { className: "toast-info" });
         return navigate("/login");
       }
 
@@ -139,10 +141,10 @@ export default function VerificarCodigoAuth() {
       }
     } catch (err) {
       console.error(err?.response?.data || err);
-      alert(
+      toast.error(
         err?.response?.data?.error ||
         err?.response?.data?.message ||
-        "Error al verificar"
+        "Error al verificar", { className: "toast-error" }
       );
     } finally {
       setLoading(false);

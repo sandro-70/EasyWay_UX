@@ -14,6 +14,8 @@ import {
   desactivarSubcategoria,
 } from "./api/SubcategoriaApi";
 import "./gestionProductos.css";
+import { toast } from "react-toastify";
+import "./toast.css";
 
 /* ===================== Iconos y botones reutilizables ===================== */
 const IconSquareButton = ({ children, className = "", ...props }) => (
@@ -609,10 +611,10 @@ function GestionProductos() {
       setNewCatFile(null);
     } catch (e) {
       console.error("Error creando categoría:", e);
-      alert(
+      toast.error(
         e?.response?.data?.error ||
           e?.response?.data?.msg ||
-          "No se pudo crear la categoría"
+          "No se pudo crear la categoría", { className: "toast-error" }
       );
     }
   }
@@ -640,10 +642,10 @@ function GestionProductos() {
       setNewSub("");
     } catch (e) {
       console.error("Error creando subcategoría:", e);
-      alert(
+      toast.error(
         e?.response?.data?.error ||
           e?.response?.data?.msg ||
-          "No se pudo crear la subcategoría"
+          "No se pudo crear la subcategoría", { className: "toast-error" }
       );
     }
   }
@@ -679,10 +681,10 @@ function GestionProductos() {
       setEditCatFile(null);
     } catch (e) {
       console.error("Error actualizando categoría:", e);
-      alert(
+      toast.error(
         e?.response?.data?.error ||
           e?.response?.data?.msg ||
-          "No se pudo actualizar"
+          "No se pudo actualizar", { className: "toast-error" }
       );
     }
   }
@@ -707,10 +709,10 @@ function GestionProductos() {
       setShowEditSub(false);
     } catch (e) {
       console.error("Error actualizando subcategoría:", e);
-      alert(
+      toast.error(
         e?.response?.data?.error ||
           e?.response?.data?.msg ||
-          "No se pudo actualizar"
+          "No se pudo actualizar", { className: "toast-error" }
       );
     }
   }
@@ -727,10 +729,10 @@ function GestionProductos() {
       removeCategoryLocal(cat.id_categoria);
     } catch (e) {
       console.error("Error eliminando categoría:", e);
-      alert(
+      toast.error(
         e?.response?.data?.error ||
           e?.response?.data?.msg ||
-          "No se pudo eliminar"
+          "No se pudo eliminar", { className: "toast-error" }
       );
     }
   }
@@ -744,10 +746,10 @@ function GestionProductos() {
         removeSubcategoryLocal(cat.id_categoria, sub.id_subcategoria);
     } catch (e) {
       console.error("Error eliminando subcategoría:", e);
-      alert(
+      toast.error(
         e?.response?.data?.error ||
           e?.response?.data?.msg ||
-          "No se pudo eliminar"
+          "No se pudo eliminar", { className: "toast-error" }
       );
     }
   }

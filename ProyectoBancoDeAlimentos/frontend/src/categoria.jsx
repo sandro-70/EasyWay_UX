@@ -10,6 +10,8 @@ import { useNavigate } from "react-router-dom";
 import CompararProducto from "./components/compararProducto";
 import {useCart} from "./utils/CartContext";
 import axiosInstance from "./api/axiosInstance";
+import { toast } from "react-toastify";
+import "./toast.css";
 
 const BACKEND_ORIGIN = (() => {
   const base = axiosInstance?.defaults?.baseURL;
@@ -91,7 +93,7 @@ function Categoria() {
     if (productosParaComparar.length >= 2) {
       setMostrandoComparacion(true);
     } else {
-      alert("Selecciona al menos 2 productos para comparar");
+      toast.info("Selecciona al menos 2 productos para comparar", { className: "toast-info" });
     }
   };
 
@@ -403,7 +405,7 @@ const bestPromoPriceForProduct = (prod) => {
 
   const handleAgregar = async (id_producto) => {
     if (!id_producto) {
-      alert("ID de producto no válido");
+      toast.error("ID de producto no válido", { className: "toast-error" });
       return;
     }
 
@@ -424,7 +426,7 @@ const bestPromoPriceForProduct = (prod) => {
         const nuevaCantidad = cantidadActual + 1;
 
         console.log(`Actualizando de ${cantidadActual} a ${nuevaCantidad}`);
-        alert(`Actualizando a ${nuevaCantidad}`);
+        toast(`Actualizando a ${nuevaCantidad}`, { className: "toast-default" });
 
         // Actualizar en backend
         await SumarItem(id_producto, nuevaCantidad);
@@ -456,7 +458,7 @@ const bestPromoPriceForProduct = (prod) => {
         const nuevosDetalles = carritoActualizado.data.carrito_detalles ?? [];
         setCarrito(nuevosDetalles);
 
-        alert(`Producto agregado al carrito`);
+        toast.success(`Producto agregado al carrito`, { className: "toast-success" });
         incrementCart();
       }
     } catch (error) {
@@ -472,10 +474,10 @@ const bestPromoPriceForProduct = (prod) => {
           const nuevosDetalles = carritoNuevo.data.carrito_detalles ?? [];
           setCarrito(nuevosDetalles);
 
-          alert(`Producto agregado al carrito`);
+          toast.success(`Producto agregado al carrito`, { className: "toast-success" });
         } catch (err) {
           console.error("Error creando carrito:", err);
-          alert("No se pudo agregar el producto al carrito");
+          toast.error("No se pudo agregar el producto al carrito", { className: "toast-error" });
         }
       } else {
         const errorMessage =
@@ -484,7 +486,7 @@ const bestPromoPriceForProduct = (prod) => {
           error?.message ||
           "No se pudo procesar el carrito";
 
-        alert(errorMessage);
+        toast.error(errorMessage, { className: "toast-error" });
       }
     }
   };

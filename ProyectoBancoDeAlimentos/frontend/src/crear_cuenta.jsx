@@ -2,6 +2,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { RegistrarUser } from "./api/Usuario.Route";
 import "./crear_cuenta.css";
+import { toast } from "react-toastify";
+import "./toast.css";
 
 const Crear_cuenta = () => {
   const navigate = useNavigate();
@@ -49,7 +51,7 @@ const Crear_cuenta = () => {
       });
 
       if (res.status === 201) {
-        alert("¡Cuenta creada exitosamente! Ahora puedes iniciar sesión.");
+        toast.success("¡Cuenta creada exitosamente! Ahora puedes iniciar sesión.", { className: "toast-success" });
         navigate("/login");
         return;
       }

@@ -13,6 +13,8 @@ import {
   Legend,
   ArcElement,
 } from "chart.js";
+import { toast } from "react-toastify";
+import "./toast.css";
 
 ChartJS.register(
   CategoryScale,
@@ -47,7 +49,7 @@ const HistorialCompras = () => {
 
   const exportarCSV = () => {
     if (pedidos.length === 0) {
-      alert("No hay datos para exportar");
+      toast.info("No hay datos para exportar", { className: "toast-info" });
       return;
     }
 

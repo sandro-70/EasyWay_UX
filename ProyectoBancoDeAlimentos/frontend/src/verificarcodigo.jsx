@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { validarCodigo } from "./api/Usuario.Route";
 import "./verificarcodigo.css";
+import { toast } from "react-toastify";
+import "./toast.css";
 
 export default function VerificarCodigo() {
   const navigate = useNavigate();
@@ -19,20 +21,20 @@ export default function VerificarCodigo() {
 
   async function handleVerify(e) {
     e.preventDefault();
-    if (!correo || !codigo) return alert("Completa correo y código.");
+    if (!correo || !codigo) return toast.info("Completa correo y código.", { className: "toast-info" });
     try {
       setLoading(true);
       
       const resp = await validarCodigo(correo, codigo);
       // Si tu backend devuelve un token temporal, guárdalo en state
        if (resp?.data && (resp.data === "Codigo valido!" || resp.data.valid)) {
-        alert("Código válido, procede a cambiar la contraseña.");
+        toast.info("Código válido, procede a cambiar la contraseña.", { className: "toast-info" });
         navigate("/cambiar_contraseña", { state: { correo } });
       } else {
-        alert("El código no es válido.");
+        toast.error("El código no es válido.", { className: "toast-error" });
         }
     } catch (err) {
-      alert(err?.response?.data?.error || "Código inválido.");
+      toast.error(err?.response?.data?.error || "Código inválido.", { className: "toast-error" });
     } finally {
       setLoading(false);
     }

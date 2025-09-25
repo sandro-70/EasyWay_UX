@@ -667,7 +667,9 @@ function AgregarCarrito() {
                 </div>
 
                 <div style={styles.cardContent}>
-                  <h3 style={styles.cardTitle}>{p.nombre}</h3>
+                  <h3 style={styles.cardTitle}>
+                    {p.nombre} {p.unidad_medida ? p.unidad_medida : "P/Kilo"}
+                  </h3>
                   <div style={styles.priceRow}>
                     {(() => {
                       const best = bestPromoPriceForProduct(p);
@@ -685,8 +687,7 @@ function AgregarCarrito() {
                       }
                       return (
                         <span style={styles.cardPrice}>
-                          L. {Number(p.precio_base).toFixed(2)}{" "}
-                          {p.unidad_medida ? p.unidad_medida : "P/Kilo"}
+                          L. {Number(p.precio_base).toFixed(2)}
                         </span>
                       );
                     })()}
@@ -779,7 +780,9 @@ function AgregarCarrito() {
 
               {/* Info */}
               <div style={styles.detailInfo}>
-                <h1 style={styles.detailTitle}>{product.nombre}</h1>
+                <h1 style={styles.detailTitle}>
+                  {product.nombre} {product.unidad_medida ? product.unidad_medida : "P/Kilo"}
+                </h1>
                 <p style={styles.detailCode}>Código: {product.id_producto}</p>
 
                 <div style={styles.detailStockWrapper}>
@@ -800,18 +803,13 @@ function AgregarCarrito() {
                           <span style={styles.strikePrice}>
                             L. {Number(product.precio_base).toFixed(2)}
                           </span>
-                          <span style={styles.detailPriceUnit}>P/Kilo</span>
                           <span style={styles.offerPill}>OFERTA</span>
                         </div>
                       );
                     }
                     return (
                       <div style={styles.detailPrice}>
-                        L. {Number(product.precio_base).toFixed(2)}{" "}
-                        {product.unidad_medida
-                          ? product.unidad_medida
-                          : "P/Kilo"}
-                        <span style={styles.detailPriceUnit}></span>
+                        L. {Number(product.precio_base).toFixed(2)}
                       </div>
                     );
                   })()}

@@ -7,19 +7,12 @@ import Checkbox from "@mui/material/Checkbox";
 import { createPortal } from "react-dom";
 import axiosInstance from "./api/axiosInstance";
 import {
-  aplicarDescuentoGeneral,
   aplicarPreciosEscalonados,
   aplicarDescuentoseleccionados,
 } from "./api/PromocionesApi";
 import {
   getAllProducts,
   getAllSucursales,
-  abastecerPorSucursalProducto,
-  getImagenesProducto,
-  actualizarProducto,
-  desactivarProducto,
-  crearProducto,
-  getProductoById,
   getMarcas,
   listarProductosporsucursal,
 } from "./api/InventarioApi";
@@ -28,16 +21,6 @@ import { listarSubcategoria } from "./api/SubcategoriaApi";
 import { crearPromocion } from "./api/PromocionesApi";
 import { toast } from "react-toastify";
 import "./toast.css";
-/**
- * Paleta:
- * #d8572f (naranja primario)
- * #f0833e (naranja claro)
- * #2ca9e3 (azul claro)
- * #2b6daf (azul header)
- * #ffac77 (acento claro)
- * #f9fafb (gris fondo)
- * #d8dadc (gris bordes)
- */
 const PageSize = 5;
 function emptyDraft() {
   return {
@@ -191,66 +174,88 @@ export default function AsignarDescuentos() {
   };
 
   async function onApplyGeneral() {
-    // Validaciones UI
     const v = Number(genValor);
     if (genTipo === "PORCENTAJE" && (isNaN(v) || v < 1 || v > 100)) {
-      toast.warn("El porcentaje debe estar entre 1% y 100%.", { className: "toast-warn" });
+      alert("El porcentaje debe estar entre 1% y 100%.");
       return;
     }
     if (genTipo === "FIJO" && (isNaN(v) || v < 0)) {
-      toast.warn("El monto fijo no puede ser negativo.", { className: "toast-warn" });
+      alert("El monto fijo no puede ser negativo.");
       return;
     }
     if (!selectedItems.length) {
-      toast.warn("Selecciona al menos un producto.", { className: "toast-warn" });
+      alert("Selecciona al menos un producto.");
       return;
     }
 
-    // Mapea al contrato del backend
     const payload = {
       selectedProductIds: selectedItems.map((p) => Number(p.id)),
       discountType: genTipo === "PORCENTAJE" ? "percent" : "fixed",
       discountValue: v,
-      // (Tu controller NO usa fechas; si las quieres persistir, habría que extender el endpoint)
+      startDate: genDesde || null,
+      endDate: genHasta || null,
     };
 
     try {
       setSavingGeneral(true);
       await aplicarDescuentoseleccionados(payload);
-      toast.success("Descuentos aplicados correctamente", { className: "toast-success" });
-      // Limpia UI
+      alert("Descuento aplicado correctamente ✔");
       setMode(null);
       setSelectedItems([]);
       setGenValor("");
-      // refresca tabla (si tu API ya calcula precio_venta, volverá actualizado)
       await refreshProductsBySucursal(selectedSucursalId);
     } catch (e) {
       console.error(e);
-      const msg =
+      alert(
         e?.response?.data?.message ||
-        e?.response?.data?.error ||
-        "No se pudo aplicar el descuento.";
-      toast.error(msg, { className: "toast-error" });
+          e?.response?.data?.error ||
+          "No se pudo aplicar el descuento."
+      );
     } finally {
       setSavingGeneral(false);
     }
   }
 
   async function onApplyTiered() {
-    const productos = selectedItems.map((p) => Number(p.id));
-    const escalones = tiers.map((t) => ({
-      cantidad_min: Number(t.cantidad),
-      precio: Number(t.precio),
-    }));
+    if (!selectedItems.length) {
+      alert("Selecciona al menos un producto.");
+      return;
+    }
+    if (tiers.some((t) => !t.cantidad || !t.precio)) {
+      alert("Completa cantidad y precio en todos los escalones.");
+      return;
+    }
+
+    // Usaremos precio fijo por escalón (ajusta a percent si tu UI lo maneja)
+    const payload = {
+      productIds: selectedItems.map((p) => Number(p.id)),
+      tiers: tiers.map((t) => ({
+        cantidad_min: Number(t.cantidad),
+        tipo: "fixed", // "fixed" | "percent"
+        valor: Number(t.precio), // si usas percent: aquí va 1..100
+        startDate: tierDesde || null,
+        endDate: tierHasta || null,
+      })),
+      // puedes enviar fechas globales para los escalones (opcional)
+      // startDate: "...", endDate: "..."
+    };
+
     try {
-      await aplicarPreciosEscalonados({ productos, escalones });
-      toast.success("Precios escalonados aplicados", { className: "toast-success" });
+      setSavingTiered(true);
+      await aplicarPreciosEscalonados(payload);
+      alert("Precios escalonados aplicados correctamente ✔");
       setMode(null);
       setSelectedItems([]);
-      refreshProductsBySucursal(selectedSucursalId);
+      await refreshProductsBySucursal(selectedSucursalId);
     } catch (e) {
       console.error(e);
-      toast.error("No se pudieron aplicar los escalonados.", { className: "toast-error" });
+      alert(
+        e?.response?.data?.message ||
+          e?.response?.data?.error ||
+          "No se pudo aplicar precios escalonados."
+      );
+    } finally {
+      setSavingTiered(false);
     }
   }
 
@@ -362,6 +367,10 @@ export default function AsignarDescuentos() {
   const [showSucursalPicker, setShowSucursalPicker] = useState(false);
   const [sucursalFiltro, setSucursalFiltro] = useState("");
 
+  // fechas para precios escalonados
+  const [tierDesde, setTierDesde] = useState("");
+  const [tierHasta, setTierHasta] = useState("");
+
   // Abastecer
   const [savingSupply, setSavingSupply] = useState(false);
   const [supplyModal, setSupplyModal] = useState({
@@ -378,9 +387,7 @@ export default function AsignarDescuentos() {
     },
   });
 
-  // Otros estados
-  const [deletingId, setDeletingId] = useState(null);
-  const [savingProduct, setSavingProduct] = useState(false);
+  const [savingTiered, setSavingTiered] = useState(false);
 
   // ===== CARGA INICIAL =====
   useEffect(() => {
@@ -438,7 +445,9 @@ export default function AsignarDescuentos() {
         setCategorias(mappedCategorias);
       } catch (err) {
         console.error("Error cargando inventario:", err);
-        toast.error("No se pudo cargar el inventario. Revisa la conexión.", { className: "toast-error" });
+        toast.error("No se pudo cargar el inventario. Revisa la conexión.", {
+          className: "toast-error",
+        });
       } finally {
         mounted && setLoading(false);
       }
@@ -530,7 +539,8 @@ export default function AsignarDescuentos() {
     } catch (e) {
       console.error("Error cargando productos:", e);
       toast.error(
-        "No se pudo cargar productos. Verifica la conexión o la URL del API.", { className: "toast-error" }
+        "No se pudo cargar productos. Verifica la conexión o la URL del API.",
+        { className: "toast-error" }
       );
     } finally {
       setLoading(false);
@@ -947,18 +957,10 @@ export default function AsignarDescuentos() {
                         <button
                           onClick={onApplyGeneral}
                           disabled={
-                            savingGeneral ||
-                            !selectedItems.length ||
-                            !genValor ||
-                            !genDesde ||
-                            !genHasta
+                            savingGeneral || !selectedItems.length || !genValor
                           }
                           className={`w-full mt-2 px-4 py-2 rounded-xl text-white ${
-                            !savingGeneral &&
-                            selectedItems.length &&
-                            genValor &&
-                            genDesde &&
-                            genHasta
+                            !savingGeneral && selectedItems.length && genValor
                               ? "bg-[#f0833e] hover:bg-[#e67830]"
                               : "bg-gray-300 cursor-not-allowed"
                           }`}
@@ -979,13 +981,14 @@ export default function AsignarDescuentos() {
                     {mode === "tiered" && (
                       <div>
                         <div className="rounded-2xl border border-[#d8dadc] overflow-hidden">
-                          <div className="bg-[#2B6DAF] text-white px-3 py-2 grid grid-cols-[1fr_1fr_32px] gap-2">
-                            <div className="text-sm">Cantidad</div>
-                            <div className="text-sm">Precio</div>
+                          {/* Encabezado */}
+                          <div className="bg-[#2B6DAF] text-white px-3 py-2 grid grid-cols-[110px_110px_32px] gap-2">
+                            <div className="text-sm text-center">Cantidad</div>
+                            <div className="text-sm text-center">Precio</div>
                             <div />
                           </div>
 
-                          {/* solo scrollea esta área si hay > 2 filas, el panel completo no scrollea */}
+                          {/* Cuerpo: solo scrollea si hay > 2 filas */}
                           <div
                             className={
                               tiers.length > 2
@@ -996,7 +999,7 @@ export default function AsignarDescuentos() {
                             {tiers.map((t, i) => (
                               <div
                                 key={i}
-                                className="px-3 py-2 grid grid-cols-[1fr_1fr_32px] gap-2 items-center"
+                                className="px-3 py-2 grid grid-cols-[110px_110px_32px] gap-2 items-center"
                               >
                                 <input
                                   type="number"
@@ -1005,7 +1008,8 @@ export default function AsignarDescuentos() {
                                   onChange={(e) =>
                                     setTier(i, "cantidad", e.target.value)
                                   }
-                                  className="h-8 text-sm text-center px-2 rounded-lg border border-[#d8dadc] outline-none focus:ring-2"
+                                  className="h-8 text-sm text-center px-2 rounded-lg border border-[#d8dadc] outline-none focus:ring-2 w-[110px]"
+                                  placeholder="≥ 1"
                                 />
                                 <input
                                   type="number"
@@ -1015,7 +1019,8 @@ export default function AsignarDescuentos() {
                                   onChange={(e) =>
                                     setTier(i, "precio", e.target.value)
                                   }
-                                  className="h-8 text-sm text-center px-2 rounded-lg border border-[#d8dadc] outline-none focus:ring-2"
+                                  className="h-8 text-sm text-center px-2 rounded-lg border border-[#d8dadc] outline-none focus:ring-2 w-[110px]"
+                                  placeholder="0.00"
                                 />
                                 <button
                                   onClick={() => rmTier(i)}
@@ -1034,6 +1039,8 @@ export default function AsignarDescuentos() {
                                 </button>
                               </div>
                             ))}
+
+                            {/* Agregar fila */}
                             <button
                               type="button"
                               onClick={addTier}
@@ -1044,20 +1051,47 @@ export default function AsignarDescuentos() {
                           </div>
                         </div>
 
+                        {/* Fechas para los escalonados (fuera del área scroll) */}
+                        <div className="grid grid-cols-2 gap-3 mt-3">
+                          <label className="flex flex-col gap-1">
+                            <span className="text-sm text-gray-700">Desde</span>
+                            <input
+                              type="date"
+                              value={tierDesde}
+                              onChange={(e) => setTierDesde(e.target.value)}
+                              className="px-3 py-2 rounded-xl border border-[#d8dadc] text-gray-900"
+                            />
+                          </label>
+                          <label className="flex flex-col gap-1">
+                            <span className="text-sm text-gray-700">Hasta</span>
+                            <input
+                              type="date"
+                              value={tierHasta}
+                              onChange={(e) => setTierHasta(e.target.value)}
+                              className="px-3 py-2 rounded-xl border border-[#d8dadc] text-gray-900"
+                            />
+                          </label>
+                        </div>
+
+                        {/* Botón aplicar */}
                         <button
                           onClick={onApplyTiered}
                           disabled={
+                            savingTiered ||
                             !selectedItems.length ||
                             tiers.some((t) => !t.cantidad || !t.precio)
                           }
                           className={`w-full mt-3 px-4 py-2 rounded-xl text-white ${
+                            !savingTiered &&
                             selectedItems.length &&
                             tiers.every((t) => t.cantidad && t.precio)
                               ? "bg-[#f0833e] hover:bg-[#e67830]"
                               : "bg-gray-300 cursor-not-allowed"
                           }`}
                         >
-                          Aplicar a seleccionados ({selectedItems.length})
+                          {savingTiered
+                            ? "Aplicando..."
+                            : `Aplicar a seleccionados (${selectedItems.length})`}
                         </button>
 
                         <p className="text-[12px] text-gray-500 text-center mt-1">

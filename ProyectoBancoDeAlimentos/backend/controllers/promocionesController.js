@@ -303,138 +303,211 @@ exports.getDescuentosAplicadosPorUsuario = async (req, res) => {
 };
 
 exports.aplicarDescuentoseleccionados = async (req, res) => {
+  const t = await sequelize.transaction();
   try {
-    const { selectedProductIds, discountType, discountValue } = req.body;
+    const {
+      selectedProductIds,
+      discountType,
+      discountValue,
+      startDate,
+      endDate,
+    } = req.body;
+
     if (!req.user || !req.user.id_usuario) {
       return res.status(401).json({ message: "Usuario no autenticado" });
     }
-    const currentUserId = req.user.id_usuario;
-
-    // Verificar si el usuario es administrador
-    const user = await Usuario.findByPk(currentUserId, {
+    const user = await Usuario.findByPk(req.user.id_usuario, {
       attributes: ["id_rol"],
     });
-
     if (!user || user.id_rol !== 1) {
       return res.status(403).json({
         message: "Solo los administradores pueden aplicar descuentos",
       });
     }
 
-    // Resetear la secuencia de id_promocion para evitar conflictos
-    await sequelize.query(
-      "SELECT setval('promocion_id_promocion_seq', (SELECT COALESCE(MAX(id_promocion), 0) + 1 FROM promocion), false);"
-    );
+    const isPercent = discountType === "percent";
+    const valor = parseFloat(discountValue);
+    if (isPercent && (isNaN(valor) || valor < 1 || valor > 100)) {
+      return res.status(400).json({ message: "Porcentaje inválido (1–100)." });
+    }
+    if (!isPercent && (isNaN(valor) || valor < 0)) {
+      return res.status(400).json({ message: "Monto fijo inválido (≥ 0)." });
+    }
 
-    // Aplicar el descuento a los productos seleccionados
     for (const id_producto of selectedProductIds) {
-      const product = await producto.findByPk(id_producto);
-      if (!product) {
-        continue; // Si no se encuentra el producto, continuar con el siguiente
-      }
-
-      let promocionExistente = await promocion.findOne({
+      // buscar promoción tipo 2 ya asociada a ese producto
+      let promo = await promocion.findOne({
+        where: { id_tipo_promo: 2 },
         include: [
           {
             model: producto,
-            where: { id_producto: id_producto },
+            where: { id_producto },
             through: { attributes: [] },
             required: true,
           },
         ],
+        transaction: t,
       });
 
-      if (!promocionExistente) {
-        promocionExistente = await promocion.create({
-          id_tipo_promo: 2, // Suponiendo que 2 es el ID para descuentos por producto
-        });
-        // Crear la asociación en la tabla promocion_producto
-        await promocion_producto.create({
-          id_promocion: promocionExistente.id_promocion,
-          id_producto: id_producto,
-        });
-      }
+      if (!promo) {
+        // crear promoción y asociación
+        promo = await promocion.create(
+          {
+            id_tipo_promo: 2,
+            nombre_promocion: "Descuento General",
+            activa: true,
+            fecha_inicio: startDate || null,
+            fecha_termina: endDate || null,
+            compra_min: null,
+            valor_fijo: isPercent ? null : valor,
+            valor_porcentaje: isPercent ? valor : null,
+          },
+          { transaction: t }
+        );
 
-      if (discountType === "percent") {
-        promocionExistente.valor_porcentaje = parseFloat(discountValue);
-        promocionExistente.valor_fijo = null;
-      } else if (discountType === "fixed") {
-        promocionExistente.valor_porcentaje = null;
-        promocionExistente.valor_fijo = parseFloat(discountValue);
+        await promocion_producto.create(
+          {
+            id_promocion: promo.id_promocion,
+            id_producto,
+          },
+          { transaction: t }
+        );
+      } else {
+        // actualizar valores y fechas
+        promo.valor_fijo = isPercent ? null : valor;
+        promo.valor_porcentaje = isPercent ? valor : null;
+        if (startDate !== undefined) promo.fecha_inicio = startDate || null;
+        if (endDate !== undefined) promo.fecha_termina = endDate || null;
+        promo.activa = true;
+        await promo.save({ transaction: t });
       }
-
-      await promocionExistente.save();
     }
 
-    res.json({ message: "Descuentos aplicados correctamente" });
+    await t.commit();
+    return res.json({ message: "Descuentos aplicados correctamente" });
   } catch (error) {
     console.error("Error al aplicar descuentos:", error);
-    res.status(500).json({ error: "Error al aplicar descuentos" });
+    await t.rollback();
+    return res.status(500).json({ error: "Error al aplicar descuentos" });
   }
 };
+// controllers/promociones.js (mismo archivo)
 exports.aplicarPreciosEscalonados = async (req, res) => {
+  const tx = await sequelize.transaction();
   try {
-    const { priceTiers } = req.body; // priceTiers es un array de objetos { id_producto, valor_fijo, valor_porcentaje }
+    const { productIds, tiers, startDate, endDate } = req.body;
+
     if (!req.user || !req.user.id_usuario) {
       return res.status(401).json({ message: "Usuario no autenticado" });
     }
-    const currentUserId = req.user.id_usuario;
-
-    // Verificar si el usuario es administrador
-    const user = await Usuario.findByPk(currentUserId, {
+    const user = await Usuario.findByPk(req.user.id_usuario, {
       attributes: ["id_rol"],
     });
     if (!user || user.id_rol !== 1) {
-      return res.status(403).json({
-        message: "Solo los administradores pueden aplicar precios escalonados",
+      return res
+        .status(403)
+        .json({
+          message:
+            "Solo los administradores pueden aplicar precios escalonados",
+        });
+    }
+
+    if (!Array.isArray(productIds) || productIds.length === 0)
+      return res.status(400).json({ message: "productIds requerido" });
+    if (!Array.isArray(tiers) || tiers.length === 0)
+      return res.status(400).json({ message: "tiers requerido" });
+
+    // validar tiers
+    for (const t of tiers) {
+      if (typeof t.cantidad_min !== "number" || t.cantidad_min <= 0) {
+        return res.status(400).json({ message: "cantidad_min debe ser > 0" });
+      }
+      if (t.tipo === "percent") {
+        if (typeof t.valor !== "number" || t.valor < 1 || t.valor > 100) {
+          return res
+            .status(400)
+            .json({ message: "Porcentaje inválido (1–100)." });
+        }
+      } else if (t.tipo === "fixed") {
+        if (typeof t.valor !== "number" || t.valor < 0) {
+          return res
+            .status(400)
+            .json({ message: "Monto fijo inválido (≥ 0)." });
+        }
+      } else {
+        return res
+          .status(400)
+          .json({ message: "tipo debe ser 'fixed' o 'percent'." });
+      }
+    }
+
+    // Estrategia: eliminar las promociones de tipo 3 vigentes para esos productos y recrear todas
+    const promosTipo3 = await promocion.findAll({
+      where: { id_tipo_promo: 3 },
+      include: [
+        {
+          model: producto,
+          where: { id_producto: productIds },
+          attributes: ["id_producto"],
+          through: { attributes: [] },
+        },
+      ],
+      transaction: tx,
+    });
+
+    const idsBorrar = promosTipo3.map((p) => p.id_promocion);
+    if (idsBorrar.length) {
+      await promocion_producto.destroy({
+        where: { id_promocion: idsBorrar },
+        transaction: tx,
+      });
+      await promocion.destroy({
+        where: { id_promocion: idsBorrar },
+        transaction: tx,
       });
     }
-    // Resetear la secuencia de id_promocion para evitar conflictos
-    await sequelize.query(
-      "SELECT setval('promocion_id_promocion_seq', (SELECT COALESCE(MAX(id_promocion), 0) + 1 FROM promocion), false);"
-    );
-    // Aplicar los precios escalonados a los productos
-    for (const tier of priceTiers) {
-      const { id_producto, valor_fijo, valor_porcentaje } = tier;
-      const product = await producto.findByPk(id_producto);
-      if (!product) {
-        continue; // Si no se encuentra el producto, continuar con el siguiente
-      }
-      let promocionExistente = await promocion.findOne({
-        include: [
+
+    // crear nuevas promociones (una por escalón y producto)
+    for (const pid of productIds) {
+      for (const esc of tiers) {
+        const isPercent = esc.tipo === "percent";
+        const promo = await promocion.create(
           {
-            model: producto,
-            where: { id_producto: id_producto },
-            through: { attributes: [] },
-            required: true,
+            id_tipo_promo: 3,
+            nombre_promocion: "Precio Escalonado",
+            descripcion: `Mín ${esc.cantidad_min}`,
+            activa: true,
+            compra_min: esc.cantidad_min,
+            valor_fijo: isPercent ? null : esc.valor,
+            valor_porcentaje: isPercent ? esc.valor : null,
+            fecha_inicio: startDate || null,
+            fecha_termina: endDate || null,
+            orden: esc.cantidad_min, // útil para ordenar de menor a mayor
           },
-        ],
-      });
-      if (!promocionExistente) {
-        promocionExistente = await promocion.create({
-          id_tipo_promo: 3, // Suponiendo que 3 es el ID para precios escalonados
-        });
-        // Crear la asociación en la tabla promocion_producto
-        await promocion_producto.create({
-          id_promocion: promocionExistente.id_promocion,
-          id_producto: id_producto,
-        });
+          { transaction: tx }
+        );
+
+        await promocion_producto.create(
+          {
+            id_promocion: promo.id_promocion,
+            id_producto: pid,
+          },
+          { transaction: tx }
+        );
       }
-      promocionExistente.valor_fijo = valor_fijo
-        ? parseFloat(valor_fijo)
-        : promocionExistente.valor_fijo;
-      promocionExistente.valor_porcentaje = valor_porcentaje
-        ? parseFloat(valor_porcentaje)
-        : promocionExistente.valor_porcentaje;
-      await promocionExistente.save();
     }
-    res.json({ message: "Precios escalonados aplicados correctamente" });
-  }
-  catch (error) {
+
+    await tx.commit();
+    return res.json({ message: "Precios escalonados aplicados correctamente" });
+  } catch (error) {
     console.error("Error al aplicar precios escalonados:", error);
-    res.status(500).json({ error: "Error al aplicar precios escalonados" });
+    await tx.rollback();
+    return res
+      .status(500)
+      .json({ error: "Error al aplicar precios escalonados" });
   }
 };
+
 exports.crearPromocion = async (req, res) => {
   try {
     const {
@@ -464,7 +537,7 @@ exports.crearPromocion = async (req, res) => {
         .status(403)
         .json({ message: "Solo los administradores pueden crear promociones" });
     }
-     const ordenNum = Number.isFinite(Number(orden)) ? Number(orden) : 0;
+    const ordenNum = Number.isFinite(Number(orden)) ? Number(orden) : 0;
 
     const newPromocion = await promocion.create({
       nombre_promocion,
@@ -666,28 +739,30 @@ exports.productosPorPromocion = async (req, res) => {
     const id_promocion = parseInt(req.params.id_promocion, 10);
 
     if (!Number.isInteger(id_promocion)) {
-      return res.status(400).json({ message: 'id_promocion inválido' });
+      return res.status(400).json({ message: "id_promocion inválido" });
     }
 
     // (opcional) validar que la promo exista
     const existe = await promocion.findByPk(id_promocion);
-    if (!existe) return res.status(404).json({ message: 'Promoción no encontrada' });
+    if (!existe)
+      return res.status(404).json({ message: "Promoción no encontrada" });
 
-    const soloActivos = String(req.query.activos || '').toLowerCase() === 'true';
+    const soloActivos =
+      String(req.query.activos || "").toLowerCase() === "true";
 
     const rows = await producto.findAll({
       where: soloActivos ? { activo: true } : undefined,
       attributes: [
-        'id_producto',
-        'nombre',
-        [sequelize.col('subcategoria.categoria.nombre'), 'categoria'],
-        [sequelize.col('subcategoria.nombre'), 'subcategoria'],
+        "id_producto",
+        "nombre",
+        [sequelize.col("subcategoria.categoria.nombre"), "categoria"],
+        [sequelize.col("subcategoria.nombre"), "subcategoria"],
       ],
       include: [
         // Join con promoción para filtrar por id_promocion
         {
           model: promocion,
-          where: { id_promocion },     // <- es un número
+          where: { id_promocion }, // <- es un número
           attributes: [],
           through: { attributes: [] },
           required: true,
@@ -695,24 +770,28 @@ exports.productosPorPromocion = async (req, res) => {
         // Subcategoria -> Categoria (usando tus alias reales)
         {
           model: subcategoria,
-          as: 'subcategoria',
+          as: "subcategoria",
           attributes: [],
           required: true,
-          include: [{
-            model: categoria,
-            as: 'categoria',
-            attributes: [],
-            required: true,
-          }]
-        }
+          include: [
+            {
+              model: categoria,
+              as: "categoria",
+              attributes: [],
+              required: true,
+            },
+          ],
+        },
       ],
-      order: [['id_producto', 'ASC']],
+      order: [["id_producto", "ASC"]],
       raw: true, // para que Sequelize.col salga como campos planos
     });
 
     return res.json(rows); // [{ id_producto, nombre, categoria, subcategoria }]
   } catch (err) {
-    console.error('Error listando productos básicos por promoción:', err);
-    return res.status(500).json({ message: 'Error interno al listar productos de la promoción' });
+    console.error("Error listando productos básicos por promoción:", err);
+    return res
+      .status(500)
+      .json({ message: "Error interno al listar productos de la promoción" });
   }
 };

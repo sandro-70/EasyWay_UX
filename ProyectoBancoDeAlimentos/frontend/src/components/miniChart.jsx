@@ -48,8 +48,9 @@ const MiniChart = ({ title1, title2, data = [], itemsPerPage = 4, renderRow }) =
           {currentData.map((item, idx) => (
             <div
               key={idx}
-              className="border-t-2 border-black py-1 px-2 flex justify-between items-center text-sm"
+              className="border-t-2 border-black py-1 px-2 flex justify-between items-center gap-2 text-sm"
             >
+              {/* IMPORTANTE: la fila tiene gap-2 y el primer hijo puede usar flex-1 min-w-0 desde el caller */}
               {renderRow(item)}
             </div>
           ))}

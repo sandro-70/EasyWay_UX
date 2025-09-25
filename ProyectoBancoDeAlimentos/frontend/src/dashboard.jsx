@@ -72,7 +72,7 @@ function Dashboard() {
   const addLps = (num) => {
     if (num == null) return "—";
     return num + ". Lps";
-  }
+  };
 
   const lastNMonthsAsc = (rows, n) =>
     [...rows].sort((a, b) => (a.mes < b.mes ? -1 : 1)).slice(Math.max(0, rows.length - n));
@@ -195,7 +195,6 @@ function Dashboard() {
   }, []);
 
   // Filtrado por sucursal + “críticos”
-  // Filtrado por sucursal + “críticos”
   useEffect(() => {
     const base = inventoryRaw.filter((r) => r.producto && r.producto !== "-");
 
@@ -208,7 +207,15 @@ function Dashboard() {
     const critical = bySucursal.filter((r) => Number.isFinite(r.stock) && r.stock <= 10);
     const display = (critical.length ? critical : bySucursal)
       .slice() // copia
-      .sort((a, b) => a.stock - b.stock);
+      .sort((a, b) => {
+        if (a.stock !== b.stock) return a.stock - b.stock;
+        if (sucursalId === "all") {
+          const byProd = (a.producto || "").localeCompare(b.producto || "");
+          if (byProd !== 0) return byProd;
+          return (a.sucursal || "").localeCompare(b.sucursal || "");
+        }
+        return 0;
+      });
 
     setInventory(display);
   }, [inventoryRaw, sucursalId]);
@@ -301,6 +308,26 @@ function Dashboard() {
     </span>
   );
 
+  // Mapa id->nombre para recuperar el nombre de sucursal cuando la fila no lo trae
+const sucMap = useMemo(() => {
+  const m = new Map();
+  for (const s of sucursales) m.set(String(s.id), s.nombre);
+  return m;
+}, [sucursales]);
+
+// Etiqueta del producto según filtro: en "todas" → "Producto - Sucursal"; en específica → "Producto"
+const productLabel = (item) => {
+  // nombre de sucursal: primero el que venga en la fila, si no, lo buscamos por id
+  const sucName =
+    (item?.sucursal && String(item.sucursal).trim()) ||
+    sucMap.get(String(item?.id_sucursal)) ||
+    "";
+
+  if (sucursalId === "all" && sucName) {
+    return `${item.producto} - ${sucName}`;
+  }
+  return item.producto ?? "-";
+};
 
 
   return (
@@ -330,28 +357,29 @@ function Dashboard() {
                     title2={stockHeader}
                     data={inventory}
                     itemsPerPage={4}
-                    renderRow={(item) => (
-                      <>
-                        <span className="overflow-hidden whitespace-nowrap overflow-ellipsis text-left">
-                          {item.producto}
-                          {item.sucursal && (
-                            <span className="ml-2 font-light text-gray-500 text-xs">
-                              ({item.sucursal})
-                            </span>
-                          )}
-                        </span>
-                        <span
-                          className={`font-bold text-right ${item.stock <= 2
-                              ? "text-red-600"
-                              : item.stock <= 5
-                                ? "text-orange-500"
-                                : "text-yellow-500"
-                            }`}
-                        >
-                          {item.stock}
-                        </span>
-                      </>
-                    )}
+renderRow={(item) => (
+  <>
+    <span
+      className="flex-1 min-w-0 overflow-hidden whitespace-nowrap text-ellipsis text-left"
+      title={productLabel(item)} // tooltip con el texto completo
+    >
+      {productLabel(item)}
+    </span>
+    <span
+      className={`font-bold text-right ${
+        item.stock <= 2
+          ? "text-red-600"
+          : item.stock <= 5
+          ? "text-orange-500"
+          : "text-yellow-500"
+      }`}
+    >
+      {item.stock}
+    </span>
+  </>
+)}
+
+
                   />
 
                   {/* Mini–dropdown (no cambia el diseño, solo se superpone) */}
@@ -374,7 +402,7 @@ function Dashboard() {
                           setPickerOpen(false);
                         }}
                       >
-                        Todas las sucursales
+                        Todas las Sucursales
                       </div>
                       <div className="h-px bg-gray-200 my-1" />
                       {sucursales.map((s) => (

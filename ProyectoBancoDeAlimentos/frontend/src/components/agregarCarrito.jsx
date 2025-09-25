@@ -1137,25 +1137,26 @@ const styles = {
 
   // ====== Columna derecha (con scroll propio) ======
   detailWrapper: {
-    flex: 1,
-    height: "calc(100vh - 185px)", // misma altura que la izquierda
-    display: "flex",
-    overflowY: "auto", // scroll solo en la derecha
-  },
+  flex: 1,
+  display: "flex",
+  alignItems: "stretch",
+  overflowY: "visible",  // o auto si quieres scroll interno
+}
+,
 
   // Card principal: producto + valoraciones
-  detailCard: {
-    backgroundColor: "white",
-    borderRadius: "16px",
-    padding: "20px",
-    boxShadow: "0px 4px 10px rgba(0,0,0,0.1)",
-    height: "900px",
-    width: "100%",
-    display: "flex",
-    flexDirection: "column",
-    overflow: "visible",
-    boxSizing: "border-box",
-  },
+detailCard: {
+  backgroundColor: "white",
+  borderRadius: "16px",
+  padding: "20px",
+  boxShadow: "0px 4px 10px rgba(0,0,0,0.1)",
+  width: "100%",
+  display: "flex",
+  flexDirection: "column",
+  boxSizing: "border-box",
+  minHeight: "600px",   // opcional, solo como base
+}
+,
   cardDivider: {
     border: "none",
     height: "1px",

@@ -3,6 +3,7 @@ import React, { useEffect, useState, useContext, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import "../toast.css";
+import { useTranslation } from "react-i18next";
 
 import { getProductosFav } from "../api/lista_deseos";
 import { getListaDeseos } from "../api/listaDeseosApi";
@@ -11,8 +12,8 @@ import { vaciarListaDeseos } from "../api/listaDeseosApi";
 import { getProductosRecomendados } from "../api/InventarioApi";
 import { AddNewCarrito, ViewCar, SumarItem } from "../api/CarritoApi";
 import axiosInstance from "../api/axiosInstance";
-import { UserContext } from "../components/userContext" ;
-import { useCart } from "../utils/CartContext"
+import { UserContext } from "../components/userContext";
+import { useCart } from "../utils/CartContext";
 
 import appleImage from "../images/appleImage.png";
 import izqImage from "../images/izq.png";
@@ -52,7 +53,7 @@ const toPublicFotoSrc = (nameOrPath) => {
 
   // rutas ya “tipo backend”
   if (s.startsWith("/api/images/")) return `${BACKEND_ORIGIN}${encodeURI(s)}`;
-  if (s.startsWith("/images/"))     return `${BACKEND_ORIGIN}/api${encodeURI(s)}`;
+  if (s.startsWith("/images/")) return `${BACKEND_ORIGIN}/api${encodeURI(s)}`;
 
   // casos comunes: "productos/archivo.jpg"
   if (/^\/?productos\//i.test(s)) {
@@ -69,13 +70,20 @@ const getFirstImageUrl = (prod) => {
   if (!prod) return null;
 
   let arr =
-    prod.imagenes ?? prod.Imagenes ?? prod.images ?? prod.fotos ?? prod.Fotos ?? null;
+    prod.imagenes ??
+    prod.Imagenes ??
+    prod.images ??
+    prod.fotos ??
+    prod.Fotos ??
+    null;
 
   if (typeof arr === "string") {
     try {
       const parsed = JSON.parse(arr);
       if (Array.isArray(parsed)) arr = parsed;
-    } catch { /* no era JSON */ }
+    } catch {
+      /* no era JSON */
+    }
   }
 
   // array de strings
@@ -88,8 +96,15 @@ const getFirstImageUrl = (prod) => {
   if (Array.isArray(arr) && arr.length && typeof arr[0] === "object") {
     const x = arr[0] || {};
     const candidates = [
-      x.url_imagen, x.urlImagen, x.url, x.ruta, x.path, x.imagen, x.foto,
-      x.nombre_archivo, x.file_name,
+      x.url_imagen,
+      x.urlImagen,
+      x.url,
+      x.ruta,
+      x.path,
+      x.imagen,
+      x.foto,
+      x.nombre_archivo,
+      x.file_name,
     ].filter(Boolean);
     for (const c of candidates) {
       const u = toPublicFotoSrc(c);
@@ -99,8 +114,16 @@ const getFirstImageUrl = (prod) => {
 
   // campos sueltos en el producto
   const single = [
-    prod.url_imagen, prod.urlImagen, prod.imagen, prod.foto, prod.ruta, prod.path,
-    prod.nombre_archivo, prod.file_name, prod.imagen_principal, prod.foto_principal,
+    prod.url_imagen,
+    prod.urlImagen,
+    prod.imagen,
+    prod.foto,
+    prod.ruta,
+    prod.path,
+    prod.nombre_archivo,
+    prod.file_name,
+    prod.imagen_principal,
+    prod.foto_principal,
   ].filter(Boolean);
   for (const c of single) {
     const u = toPublicFotoSrc(c);
@@ -113,7 +136,7 @@ const getFirstImageUrl = (prod) => {
 /* ===== Card de producto ===== */
 function ProductoCard({ p, onAdd, onOpen }) {
   // siempre pasamos por toPublicFotoSrc por si p.img viene como nombre/relativa
-  const src =  p.img || "";
+  const src = p.img || "";
   return (
     <div className="relative bg-white rounded-2xl p-3 shadow-lg w-full">
       {/* capa clicable para abrir detalle */}
@@ -123,7 +146,6 @@ function ProductoCard({ p, onAdd, onOpen }) {
         aria-label={`Abrir ${p.name}`}
         style={{ zIndex: 1 }}
       />
-
 
       <div className="absolute top-2 right-2 flex items-center gap-1 z-10">
         {Array.from({ length: 5 }).map((_, i) => (
@@ -176,14 +198,20 @@ function ProductoCard({ p, onAdd, onOpen }) {
 export default function ListaDeDeseos({ id_usuario: idFromProps }) {
   const { user } = useContext(UserContext);
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const id_usuario = useMemo(
     () => idFromProps || user?.id_usuario || localStorage.getItem("id_usuario"),
     [idFromProps, user?.id_usuario]
   );
 
-  const tabs = ["Más recientes", "En Oferta", "Disponibles"];
-  const [activeTab, setActiveTab] = useState("Más recientes");
+  const tabs = [
+    t("Whishlist.sortBy"),
+    t("Whishlist.mostRecent"),
+    t("Whishlist.onSale"),
+    t("Whishlist.available"),
+  ];
+  const [activeTab, setActiveTab] = useState(t("Whishlist.mostRecent"));
 
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState([]);
@@ -259,13 +287,18 @@ export default function ListaDeDeseos({ id_usuario: idFromProps }) {
       try {
         setLoading(true);
         const res = await getListaDeseos(id_usuario);
-        const arr = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+        const arr = Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res)
+          ? res
+          : [];
         const favs = arr.map(normalizeFav).filter((p) => p.id != null);
         setProducts(favs);
       } catch (error) {
         console.error("Error al cargar favoritos:", error);
         toast.error(
-          error?.response?.data?.message || "No se pudo cargar tu lista de deseos",
+          error?.response?.data?.message ||
+            "No se pudo cargar tu lista de deseos",
           { className: "toast-error" }
         );
       } finally {
@@ -281,7 +314,11 @@ export default function ListaDeDeseos({ id_usuario: idFromProps }) {
       try {
         setLoadingRecomendados(true);
         const res = await getProductosRecomendados();
-        const arr = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+        const arr = Array.isArray(res?.data)
+          ? res.data
+          : Array.isArray(res)
+          ? res
+          : [];
         const recs = arr.map(normalizeFav).filter((p) => p.id != null);
         setRecomendados(recs);
       } catch (error) {
@@ -300,12 +337,15 @@ export default function ListaDeDeseos({ id_usuario: idFromProps }) {
     if (activeTab === "En Oferta") {
       return products.filter((p) => {
         // Filtrar por etiquetas que contengan "En Oferta" o similar
-        const hasEnOfertaTag = p.etiquetas && Array.isArray(p.etiquetas) &&
-          p.etiquetas.some(tag =>
-            String(tag).includes('En oferta') ||
-            String(tag).toLowerCase().includes('oferta') ||
-            String(tag).toLowerCase().includes('descuento') ||
-            String(tag).toLowerCase().includes('rebaja')
+        const hasEnOfertaTag =
+          p.etiquetas &&
+          Array.isArray(p.etiquetas) &&
+          p.etiquetas.some(
+            (tag) =>
+              String(tag).includes("En oferta") ||
+              String(tag).toLowerCase().includes("oferta") ||
+              String(tag).toLowerCase().includes("descuento") ||
+              String(tag).toLowerCase().includes("rebaja")
           );
         return hasEnOfertaTag;
       });
@@ -436,15 +476,15 @@ export default function ListaDeDeseos({ id_usuario: idFromProps }) {
         <div className="w-full max-w-[1080px] bg-white rounded-xl shadow-lg p-6 mb-8 mx-auto">
           {/* Título */}
           <div className="mb-6 text-center">
-            <h1 className="deseos-titulo">
-              Lista de Deseos
-            </h1>
-            <hr className="lista-deseos-separador"/>
+            <h1 className="deseos-titulo">{t("Whishlist.title")}</h1>
+            <hr className="lista-deseos-separador" />
           </div>
 
           {/* Tabs */}
           <div className="flex items-center gap-4 mb-6 shadow-lg bg-gray-50 rounded-lg p-1">
-            <div className="text-sm text-gray-700 font-semibold px-3">Ordenar Por:</div>
+            <div className="text-sm text-gray-700 font-semibold px-3">
+              Ordenar Por:
+            </div>
             <div className="flex overflow-hidden flex-1 rounded-lg">
               {tabs.map((t) => (
                 <button
@@ -467,8 +507,10 @@ export default function ListaDeDeseos({ id_usuario: idFromProps }) {
             </div>
           ) : filteredProducts.length === 0 ? (
             <div className="h-[300px] flex flex-col items-center justify-center text-gray-500">
-              <div className="text-lg font-semibold">Aún no tienes productos aquí</div>
-              <div className="text-sm">Agrega algunos desde la página de producto con el corazón ❤️</div>
+              <div className="text-lg font-semibold">
+                {t("Whishlist.noproducts")}
+              </div>
+              <div className="text-sm">{t("Whishlist.add")} ❤️</div>
             </div>
           ) : (
             <div className="overflow-y-auto h-[450px] w-full pb-4 scrollbar-thin scrollbar-thumb-orange-400 scrollbar-track-gray-200">
@@ -488,10 +530,8 @@ export default function ListaDeDeseos({ id_usuario: idFromProps }) {
 
         {/* Recomendados */}
         <div className="mt-6 w-full max-w-[1080px] bg-white rounded-xl shadow-lg p-6 mx-auto">
-          <h2 className="recomendados-titulo  ">
-            Productos que podrían interesarte
-          </h2>
-          <hr className="lista-recomendaciones-separador"/>
+          <h2 className="recomendados-titulo  ">{t("textRecomendado")}</h2>
+          <hr className="lista-recomendaciones-separador" />
 
           {loadingRecomendados ? (
             <div className="h-[200px] flex items-center justify-center text-gray-500">
@@ -500,8 +540,10 @@ export default function ListaDeDeseos({ id_usuario: idFromProps }) {
           ) : recomendados.length === 0 ? (
             <div className="h-[200px] flex items-center justify-center text-gray-500">
               <div className="text-center">
-                <div className="text-lg font-semibold">No hay recomendaciones disponibles</div>
-                <div className="text-sm">Explora nuestros productos para encontrar algo que te guste</div>
+                <div className="text-lg font-semibold">
+                  {t("Whishlist.noRecomendations")}
+                </div>
+                <div className="text-sm">{t("Whishlist.browseMore")}</div>
               </div>
             </div>
           ) : (
@@ -510,7 +552,9 @@ export default function ListaDeDeseos({ id_usuario: idFromProps }) {
                 onClick={handlePrev}
                 disabled={startIndex === 0}
                 className={`absolute left-[-18px] z-10 bg-white rounded-full p-3 shadow-md ${
-                  startIndex === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+                  startIndex === 0
+                    ? "opacity-50 cursor-not-allowed"
+                    : "hover:bg-gray-50"
                 }`}
               >
                 <img src={izqImage} alt="Izquierda" className="w-6 h-6" />
@@ -533,7 +577,9 @@ export default function ListaDeDeseos({ id_usuario: idFromProps }) {
                 onClick={handleNext}
                 disabled={startIndex >= recomendados.length - visibleCount}
                 className={`absolute right-[-18px] z-10 bg-white rounded-full p-3 shadow-md ${
-                  startIndex >= recomendados.length - visibleCount ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'
+                  startIndex >= recomendados.length - visibleCount
+                    ? "opacity-50 cursor-not-allowed"
+                    : "hover:bg-gray-50"
                 }`}
               >
                 <img src={derImage} alt="Derecha" className="w-6 h-6" />

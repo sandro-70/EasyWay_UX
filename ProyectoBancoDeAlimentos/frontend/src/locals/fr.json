@@ -98,6 +98,16 @@
   "cantidad": "Quantité",
   "codigo": "Code",
   "volver": "Retour",
+  "noSavedCards": "Vous n'avez pas encore enregistré de carte.",
+  "hacerPredeterminada": "Définir par défaut",
+  "numeroTarjeta": "Numéro de la carte",
+  "vencimiento": "Date d'expiration",
+  "apellido": "Nom de famille",
+  "noAddresses": "Aucune adresse enregistrée.",
+  "facturaTitle": "Factures",
+  "facturasEmitidas": "Factures émises",
+  "meses": "Mois",
+  "factura": "Facture",
 
   "perfil": {
     "title": "Mon Profil",
@@ -115,6 +125,7 @@
     "save": "Enregistrer",
     "cancel": "Annuler",
     "saving": "Enregistrement...",
+    "update": "Mettre à jour",
 
     "field": {
       "nombre": "Nom",
@@ -178,6 +189,10 @@
     "sortBy": "Trier par:",
     "mostRecent": "Plus récent",
     "onSale": "En solde",
-    "available": "Disponible"
+    "available": "Disponible",
+    "noRecomendations": "Aucune recommandation disponible",
+    "browseMore": "Parcourez plus de produits pour trouver ce que vous aimez",
+    "add": "Ajoutez-en depuis la page du produit avec le cœur",
+    "noproducts": "Vous n'avez pas encore de produits ici."
   }
 }

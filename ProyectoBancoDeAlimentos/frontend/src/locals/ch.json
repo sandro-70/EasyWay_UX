@@ -99,6 +99,17 @@
   "codigo": "代码",
   "cantidad": "数量",
   "volver": "返回",
+  "hacerPredeterminada": "设为默认",
+  "noSavedCards": "您还没有保存任何卡。",
+  "numeroTarjeta": "卡号",
+  "vencimiento": "到期日",
+  "apellido": "姓氏",
+  "noAddresses": "没有注册的地址。",
+  "update": "更新",
+  "factura": "发票",
+  "facturaTitle": "发票",
+  "facturasEmitidas": "已开具的发票",
+  "meses": "月",
 
   "perfil": {
     "title": "我的个人资料",
@@ -178,6 +189,10 @@
     "sortBy": "排序方式：",
     "mostRecent": "最新",
     "onSale": "促销中",
-    "available": "可用"
+    "available": "可用",
+    "noRecomendations": "没有可用的推荐",
+    "browseMore": "浏览更多产品以找到您喜欢的东西",
+    "add": "从产品页面用心形图标添加一些",
+    "noproducts": "您这里还没有产品。"
   }
 }

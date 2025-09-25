@@ -99,6 +99,16 @@
   "nombre_producto": "Product Name",
   "cantidad": "Quantity",
   "volver": "Go Back",
+  "hacerPredeterminada": "Set as Default",
+  "noSavedCards": "You haven't saved any cards yet.",
+  "numeroTarjeta": "Card Number",
+  "vencimiento": "Expiration Date",
+  "apellido": "Last Name",
+  "noAddresses": "No addresses registered.",
+  "facturaTitle": "Invoices",
+  "facturasEmitidas": "Issued Invoices",
+  "meses": "Months",
+  "factura": "Invoice",
 
   "perfil": {
     "title": "My Profile",
@@ -116,6 +126,7 @@
     "save": "Save",
     "cancel": "Cancel",
     "saving": "Saving...",
+    "update": "Update",
 
     "field": {
       "nombre": "First Name",
@@ -178,6 +189,10 @@
     "sortBy": "Sort by:",
     "mostRecent": "Most Recent",
     "onSale": "On Sale",
-    "available": "Available"
+    "available": "Available",
+    "noRecomendations": "No recommendations available",
+    "browseMore": "Browse more products to find something you like",
+    "add": "Add some from the product page with the heart",
+    "noproducts": "You don't have any products here yet."
   }
 }

@@ -12,8 +12,10 @@ import arrowR from "./images/arrowR.png";
 import chip from "./images/chip.png";
 import { toast } from "react-toastify";
 import "./toast.css";
+import { useTranslation } from "react-i18next";
 
 export default function MetodoPago() {
+  const { t } = useTranslation();
   const [showForm, setShowForm] = useState(false);
   const [metodosPago, setMetodosPago] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -202,7 +204,7 @@ export default function MetodoPago() {
       <div className="metodo-pago-layout">
         {!showForm ? (
           <div className="agregar-tarjeta-container">
-            <h1 className="titulo-pago">Métodos de pago</h1>
+            <h1 className="titulo-pago">{t("metodospago")}</h1>
             <hr className="metodo-separador" />
             {error && (
               <div className="error-message">
@@ -244,7 +246,7 @@ export default function MetodoPago() {
                         <div className="tarjeta-acciones">
                           {metodo.metodo_predeterminado ? (
                             <span className="predeterminada-badge">
-                              Predeterminada
+                              {t("predeterminada")}
                             </span>
                           ) : (
                             <button
@@ -253,7 +255,7 @@ export default function MetodoPago() {
                               }
                               className="btn-hacer-predeterminada"
                             >
-                              Hacer predeterminada
+                              {t("hacerPredeterminada")}
                             </button>
                           )}
                           <button
@@ -262,7 +264,7 @@ export default function MetodoPago() {
                             }
                             className="btn-eliminar-tarjeta"
                           >
-                            Eliminar
+                            {t("Delete")}
                           </button>
                         </div>
                       </div>
@@ -276,12 +278,10 @@ export default function MetodoPago() {
                   </button>
                 </div>
               ) : (
-                <p className="texto-info">
-                  Aún no has guardado ninguna tarjeta.
-                </p>
+                <p className="texto-info">{t("noSavedCards")}</p>
               )}
               <button onClick={() => setShowForm(true)} className="btn-anadir">
-                + Añadir nueva tarjeta
+                + {t("newCard")}
               </button>
             </div>
           </div>
@@ -289,7 +289,7 @@ export default function MetodoPago() {
           <div className="contenedor-formulario">
             <form className="form-tarjeta" onSubmit={handleSubmit}>
               <div className="campo">
-                <label>Número de la tarjeta</label>
+                <label>{t("numeroTarjeta")}</label>
                 <input
                   type="text"
                   name="numero_tarjeta"
@@ -309,7 +309,7 @@ export default function MetodoPago() {
 
               <div className="fila">
                 <div className="campo">
-                  <label>Nombre</label>
+                  <label>{t("perfil.field.nombre")}</label>
                   <input
                     type="text"
                     name="nombre"
@@ -320,7 +320,7 @@ export default function MetodoPago() {
                   />
                 </div>
                 <div className="campo">
-                  <label>Apellido</label>
+                  <label>{t("apellido")}</label>
                   <input
                     type="text"
                     name="apellido"
@@ -334,7 +334,7 @@ export default function MetodoPago() {
 
               <div className="fila">
                 <div className="campo">
-                  <label>Fecha de vencimiento</label>
+                  <label>{t("vencimiento")}</label>
                   <div className="vencimiento-input">
                     <input
                       type="text"
@@ -377,10 +377,10 @@ export default function MetodoPago() {
                   className="btn-cancelar"
                   onClick={() => setShowForm(false)}
                 >
-                  Cancelar
+                  {t("perfil.cancel")}
                 </button>
                 <button type="submit" className="btn-guardar-tarjeta">
-                  Guardar
+                  {t("perfil.save")}
                 </button>
               </div>
             </form>
@@ -391,15 +391,13 @@ export default function MetodoPago() {
         {!showForm && (
           <div className="info-seguridad">
             <p>
-              <b>Easy Way</b> protege tu información de pago
+              <b>Easy Way</b> {t("offers secure payment processing")}
             </p>
             <ul>
-              <li>
-                ✔ Seguimos el estándar PCI DSS al entregar datos de tarjeta
-              </li>
-              <li>✔ Toda la información permanece segura y sin compromisos</li>
-              <li>✔ Todos los datos están encriptados</li>
-              <li>✔ Nunca se manipularán ni venderán tus datos</li>
+              <li>✔ {t("m1")}</li>
+              <li>✔ {t("m2")}</li>
+              <li>✔ {t("m3")}</li>
+              <li>✔ {t("m4")}</li>
             </ul>
           </div>
         )}

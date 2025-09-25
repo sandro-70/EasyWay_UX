@@ -8,10 +8,13 @@ import CalendarioIcon from "../images/calendario.png";
 import { getAllFacturasByUserwithDetails } from "../api/FacturaApi";
 import { listarPedido } from "../api/PedidoApi";
 import "../pages/Facturas.css";
+import { useTranslation } from "react-i18next";
 
 // Librerías para PDF
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+
+// (removed local withTranslation helper - use a top-level wrapper at the end of the file)
 
 class Facturas extends Component {
   state = {
@@ -196,12 +199,9 @@ class Facturas extends Component {
       });
       yOffset += 7;
     }
-    doc.text(
-      `Costo de envío: Lps. ${costoEnvio.toFixed(2)}`,
-      196,
-      yOffset,
-      { align: "right" }
-    );
+    doc.text(`Costo de envío: Lps. ${costoEnvio.toFixed(2)}`, 196, yOffset, {
+      align: "right",
+    });
     yOffset += 8;
     doc.setFont(undefined, "bold");
     doc.text(`Total a pagar: Lps. ${totalPagar.toFixed(2)}`, 196, yOffset, {
@@ -211,7 +211,10 @@ class Facturas extends Component {
     doc.save(`Factura_${facturaSeleccionada.numero}.pdf`);
   };
 
+  // HOC to use the useTranslation hook in a class component
+
   render() {
+    const { t } = this.props;
     const {
       facturas,
       facturaSeleccionada,
@@ -220,7 +223,9 @@ class Facturas extends Component {
       cargando,
     } = this.state;
     const facturasFiltradas = fechaFiltro
-      ? facturas.filter((f) => f.fecha.split("/")[1].padStart(2, '0') === fechaFiltro)
+      ? facturas.filter(
+          (f) => f.fecha.split("/")[1].padStart(2, "0") === fechaFiltro
+        )
       : facturas;
 
     const productos = facturaSeleccionada ? facturaSeleccionada.productos : [];
@@ -228,7 +233,9 @@ class Facturas extends Component {
       (acc, prod) => acc + prod.cantidad * prod.precio,
       0
     );
-    const descuento = facturaSeleccionada ? facturaSeleccionada.descuento || 0 : 0;
+    const descuento = facturaSeleccionada
+      ? facturaSeleccionada.descuento || 0
+      : 0;
     const subtotalAfterDiscount = subtotal - descuento;
     const isv = subtotalAfterDiscount * 0.15;
     const costoEnvio = 10.0;
@@ -244,24 +251,24 @@ class Facturas extends Component {
         {/* Contenido principal */}
         <div className="flex-1 flex flex-col items-center">
           <div className="facturas-wrapper">
-            <h1 className="titulo-facturas">
-              Facturas
-            </h1>
-            <hr className="facturas-separado"/>
+            <h1 className="titulo-facturas">{t("facturaTitle")}</h1>
+            <hr className="facturas-separado" />
 
             {cargando ? (
-              <p className="text-gray-500 text-center">Cargando facturas...</p>
+              <p className="text-gray-500 text-center">
+                {t("facturas.loading")}
+              </p>
             ) : (
               <div className="historial-box">
                 <div className="historial-header">
-                  <h2 className="box-titulo">Facturas emitidas</h2>
+                  <h2 className="box-titulo">{t("facturasEmitidas")}</h2>
                   <div className="flex items-center gap-2">
                     <select
                       className="px-2 py-1 text-black font-bold w-32 border border-gray-300 rounded h-8"
                       value={fechaFiltro}
                       onChange={this.handleFechaChange}
                     >
-                      <option value="">Meses</option>
+                      <option value="">{t("meses")}</option>
                       {[
                         "Enero",
                         "Febrero",
@@ -284,7 +291,6 @@ class Facturas extends Component {
                         </option>
                       ))}
                     </select>
-
                   </div>
                 </div>
 
@@ -296,7 +302,7 @@ class Facturas extends Component {
                       onClick={() => this.handleSelect(f)}
                     >
                       <p className="factura-id">
-                        Factura #{f.numero}
+                        {t("factura")} #{f.numero}
                       </p>
                       <p className="factura-fecha">
                         {/* **CAMBIO 4: Eliminar el método de pago de la vista de lista** */}
@@ -380,7 +386,9 @@ class Facturas extends Component {
                             <td className="p-0">
                               <div className="flex justify-between py-1 text-red-600">
                                 <span>Descuento</span>
-                                <span className="text-right">-Lps. {descuento.toFixed(2)}</span>
+                                <span className="text-right">
+                                  -Lps. {descuento.toFixed(2)}
+                                </span>
                               </div>
                             </td>
                           </tr>
@@ -427,4 +435,13 @@ class Facturas extends Component {
   }
 }
 
-export default Facturas;
+// export named class for tests or other imports
+export { Facturas };
+
+// Top-level functional wrapper that uses the hook and passes `t` to the class component
+function FacturasWithTranslation(props) {
+  const { t } = useTranslation();
+  return <Facturas {...props} t={t} />;
+}
+
+export default FacturasWithTranslation;

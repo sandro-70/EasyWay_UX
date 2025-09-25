@@ -5,6 +5,7 @@ import "./misCupones.css";
 import PerfilSidebar from "./components/perfilSidebar";
 import { toast } from "react-toastify";
 import "./toast.css";
+import { useTranslation } from "react-i18next";
 
 const MisCupones = () => {
   const [cuponesNoUtilizados, setCuponesNoUtilizados] = useState([]);
@@ -13,6 +14,7 @@ const MisCupones = () => {
   const [cuponesMostrados, setCuponesMostrados] = useState([]);
   const [usuarioInfo, setUsuarioInfo] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const fetchUserDataAndCoupons = async () => {
@@ -118,24 +120,24 @@ const MisCupones = () => {
       </section>
 
       <div className="titulo">
-        <h1 className="titulo-cupones">Mis Cupones</h1>
+        <h1 className="titulo-cupones">{t("perfil.myCoupons")}</h1>
         <hr className="linea-cupones" />
       </div>
 
       <div className="titulos_secundarios">
         <p onClick={() => mostrarCupones("Cupones no utilizados")}>
-          Cupones No Utilizados
+          {t("unusedCoupons")}
         </p>
-        <p onClick={() => mostrarCupones("Usados")}>Usados</p>
+        <p onClick={() => mostrarCupones("Usados")}>{t("usedCoupons")}</p>
         <p onClick={() => mostrarCupones("Cupones caducados")}>
-          Cupones Caducados
+          {t("expiredCoupons")}
         </p>
       </div>
 
       <div className="cupones_reporte">
         <div className="lista_reportes">
           {cuponesMostrados.length === 0 ? (
-            <p>No hay cupones en esta categoría.</p>
+            <p>{t("noCoupons")}</p>
           ) : (
             cuponesMostrados.map((cupon) => (
               <div key={cupon.id_historial_cupon} className="cupones_categoria">

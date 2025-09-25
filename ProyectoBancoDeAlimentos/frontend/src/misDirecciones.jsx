@@ -12,6 +12,7 @@ import {
 import { jwtDecode } from "jwt-decode";
 import { toast } from "react-toastify";
 import "./toast.css";
+import { useTranslation } from "react-i18next";
 
 export default function MisDirecciones() {
   const [showModal, setShowModal] = useState(false);
@@ -19,6 +20,7 @@ export default function MisDirecciones() {
   const [municipios, setMunicipios] = useState([]);
   const [departamentos, setDepartamentos] = useState([]);
   const [editId, setEditId] = useState(null);
+  const { t } = useTranslation();
 
   const [form, setForm] = useState({
     codigoPostal: "",
@@ -58,7 +60,7 @@ export default function MisDirecciones() {
     const fetchData = async () => {
       try {
         // Obtener direcciones del usuario
-        
+
         const direccionesRes = await getDirecciones(id_usuario);
         // Validar que la respuesta sea un array
         if (Array.isArray(direccionesRes.data)) {
@@ -80,7 +82,7 @@ export default function MisDirecciones() {
         // Obtener departamentos
         const departamentosRes = await getAllDepartamentos();
         console.log(" departamentos:" + departamentosRes);
-        
+
         if (Array.isArray(departamentosRes.data)) {
           setDepartamentos(departamentosRes.data);
         } else {
@@ -115,7 +117,9 @@ export default function MisDirecciones() {
 
     if (Object.keys(nuevosErrores).length > 0) {
       setErrores(nuevosErrores);
-      toast.warn("Por favor completa todos los campos obligatorios", { className: "toast-warn" });
+      toast.warn("Por favor completa todos los campos obligatorios", {
+        className: "toast-warn",
+      });
       return;
     }
 
@@ -154,7 +158,9 @@ export default function MisDirecciones() {
         id_municipio: "",
         id_departamento: "",
       });
-      toast.success("Dirección guardada con éxito", { className: "toast-success" });
+      toast.success("Dirección guardada con éxito", {
+        className: "toast-success",
+      });
     } catch (error) {
       console.error("Error al guardar dirección:", error);
       toast.error("Error al guardar dirección", { className: "toast-error" });
@@ -172,7 +178,9 @@ export default function MisDirecciones() {
       } else {
         setDirecciones([]);
       }
-      toast.success("Dirección eliminada correctamente", { className: "toast-success" });
+      toast.success("Dirección eliminada correctamente", {
+        className: "toast-success",
+      });
     } catch (error) {
       console.error("Error al eliminar dirección:", error);
       toast.error("Error al eliminar dirección", { className: "toast-error" });
@@ -185,9 +193,8 @@ export default function MisDirecciones() {
     const municipio = municipios.find((m) => m.id_municipio === idMunicipio);
     if (!municipio) return "";
     return (
-      departamentos.find(
-        (d) => d.id_departamento === municipio.id_departamento
-      )?.nombre_departamento || ""
+      departamentos.find((d) => d.id_departamento === municipio.id_departamento)
+        ?.nombre_departamento || ""
     );
   };
 
@@ -199,10 +206,8 @@ export default function MisDirecciones() {
 
       <div className="direccion-pago-layout">
         <div>
-          <h1 className="titulo-direcciones">
-            Mis Direcciones
-          </h1>
-          <hr className="direccion-separado"/>
+          <h1 className="titulo-direcciones">{t("perfil.myAddresses")}</h1>
+          <hr className="direccion-separado" />
 
           {/* Formulario */}
           <div className="formulario-direccion">
@@ -210,8 +215,18 @@ export default function MisDirecciones() {
               <div
                 style={{ display: "flex", gap: "20px", marginBottom: "15px" }}
               >
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                  <label style={{ marginBottom: '5px' }}>Código postal</label>
+                <div
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start",
+                  }}
+                >
+                  <label style={{ marginBottom: "5px" }}>
+                    {" "}
+                    {t("codigoPostal")}
+                  </label>
                   <input
                     type="text"
                     name="codigoPostal"
@@ -226,8 +241,18 @@ export default function MisDirecciones() {
                     }}
                   />
                 </div>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                  <label style={{ marginBottom: '5px' }}>Departamento</label>
+                <div
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start",
+                  }}
+                >
+                  <label style={{ marginBottom: "5px" }}>
+                    {" "}
+                    {t("Department")}
+                  </label>
                   <select
                     name="id_departamento"
                     value={form.id_departamento}
@@ -239,7 +264,7 @@ export default function MisDirecciones() {
                       borderRadius: "6px",
                     }}
                   >
-                    <option value="">Seleccionar</option>
+                    <option value="">{t("select")}</option>
                     {departamentos.map((d) => (
                       <option key={d.id_departamento} value={d.id_departamento}>
                         {d.nombre_departamento}
@@ -252,8 +277,17 @@ export default function MisDirecciones() {
               <div
                 style={{ display: "flex", gap: "20px", marginBottom: "15px" }}
               >
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                  <label style={{ marginBottom: '5px' }}>Ciudad/Municipio</label>
+                <div
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start",
+                  }}
+                >
+                  <label style={{ marginBottom: "5px" }}>
+                    {t("City/Town")}
+                  </label>
                   <select
                     name="id_municipio"
                     value={form.id_municipio}
@@ -265,7 +299,7 @@ export default function MisDirecciones() {
                       borderRadius: "6px",
                     }}
                   >
-                    <option value="">Seleccionar</option>
+                    <option value="">{t("select")}</option>
                     {municipios
                       .filter((m) => m.id_departamento == form.id_departamento)
                       .map((m) => (
@@ -275,8 +309,15 @@ export default function MisDirecciones() {
                       ))}
                   </select>
                 </div>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                  <label style={{ marginBottom: '5px' }}>Calle</label>
+                <div
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "flex-start",
+                  }}
+                >
+                  <label style={{ marginBottom: "5px" }}>{t("street")}</label>
                   <input
                     type="text"
                     name="calle"
@@ -293,7 +334,13 @@ export default function MisDirecciones() {
                 </div>
               </div>
 
-              <div style={{ marginBottom: "15px", display: "flex", alignItems: "center" }}>
+              <div
+                style={{
+                  marginBottom: "15px",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
                 <input
                   type="checkbox"
                   id="predeterminado"
@@ -302,7 +349,7 @@ export default function MisDirecciones() {
                   onChange={handleChange}
                 />
                 <label htmlFor="predeterminado" style={{ marginLeft: "8px" }}>
-                  Establecer como dirección de envío predeterminada
+                  {t("setDefaultAddress")}
                 </label>
               </div>
 
@@ -319,7 +366,7 @@ export default function MisDirecciones() {
                     cursor: "pointer",
                   }}
                 >
-                  {editId ? "Actualizar" : "Guardar"}
+                  {editId ? t("perfil.update") : t("perfil.save")}
                 </button>
                 <button
                   type="button"
@@ -340,7 +387,7 @@ export default function MisDirecciones() {
                     cursor: "pointer",
                   }}
                 >
-                  Cancelar
+                  {t("perfil.cancel")}
                 </button>
               </div>
             </form>
@@ -358,26 +405,40 @@ export default function MisDirecciones() {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ backgroundColor: "#f9f9f9" }}>
-                  <th style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
+                  <th
+                    style={{ padding: "10px", borderBottom: "1px solid #ddd" }}
+                  >
                     ID
                   </th>
-                  <th style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
-                    Código Postal
+                  <th
+                    style={{ padding: "10px", borderBottom: "1px solid #ddd" }}
+                  >
+                    {t("codigoPostal")}
                   </th>
-                  <th style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
-                    Departamento
+                  <th
+                    style={{ padding: "10px", borderBottom: "1px solid #ddd" }}
+                  >
+                    {t("Department")}
                   </th>
-                  <th style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
-                    Calle
+                  <th
+                    style={{ padding: "10px", borderBottom: "1px solid #ddd" }}
+                  >
+                    {t("street")}
                   </th>
-                  <th style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
-                    Ciudad
+                  <th
+                    style={{ padding: "10px", borderBottom: "1px solid #ddd" }}
+                  >
+                    {t("City")}
                   </th>
-                  <th style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
-                    Predeterminada
+                  <th
+                    style={{ padding: "10px", borderBottom: "1px solid #ddd" }}
+                  >
+                    {t("Predetermined")}
                   </th>
-                  <th style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
-                    Opciones
+                  <th
+                    style={{ padding: "10px", borderBottom: "1px solid #ddd" }}
+                  >
+                    {t("options")}
                   </th>
                 </tr>
               </thead>
@@ -388,35 +449,70 @@ export default function MisDirecciones() {
                       colSpan="7"
                       style={{ textAlign: "center", padding: "15px" }}
                     >
-                      No hay direcciones registradas.
+                      {t("noAddresses")}
                     </td>
                   </tr>
                 ) : (
                   direcciones.map((d) => (
                     <tr key={d.id_direccion}>
-                      <td style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
+                      <td
+                        style={{
+                          padding: "10px",
+                          borderBottom: "1px solid #ddd",
+                        }}
+                      >
                         {d.id_direccion}
                       </td>
-                      <td style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
+                      <td
+                        style={{
+                          padding: "10px",
+                          borderBottom: "1px solid #ddd",
+                        }}
+                      >
                         {d.codigo_postal}
                       </td>
-                      <td style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
+                      <td
+                        style={{
+                          padding: "10px",
+                          borderBottom: "1px solid #ddd",
+                        }}
+                      >
                         {d.id_municipio
                           ? getDeptoPorMunicipio(d.id_municipio)
                           : "N/A"}
                       </td>
-                      <td style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
+                      <td
+                        style={{
+                          padding: "10px",
+                          borderBottom: "1px solid #ddd",
+                        }}
+                      >
                         {d.calle}
                       </td>
-                      <td style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
+                      <td
+                        style={{
+                          padding: "10px",
+                          borderBottom: "1px solid #ddd",
+                        }}
+                      >
                         {d.id_municipio
                           ? getMunicipioById(d.id_municipio)
                           : "N/A"}
                       </td>
-                      <td style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
+                      <td
+                        style={{
+                          padding: "10px",
+                          borderBottom: "1px solid #ddd",
+                        }}
+                      >
                         {d.predeterminada ? "Sí" : "No"}
                       </td>
-                      <td style={{ padding: "10px", borderBottom: "1px solid #ddd" }}>
+                      <td
+                        style={{
+                          padding: "10px",
+                          borderBottom: "1px solid #ddd",
+                        }}
+                      >
                         <button
                           onClick={() => {
                             setShowModal(true);
@@ -427,9 +523,7 @@ export default function MisDirecciones() {
                             background: "transparent",
                             cursor: "pointer",
                           }}
-                        >
-                          
-                        </button>
+                        ></button>
                         <button
                           onClick={() => removeRow(d.id_direccion)}
                           style={{

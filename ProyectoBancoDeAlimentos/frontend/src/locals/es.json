@@ -95,6 +95,16 @@
   "cantidad": "Cantidad",
   "codigo": "Código",
   "volver": "Volver",
+  "hacerPredeterminada": "Hacer predeterminada",
+  "noSavedCards": "Aún no has guardado ninguna tarjeta.",
+  "numeroTarjeta": "Número de la tarjeta",
+  "vencimiento": "Vencimiento",
+  "apellido": "Apellido",
+  "noAddresses": "No hay direcciones registradas.",
+  "facturaTitle": "Facturas",
+  "facturasEmitidas": "Facturas Emitidas",
+  "meses": "Meses",
+  "factura": "Factura",
 
   "perfil": {
     "title": "Mi Perfil",
@@ -112,6 +122,7 @@
     "save": "Guardar",
     "cancel": "Cancelar",
     "saving": "Guardando...",
+    "update": "Actualizar",
 
     "field": {
       "nombre": "Nombre",
@@ -174,6 +185,10 @@
     "sortBy": "Ordenar por:",
     "mostRecent": "Más reciente",
     "onSale": "En oferta",
-    "available": "Disponibles"
+    "available": "Disponibles",
+    "noRecomendations": "No hay recomendaciones disponibles",
+    "browseMore": "Explora nuestros productos para encontrar algo que te guste",
+    "add": "Agrega algunos desde la página de producto con el corazón",
+    "noproducts": "Aún no tienes productos aquí"
   }
 }

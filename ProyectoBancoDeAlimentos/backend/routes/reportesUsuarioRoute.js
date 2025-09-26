@@ -11,5 +11,6 @@ router.post('/total-ahorrado',reportesUsuarioController.getTotalAhorrado);
 router.get('/reporte', reportesUsuarioController.getUsuariosReporte);
 router.get('/reporte-filtrado/', reportesUsuarioController.getUsuariosTabla);
 router.get('/clientes-nuevos', reportesUsuarioController.getClientesNuevos);
+router.get('/reporte-compras', reportesUsuarioController.getReporteUsuariosCompras);
 
 module.exports = router;

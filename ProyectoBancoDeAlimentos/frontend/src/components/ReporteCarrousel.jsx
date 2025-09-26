@@ -15,9 +15,9 @@ const ReporteCarrousel = () => {
     { id: "ventas", label: "Ventas", node: <TablaVentas /> },
     { id: "promociones", label: "Promociones", node: <TablaPromociones /> },
     { id: "pedidos", label: "Pedidos", node: <ReportesPedidos /> },
-    { id: "inventario", label: "Inventario", node: <ReportesInventario /> },
+    { id: "inventario", label: "Inventario", node: <ReportesInventario /> }/*,
     { id: "usuarios", label: "Usuarios", node: <ReportesUsuarios /> },
-    { id: "personalizacion", label: "Personalización", node: <PersonalizacionReportes />, },
+    { id: "personalizacion", label: "Personalización", node: <PersonalizacionReportes />, },*/
   ];
 
   return (

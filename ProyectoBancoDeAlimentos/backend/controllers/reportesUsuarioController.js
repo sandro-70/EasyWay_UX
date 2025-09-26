@@ -147,7 +147,7 @@ exports.getUsuariosReporte = async (req, res) => {
   try {
     // Obtener el total de usuarios registrados
     const totalUsers = await Usuario.count();
-    
+
     res.header("Content-Type", "application/json");
 
     // Obtener la lista de usuarios con detalles
@@ -240,7 +240,7 @@ exports.getUsuariosTabla = async (req, res) => {
     // Transformación para la tabla
     const tabla = rows.map(u => ({
       id_usuario: u.id_usuario,
-      usuario: nombreUI(u),                 // <-- “Nombre Apellido” o user del correo
+      usuario: nombreUI(u),                 // <-- "Nombre Apellido" o user del correo
       fecha: fmtFecha(u.fecha_creacion),    // dd/mm/yyyy
       estado: u.activo ? "Activo" : "Inactivo"
     }));
@@ -257,6 +257,91 @@ exports.getUsuariosTabla = async (req, res) => {
   } catch (err) {
     console.error("Error en getUsuariosTabla:", err);
     res.status(500).json({ error: "Error al obtener el reporte de usuarios" });
+  }
+};
+
+exports.getReporteUsuariosCompras = async (req, res) => {
+  try {
+    const db = require("../models");
+    const { Sequelize } = db;
+
+    // Filtros opcionales
+    const limit = Number(req.query.limit || 50);
+    const offset = Number(req.query.offset || 0);
+    const estado = String(req.query.estado || "todos").toLowerCase(); // todos|activos|inactivos
+
+    const whereUser = estado === "activos" ? "AND u.activo = true" : estado === "inactivos" ? "AND u.activo = false" : "";
+
+    // Raw query for efficiency
+    const query = `
+      SELECT
+        u.id_usuario AS id,
+        CONCAT(u.nombre, ' ', COALESCE(u.apellido, '')) AS nombre,
+        CASE WHEN u.activo THEN 'Activo' ELSE 'Inactivo' END AS estado,
+        COALESCE(stats.cantidad_compras, 0) AS cantidad_compras,
+        COALESCE(stats.total_comprado, 0) AS total_comprado,
+        COALESCE(stats.promedio_compra, 0) AS promedio_compra,
+        COALESCE(stats.frecuencia_compras, 0) AS frecuencia_compras,
+        COALESCE(stats.producto_estrella, 'N/A') AS producto_estrella
+      FROM usuario u
+      LEFT JOIN (
+        SELECT
+          p.id_usuario,
+          COUNT(f.id_factura) AS cantidad_compras,
+          SUM(f.total) AS total_comprado,
+          CASE WHEN COUNT(f.id_factura) > 0 THEN ROUND(SUM(f.total) / COUNT(f.id_factura), 2) ELSE 0 END AS promedio_compra,
+          COUNT(DISTINCT DATE(f.fecha_emision)) AS frecuencia_compras,
+          (
+            SELECT pr.nombre
+            FROM producto pr
+            INNER JOIN factura_detalle fd ON pr.id_producto = fd.id_producto
+            INNER JOIN factura ff ON fd.id_factura = ff.id_factura
+            WHERE ff.id_pedido IN (SELECT pp.id_pedido FROM pedido pp WHERE pp.id_usuario = p.id_usuario)
+            GROUP BY pr.id_producto
+            ORDER BY SUM(fd.cantidad_unidad_medida) DESC
+            LIMIT 1
+          ) AS producto_estrella
+        FROM pedido p
+        INNER JOIN factura f ON p.id_pedido = f.id_pedido
+        GROUP BY p.id_usuario
+      ) stats ON u.id_usuario = stats.id_usuario
+      WHERE u.id_rol = 2 ${whereUser}
+      ORDER BY stats.total_comprado DESC NULLS LAST, u.id_usuario
+      LIMIT ${limit} OFFSET ${offset}
+    `;
+
+    const [results] = await db.sequelize.query(query, { type: Sequelize.QueryTypes.SELECT });
+
+    // Totales generales
+    const totalQuery = `
+      SELECT COUNT(*) AS totalUsuarios, COALESCE(SUM(stats.cantidad_compras), 0) AS totalCompras, COALESCE(SUM(stats.total_comprado), 0) AS totalGastado
+      FROM usuario u
+      LEFT JOIN (
+        SELECT p.id_usuario, COUNT(f.id_factura) AS cantidad_compras, SUM(f.total) AS total_comprado
+        FROM pedido p
+        INNER JOIN factura f ON p.id_pedido = f.id_pedido
+        GROUP BY p.id_usuario
+      ) stats ON u.id_usuario = stats.id_usuario
+      WHERE u.id_rol = 2 ${whereUser}
+    `;
+
+    const totalResults = await db.sequelize.query(totalQuery, { type: Sequelize.QueryTypes.SELECT });
+    const meta = {
+      estado,
+      limit,
+      offset,
+      totalUsuarios: totalResults[0]?.totalUsuarios || 0,
+      totalCompras: totalResults[0]?.totalCompras || 0,
+      totalGastado: totalResults[0]?.totalGastado || 0,
+    };
+
+    res.json({
+      meta,
+      rows: results,
+    });
+  } catch (error) {
+    console.error("[getReporteUsuariosCompras] Error:", error);
+    res.status(500).json({ error: "Error al obtener reporte de compras de usuarios" });
   }
 };
 

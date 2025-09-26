@@ -59,3 +59,7 @@ export function getStock(){
 export function getInfoUsuario(id_pedido){
     return axiosInstance.get(`/api/reportes/get-info-usuario/${id_pedido}`);
 }
+
+export function getReporteUsuariosCompras(params){
+    return axiosInstance.get('/api/reportes-usuario/reporte-compras', { params });
+}

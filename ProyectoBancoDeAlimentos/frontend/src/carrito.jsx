@@ -5,6 +5,7 @@ import { useRef } from "react";
 import arrowL from "./images/arrowL.png";
 import arrowR from "./images/arrowR.png";
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   SumarItem,
@@ -93,6 +94,7 @@ function Carrito() {
   const [idSucursal, setIdSucursal] = useState(null);
   const [promociones, setPromociones] = useState([]);
   const [promocionAplicada, setPromocionAplicada] = useState(null);
+  const { t } = useTranslation();
 
   console.log("Header user carrito", user);
 
@@ -1055,7 +1057,7 @@ function Carrito() {
       <div className="px-32">
         <div>
           <h1 className="font-roboto text-[#f0833e] text-5xl justify-center pb-3 text-left">
-            Carrito
+            {t("Carrito")}
           </h1>
           <hr className="bg-[#f0833e] h-[2px] mb-4"></hr>
         </div>
@@ -1066,14 +1068,14 @@ function Carrito() {
                 <img src={carrito} className="object-cover mt-16" />
 
                 <div className="mx-4 flex flex-col gap-y-6 font-medium">
-                  <p className="text-[24px] mt-8">Tu carrito esta vacio</p>
+                  <p className="text-[24px] mt-8">{t("cart_empty")}</p>
                   <button
                     onClick={() => {
                       navigate("/");
                     }}
                     className="bg-[#2B6DAF] text-[28px] text-white rounded-[10px] p-3 px-6"
                   >
-                    Explora articulos
+                    {t("Explorar")}
                   </button>
                 </div>
               </div>
@@ -1134,7 +1136,7 @@ function Carrito() {
                                 <span
                                   style={{ ...styles.offerChip, marginLeft: 8 }}
                                 >
-                                  OFERTA
+                                  {t("offers")}
                                 </span>
                               )}
 
@@ -1143,7 +1145,7 @@ function Carrito() {
                                 <span
                                   style={{ ...styles.offerChip, marginLeft: 8 }}
                                 >
-                                  MÁS COMPRADO
+                                  {t("mostPurchased")}
                                 </span>
                               )}
                               {Number(p.producto.id_producto) ===
@@ -1151,7 +1153,7 @@ function Carrito() {
                                 <span
                                   style={{ ...styles.offerChip, marginLeft: 6 }}
                                 >
-                                  MÁS NUEVO
+                                  {t("newest")}
                                 </span>
                               )}
                             </p>
@@ -1176,11 +1178,11 @@ function Carrito() {
                             <div className="mb-2">
                               {sinStock ? (
                                 <span className="text-red-600 font-semibold text-sm">
-                                  Sin stock en esta sucursal
+                                  {t("outStock")}
                                 </span>
                               ) : (
                                 <span className="text-green-600 text-sm">
-                                  {stockDisponible} disponibles
+                                  {stockDisponible} {t("available")}
                                 </span>
                               )}
                             </div>
@@ -1311,12 +1313,12 @@ function Carrito() {
             {/* Solo formulario de cupones */}
             {showProducts && (
               <div className="pb-2">
-                <p className="text-left pb-2 font-medium">¿Tienes un cupón?</p>
+                <p className="text-left pb-2 font-medium">{t("haveCoupon")}</p>
 
                 <form className="flex gap-2 mb-2" onSubmit={checkCupon}>
                   <input
                     type="text"
-                    placeholder="Código de cupón"
+                    placeholder={t("couponPlaceholder")}
                     value={cupon === "EMPTY" ? "" : cupon}
                     onChange={(e) => setCupon(e.target.value)}
                     className="input-field rounded-xl bg-gray-100 border-black border-2 pl-2 text-sm"
@@ -1325,7 +1327,7 @@ function Carrito() {
                     type="submit"
                     className="bg-[#114C87] rounded-md py-1 text-white px-6 text-sm"
                   >
-                    Aplicar Cupón
+                    {t("apply")}
                   </button>
                 </form>
 
@@ -1335,11 +1337,11 @@ function Carrito() {
                     <div className="flex justify-between items-center text-left">
                       <div>
                         <p className="text-sm font-medium text-green-800">
-                          Promoción aplicada:{" "}
+                          {t("promAplicada")}:{" "}
                           {promocionAplicada.nombre_promocion}
                         </p>
                         <p className="text-xs text-green-600">
-                          Descuento:{" "}
+                          {t("discount")}:{" "}
                           {promocionAplicada.id_tipo_promo === 1
                             ? `${(
                                 parseFloat(
@@ -1352,7 +1354,8 @@ function Carrito() {
                         </p>
 
                         <p className="text-xs text-gray-500">
-                          En compra mínima de: L. {promocionAplicada.compra_min}
+                          {t("minimumPurchase")}: L.{" "}
+                          {promocionAplicada.compra_min}
                         </p>
                       </div>
                     </div>
@@ -1390,16 +1393,14 @@ function Carrito() {
 
             <div>
               <h1 className="font-roboto text-[#80838A] text-2xl font-medium justify-center pb-1 text-left">
-                Resumen de pago
+                {t("OrderSummary")}
               </h1>
               <hr className="bg-[#80838A] h-[2px] w-full mb-1"></hr>
             </div>
 
             {hayProductoSinStock ? (
               <div className="mt-2 p-4 bg-red-50 border border-red-400 rounded-md text-red-800 font-medium max-w-xs">
-                ⚠️ Tienes uno o más productos sin stock en la sucursal
-                seleccionada. No puedes realizar la compra hasta ajustar la
-                cantidad o cambiar de sucursal.
+                ⚠️ {t("nostocks")}
               </div>
             ) : (
               showProducts && (
@@ -1407,7 +1408,7 @@ function Carrito() {
                   <ul className="text-left space-y-3 font-medium text-md">
                     {/* Subtotal */}
                     <li className="flex justify-between">
-                      <span>Subtotal</span>
+                      <span>{t("subtotal")}</span>
                       <span>L. {total.toFixed(2)}</span>
                     </li>
 
@@ -1415,7 +1416,7 @@ function Carrito() {
                     {discount && descCupon?.valor > 0 && (
                       <li className="flex justify-between text-blue-600">
                         <span>
-                          Descuento cupón{" "}
+                          {t("couponDiscount")}:{" "}
                           {descCupon?.codigo
                             ? `(${descCupon.codigo})`
                             : descCupon.tipo === "porcentaje"
@@ -1442,7 +1443,7 @@ function Carrito() {
                     {promocionAplicada && (
                       <li className="flex justify-between text-green-600">
                         <span>
-                          Promoción (
+                          {t("promotion")}:(
                           {promocionAplicada.id_tipo_promo === 1
                             ? `${(
                                 parseFloat(
@@ -1462,19 +1463,19 @@ function Carrito() {
                     )}
                     {/* Impuesto */}
                     <li className="flex justify-between">
-                      <span>Impuesto (15%)</span>
+                      <span>{t("tax")} (15%)</span>
                       <span>L. {obtenerImpuesto()}</span>
                     </li>
 
                     {/* Costo de Envio */}
                     <li className="flex justify-between">
-                      <span>Costo de Envío</span>
+                      <span>{t("Envio")}:</span>
                       <span>L. 10.00</span>
                     </li>
 
                     <hr className="bg-black h-[3px] w-full" />
                     <li className="text-lg font-bold flex justify-between">
-                      <span>Total</span>
+                      <span>{t("total")}</span>
                       <span>L. {obtenerTotal()}</span>
                     </li>
 
@@ -1487,7 +1488,7 @@ function Carrito() {
                       }}
                       className="bg-[#F0833E] rounded-md text-white text-xl w-full p-1"
                     >
-                      Efectuar Compra
+                      {t("EfectuarPago")}
                     </button>
                   </ul>
                 </div>
@@ -1500,14 +1501,12 @@ function Carrito() {
                   <span className="material-symbols-outlined text-4xl pr-2">
                     verified_user
                   </span>
-                  <h1 className="font-bold text-lg">
-                    Proteccion del comprador
-                  </h1>
+                  <h1 className="font-bold text-lg">{t("secureCheckout")}</h1>
                 </div>
                 <p className="text-md">
-                  Recibe un reembolso de tu dinero si el articulo
+                  {t("recibe")}
                   <br />
-                  no llega o es diferente al de la descripcion.
+                  {t("nollega")}
                 </p>
               </div>
             )}
@@ -1520,7 +1519,7 @@ function Carrito() {
         style={{ ...styles.fixedShell2, backgroundColor: "#f3f4f6" }}
       >
         <h1 className="font-roboto text-[#f0833e] text-3xl justify-center text-left px-32">
-          Recomendaciones
+          {t("recommended")}
         </h1>
         <hr className="bg-[#f0833e] h-[2px]"></hr>
         <div className="p-4">
@@ -1558,12 +1557,12 @@ function Carrito() {
                   <div style={styles.topRow}>
                     {bestPromoPriceForProduct(p) && (
                       <span style={{ ...styles.offerChip, marginLeft: 8 }}>
-                        OFERTA
+                        {t("offer")}
                       </span>
                     )}
                     {Number(p.id_producto) === Number(topSellerId) && (
                       <span style={{ ...styles.offerChip, marginLeft: 8 }}>
-                        MÁS COMPRADO
+                        {t("MostBought")}
                       </span>
                     )}
                     <div style={styles.stars}>
@@ -1629,7 +1628,8 @@ function Carrito() {
                       handleAgregar(p.id_producto, 1);
                     }}
                   >
-                    Agregar
+                    {}
+                    {t("add")}
                   </button>
                 </div>
               ))}

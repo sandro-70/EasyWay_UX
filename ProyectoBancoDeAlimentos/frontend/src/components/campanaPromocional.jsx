@@ -203,7 +203,7 @@ const CampanaPromocional = () => {
   const addProducto = (prod) => {
     if (!prod) return;
     if (formData.productos.some((p) => p.id === prod.id)) return;
-    setFormData((s) => ({ ...s, productos: [...s.productos, prod] }));
+    setFormData((s) => ({ ...s, productos: [...s.productos, prod], aplicaA: "lista" }));
     setQueryProd("");
     setOpenList(false);
     setActiveIndex(0);
@@ -212,10 +212,14 @@ const CampanaPromocional = () => {
   };
 
   const removeProducto = (id) => {
-    setFormData((s) => ({
-      ...s,
-      productos: s.productos.filter((p) => p.id !== id),
-    }));
+    setFormData((s) => {
+      const newProductos = s.productos.filter((p) => p.id !== id);
+      return {
+        ...s,
+        productos: newProductos,
+        aplicaA: newProductos.length === 0 ? "todos" : s.aplicaA,
+      };
+    });
   };
 
   const handleComboKeyDown = (e) => {

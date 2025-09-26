@@ -397,9 +397,7 @@ const Headerr = () => {
                   <Link to="/SistemaValoracion" style={styles.dropdownLink} onClick={() => setReportesMenu(false)}>
                     Resumen de Actividad
                   </Link>
-                  <Link to="/Historial" style={styles.dropdownLink} onClick={() => setReportesMenu(false)}>
-                    Historial
-                  </Link>
+                
                 </div>
               )}
             </div>

@@ -1,7 +1,7 @@
 // campanaPromocional.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Upload, Calendar, ChevronDown, X, Check } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Upload, Calendar, ChevronDown, X, Check, Copy } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
 import "./campanaPromocional.css";
 
 /** ==== API ==== */
@@ -10,6 +10,7 @@ import {
   crearPromocion,
   getPromociones,
   actualizarPromocion,
+  getPromocionById,
 } from "../api/PromocionesApi";
 import { toast } from "react-toastify";
 import "../toast.css";
@@ -19,16 +20,12 @@ const initialForm = {
   descripcion: "",
   validoDesde: "",
   hasta: "",
-  // Tipo de campaña (agregamos compra mínima como tipo)
-  tipo: "", // 'porcentaje' | 'fijo' | 'compra_min'
-  // Campos asociados (solo se envía el del tipo elegido)
+  tipo: "",
   valorFijo: "",
   valorPorcentual: "",
   compraMin: "",
-  // Alcance
-  aplicaA: "todos", // 'todos' | 'lista'
-  productos: [], // [{id, name}]
-  // Banner
+  aplicaA: "todos",
+  productos: [],
   bannerFile: null,
   bannerPreview: "",
   orden: 0,
@@ -38,6 +35,12 @@ const CampanaPromocional = () => {
   const [formData, setFormData] = useState(initialForm);
   const [errors, setErrors] = useState({});
   const [loadingSave, setLoadingSave] = useState(false);
+  const [loadingDuplicate, setLoadingDuplicate] = useState(false);
+
+  // Modal para seleccionar campaña a duplicar
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [campanasExistentes, setCampanasExistentes] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Catálogo productos
   const [catalogo, setCatalogo] = useState([]);
@@ -50,13 +53,13 @@ const CampanaPromocional = () => {
   const comboRef = useRef(null);
   const inputRef = useRef(null);
   const navigate = useNavigate();
-  // Banner
+  const { duplicateId } = useParams(); // Para manejar /campanaPromocional/duplicate/:id
 
   const [categoriaSel, setCategoriaSel] = useState("");
   const [marcaSel, setMarcaSel] = useState("");
   const fileInputRef = useRef(null);
 
-  // ===== Cargar productos (id y nombre) =====
+  // ===== Cargar productos =====
   useEffect(() => {
     (async () => {
       try {
@@ -81,6 +84,90 @@ const CampanaPromocional = () => {
     })();
   }, []);
 
+  // ===== Cargar campañas existentes para duplicar =====
+  const cargarCampanasParaDuplicar = async () => {
+    try {
+      const resp = await getPromociones();
+      const data = Array.isArray(resp?.data) ? resp.data : [];
+      setCampanasExistentes(data);
+    } catch (e) {
+      console.error("Error cargando campañas:", e);
+      setCampanasExistentes([]);
+    }
+  };
+
+  // ===== Duplicar campaña si viene con ID en URL =====
+  useEffect(() => {
+    if (duplicateId) {
+      duplicarCampana(duplicateId);
+    }
+  }, [duplicateId]);
+
+  // ===== Función para duplicar campaña =====
+  const duplicarCampana = async (campanId) => {
+    if (!campanId) return;
+
+    setLoadingDuplicate(true);
+    try {
+      const resp = await getPromocionById(campanId);
+      const campana = resp?.data;
+
+      if (!campana) {
+        toast.error("No se pudo cargar la campaña a duplicar.");
+        return;
+      }
+
+      // Mapear datos de la campaña existente al formulario
+      const tipoFromId = (id_tipo_promo) => {
+        const v = Number(id_tipo_promo);
+        if (v === 1) return "porcentaje";
+        if (v === 2) return "fijo";
+        return "";
+      };
+
+      // Cargar productos relacionados si existen
+      let productosRelacionados = [];
+      if (campana.productos && Array.isArray(campana.productos)) {
+        productosRelacionados = campana.productos.map((p) => ({
+          id: String(p.id_producto || p.id),
+          name: p.nombre || p.name || `Producto ${p.id}`,
+          marca: p.marca || "Sin marca",
+        }));
+      }
+
+      const nuevaFechaInicio = new Date();
+      nuevaFechaInicio.setDate(nuevaFechaInicio.getDate() + 1);
+      const nuevaFechaFin = new Date(nuevaFechaInicio);
+      nuevaFechaFin.setDate(nuevaFechaFin.getDate() + 7);
+
+      setFormData({
+        nombre: `${campana.nombre_promocion} (Copia)`,
+        descripcion: campana.descripcion || campana.descripción || "",
+        validoDesde: nuevaFechaInicio.toISOString().split("T")[0],
+        hasta: nuevaFechaFin.toISOString().split("T")[0],
+        tipo: tipoFromId(campana.id_tipo_promo),
+        valorFijo: campana.valor_fijo || "",
+        valorPorcentual: campana.valor_porcentaje || "",
+        compraMin: campana.compra_min || "",
+        aplicaA: productosRelacionados.length > 0 ? "lista" : "todos",
+        productos: productosRelacionados,
+        bannerFile: null,
+        bannerPreview: campana.banner_url || "",
+        orden: 0,
+      });
+
+      toast.success(
+        `Campaña "${campana.nombre_promocion}" duplicada correctamente.`
+      );
+      setShowDuplicateModal(false);
+    } catch (e) {
+      console.error("Error duplicando campaña:", e);
+      toast.error("No se pudo duplicar la campaña.");
+    } finally {
+      setLoadingDuplicate(false);
+    }
+  };
+
   // ===== Handlers =====
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -101,6 +188,17 @@ const CampanaPromocional = () => {
       })
       .slice(0, 8);
   }, [catalogo, queryProd, formData.productos, categoriaSel, marcaSel]);
+
+  // Filtrar campañas para duplicar
+  const campanasFiltered = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    return campanasExistentes.filter(
+      (c) =>
+        c.nombre_promocion?.toLowerCase().includes(q) ||
+        c.descripcion?.toLowerCase().includes(q) ||
+        c.descripción?.toLowerCase().includes(q)
+    );
+  }, [campanasExistentes, searchQuery]);
 
   const addProducto = (prod) => {
     if (!prod) return;
@@ -203,10 +301,6 @@ const CampanaPromocional = () => {
       const v = Number(formData.valorFijo);
       if (!v || v <= 0)
         nextErr.valorFijo = "Ingresa un valor fijo mayor que 0.";
-    } else if (formData.tipo === "compra_min") {
-      const v = Number(formData.compraMin);
-      if (!v || v <= 0)
-        nextErr.compraMin = "Ingresa una compra mínima mayor que 0.";
     }
 
     if (formData.aplicaA === "lista" && formData.productos.length === 0) {
@@ -227,14 +321,11 @@ const CampanaPromocional = () => {
   };
 
   // ===== Guardar =====
-  // Reemplazar la función guardar() con esta versión modificada:
-
   const guardar = async () => {
     if (!validate()) return;
 
     setLoadingSave(true);
     try {
-      // 1) Subir banner (opcional)
       let banner_url = null;
       if (formData.bannerFile) {
         const desiredName = `B_${Date.now()}_${formData.bannerFile.name}`;
@@ -246,13 +337,13 @@ const CampanaPromocional = () => {
           up?.data?.path ||
           up?.data?.filename ||
           null;
+      } else if (formData.bannerPreview && !formData.bannerFile) {
+        // Mantener banner existente si se duplicó
+        banner_url = formData.bannerPreview;
       }
 
-      // 2) Obtener todas las promociones existentes para reorganizar
       const promocionesExistentes = await getPromociones();
-      console.log("Promociones existentes:", promocionesExistentes?.data);
 
-      // 3) Reorganizar promociones existentes (incrementar orden en 1)
       if (
         promocionesExistentes?.data &&
         Array.isArray(promocionesExistentes.data)
@@ -261,7 +352,6 @@ const CampanaPromocional = () => {
           .filter((promo) => promo.activa && promo.orden > 0)
           .sort((a, b) => a.orden - b.orden);
 
-        // Actualizar cada promoción activa incrementando su orden en 1
         for (const promo of promocionesActivas) {
           try {
             await actualizarPromocion(promo.id_promocion, {
@@ -277,11 +367,6 @@ const CampanaPromocional = () => {
               fecha_termina: promo.fecha_termina,
               id_tipo_promo: promo.id_tipo_promo,
             });
-            console.log(
-              `Promoción "${promo.nombre_promocion}" movida de orden ${
-                promo.orden
-              } a ${promo.orden + 1}`
-            );
           } catch (error) {
             console.error(
               `Error reorganizando promoción ${promo.nombre_promocion}:`,
@@ -292,12 +377,8 @@ const CampanaPromocional = () => {
         }
       }
 
-      // 4) Preparar datos para la nueva promoción
       const esFijo = formData.tipo === "fijo";
       const esPct = formData.tipo === "porcentaje";
-      const esCompraMin = formData.tipo === "compra_min";
-
-      // Mapeo local: % => 1, fijo => 2, compra mínima => 3
       const id_tipo_promo = esPct ? 1 : esFijo ? 2 : null;
 
       const payload = {
@@ -312,7 +393,6 @@ const CampanaPromocional = () => {
         banner_url: banner_url || null,
         orden: 1,
         activa: true,
-
         productos:
           formData.aplicaA === "lista"
             ? formData.productos
@@ -321,30 +401,33 @@ const CampanaPromocional = () => {
             : [],
       };
 
-      console.log("Payload a enviar:", payload);
       const resp = await crearPromocion(payload);
-      console.log("Respuesta servidor:", resp?.data);
-
+      toast.success("Campaña guardada exitosamente.");
       limpiarFormulario();
       navigate(-1);
     } catch (e) {
       console.error("Error guardando campaña:", e);
-      console.log("Server said:", e?.response?.data);
       toast.error(
         e?.response?.data?.message ||
           e?.response?.data?.error ||
-          "No se pudo guardar la campaña.", { className: "toast-error" }
+          "No se pudo guardar la campaña.",
+        { className: "toast-error" }
       );
     } finally {
       setLoadingSave(false);
     }
   };
 
+  // ===== suplicar =====
+  const openDuplicateModal = async () => {
+    await cargarCampanasParaDuplicar();
+    setShowDuplicateModal(true);
+  };
+
   // ===== UI =====
   return (
     <div className="pageWrapper">
       <div className="container">
-        {/* Encabezado */}
         <div
           className="headerWrapper"
           style={{
@@ -353,12 +436,23 @@ const CampanaPromocional = () => {
             justifyContent: "space-between",
           }}
         >
-          <h1 className="header">Crear Campaña Promocional</h1>
-          <div style={{ display: "flex", gap: 8 }}></div>
+          <h1 className="header">
+            {duplicateId
+              ? "Duplicar Campaña Promocional"
+              : "Crear Campaña Promocional"}
+          </h1>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              className="duplicateButton"
+              onClick={openDuplicateModal}
+              disabled={loadingDuplicate}
+            >
+              <Copy size={16} />
+              {loadingDuplicate ? "Cargando..." : "Duplicar existente"}
+            </button>
+          </div>
         </div>
         <div className="headerLine" />
-
-        {/* Datos campaña (2 columnas) */}
         <div className="formGrid2">
           <div className="ui-field">
             <label className="ui-label" htmlFor="nombre">
@@ -432,7 +526,6 @@ const CampanaPromocional = () => {
             {errors.hasta && <p className="errorMsg">{errors.hasta}</p>}
           </div>
         </div>
-
         {/* Condiciones */}
         <div className="condSection">
           <h3 className="condTitle">Condiciones</h3>
@@ -531,120 +624,117 @@ const CampanaPromocional = () => {
               </div>
             }
 
-          
+            <div className="ui-field ui-field--full">
+              <label className="ui-label" htmlFor="combo">
+                Producto(s) {cargandoProductos && <small>(cargando…)</small>}
+              </label>
 
-              <div className="ui-field ui-field--full">
-                <label className="ui-label" htmlFor="combo">
-                  Producto(s) {cargandoProductos && <small>(cargando…)</small>}
-                </label>
+              <div
+                className={`comboRoot ${openList ? "is-open" : ""}`}
+                ref={comboRef}
+              >
+                <input
+                  id="combo"
+                  ref={inputRef}
+                  className={`ui-input comboInput ${
+                    errors.productos ? "input-error" : ""
+                  }`}
+                  type="text"
+                  placeholder="Escribe para buscar…"
+                  value={queryProd}
+                  onChange={(e) => {
+                    setQueryProd(e.target.value);
+                    setOpenList(true);
+                    setActiveIndex(0);
+                  }}
+                  onKeyDown={handleComboKeyDown}
+                  onFocus={() => setOpenList(true)}
+                  aria-autocomplete="list"
+                  aria-expanded={openList}
+                  aria-controls="combo-listbox"
+                  role="combobox"
+                />
 
-                <div
-                  className={`comboRoot ${openList ? "is-open" : ""}`}
-                  ref={comboRef}
-                >
-                  <input
-                    id="combo"
-                    ref={inputRef}
-                    className={`ui-input comboInput ${
-                      errors.productos ? "input-error" : ""
-                    }`}
-                    type="text"
-                    placeholder="Escribe para buscar…"
-                    value={queryProd}
-                    onChange={(e) => {
-                      setQueryProd(e.target.value);
-                      setOpenList(true);
-                      setActiveIndex(0);
-                    }}
-                    onKeyDown={handleComboKeyDown}
-                    onFocus={() => setOpenList(true)}
-                    aria-autocomplete="list"
-                    aria-expanded={openList}
-                    aria-controls="combo-listbox"
-                    role="combobox"
-                  />
-
-                  {openList && filtered.length > 0 && (
-                    <ul id="combo-listbox" role="listbox" className="comboList">
-                      {filtered.map((p, i) => (
-                        <li
-                          key={p.id}
-                          role="option"
-                          aria-selected={i === activeIndex}
-                          className={`comboItem ${
-                            i === activeIndex ? "active" : ""
-                          }`}
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => addProducto(p)}
-                        >
-                          <span className="comboItemName">{p.name}</span>
-                          <span className="comboItemMaraca">{p.marca}</span>
-                          <Check className="comboCheck" size={16} />
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-                {errors.productos && (
-                  <p className="errorMsg">{errors.productos}</p>
-                )}
-
-                {formData.productos.length > 0 && (
-                  <div className="chips">
-                    {formData.productos.map((p) => (
-                      <span key={p.id} className="chip chip--green">
-                        {p.name} <em className="chip-id">({p.marca})</em>
-                        <button
-                          type="button"
-                          className="chip-x"
-                          onClick={() => removeProducto(p.id)}
-                          aria-label={`Quitar ${p.name}`}
-                        >
-                          <X size={14} />
-                        </button>
-                      </span>
+                {openList && filtered.length > 0 && (
+                  <ul id="combo-listbox" role="listbox" className="comboList">
+                    {filtered.map((p, i) => (
+                      <li
+                        key={p.id}
+                        role="option"
+                        aria-selected={i === activeIndex}
+                        className={`comboItem ${
+                          i === activeIndex ? "active" : ""
+                        }`}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => addProducto(p)}
+                      >
+                        <span className="comboItemName">{p.name}</span>
+                        <span className="comboItemMaraca">{p.marca}</span>
+                        <Check className="comboCheck" size={16} />
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 )}
-                <div className="formGrid2">
-                  <div className="ui-field">
-                    <label className="ui-label">Categoría</label>
-                    <select
-                      className="ui-select"
-                      value={categoriaSel}
-                      onChange={(e) => setCategoriaSel(e.target.value)}
-                    >
-                      <option value="">Todas</option>
-                      {[...new Set(catalogo.map((p) => p.categoria))].map(
-                        (cat) => (
-                          <option key={cat} value={cat}>
-                            {cat}
-                          </option>
-                        )
-                      )}
-                    </select>
-                  </div>
+              </div>
+              {errors.productos && (
+                <p className="errorMsg">{errors.productos}</p>
+              )}
 
-                  <div className="ui-field">
-                    <label className="ui-label">Marca</label>
-                    <select
-                      className="ui-select"
-                      value={marcaSel}
-                      onChange={(e) => setMarcaSel(e.target.value)}
-                    >
-                      <option value="">Todas</option>
-                      {[...new Set(catalogo.map((p) => p.marca))].map((m) => (
-                        <option key={m} value={m}>
-                          {m}
+              {formData.productos.length > 0 && (
+                <div className="chips">
+                  {formData.productos.map((p) => (
+                    <span key={p.id} className="chip chip--green">
+                      {p.name} <em className="chip-id">({p.marca})</em>
+                      <button
+                        type="button"
+                        className="chip-x"
+                        onClick={() => removeProducto(p.id)}
+                        aria-label={`Quitar ${p.name}`}
+                      >
+                        <X size={14} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="formGrid2">
+                <div className="ui-field">
+                  <label className="ui-label">Categoría</label>
+                  <select
+                    className="ui-select"
+                    value={categoriaSel}
+                    onChange={(e) => setCategoriaSel(e.target.value)}
+                  >
+                    <option value="">Todas</option>
+                    {[...new Set(catalogo.map((p) => p.categoria))].map(
+                      (cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
                         </option>
-                      ))}
-                    </select>
-                  </div>
+                      )
+                    )}
+                  </select>
+                </div>
+
+                <div className="ui-field">
+                  <label className="ui-label">Marca</label>
+                  <select
+                    className="ui-select"
+                    value={marcaSel}
+                    onChange={(e) => setMarcaSel(e.target.value)}
+                  >
+                    <option value="">Todas</option>
+                    {[...new Set(catalogo.map((p) => p.marca))].map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
+            </div>
           </div>
         </div>
-
         {/* Banner */}
         <div className="bannerFull">
           <h3 className="bannerTitle">Añadir Banner</h3>
@@ -681,7 +771,6 @@ const CampanaPromocional = () => {
           </div>
           {errors.banner && <p className="errorMsg">{errors.banner}</p>}
         </div>
-
         {/* Acción */}
         <div className="buttonRow">
           <button className="btn-volver-campana" onClick={() => navigate(-1)}>
@@ -697,6 +786,95 @@ const CampanaPromocional = () => {
             {loadingSave ? "Guardando..." : "Guardar Campaña"}
           </button>
         </div>
+        {showDuplicateModal && (
+          <div className="cp-modal-overlay">
+            <div className="cp-modal">
+              <div className="cp-modal-header">
+                <h3 className="cp-modal-title">
+                  Seleccionar Campaña a Duplicar
+                </h3>
+              </div>
+              <div className="cp-modal-body">
+                <div className="cp-search" style={{ marginBottom: "16px" }}>
+                  <input
+                    type="text"
+                    placeholder="Buscar campaña..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                <div style={{ maxHeight: "400px", overflowY: "auto" }}>
+                  {campanasFiltered.length === 0 ? (
+                    <div className="cp-empty-state">
+                      <p>No hay campañas disponibles para duplicar.</p>
+                    </div>
+                  ) : (
+                    <div className="cp-table-wrap">
+                      <table className="cp-table">
+                        <thead>
+                          <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Tipo</th>
+                            <th>Acción</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {campanasFiltered.map((campana) => {
+                            const tipoLabel =
+                              campana.id_tipo_promo === 1
+                                ? "Porcentaje"
+                                : campana.id_tipo_promo === 2
+                                ? "Fijo"
+                                : "—";
+                            return (
+                              <tr key={campana.id_promocion}>
+                                <td style={{ textAlign: "center" }}>
+                                  {campana.id_promocion}
+                                </td>
+                                <td>{campana.nombre_promocion}</td>
+                                <td style={{ textAlign: "center" }}>
+                                  {tipoLabel}
+                                </td>
+                                <td style={{ textAlign: "center" }}>
+                                  <button
+                                    className="cp-btn cp-btn--primary"
+                                    onClick={() =>
+                                      duplicarCampana(campana.id_promocion)
+                                    }
+                                    disabled={loadingDuplicate}
+                                    style={{
+                                      padding: "4px 12px",
+                                      fontSize: "12px",
+                                    }}
+                                  >
+                                    <Copy size={14} />
+                                    {loadingDuplicate
+                                      ? "Duplicando..."
+                                      : "Duplicar"}
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="cp-modal-footer">
+                <button
+                  className="cp-btn-cancel"
+                  onClick={() => setShowDuplicateModal(false)}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

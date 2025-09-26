@@ -397,13 +397,16 @@ exports.aplicarPreciosEscalonados = async (req, res) => {
   try {
     const { productIds, tiers, startDate, endDate } = req.body;
 
+    // --- auth ---
     if (!req.user || !req.user.id_usuario) {
+      await tx.rollback();
       return res.status(401).json({ message: "Usuario no autenticado" });
     }
     const user = await Usuario.findByPk(req.user.id_usuario, {
       attributes: ["id_rol"],
     });
     if (!user || user.id_rol !== 1) {
+      await tx.rollback();
       return res
         .status(403)
         .json({
@@ -412,36 +415,50 @@ exports.aplicarPreciosEscalonados = async (req, res) => {
         });
     }
 
-    if (!Array.isArray(productIds) || productIds.length === 0)
+    // --- validaciones payload ---
+    if (!Array.isArray(productIds) || productIds.length === 0) {
+      await tx.rollback();
       return res.status(400).json({ message: "productIds requerido" });
-    if (!Array.isArray(tiers) || tiers.length === 0)
+    }
+    if (!Array.isArray(tiers) || tiers.length === 0) {
+      await tx.rollback();
       return res.status(400).json({ message: "tiers requerido" });
+    }
 
-    // validar tiers
     for (const t of tiers) {
       if (typeof t.cantidad_min !== "number" || t.cantidad_min <= 0) {
+        await tx.rollback();
         return res.status(400).json({ message: "cantidad_min debe ser > 0" });
       }
       if (t.tipo === "percent") {
         if (typeof t.valor !== "number" || t.valor < 1 || t.valor > 100) {
+          await tx.rollback();
           return res
             .status(400)
             .json({ message: "Porcentaje inválido (1–100)." });
         }
       } else if (t.tipo === "fixed") {
         if (typeof t.valor !== "number" || t.valor < 0) {
+          await tx.rollback();
           return res
             .status(400)
             .json({ message: "Monto fijo inválido (≥ 0)." });
         }
       } else {
+        await tx.rollback();
         return res
           .status(400)
           .json({ message: "tipo debe ser 'fixed' o 'percent'." });
       }
     }
 
-    // Estrategia: eliminar las promociones de tipo 3 vigentes para esos productos y recrear todas
+    // --- comprobar productos (opcional, informativo) ---
+    const count = await producto.count({ where: { id_producto: productIds } });
+    if (count !== productIds.length) {
+      console.warn("Algunos productIds no existen; se ignorarán en enlaces.");
+    }
+
+    // --- eliminar escalones existentes tipo 3 para esos productos ---
     const promosTipo3 = await promocion.findAll({
       where: { id_tipo_promo: 3 },
       include: [
@@ -454,7 +471,6 @@ exports.aplicarPreciosEscalonados = async (req, res) => {
       ],
       transaction: tx,
     });
-
     const idsBorrar = promosTipo3.map((p) => p.id_promocion);
     if (idsBorrar.length) {
       await promocion_producto.destroy({
@@ -467,22 +483,22 @@ exports.aplicarPreciosEscalonados = async (req, res) => {
       });
     }
 
-    // crear nuevas promociones (una por escalón y producto)
+    // --- crear nuevos escalones ---
     for (const pid of productIds) {
-      for (const esc of tiers) {
-        const isPercent = esc.tipo === "percent";
+      for (const e of tiers) {
+        const isPercent = e.tipo === "percent";
         const promo = await promocion.create(
           {
             id_tipo_promo: 3,
             nombre_promocion: "Precio Escalonado",
-            descripcion: `Mín ${esc.cantidad_min}`,
-            activa: true,
-            compra_min: esc.cantidad_min,
-            valor_fijo: isPercent ? null : esc.valor,
-            valor_porcentaje: isPercent ? esc.valor : null,
+            descripcion: `Mín ${e.cantidad_min}`,
+            valor_fijo: isPercent ? null : e.valor,
+            valor_porcentaje: isPercent ? e.valor : null,
+            compra_min: e.cantidad_min,
             fecha_inicio: startDate || null,
             fecha_termina: endDate || null,
-            orden: esc.cantidad_min, // útil para ordenar de menor a mayor
+            activa: true,
+            orden: e.cantidad_min, // útil para ordenar
           },
           { transaction: tx }
         );
@@ -507,7 +523,6 @@ exports.aplicarPreciosEscalonados = async (req, res) => {
       .json({ error: "Error al aplicar precios escalonados" });
   }
 };
-
 exports.crearPromocion = async (req, res) => {
   try {
     const {

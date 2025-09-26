@@ -5,7 +5,7 @@ import frutas from "./images/frutas_asignarDescuento.png";
 import { Switch, Slider } from "@mui/material";
 import Checkbox from "@mui/material/Checkbox";
 import { createPortal } from "react-dom";
-import axiosInstance from "./api/axiosInstance";
+
 import {
   aplicarPreciosEscalonados,
   aplicarDescuentoseleccionados,
@@ -215,50 +215,6 @@ export default function AsignarDescuentos() {
       setSavingGeneral(false);
     }
   }
-
-  async function onApplyTiered() {
-    if (!selectedItems.length) {
-      alert("Selecciona al menos un producto.");
-      return;
-    }
-    if (tiers.some((t) => !t.cantidad || !t.precio)) {
-      alert("Completa cantidad y precio en todos los escalones.");
-      return;
-    }
-
-    // Usaremos precio fijo por escalón (ajusta a percent si tu UI lo maneja)
-    const payload = {
-      productIds: selectedItems.map((p) => Number(p.id)),
-      tiers: tiers.map((t) => ({
-        cantidad_min: Number(t.cantidad),
-        tipo: "fixed", // "fixed" | "percent"
-        valor: Number(t.precio), // si usas percent: aquí va 1..100
-        startDate: tierDesde || null,
-        endDate: tierHasta || null,
-      })),
-      // puedes enviar fechas globales para los escalones (opcional)
-      // startDate: "...", endDate: "..."
-    };
-
-    try {
-      setSavingTiered(true);
-      await aplicarPreciosEscalonados(payload);
-      alert("Precios escalonados aplicados correctamente ✔");
-      setMode(null);
-      setSelectedItems([]);
-      await refreshProductsBySucursal(selectedSucursalId);
-    } catch (e) {
-      console.error(e);
-      alert(
-        e?.response?.data?.message ||
-          e?.response?.data?.error ||
-          "No se pudo aplicar precios escalonados."
-      );
-    } finally {
-      setSavingTiered(false);
-    }
-  }
-
   // Funciones
   function toggleSort(key) {
     setSort((s) =>
@@ -281,6 +237,83 @@ export default function AsignarDescuentos() {
 
   // Escalonados
   const [tiers, setTiers] = useState([{ cantidad: "", precio: "" }]);
+
+  function normalizeTiers(raw) {
+    // descarta filas vacías, convierte a números y fusiona por cantidad_min
+    const map = new Map();
+    for (const t of raw) {
+      const cantidad = Number(t.cantidad);
+      const precio = Number(t.precio);
+      if (!Number.isFinite(cantidad) || cantidad <= 0) continue;
+      if (!Number.isFinite(precio) || precio < 0) continue;
+      // si hay repetidos, me quedo con el último ingresado
+      map.set(cantidad, {
+        cantidad_min: cantidad,
+        tipo: "fixed",
+        valor: precio,
+      });
+    }
+    return Array.from(map.values()).sort(
+      (a, b) => a.cantidad_min - b.cantidad_min
+    );
+  }
+
+  async function onApplyTiered() {
+    const productIds = selectedItems
+      .map((p) => Number(p.id))
+      .filter((n) => Number.isFinite(n));
+    const tiersClean = normalizeTiers(tiers);
+
+    if (productIds.length === 0) {
+      alert("Selecciona al menos un producto.");
+      return;
+    }
+    if (tiersClean.length === 0) {
+      alert("Agrega al menos un escalón válido (cantidad ≥ 1, precio ≥ 0).");
+      return;
+    }
+
+    // valida fechas (opcionales)
+    if (tierDesde && tierHasta) {
+      const sd = new Date(tierDesde),
+        ed = new Date(tierHasta);
+      if (
+        !(sd instanceof Date && !isNaN(sd)) ||
+        !(ed instanceof Date && !isNaN(ed)) ||
+        sd > ed
+      ) {
+        alert("Rango de fechas inválido (Desde debe ser ≤ Hasta).");
+        return;
+      }
+    }
+
+    const payload = {
+      productIds,
+      tiers: tiersClean, // [{ cantidad_min, tipo:'fixed', valor }]
+      startDate: tierDesde || null, // 'YYYY-MM-DD' o null
+      endDate: tierHasta || null,
+    };
+
+    try {
+      setSavingTiered(true);
+      await aplicarPreciosEscalonados(payload);
+      alert("Precios escalonados aplicados correctamente ✔");
+      setMode(null);
+      setSelectedItems([]);
+      await refreshProductsBySucursal(selectedSucursalId);
+    } catch (e) {
+      // Mensaje útil del backend
+      const msg =
+        e?.response?.data?.message ||
+        e?.response?.data?.error ||
+        e?.message ||
+        "No se pudo aplicar precios escalonados.";
+      alert(msg);
+      console.error("Escalonados ERROR:", e?.response?.data || e);
+    } finally {
+      setSavingTiered(false);
+    }
+  }
 
   function addTier() {
     setTiers((t) => [...t, { cantidad: "", precio: "" }]);

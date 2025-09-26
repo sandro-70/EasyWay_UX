@@ -8,7 +8,6 @@ router.get('/detalles', promocionesController.listarPromocionesConDetallesURL);
 router.get('/listarorden', promocionesController.listarPorOrden);
 router.get('/productos-promo/:id_promocion', promocionesController.productosPorPromocion);
 
-
 router.get('/', promocionesController.listar);
 
 router.get('/:id', promocionesController.getpromocionById);

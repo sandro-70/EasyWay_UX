@@ -189,18 +189,7 @@ exports.listarPromocionesConDetallesURL = async (req, res) => {
           attributes: ["id_producto"], // Solo seleccionamos el id del producto
         },
       ],
-      attributes: [
-        "id_promocion", 
-        "id_tipo_promo", 
-        "banner_url",
-        "activa",
-        "fecha_inicio",
-        "fecha_termina",
-        "compra_min",
-        "valor_fijo",
-        "valor_porcentaje",
-        "nombre_promocion"
-      ], // Campos que queremos de la promoción
+      attributes: ["id_promocion", "id_tipo_promo", "banner_url"], // Campos que queremos de la promoción
     });
 
     // Formatear los datos para que cada promoción tenga un array de productos
@@ -208,13 +197,6 @@ exports.listarPromocionesConDetallesURL = async (req, res) => {
       id_promocion: promocion.id_promocion,
       id_tipo_promo: promocion.id_tipo_promo,
       banner_url: promocion.banner_url,
-      activa: promocion.activa,
-      fecha_inicio: promocion.fecha_inicio,
-      fecha_termina: promocion.fecha_termina,
-      compra_min: promocion.compra_min,
-      valor_fijo: promocion.valor_fijo,
-      valor_porcentaje: promocion.valor_porcentaje,
-      nombre_promocion: promocion.nombre_promocion,
       productos: promocion.productos.map((producto) => producto.id_producto),
     }));
 
@@ -226,7 +208,6 @@ exports.listarPromocionesConDetallesURL = async (req, res) => {
 };
 
 // controllers/promocionesController.js
-
 
 exports.getDescuentosAplicadosPorUsuario = async (req, res) => {
   try {

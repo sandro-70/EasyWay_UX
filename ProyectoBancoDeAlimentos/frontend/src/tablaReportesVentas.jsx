@@ -5,6 +5,8 @@ import {
   getVentasConFiltros,
   exportVentasExcel,
 } from "./api/reporteusuarioApi";
+// 👇 añade esta import
+import * as XLSX from "xlsx";
 
 const Icon = {
   Search: (props) => (
@@ -157,15 +159,90 @@ function TablaReportesVentas() {
   );
   const totalPages = Math.ceil(filteredData.length / itemsPerPage) || 1;
 
-  // Exportar Excel usando API
-  const handleExportExcel = () => {
-    exportVentasExcel()
-      .then((res) => {
-        const blob = new Blob([res.data], { type: "application/octet-stream" });
-        saveAs(blob, "Reporte_Ventas.xlsx");
-      })
-      .catch((err) => console.error(err));
+const handleExportExcel = () => {
+  // Exporta lo visible (página actual). Cambia a `filteredData` si quieres todo lo filtrado.
+  // const dataToExport = filteredData;
+  const dataToExport = filteredData;
+
+  // ✅ Mismos campos/orden que la tabla y FECHA como se ve en la tabla (texto es-HN)
+  const rows = dataToExport.map((row) => ({
+    ID: row.id,
+    Nombre: row.producto,
+    Categoría: row.categoria,
+    Cantidad: row.cantidad,
+    "Precio Venta": row.precioVenta,
+    "Total Vendido": row.total,
+    // 👇 FECHA EXACTA COMO EN LA TABLA (texto)
+    Fecha: row.fecha ? row.fecha.toLocaleDateString("es-HN") : "-",
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows, { origin: "A1" });
+
+  const headers = [
+    "ID",
+    "Nombre",
+    "Categoría",
+    "Cantidad",
+    "Precio Venta",
+    "Total Vendido",
+    "Fecha",
+  ];
+  XLSX.utils.sheet_add_aoa(ws, [headers], { origin: "A1" });
+
+  // Autofiltro A1:G{n}
+  const lastRow = rows.length + 1;
+  ws["!autofilter"] = {
+    ref: XLSX.utils.encode_range({
+      s: { r: 0, c: 0 },
+      e: { r: lastRow - 1, c: headers.length - 1 },
+    }),
   };
+
+  // Formato numérico para moneda (E y F). La fecha queda como TEXTO (igual que la tabla).
+  for (let r = 2; r <= lastRow; r++) {
+    const precioCell = ws[`E${r}`];
+    if (precioCell && typeof precioCell.v === "number") {
+      precioCell.t = "n";
+      precioCell.z = '"L." #,##0.00';
+    }
+    const totalCell = ws[`F${r}`];
+    if (totalCell && typeof totalCell.v === "number") {
+      totalCell.t = "n";
+      totalCell.z = '"L." #,##0.00';
+    }
+    // ❌ Quitamos la conversión de Fecha a serial de Excel (columna G).
+  }
+
+  // Auto-anchos
+  const computeColWidths = (ws, headers, lastRow) => {
+    const colWidths = headers.map((h, c) => {
+      let maxLen = String(h).length;
+      for (let r = 2; r <= lastRow; r++) {
+        const cell = ws[XLSX.utils.encode_cell({ c, r: r - 1 })];
+        if (cell && cell.v != null) {
+          const str = typeof cell.v === "string" ? cell.v : String(cell.v);
+          maxLen = Math.max(maxLen, str.length);
+        }
+      }
+      return { wch: Math.min(Math.max(maxLen + 2, 10), 40) };
+    });
+    return colWidths;
+  };
+  ws["!cols"] = computeColWidths(ws, headers, lastRow);
+
+  // Congelar encabezado
+  ws["!freeze"] = { xSplit: 0, ySplit: 1, topLeftCell: "A2", activePane: "bottomLeft", state: "frozen" };
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Reporte de Ventas");
+  const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  const blob = new Blob([wbout], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8",
+  });
+  saveAs(blob, "Reporte_Ventas.xlsx");
+};
+
+
 
   return (
     <div

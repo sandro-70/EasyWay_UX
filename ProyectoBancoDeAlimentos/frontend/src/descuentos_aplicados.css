@@ -7,7 +7,7 @@
   --title: #e96803;
   --rule: #f0833e;
 
-  --panel-max: 900px; /* ancho del panel centrado */
+  --panel-max: 100%; /* ancho del panel centrado */
   --pager-size: 40px; /* tamaño de los círculos de paginación */
 }
 /* === Header tipo “Historial de Compras” === */
@@ -39,8 +39,13 @@
   background: var(--bg);
   color: var(--text);
   max-width: var(--panel-max);
-  margin: 12px auto 24px; /* centrado compacto */
-  padding: 0 12px;
+  margin: -270px  0px;  
+   position: absolute;
+  transform: translateX(-320px);
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 16px;
+
+  line-height: 1.4;
 }
 
 /* ===== Título compacto, pegado a la línea ===== */
@@ -59,7 +64,7 @@
 /* ===== Tabla centrada con línea naranja arriba ===== */
 .discounts__tableWrap {
   width: 100%;
-  margin: 0 auto;
+  margin: 0;
   border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
@@ -83,12 +88,12 @@
   table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 14.5px;
+  font-size: 18px;
 }
 .discounts__table thead th {
   background: var(--blue);
   color: #fff;
-  padding: 18px 20px;
+  padding: 20px 22px;
   text-align: center;
   border-bottom: 1px solid var(--blue-line);
   font-weight: 700;
@@ -104,7 +109,7 @@
 }
 
 .discounts__table tbody td {
-  padding: 12px 14px;
+  padding: 14px 16px;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
   overflow: hidden;
@@ -141,6 +146,13 @@
 .linklike:hover {
   text-decoration: underline;
 }
+
+/* segunda columna centrada */
+.discounts__table thead th:nth-child(2),
+.discounts__table tbody td:nth-child(2) {
+  text-align: center;
+}
+
 
 /* ===== Paginación compacta centrada ===== */
 .discounts__pager {

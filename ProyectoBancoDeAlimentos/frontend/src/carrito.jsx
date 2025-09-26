@@ -121,6 +121,7 @@ function Carrito() {
     const today = new Date();
     const start = startStr ? new Date(startStr) : null;
     const end = endStr ? new Date(endStr) : null;
+    
     if (start && today < start) return false;
     if (end && today > end) return false;
     return true;
@@ -132,8 +133,25 @@ function Carrito() {
       try {
         const res = await axiosInstance.get("/api/promociones/detalles");
         const lista = Array.isArray(res?.data) ? res.data : [];
+        
         const map = {};
+        const promosMap = {};
+        
         for (const promo of lista) {
+          // Guardar info completa de la promoción
+          promosMap[Number(promo.id_promocion)] = {
+            id_promocion: Number(promo.id_promocion),
+            id_tipo_promo: Number(promo.id_tipo_promo),
+            activa: promo.activa === true || promo.activa === 1 || promo.activa === "true",
+            fecha_inicio: promo.fecha_inicio || null,
+            fecha_termina: promo.fecha_termina || null,
+            compra_min: promo.compra_min != null ? Number(promo.compra_min) : null,
+            valor_fijo: promo.valor_fijo != null ? Number(promo.valor_fijo) : null,
+            valor_porcentaje: promo.valor_porcentaje != null ? parseFloat(promo.valor_porcentaje) : null,
+            nombre_promocion: promo.nombre_promocion || "Promoción",
+          };
+          
+          // Mapear productos a promociones
           const arr = Array.isArray(promo.productos) ? promo.productos : [];
           for (const pid of arr) {
             const idNum = Number(pid);
@@ -141,38 +159,14 @@ function Carrito() {
             map[idNum].push(Number(promo.id_promocion));
           }
         }
+        
         setPromosPorProducto(map);
+        setPromosInfo(promosMap);
       } catch (err) {
         console.error("[PROMOS DETALLES] error:", err?.response?.data || err);
       }
     };
     fetchPromosDetalles();
-  }, []);
-  useEffect(() => {
-    const fetchPromosInfo = async () => {
-      try {
-        const res = await axiosInstance.get("/api/promociones/listarorden");
-        const arr = Array.isArray(res?.data) ? res.data : [];
-        const map = {};
-        for (const p of arr) {
-          map[Number(p.id_promocion)] = {
-            id_promocion: Number(p.id_promocion),
-            id_tipo_promo: Number(p.id_tipo_promo), // 1=% 2=fijo 3=escalonado
-            valor_porcentaje: p.valor_porcentaje != null ? parseFloat(p.valor_porcentaje) : null,
-            valor_fijo: p.valor_fijo != null ? Number(p.valor_fijo) : null,
-            compra_min: p.compra_min != null ? Number(p.compra_min) : null, // en escalonado = cantidad por pack
-            fecha_inicio: p.fecha_inicio || null,
-            fecha_termina: p.fecha_termina || null,
-            activa: p.activa === true || p.activa === 1 || p.activa === "true",
-            nombre_promocion: p.nombre_promocion || p.nombre || "Promoción",
-          };
-        }
-        setPromosInfo(map);
-      } catch (err) {
-        console.error("[PROMOS LISTARORDEN] error:", err?.response?.data || err);
-      }
-    };
-    fetchPromosInfo();
   }, []);
 
   // set de promos que tienen al menos 1 producto asociado
@@ -225,6 +219,7 @@ function Carrito() {
 
     ids.forEach((idPromo) => {
       const info = promosInfo[idPromo];
+      
       if (
         info &&
         info.id_tipo_promo === 3 &&
@@ -234,11 +229,16 @@ function Carrito() {
         Number(info.valor_fijo) > 0
       ) {
         const k = Number(info.compra_min);
-        if (qty < k) return; // ⚠️ NO aplica si no alcanza el primer tramo
+        
+        if (qty < k) {
+          return; // ⚠️ NO aplica si no alcanza el primer tramo
+        }
+        
         const packPrice = Number(info.valor_fijo);
         const packs = Math.floor(qty / k);
         const resto = qty - packs * k;
         const subPromo = packs * packPrice + resto * unit; // 3x pack + resto normal
+        
         if (!best || subPromo < best.subtotal) {
           best = { subtotal: subPromo, packs, packQty: k, packPrice, promoId: idPromo };
         }
@@ -406,6 +406,7 @@ function Carrito() {
 
       // Escalonado por producto
       const esc = bestEscalonadoForItem(it.producto, qty); // respeta compra_min
+      
       const itemSubtotal = esc.subtotal;
       const itemAhorro = esc.ahorro;
       subtotalEscalonados += itemSubtotal;
@@ -902,7 +903,7 @@ function Carrito() {
                               )}
                             </div>
 
-                            <div className="flex flex-row gap-1">
+                            <div className="flex flex-row gap-1 items-center">
                               <button
                                 onClick={() => updateQuantity(p.id_carrito_detalle, p.producto.id_producto, p.cantidad_unidad_medida - 1)}
                                 className=" bg-[#114C87] text-white rounded-md h-9 px-1"
@@ -918,7 +919,7 @@ function Carrito() {
                                 step={1}
                                 inputMode="numeric"
                                 pattern="[0-9]*"
-                                className={`border-2 rounded-md text-center ${sinStock ? "border-red-400 bg-red-50" : "border-black"}`}
+                                className={`border-2 rounded-md text-center w-16 h-9 ${sinStock ? "border-red-400 bg-red-50" : "border-black"}`}
                                 value={qtyDraft[p.id_carrito_detalle] ?? p.cantidad_unidad_medida}
                                 onChange={(e) => handleQtyInputChange(p.id_carrito_detalle, e.target.value)}
                                 onBlur={(e) => commitQtyChange(p, e.target.value)}
@@ -935,16 +936,26 @@ function Carrito() {
                                 <span className="material-symbols-outlined text-3xl">add</span>
                               </button>
 
-                              <div className="flex w-full h-full justify-end items-center">
+                              <div className="flex-1 flex justify-end">
                                 <div className="text-right">
-                                  <div className="text-2xl font-extrabold text-green-600">L. {subMostrar.toFixed(2)}</div>
-                                  {esc.applied && (
-                                    <div className="text-xs text-green-700 font-semibold">
-                                      Escalonado: {esc.packQty} por L. {esc.packPrice.toFixed(2)}
+                                  {esc.applied ? (
+                                    <div className="bg-orange-50 border border-orange-200 p-2 max-w-xs">
+                                      <div className="text-2xl font-extrabold text-orange-600">L. {subMostrar.toFixed(2)}</div>
+                                      <div className="text-xs text-orange-700 font-semibold">
+                                        🎯 Escalonado: {esc.packQty} por L. {esc.packPrice.toFixed(2)}
+                                      </div>
+                                      <div className="text-sm text-slate-400 line-through">L. {base.toFixed(2)}</div>
+                                      <div className="text-xs text-green-600 font-bold">
+                                        Ahorras: L. {esc.ahorro.toFixed(2)}
+                                      </div>
                                     </div>
-                                  )}
-                                  {base > subMostrar && (
-                                    <div className="text-sm text-slate-400 line-through">L. {base.toFixed(2)}</div>
+                                  ) : (
+                                    <div>
+                                      <div className="text-2xl font-extrabold text-green-600">L. {subMostrar.toFixed(2)}</div>
+                                      {base > subMostrar && (
+                                        <div className="text-sm text-slate-400 line-through">L. {base.toFixed(2)}</div>
+                                      )}
+                                    </div>
                                   )}
                                 </div>
                               </div>
@@ -990,9 +1001,16 @@ function Carrito() {
                   const prom = JSON.parse(localStorage.getItem("checkout.promotions") || "{}");
                   if (!prom?.anyEscalonado) return null;
                   return (
-                    <div className="mt-2 p-3 bg-green-50 border border-green-300 rounded-md text-left">
-                      <p className="text-sm font-semibold text-green-800">Precio Escalonado activo</p>
-                      <p className="text-xs text-green-700">Ahorro total: <strong>L. {(Number(prom?.ahorroEscalonados) || 0).toFixed(2)}</strong></p>
+                    <div className="mt-2 p-3 bg-orange-50 border border-orange-300 rounded-md text-left">
+                      <p className="text-sm font-semibold text-orange-800 flex items-center gap-1">
+                        🎯 Precio Escalonado Activo
+                      </p>
+                      <p className="text-xs text-orange-700">
+                        Ahorro total: <strong>L. {(Number(prom?.ahorroEscalonados) || 0).toFixed(2)}</strong>
+                      </p>
+                      <p className="text-xs text-orange-600 mt-1">
+                        Los precios escalonados se aplican automáticamente según la cantidad
+                      </p>
                     </div>
                   );
                 })()}
@@ -1039,6 +1057,7 @@ function Carrito() {
             <div>
               <h1 className="font-roboto text-[#80838A] text-2xl font-medium justify-center pb-1 text-left">Resumen de pago</h1>
               <hr className="bg-[#80838A] h-[2px] w-full mb-1" />
+              
             </div>
 
             {hayProductoSinStock ? (
@@ -1049,20 +1068,25 @@ function Carrito() {
               showProducts && (
                 <div>
                   <ul className="text-left space-y-3 font-medium text-md">
+                    {/* Subtotal base (sin descuentos) */}
                     <li className="flex justify-between">
                       <span>Subtotal</span>
-                      <span>L. {Number(subtotalCart || 0).toFixed(2)}</span>
+                      <span>L. {(() => {
+                        const totals = JSON.parse(localStorage.getItem("checkout.totals") || "{}");
+                        const subtotalBase = Number(totals?.subtotal_escalonados || subtotalCart || 0);
+                        return subtotalBase.toFixed(2);
+                      })()}</span>
                     </li>
 
-                    {/* Cupón (negativo) */}
+                    {/* Descuentos escalonados (si aplican) */}
                     {(() => {
-                      const totals = JSON.parse(localStorage.getItem("checkout.totals") || "{}");
-                      const monto = Number(totals?.descuento_cupon || 0);
-                      if (!monto) return null;
+                      const prom = JSON.parse(localStorage.getItem("checkout.promotions") || "{}");
+                      const ahorro = Number(prom?.ahorroEscalonados || 0);
+                      if (ahorro <= 0) return null;
                       return (
-                        <li className="flex justify-between text-blue-600">
-                          <span>Descuento cupón</span>
-                          <span>-L. {monto.toFixed(2)}</span>
+                        <li className="flex justify-between text-orange-600 bg-orange-50 px-2 py-1 rounded-md border border-orange-200">
+                          <span className="font-semibold">🎯 Descuento Escalonado</span>
+                          <span className="font-bold">-L. {ahorro.toFixed(2)}</span>
                         </li>
                       );
                     })()}
@@ -1073,12 +1097,26 @@ function Carrito() {
                       const monto = Number(totals?.descuento_promo_global || 0);
                       if (!monto) return null;
                       return (
-                        <li className="flex justify-between text-green-600">
-                          <span>Promoción</span>
-                          <span>-L. {monto.toFixed(2)}</span>
+                        <li className="flex justify-between text-green-600 bg-green-50 px-2 py-1 rounded-md border border-green-200">
+                          <span className="font-semibold">🏷️ Promoción</span>
+                          <span className="font-bold">-L. {monto.toFixed(2)}</span>
                         </li>
                       );
                     })()}
+
+                    {/* Cupón (negativo) */}
+                    {(() => {
+                      const totals = JSON.parse(localStorage.getItem("checkout.totals") || "{}");
+                      const monto = Number(totals?.descuento_cupon || 0);
+                      if (!monto) return null;
+                      return (
+                        <li className="flex justify-between text-blue-600 bg-blue-50 px-2 py-1 rounded-md border border-blue-200">
+                          <span className="font-semibold">🎫 Cupón</span>
+                          <span className="font-bold">-L. {monto.toFixed(2)}</span>
+                        </li>
+                      );
+                    })()}
+
 
                     <li className="flex justify-between">
                       <span>Impuesto (15%)</span>

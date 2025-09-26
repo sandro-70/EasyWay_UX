@@ -172,10 +172,50 @@ const DetallePedido = ({ order, onClose }) => {
               readOnly
             />
           </div>
+          {/* Impuesto */}
+          <div>
+            <label className="block text-sm font-medium mb-1 text-left mt-2">
+              Impuesto
+            </label>
+            <input
+              className="p-1 rounded w-full text-sm text-left border"
+              style={{ borderColor: "#80838A", backgroundColor: "#F5F5F5" }}
+              value={
+                // fallback: aceptar varios nombres que pueda devolver la API
+                (() => {
+                  const imp =
+                    detallesPedido?.factura?.impuestos ?? order.impuesto ?? 0;
+                  return `L. ${parseFloat(imp || 0).toFixed(2)}`;
+                })()
+              }
+              readOnly
+            />
+          </div>
+          {/* Costo De Envío */}
+          <div>
+            <label className="block text-sm font-medium mb-1 text-left mt-2">
+              Costo De Envío
+            </label>
+            <input
+              className="p-1 rounded w-full text-sm text-left border"
+              style={{ borderColor: "#80838A", backgroundColor: "#F5F5F5" }}
+              value={
+                // fallback: aceptar factura.costo_evio o campo directo costoEnvio
+                (() => {
+                  const envio =
+                    detallesPedido?.factura?.costo_evio ??
+                    order.costoEnvio ??
+                    0;
+                  return `L. ${parseFloat(envio || 0).toFixed(2)}`;
+                })()
+              }
+              readOnly
+            />
+          </div>
 
           {/* Total */}
           <div>
-            <label className="block text-sm font-medium mb-1 text-left">
+            <label className="block text-sm font-medium mb-1 text-left mt-2">
               Total
             </label>
             <input

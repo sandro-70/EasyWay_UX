@@ -50,9 +50,14 @@ const historial_accesos     = require('./historial_accesos.js')(sequelize, Seque
 const lista_deseos          = require('./lista_deseos.js')(sequelize, Sequelize.DataTypes);
 const usuario_log          = require('./usuario_log.js')(sequelize, Sequelize.DataTypes);
 const auditoria_inventario = require('./auditoria_inventario.js')(sequelize, Sequelize.DataTypes);
+const politicas_reembolso = require('./politicas_reembolso.js')(sequelize, Sequelize.DataTypes);
+const reembolso_pedido = require('./reembolso_pedido.js')(sequelize, Sequelize.DataTypes);
 
 // ================== ASOCIACIONES ================== //
 // auditoria---
+pedido.hasMany(reembolso_pedido, { foreignKey: 'id_pedido' });
+reembolso_pedido.belongsTo(pedido, { foreignKey: 'id_pedido' });
+
 Usuario.hasMany(auditoria_inventario, { foreignKey: 'id_usuario' });
 auditoria_inventario.belongsTo(Usuario, { foreignKey: 'id_usuario' });
 
@@ -217,5 +222,7 @@ module.exports = {
   historial_accesos,
   lista_deseos,
   usuario_log,
-  auditoria_inventario
+  auditoria_inventario,
+  reembolso_pedido,
+  politicas_reembolso
 };

@@ -26,7 +26,6 @@ import {
 } from "./api/CuponesApi";
 import { jwtDecode } from "jwt-decode";
 
-// Helper para construir URL de imágenes
 const BACKEND_ORIGIN = (() => {
   const base = axiosInstance?.defaults?.baseURL;
   try {
@@ -56,7 +55,7 @@ const ProcesoCompra = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Lee cupón desde navigate(state) o desde localStorage
+  // Cupón (desde state o localStorage)
   const [coupon, setCoupon] = useState(() => {
     return (
       location.state?.coupon ||
@@ -76,7 +75,7 @@ const ProcesoCompra = () => {
     }
   };
 
-  // ==== Helpers fecha cupón (mismos criterios que en Carrito) ====
+  // ==== Helpers fecha cupón ====
   const parseCouponDateLocal = (input) => {
     if (!input) return null;
     const s = String(input).trim();
@@ -93,26 +92,23 @@ const ProcesoCompra = () => {
       d = Number(m[3]);
     return new Date(y, mo, d, 0, 0, 0, 0);
   };
-
   const startOfDayLocal = (date = new Date()) => {
     const d = new Date(date);
     d.setHours(0, 0, 0, 0);
     return d;
   };
-
   const isCouponExpired = (termina_en) => {
     const exp = parseCouponDateLocal(termina_en);
     if (!exp) return false;
     const today = startOfDayLocal();
-    return today.getTime() >= exp.getTime(); // HOY ya no se puede usar
+    return today.getTime() >= exp.getTime();
   };
 
-  // Estados del checkout
+  // ====== ESTADO UI ======
   const [direccionSeleccionada, setDireccionSeleccionada] = useState("");
   const [metodoPago, setMetodoPago] = useState("");
   const [mostrarResumen, setMostrarResumen] = useState(false);
 
-  // Estados de datos
   const [detalles, setDetalles] = useState([]);
   const [sucursales, setSucursales] = useState([]);
   const [idSucursal, setIdSucursal] = useState(null);
@@ -121,19 +117,27 @@ const ProcesoCompra = () => {
   const [promociones, setPromociones] = useState([]);
   const [promocionAplicada, setPromocionAplicada] = useState(null);
 
-  // Productos recomendados
   const [prodRec, setProdRec] = useState([]);
   const [hoveredProductRec, setHoveredProductRec] = useState(null);
   const prodRefRecomendados = useRef(null);
 
-  // Promos por producto
-  const [promosPorProducto, setPromosPorProducto] = useState({});
-  const [promosInfo, setPromosInfo] = useState({});
+  // ====== NUEVO: datos persistidos desde Carrito ======
+  const readTotals = () =>
+    JSON.parse(localStorage.getItem("checkout.totals") || "null");
+  const readItemsBreakdown = () =>
+    JSON.parse(localStorage.getItem("checkout.itemBreakdown") || "null");
+  const readPromotionSummary = () =>
+    JSON.parse(localStorage.getItem("checkout.promotions") || "null");
 
-  // Estados calculados
+  const [persistedTotals, setPersistedTotals] = useState(readTotals()); // ⬅️ NUEVO
+  const [itemBreakdown, setItemBreakdown] = useState(readItemsBreakdown()); // ⬅️ NUEVO
+  const [promoSummary, setPromoSummary] = useState(readPromotionSummary()); // ⬅️ NUEVO
+
+  // Subtotal "visual" (respaldo si no hay persistidos)
   const [subtotal, setSubtotal] = useState(0);
   const [loading, setLoading] = useState(false);
 
+  // Sucursal guardada
   useEffect(() => {
     const sucursalGuardada = localStorage.getItem("sucursalSeleccionada");
     if (sucursalGuardada) {
@@ -142,7 +146,6 @@ const ProcesoCompra = () => {
     }
   }, []);
 
-  // Helper para obtener stock en sucursal
   const getStockEnSucursal = (idProducto) => {
     if (!idSucursal || !stockPorSucursal[idSucursal]) return 0;
     const producto = stockPorSucursal[idSucursal].find(
@@ -151,7 +154,7 @@ const ProcesoCompra = () => {
     return producto ? producto.stock_en_sucursal : 0;
   };
 
-  // ==== Promos por producto ====
+  // Fechas promos
   const isDateInRange = (startStr, endStr) => {
     const today = new Date();
     const start = startStr ? new Date(startStr) : null;
@@ -161,21 +164,12 @@ const ProcesoCompra = () => {
     return true;
   };
 
-  const computeDiscountedPriceByPromo = (basePrice, pInfo, cartSubtotal) => {
-    if (
-      !pInfo?.activa ||
-      !isDateInRange(pInfo.fecha_inicio, pInfo.fecha_termina)
-    )
+  // Precio %/fijo por producto (solo para recomendaciones UI)
+  const computeDiscountedPriceByPromo = (basePrice, pInfo) => {
+    if (!pInfo?.activa || !isDateInRange(pInfo.fecha_inicio, pInfo.fecha_termina))
       return null;
-
     const price = Number(basePrice) || 0;
     if (price <= 0) return null;
-
-    const min = pInfo.compra_min != null ? Number(pInfo.compra_min) : 0;
-    const subtotalValue = Number(cartSubtotal) || 0;
-
-    if (min > 0 && subtotalValue < min) return null;
-
     if (pInfo.id_tipo_promo === 1 && Number(pInfo.valor_porcentaje) > 0) {
       const pct = Number(pInfo.valor_porcentaje) / 100;
       return Math.max(0, price * (1 - pct));
@@ -186,17 +180,16 @@ const ProcesoCompra = () => {
     return null;
   };
 
-  const bestPromoPriceForProduct = (prod, cartSubtotal = subtotal) => {
+  // Cargar promos (solo para recomendaciones UI)
+  const [promosPorProducto, setPromosPorProducto] = useState({});
+  const [promosInfo, setPromosInfo] = useState({});
+  const bestPromoPriceForProduct = (prod) => {
     const base = Number(prod?.precio_base) || 0;
     const ids = promosPorProducto[Number(prod?.id_producto)] || [];
     let best = null;
     for (const idPromo of ids) {
       const info = promosInfo[idPromo];
-      const discounted = computeDiscountedPriceByPromo(
-        base,
-        info,
-        cartSubtotal
-      );
+      const discounted = computeDiscountedPriceByPromo(base, info);
       if (discounted == null) continue;
       if (best == null || discounted < best.finalPrice) {
         best = { finalPrice: discounted, promoId: idPromo };
@@ -205,7 +198,6 @@ const ProcesoCompra = () => {
     return best;
   };
 
-  // Cargar promos
   const cargarPromosDetalles = async () => {
     try {
       const res = await axiosInstance.get("/api/promociones/detalles");
@@ -224,11 +216,10 @@ const ProcesoCompra = () => {
       console.error("[PROMOS DETALLES] error:", err?.response?.data || err);
     }
   };
-
   const cargarPromosInfo = async () => {
     try {
       const res = await axiosInstance.get("/api/promociones/listarorden");
-    const arr = Array.isArray(res?.data) ? res.data : [];
+      const arr = Array.isArray(res?.data) ? res.data : [];
       const map = {};
       for (const p of arr) {
         map[Number(p.id_promocion)] = {
@@ -249,7 +240,7 @@ const ProcesoCompra = () => {
     }
   };
 
-  // Cargar stock por sucursal
+  // Stock por sucursal
   const cargarStockPorSucursal = async (idSucursalParam) => {
     if (!idSucursalParam) return;
     try {
@@ -267,64 +258,15 @@ const ProcesoCompra = () => {
     }
   };
 
-  // ====== Promociones globales ======
-  const validarFechaPromocion = (fechaInicio, fechaTermina) => {
-    const hoy = new Date();
-    const inicio = new Date(fechaInicio);
-    const termina = new Date(fechaTermina);
-    return hoy >= inicio && hoy <= termina;
-  };
-
-  const obtenerPromocionesValidas = (promociones) => {
-    return promociones.filter(
-      (promo) =>
-        promo.activa &&
-        validarFechaPromocion(promo.fecha_inicio, promo.fecha_termina)
-    );
-  };
-
-  const encontrarMejorPromocion = (totalCarrito, promocionesDisponibles) => {
-    const promocionesValidas = obtenerPromocionesValidas(
-      promocionesDisponibles
-    );
-    const promocionesAplicables = promocionesValidas.filter((promo) => {
-      const compraMin = Number(promo.compra_min) || 0;
-      return compraMin <= totalCarrito;
-    });
-
-    if (promocionesAplicables.length === 0) return null;
-
-    let mejorPromocion = null;
-    let mayorDescuento = 0;
-
-    for (const promo of promocionesAplicables) {
-      const tipo = Number(promo.id_tipo_promo);
-      const pct = parseFloat(promo.valor_porcentaje) || 0;
-      const fijo = parseFloat(promo.valor_fijo) || 0;
-
-      let descuento = 0;
-      if (tipo === 1 && pct > 0) {
-        descuento = totalCarrito * (pct / 100);
-      } else if (tipo === 2 && fijo > 0) {
-        descuento = Math.min(fijo, totalCarrito);
-      }
-
-      if (descuento > mayorDescuento) {
-        mayorDescuento = descuento;
-        mejorPromocion = promo;
-      }
-    }
-
-    return mejorPromocion;
-  };
-
   // ====== Revalidar cupón al entrar ======
   useEffect(() => {
     (async () => {
       if (!coupon || !user?.id_usuario) return;
 
       if (isCouponExpired(coupon.termina_en)) {
-        toast.info("El cupón expiró antes de finalizar la compra.", { className: "toast-info" });
+        toast.info("El cupón expiró antes de finalizar la compra.", {
+          className: "toast-info",
+        });
         localStorage.removeItem("checkout.coupon");
         setCoupon(null);
         return;
@@ -333,386 +275,19 @@ const ProcesoCompra = () => {
       try {
         const r = await checkCuponUsuario(coupon.id_cupon, user.id_usuario);
         if (r?.data?.usado) {
-          toast.info("Este cupón ya fue usado en otra compra.", { className: "toast-info" });
+          toast.info("Este cupón ya fue usado en otra compra.", {
+            className: "toast-info",
+          });
           localStorage.removeItem("checkout.coupon");
           setCoupon(null);
         }
       } catch {
-        // Si falla el check, no bloquees; el backend validará igual
+        // backend revalida igual
       }
     })();
   }, [coupon, user?.id_usuario]);
 
-  // ====== Cálculo de descuentos/totales ======
-
-  // Descuento de promoción solo
-  const obtenerDescuentoPromocionSolo = () => {
-    if (!promocionAplicada) return 0;
-    const porcentaje = parseFloat(promocionAplicada.valor_porcentaje) || 0;
-    const valorFijo = parseFloat(promocionAplicada.valor_fijo) || 0;
-    if (promocionAplicada.id_tipo_promo === 1) {
-      return subtotal * (porcentaje / 100);
-    } else if (promocionAplicada.id_tipo_promo === 2) {
-      return Math.min(valorFijo, subtotal);
-    }
-    return 0;
-  };
-
-  // Descuento de cupón sobre un subtotal base
-  const calcularDescuentoCupon = (base) => {
-    if (!coupon) return 0;
-    const v = Number(coupon.valor) || 0;
-    if (v <= 0) return 0;
-    if (coupon.tipo === "porcentaje") {
-      return Math.max(0, base * (v / 100));
-    } else if (coupon.tipo === "fijo") {
-      return Math.min(v, Math.max(0, base));
-    }
-    return 0;
-  };
-
-  // Pipeline: promo -> cupón -> impuesto -> envío
-  const obtenerDescuentoTotal = () => {
-    const descPromo = obtenerDescuentoPromocionSolo();
-    const subtotalTrasPromo = Math.max(0, subtotal - descPromo);
-    const descCupon = calcularDescuentoCupon(subtotalTrasPromo);
-    return descPromo + descCupon;
-  };
-
-  const obtenerSubtotalConDescuento = () => {
-    const descPromo = obtenerDescuentoPromocionSolo();
-    const subtotalTrasPromo = Math.max(0, subtotal - descPromo);
-    const descCupon = calcularDescuentoCupon(subtotalTrasPromo);
-    return Math.max(0, subtotalTrasPromo - descCupon);
-  };
-
-  const obtenerImpuesto = () => {
-    return obtenerSubtotalConDescuento() * 0.15;
-  };
-
-  const obtenerTotal = () => {
-    return obtenerSubtotalConDescuento() + obtenerImpuesto() + 10; // envío fijo 10
-  };
-
-  // Helper estrellas
-  const getStars = (obj) => {
-    const n = Math.round(
-      Number(obj?.estrellas ?? obj?.rating ?? obj?.valoracion ?? 0)
-    );
-    return Math.max(0, Math.min(5, isNaN(n) ? 0 : n));
-  };
-
-  // Scroll recomendaciones
-  const scroll = (direction, ref, itemWidth) => {
-    if (ref.current) {
-      ref.current.scrollBy({
-        left: direction === "left" ? -itemWidth : itemWidth,
-        behavior: "smooth",
-      });
-    }
-  };
-
-  // Agregar desde recomendados
-  const handleAgregar = async (id_producto) => {
-    if (!id_producto) {
-      toast.error("ID de producto no válido", { className: "toast-error" });
-      return;
-    }
-
-    const stockDisponible = getStockEnSucursal(id_producto);
-    if (stockDisponible === 0) {
-      toast.error("Sin stock disponible en esta sucursal", { className: "toast-error" });
-      return;
-    }
-
-    try {
-      const carritoActual = await ViewCar();
-      const carritoDetalles = carritoActual.data.carrito_detalles ?? [];
-      const productoExistente = carritoDetalles.find(
-        (item) => item.producto.id_producto === id_producto
-      );
-
-      if (productoExistente) {
-        const cantidadActual = productoExistente.cantidad_unidad_medida || 0;
-        const nuevaCantidad = cantidadActual + 1;
-
-        if (nuevaCantidad > stockDisponible) {
-          toast.info(
-            `Solo hay ${stockDisponible} unidades disponibles en esta sucursal`, { className: "toast-info" }
-          );
-          return;
-        }
-
-        await SumarItem(id_producto, nuevaCantidad);
-        const carritoActualizado = await ViewCar();
-        const nuevosDetalles = carritoActualizado.data.carrito_detalles ?? [];
-        setDetalles(nuevosDetalles);
-        const sub = nuevosDetalles.reduce(
-          (acc, item) => acc + (item.subtotal_detalle || 0),
-          0
-        );
-        setSubtotal(sub);
-        toast.success("Producto actualizado en el carrito", { className: "toast-success" });
-      } else {
-        await AddNewCarrito(id_producto, 1);
-        const carritoActualizado = await ViewCar();
-        const nuevosDetalles = carritoActualizado.data.carrito_detalles ?? [];
-        setDetalles(nuevosDetalles);
-        const sub = nuevosDetalles.reduce(
-          (acc, item) => acc + (item.subtotal_detalle || 0),
-          0
-        );
-        setSubtotal(sub);
-        incrementCart(1);
-        toast.success("Producto agregado al carrito", { className: "toast-success" });
-      }
-    } catch (error) {
-      console.error("Error:", error);
-      toast.error("No se pudo agregar el producto al carrito", { className: "toast-error" });
-    }
-  };
-
-  // ====== Función para registrar auditorías de SALIDA ======
-  const registrarAuditoriasVenta = async (detallesPedido, idSucursalPedido) => {
-    const id_usuario = getUserId();
-    
-    if (!id_usuario) {
-      console.warn("No se pudo obtener ID de usuario para auditoría");
-      return;
-    }
-
-    try {
-      // Registrar una auditoría por cada producto vendido
-      for (const item of detallesPedido) {
-        await agregarAuditoria(
-          item.producto.id_producto,
-          id_usuario,
-          idSucursalPedido,
-          item.cantidad_unidad_medida,
-          'salida' // Operación de salida por venta
-        );
-      }
-      
-      console.log(`Auditorías registradas para ${detallesPedido.length} productos`);
-    } catch (error) {
-      console.error("Error registrando auditorías de venta:", error);
-      // No bloquear la compra si falla la auditoría
-    }
-  };
-
-  // Realizar compra
-  const realizarCompra = async () => {
-    if (!user.direccions || user.direccions.length === 0) {
-      toast.error(
-        "Debes registrar al menos una dirección antes de realizar la compra", { className: "toast-error" }
-      );
-      return;
-    }
-    if (!metodoPago) {
-      toast.error("Selecciona un método de pago", { className: "toast-error" });
-      return;
-    }
-
-    // Validar stock
-    for (const item of detalles) {
-      const stockDisponible = getStockEnSucursal(item.producto.id_producto);
-      if (item.cantidad_unidad_medida > stockDisponible) {
-        toast.error(`No hay suficiente stock de ${item.producto.nombre}`, { className: "toast-error" });
-        return;
-      }
-    }
-
-    setLoading(true);
-    try {
-      const total_factura = obtenerTotal();
-      const descuento = obtenerDescuentoTotal();
-      const id_direccion =
-        direccionSeleccionada || user.direccions[0].id_direccion.toString();
-      const sucursalId = Number(idSucursal ?? sucursales[0]?.id_sucursal ?? 2);
-
-      const response = await crearPedido(
-        user.id_usuario,
-        id_direccion,
-        sucursalId,
-        promocionAplicada ? promocionAplicada.id_promocion : null,
-        descuento
-      );
-
-      const id_pedido = response.data.id_pedido;
-
-      // ===== REGISTRAR AUDITORÍAS DE SALIDA =====
-      await registrarAuditoriasVenta(detalles, sucursalId);
-
-      // === Registrar cupón en historial y actualizar usos ===
-      try {
-        if (coupon?.id_cupon) {
-          await usarCuponHistorial(
-            coupon.id_cupon,
-            user.id_usuario,
-            id_pedido,
-            new Date().toISOString()
-          );
-
-          if (typeof coupon.uso_maximo_por_usuario !== "undefined") {
-            const usosRestantes =
-              Number(coupon.uso_maximo_por_usuario) - 1;
-            if (usosRestantes > 0) {
-              await editarCupon(
-                coupon.id_cupon,
-                coupon.codigo,
-                coupon.descripcion || "",
-                coupon.tipo,
-                coupon.valor,
-                usosRestantes,
-                coupon.termina_en,
-                true
-              );
-            } else {
-              await desactivarCupon(coupon.id_cupon);
-            }
-          }
-          localStorage.removeItem("checkout.coupon");
-          setCoupon(null);
-        }
-      } catch (cupErr) {
-        console.error("Cupón: error registrando/actualizando:", cupErr);
-        // No abortar la compra; el pedido ya existe
-      }
-
-      // ===== Preparar correo con los mismos cálculos =====
-      try {
-        const productosResumen = detalles
-          .map(
-            (item) =>
-              `• ${item.producto.nombre} - Cantidad: ${
-                item.cantidad_unidad_medida
-              } - Subtotal: L. ${(item.subtotal_detalle || 0).toFixed(2)}`
-          )
-          .join("\n");
-
-        const direccionEnvio = user.direccions.find(
-          (dir) => dir.id_direccion.toString() === id_direccion
-        );
-        const direccionTexto = direccionEnvio
-          ? direccionEnvio.direccion_completa ||
-            `${direccionEnvio.calle}, ${direccionEnvio.ciudad}`
-          : "Dirección no especificada";
-
-        const sucursalNombre =
-          sucursales.find((s) => s.id_sucursal == sucursalId)
-            ?.nombre_sucursal || `Sucursal ${sucursalId}`;
-
-        // Cálculos coherentes con el resumen UI
-        const descPromo = obtenerDescuentoPromocionSolo();
-        const subtotalTrasPromo = Math.max(0, subtotal - descPromo);
-        const descCupon = calcularDescuentoCupon(subtotalTrasPromo);
-        const subtotalConDesc = obtenerSubtotalConDescuento();
-        const impuestoHN = obtenerImpuesto();
-        const totalFactura = obtenerTotal();
-
-        const lineaPromo = promocionAplicada
-          ? `\n• Descuento Promoción (${promocionAplicada.nombre_promocion}): -L. ${descPromo.toFixed(2)}`
-          : "";
-
-        const lineaCupon = coupon
-          ? `\n• Descuento Cupón (${coupon.codigo}${
-              coupon.tipo === "porcentaje" ? ` ${Number(coupon.valor)}%` : ""
-            }): -L. ${descCupon.toFixed(2)}`
-          : "";
-
-        const asunto = `Confirmación de Pedido #${id_pedido}`;
-
-        const descripcion = `
-Estimado/a ${user.nombre} ${user.apellido},
-
-Su pedido ha sido procesado exitosamente. A continuación encontrará el resumen de su compra:
-
-═══════════════════════════════════════
-INFORMACIÓN DEL PEDIDO
-═══════════════════════════════════════
-• Número de Pedido: #${id_pedido}
-• Fecha: ${new Date().toLocaleDateString("es-HN", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        })}
-• Sucursal: ${sucursalNombre}
-
-═══════════════════════════════════════
-PRODUCTOS SOLICITADOS
-═══════════════════════════════════════
-${productosResumen}
-
-═══════════════════════════════════════
-RESUMEN DE PAGO
-═══════════════════════════════════════
-• Subtotal: L. ${subtotal.toFixed(2)}${lineaPromo}${lineaCupon}
-• Subtotal con descuentos: L. ${subtotalConDesc.toFixed(2)}
-• Impuesto (15%): L. ${impuestoHN.toFixed(2)}
-• Envío: L. 10.00
-• TOTAL PAGADO: L. ${totalFactura.toFixed(2)}
-
-═══════════════════════════════════════
-DIRECCIÓN DE ENVÍO
-═══════════════════════════════════════
-${direccionTexto}
-
-═══════════════════════════════════════
-MÉTODO DE PAGO
-═══════════════════════════════════════
-${(() => {
-  if (metodoPago === "paypal") return "PayPal";
-  if (metodoPago === "efectivo") return "Efectivo (Pago contra entrega)";
-  const metodo = metodosPago.find(
-    (m) => m.id_metodo_pago.toString() === metodoPago
-  );
-  return metodo
-    ? `${metodo.nombre_en_tarjeta} (**** **** **** ${metodo.tarjeta_ultimo})`
-    : "No especificado";
-})()}
-
-¡Gracias por su compra!
-
-Atentamente,
-El equipo de EasyWay
-`.trim();
-
-// Convierte texto plano -> HTML respetando saltos de línea
-const descripcionHTML =
-  `<div style="white-space:pre-wrap; font-family:Arial, sans-serif; font-size:14px; line-height:1.5">` +
-  descripcion
-    .replace(/&/g, "&amp;")   // escape básico por si hay < o &
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\r?\n/g, "<br/>") // << aquí forzamos los saltos en HTML
-  + `</div>`;
-
-        await enviarCorreo(user.correo, descripcionHTML, asunto);
-      } catch (emailError) {
-        console.error("Error enviando correo de confirmación:", emailError);
-        toast.warning(
-          "Pedido creado correctamente, pero no se pudo enviar el correo de confirmación", { className: "toast-warn" }
-        );
-      }
-
-      // Limpiar estados UI
-      setPromocionAplicada(null);
-      setCount(0);
-      toast.success(`¡Pedido #${id_pedido} creado correctamente!`, { className: "toast-success" });
-      navigate("/misPedidos");
-    } catch (err) {
-      console.error("Error creando pedido:", err);
-      const errorMessage =
-        err?.response?.data?.error || "No se pudo crear el pedido";
-      toast.error(errorMessage, { className: "toast-error" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ===== Effects iniciales =====
+  // ====== Carga inicial ======
   useEffect(() => {
     const cargarDatosIniciales = async () => {
       try {
@@ -720,6 +295,7 @@ const descripcionHTML =
         const carritoDetalles = carritoRes.data.carrito_detalles ?? [];
         setDetalles(carritoDetalles);
 
+        // Respaldo de subtotal "clásico" si no hay persistidos
         const sub = carritoDetalles.reduce(
           (acc, item) => acc + (item.subtotal_detalle || 0),
           0
@@ -727,8 +303,7 @@ const descripcionHTML =
         setSubtotal(sub);
 
         const sucursalesRes = await getAllSucursales();
-        const sucursalesData = sucursalesRes?.data ?? [];
-        setSucursales(sucursalesData);
+        setSucursales(sucursalesRes?.data ?? []);
 
         const metodosRes = await getAllMetodoPago();
         setMetodosPago(metodosRes.data || []);
@@ -742,12 +317,15 @@ const descripcionHTML =
         await cargarPromosDetalles();
         await cargarPromosInfo();
 
-        if (user.direccions && user.direccions.length > 0) {
-          setDireccionSeleccionada(user.direccions[0].id_direccion.toString());
-        }
+        // refrescar cache persistida por si llegó desde una pestaña distinta
+        setPersistedTotals(readTotals());
+        setPromoSummary(readPromotionSummary());
+        setItemBreakdown(readItemsBreakdown());
       } catch (error) {
         console.error("Error cargando datos iniciales:", error);
-        toast.error("Error cargando datos del checkout", { className: "toast-error" });
+        toast.error("Error cargando datos del checkout", {
+          className: "toast-error",
+        });
       }
     };
 
@@ -762,17 +340,28 @@ const descripcionHTML =
     }
   }, [idSucursal]);
 
-  useEffect(() => {
-    if (subtotal > 0 && promociones.length > 0) {
-      const mejorPromocion = encontrarMejorPromocion(subtotal, promociones);
-      if (mejorPromocion?.id_promocion !== promocionAplicada?.id_promocion) {
-        setPromocionAplicada(mejorPromocion);
-      }
-    } else {
-      if (promocionAplicada) setPromocionAplicada(null);
-    }
-  }, [subtotal, promociones]);
+  // ====== Summary helpers (prefiere valores persistidos) ======
+  const getSubtotalConEscalonados = () =>
+    Number(persistedTotals?.subtotal_escalonados ?? subtotal) || 0;
 
+  const getDescPromoGlobal = () =>
+    Number(persistedTotals?.descuento_promo_global ?? 0) || 0;
+
+  const getDescCupon = () =>
+    Number(persistedTotals?.descuento_cupon ?? 0) || 0;
+
+  const getSubtotalNeto = () =>
+    Number(persistedTotals?.subtotal_neto ?? (getSubtotalConEscalonados() - getDescPromoGlobal() - getDescCupon())) || 0;
+
+  const getImpuesto = () =>
+    Number(persistedTotals?.impuesto ?? (getSubtotalNeto() * 0.15)) || 0;
+
+  const getEnvio = () => Number(persistedTotals?.envio ?? 10) || 0;
+
+  const getTotal = () =>
+    Number(persistedTotals?.total ?? (getSubtotalNeto() + getImpuesto() + getEnvio())) || 0;
+
+  // ====== Flags ======
   const hayProductoSinStock = detalles.some(
     (p) => getStockEnSucursal(p.producto.id_producto) === 0
   );
@@ -821,6 +410,244 @@ const descripcionHTML =
     );
   }
 
+  // ====== AUDITORÍA ======
+  const registrarAuditoriasVenta = async (detallesPedido, idSucursalPedido) => {
+    const id_usuario = getUserId();
+    if (!id_usuario) return;
+    try {
+      for (const item of detallesPedido) {
+        await agregarAuditoria(
+          item.producto.id_producto,
+          id_usuario,
+          idSucursalPedido,
+          item.cantidad_unidad_medida,
+          "salida"
+        );
+      }
+    } catch (error) {
+      console.error("Error registrando auditorías:", error);
+    }
+  };
+
+  // ====== Comprar ======
+  const realizarCompra = async () => {
+    if (!user.direccions || user.direccions.length === 0) {
+      toast.error("Debes registrar al menos una dirección", {
+        className: "toast-error",
+      });
+      return;
+    }
+    if (!metodoPago) {
+      toast.error("Selecciona un método de pago", { className: "toast-error" });
+      return;
+    }
+    for (const item of detalles) {
+      const stockDisponible = getStockEnSucursal(item.producto.id_producto);
+      if (item.cantidad_unidad_medida > stockDisponible) {
+        toast.error(`No hay suficiente stock de ${item.producto.nombre}`, {
+          className: "toast-error",
+        });
+        return;
+      }
+    }
+
+    setLoading(true);
+    try {
+      // ⬅️ USA LOS TOTALES PERSISTIDOS
+      const totals = readTotals();
+      const total_factura = Number(totals?.total ?? getTotal());
+      const descuento_total =
+        Number(totals?.descuento_promo_global || 0) +
+        Number(totals?.descuento_cupon || 0) +
+        Math.max(
+          0,
+          Number(totals?.subtotal_escalonados || 0) -
+            Number(totals?.subtotal_neto || 0)
+        ); // incluye el efecto del escalonado
+
+      const id_direccion =
+        direccionSeleccionada || user.direccions[0].id_direccion.toString();
+      const sucursalId = Number(idSucursal ?? sucursales[0]?.id_sucursal ?? 2);
+
+      const response = await crearPedido(
+        user.id_usuario,
+        id_direccion,
+        sucursalId,
+        promoSummary?.promoGlobal?.id_promocion ?? null,
+        descuento_total
+      );
+      const id_pedido = response.data.id_pedido;
+
+      await registrarAuditoriasVenta(detalles, sucursalId);
+
+      // Cupón
+      try {
+        if (coupon?.id_cupon) {
+          await usarCuponHistorial(
+            coupon.id_cupon,
+            user.id_usuario,
+            id_pedido,
+            new Date().toISOString()
+          );
+
+          if (typeof coupon.uso_maximo_por_usuario !== "undefined") {
+            const usosRestantes = Number(coupon.uso_maximo_por_usuario) - 1;
+            if (usosRestantes > 0) {
+              await editarCupon(
+                coupon.id_cupon,
+                coupon.codigo,
+                coupon.descripcion || "",
+                coupon.tipo,
+                coupon.valor,
+                usosRestantes,
+                coupon.termina_en,
+                true
+              );
+            } else {
+              await desactivarCupon(coupon.id_cupon);
+            }
+          }
+          localStorage.removeItem("checkout.coupon");
+          setCoupon(null);
+        }
+      } catch (cupErr) {
+        console.error("Cupón: error registrando/actualizando:", cupErr);
+      }
+
+      // ===== Correo (coherente con los números) =====
+      try {
+        const productosResumen = (itemBreakdown || detalles).map((it) => {
+          const nombre = it?.nombre || it?.producto?.nombre || "";
+          const qty = it?.qty ?? it?.cantidad_unidad_medida ?? 0;
+          const base = it?.base ?? it?.subtotal_detalle ?? 0;
+          const sub = it?.escalonado?.subtotal ?? base;
+          return `• ${nombre} - Cantidad: ${qty} - Subtotal: L. ${Number(sub).toFixed(2)}`;
+        }).join("\n");
+
+        const direccionEnvio = user.direccions.find(
+          (dir) => dir.id_direccion.toString() === id_direccion
+        );
+        const direccionTexto = direccionEnvio
+          ? direccionEnvio.direccion_completa ||
+            `${direccionEnvio.calle}, ${direccionEnvio.ciudad}`
+          : "Dirección no especificada";
+
+        const sucursalNombre =
+          sucursales.find((s) => s.id_sucursal == sucursalId)?.nombre_sucursal ||
+          `Sucursal ${sucursalId}`;
+
+        const lineaEsc = promoSummary?.anyEscalonado
+          ? `\n• Ahorro Escalonado: -L. ${Number(
+              promoSummary.ahorroEscalonados || 0
+            ).toFixed(2)}`
+          : "";
+
+        const lineaPromo = promoSummary?.promoGlobal
+          ? `\n• Descuento Promoción (${promoSummary.promoGlobal.nombre || "Promoción"}): -L. ${Number(
+              totals?.descuento_promo_global || 0
+            ).toFixed(2)}`
+          : "";
+
+        const lineaCupon = coupon
+          ? `\n• Descuento Cupón (${coupon.codigo}${
+              coupon.tipo === "porcentaje" ? ` ${Number(coupon.valor)}%` : ""
+            }): -L. ${Number(totals?.descuento_cupon || 0).toFixed(2)}`
+          : "";
+
+        const asunto = `Confirmación de Pedido #${id_pedido}`;
+
+        const descripcion = `
+Estimado/a ${user.nombre} ${user.apellido},
+
+Su pedido ha sido procesado exitosamente. A continuación encontrará el resumen de su compra:
+
+═══════════════════════════════════════
+INFORMACIÓN DEL PEDIDO
+═══════════════════════════════════════
+• Número de Pedido: #${id_pedido}
+• Fecha: ${new Date().toLocaleDateString("es-HN", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })}
+• Sucursal: ${sucursalNombre}
+
+═══════════════════════════════════════
+PRODUCTOS SOLICITADOS
+═══════════════════════════════════════
+${productosResumen}
+
+═══════════════════════════════════════
+RESUMEN DE PAGO
+═══════════════════════════════════════
+• Subtotal (con escalonados): L. ${Number(
+          totals?.subtotal_escalonados || getSubtotalConEscalonados()
+        ).toFixed(2)}${lineaEsc}${lineaPromo}${lineaCupon}
+• Subtotal con descuentos: L. ${Number(
+          totals?.subtotal_neto || getSubtotalNeto()
+        ).toFixed(2)}
+• Impuesto (15%): L. ${Number(totals?.impuesto || getImpuesto()).toFixed(2)}
+• Envío: L. ${Number(totals?.envio || getEnvio()).toFixed(2)}
+• TOTAL PAGADO: L. ${Number(total_factura).toFixed(2)}
+
+═══════════════════════════════════════
+DIRECCIÓN DE ENVÍO
+═══════════════════════════════════════
+${direccionTexto}
+
+═══════════════════════════════════════
+MÉTODO DE PAGO
+═══════════════════════════════════════
+${(() => {
+  if (metodoPago === "paypal") return "PayPal";
+  if (metodoPago === "efectivo") return "Efectivo (Pago contra entrega)";
+  const mp = metodosPago.find((m) => m.id_metodo_pago.toString() === metodoPago);
+  return mp ? `${mp.nombre_en_tarjeta} (**** **** **** ${mp.tarjeta_ultimo})` : "No especificado";
+})()}
+
+¡Gracias por su compra!
+
+Atentamente,
+El equipo de EasyWay
+`.trim();
+
+        const descripcionHTML =
+          `<div style="white-space:pre-wrap; font-family:Arial, sans-serif; font-size:14px; line-height:1.5">` +
+          descripcion
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/\r?\n/g, "<br/>") +
+          `</div>`;
+
+        await enviarCorreo(user.correo, descripcionHTML, asunto);
+      } catch (emailError) {
+        console.error("Error enviando correo:", emailError);
+        toast.warning(
+          "Pedido creado, pero no se pudo enviar el correo de confirmación",
+          { className: "toast-warn" }
+        );
+      }
+
+      setPromocionAplicada(null);
+      setCount(0);
+      toast.success(`¡Pedido #${id_pedido} creado correctamente!`, {
+        className: "toast-success",
+      });
+      navigate("/misPedidos");
+    } catch (err) {
+      console.error("Error creando pedido:", err);
+      const errorMessage =
+        err?.response?.data?.error || "No se pudo crear el pedido";
+      toast.error(errorMessage, { className: "toast-error" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ====== UI ======
   return (
     <div style={styles.container}>
       <div style={styles.content}>
@@ -835,51 +662,91 @@ const descripcionHTML =
           <div style={styles.leftColumn}>
             <div style={styles.section}>
               <h2 style={styles.sectionTitle}>Productos en tu carrito</h2>
-              {detalles.map((item, index) => (
-                <div key={index} style={styles.productItem}>
-                  {item.producto.imagenes &&
-                  item.producto.imagenes.length > 0 &&
-                  item.producto.imagenes[0].url_imagen ? (
-                    <img
-                      src={toPublicFotoSrc(
-                        item.producto.imagenes[0].url_imagen
+
+              {/* Lista de ítems: si hay breakdown lo usamos, si no, la vista original */}
+              {(itemBreakdown || detalles).map((it, index) => {
+                const nombre = it?.nombre || it?.producto?.nombre || "";
+                const qty = it?.qty ?? it?.cantidad_unidad_medida ?? 0;
+                const base = Number(it?.base ?? it?.subtotal_detalle ?? 0);
+                const escal = it?.escalonado;
+                const sub = Number(escal?.subtotal ?? base);
+                const packInfo =
+                  escal?.applied && escal.packQty
+                    ? `Escalonado: ${escal.packQty} por L. ${Number(
+                        escal.packPrice
+                      ).toFixed(2)}`
+                    : "";
+
+                const imgUrl =
+                  it?.producto?.imagenes?.[0]?.url_imagen ||
+                  it?.imagenes?.[0]?.url_imagen ||
+                  "";
+
+                const idProd =
+                  it?.id_producto || it?.producto?.id_producto || 0;
+
+                return (
+                  <div key={index} style={styles.productItem}>
+                    {imgUrl ? (
+                      <img
+                        src={toPublicFotoSrc(imgUrl)}
+                        alt={nombre}
+                        style={styles.productImage}
+                        onError={(e) => {
+                          e.target.src =
+                            'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60"><rect width="60" height="60" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="10" fill="%23999">No img</text></svg>';
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          ...styles.productImage,
+                          backgroundColor: "#f0f0f0",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "0.7rem",
+                          color: "#999",
+                        }}
+                      >
+                        No img
+                      </div>
+                    )}
+
+                    <div style={styles.productInfo}>
+                      <div style={styles.productName}>{nombre}</div>
+                      <div style={styles.productQuantity}>
+                        Cantidad: {qty} | Stock disponible:{" "}
+                        {getStockEnSucursal(Number(idProd))}
+                        {packInfo && (
+                          <div style={{ color: "#16a34a", fontSize: "0.8rem" }}>
+                            {packInfo}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div style={styles.productPrice}>
+                      L. {sub.toFixed(2)}
+                      {base > sub && (
+                        <div
+                          style={{
+                            color: "#94a3b8",
+                            textDecoration: "line-through",
+                            fontWeight: 400,
+                            fontSize: "0.85rem",
+                          }}
+                        >
+                          L. {base.toFixed(2)}
+                        </div>
                       )}
-                      alt={item.producto.nombre}
-                      style={styles.productImage}
-                      onError={(e) => {
-                        e.target.src =
-                          'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60"><rect width="60" height="60" fill="%23f0f0f0"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="10" fill="%23999">No img</text></svg>';
-                      }}
-                    />
-                  ) : (
-                    <div
-                      style={{
-                        ...styles.productImage,
-                        backgroundColor: "#f0f0f0",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "0.7rem",
-                        color: "#999",
-                      }}
-                    >
-                      No img
-                    </div>
-                  )}
-                  <div style={styles.productInfo}>
-                    <div style={styles.productName}>{item.producto.nombre}</div>
-                    <div style={styles.productQuantity}>
-                      Cantidad: {item.cantidad_unidad_medida} | Stock disponible:{" "}
-                      {getStockEnSucursal(item.producto.id_producto)}
                     </div>
                   </div>
-                  <div style={styles.productPrice}>
-                    L. {(item.subtotal_detalle || 0).toFixed(2)}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
+            {/* Dirección */}
             <div style={styles.section}>
               <h2 style={styles.sectionTitle}>Dirección de Envío</h2>
               <div style={styles.formGroup}>
@@ -919,10 +786,10 @@ const descripcionHTML =
                 ))}
             </div>
 
+            {/* Pago */}
             <div style={styles.lastSection}>
               <h2 style={styles.sectionTitle}>Método de Pago</h2>
               <div style={styles.radioGroup}>
-                {/* PayPal */}
                 <div style={styles.radioItem}>
                   <input
                     type="radio"
@@ -939,7 +806,6 @@ const descripcionHTML =
                   </label>
                 </div>
 
-                {/* Efectivo */}
                 <div style={styles.radioItem}>
                   <input
                     type="radio"
@@ -956,7 +822,6 @@ const descripcionHTML =
                   </label>
                 </div>
 
-                {/* Tarjetas registradas */}
                 {metodosPago.map((metodo) => (
                   <div key={metodo.id_metodo_pago} style={styles.radioItem}>
                     <input
@@ -997,6 +862,7 @@ const descripcionHTML =
             </div>
           </div>
 
+          {/* Derecha */}
           <div style={styles.rightColumn}>
             <div style={styles.sidebar}>
               <h3 style={styles.sidebarTitle}>Sucursal Seleccionada</h3>
@@ -1005,25 +871,34 @@ const descripcionHTML =
                   ?.nombre_sucursal || `Sucursal ${idSucursal}`}
               </div>
 
-              {/* Promoción automática */}
-              {promocionAplicada && (
+              {/* Caja: Escalonado activo */}
+              {promoSummary?.anyEscalonado && (
                 <div style={styles.promoSuccess}>
-                  Promoción aplicada: {promocionAplicada.nombre_promocion}
-                  <br />
-                  Descuento:{" "}
-                  {promocionAplicada.id_tipo_promo === 1
-                    ? `${parseFloat(
-                        promocionAplicada.valor_porcentaje
+                  Precio Escalonado activo<br />
+                  Ahorro total:{" "}
+                  <strong>
+                    L. {Number(promoSummary.ahorroEscalonados || 0).toFixed(2)}
+                  </strong>
+                </div>
+              )}
+
+              {/* Promo global */}
+              {promoSummary?.promoGlobal && (
+                <div style={styles.promoSuccess}>
+                  Promoción aplicada: {promoSummary.promoGlobal.nombre || "Promoción"}<br />
+                  {promoSummary.promoGlobal.tipo === 1
+                    ? `Descuento: ${Number(
+                        promoSummary.promoGlobal.valor_porcentaje || 0
                       )}%`
-                    : `L. ${parseFloat(
-                        promocionAplicada.valor_fijo
+                    : `Descuento: L. ${Number(
+                        promoSummary.promoGlobal.valor_fijo || 0
                       ).toFixed(2)}`}
                 </div>
               )}
 
-              {/* Cupón aplicado */}
+              {/* Cupón */}
               {coupon && (
-                <div style={styles.couponSuccess}>
+                <div style={styles.promoSuccess}>
                   Cupón aplicado: <strong>{coupon.codigo}</strong>{" "}
                   {coupon.tipo === "porcentaje"
                     ? `(${Number(coupon.valor)}%)`
@@ -1041,7 +916,6 @@ const descripcionHTML =
                     color: "#495057",
                   }}
                 >
-                  {/* Subtotal original */}
                   <div
                     style={{
                       display: "flex",
@@ -1049,12 +923,13 @@ const descripcionHTML =
                       marginBottom: "8px",
                     }}
                   >
-                    <span>Subtotal:</span>
-                    <span>L. {subtotal.toFixed(2)}</span>
+                    <span>Subtotal</span>
+                    <span>
+                      L. {getSubtotalConEscalonados().toFixed(2)}
+                    </span>
                   </div>
 
-                  {/* Promoción aplicada */}
-                  {promocionAplicada && (
+                  {getDescPromoGlobal() > 0 && (
                     <div
                       style={{
                         display: "flex",
@@ -1063,15 +938,12 @@ const descripcionHTML =
                         color: "#16a34a",
                       }}
                     >
-                      <span>
-                        Promoción ({promocionAplicada.nombre_promocion}):
-                      </span>
-                      <span>-L. {obtenerDescuentoPromocionSolo().toFixed(2)}</span>
+                      <span>Promoción</span>
+                      <span>-L. {getDescPromoGlobal().toFixed(2)}</span>
                     </div>
                   )}
 
-                  {/* Cupón aplicado */}
-                  {coupon && (
+                  {getDescCupon() > 0 && (
                     <div
                       style={{
                         display: "flex",
@@ -1080,25 +952,11 @@ const descripcionHTML =
                         color: "#16a34a",
                       }}
                     >
-                      <span>
-                        Cupón ({coupon.codigo}
-                        {coupon.tipo === "porcentaje"
-                          ? ` ${Number(coupon.valor)}%`
-                          : ""}):
-                      </span>
-                      <span>
-                        -L.{" "}
-                        {calcularDescuentoCupon(
-                          Math.max(
-                            0,
-                            subtotal - obtenerDescuentoPromocionSolo()
-                          )
-                        ).toFixed(2)}
-                      </span>
+                      <span>Cupón</span>
+                      <span>-L. {getDescCupon().toFixed(2)}</span>
                     </div>
                   )}
 
-                  {/* Subtotal con descuentos */}
                   <div
                     style={{
                       display: "flex",
@@ -1109,11 +967,10 @@ const descripcionHTML =
                       borderTop: "1px solid #e9ecef",
                     }}
                   >
-                    <span>Subtotal con descuentos:</span>
-                    <span>L. {obtenerSubtotalConDescuento().toFixed(2)}</span>
+                    <span>Subtotal con descuentos</span>
+                    <span>L. {getSubtotalNeto().toFixed(2)}</span>
                   </div>
 
-                  {/* Impuesto */}
                   <div
                     style={{
                       display: "flex",
@@ -1121,11 +978,10 @@ const descripcionHTML =
                       marginBottom: "8px",
                     }}
                   >
-                    <span>Impuesto (15%):</span>
-                    <span>L. {obtenerImpuesto().toFixed(2)}</span>
+                    <span>Impuesto (15%)</span>
+                    <span>L. {getImpuesto().toFixed(2)}</span>
                   </div>
 
-                  {/* Envío */}
                   <div
                     style={{
                       display: "flex",
@@ -1133,11 +989,10 @@ const descripcionHTML =
                       marginBottom: "8px",
                     }}
                   >
-                    <span>Envío:</span>
-                    <span>L. 10.00</span>
+                    <span>Envío</span>
+                    <span>L. {getEnvio().toFixed(2)}</span>
                   </div>
 
-                  {/* Total final */}
                   <div
                     style={{
                       display: "flex",
@@ -1150,8 +1005,8 @@ const descripcionHTML =
                       color: "#2b6daf",
                     }}
                   >
-                    <span>Total a pagar:</span>
-                    <span>L. {obtenerTotal().toFixed(2)}</span>
+                    <span>Total a pagar</span>
+                    <span>L. {getTotal().toFixed(2)}</span>
                   </div>
                 </div>
               )}
@@ -1223,7 +1078,6 @@ const descripcionHTML =
         </div>
       </div>
 
-
       {/* Recomendaciones */}
       <div style={styles.recommendationsSection}>
         <div style={styles.content}>
@@ -1237,13 +1091,16 @@ const descripcionHTML =
           <div style={styles.scrollWrapper}>
             <button
               style={styles.arrow}
-              onClick={() => scroll("left", prodRefRecomendados, 140)}
+              onClick={() => {
+                if (prodRefRecomendados.current) {
+                  prodRefRecomendados.current.scrollBy({
+                    left: -140,
+                    behavior: "smooth",
+                  });
+                }
+              }}
             >
-              <img
-                src={arrowL}
-                alt="left"
-                style={{ width: "100%", height: "100%" }}
-              />
+              <img src={arrowL} alt="left" style={{ width: "100%", height: "100%" }} />
             </button>
 
             <div style={styles.divProducts} ref={prodRefRecomendados}>
@@ -1283,9 +1140,7 @@ const descripcionHTML =
                     </div>
                   </div>
 
-                  {p.imagenes &&
-                  p.imagenes.length > 0 &&
-                  p.imagenes[0].url_imagen ? (
+                  {p.imagenes && p.imagenes.length > 0 && p.imagenes[0].url_imagen ? (
                     <img
                       src={toPublicFotoSrc(p.imagenes[0].url_imagen)}
                       alt={p.nombre}
@@ -1343,13 +1198,16 @@ const descripcionHTML =
 
             <button
               style={styles.arrow}
-              onClick={() => scroll("right", prodRefRecomendados, 140)}
+              onClick={() => {
+                if (prodRefRecomendados.current) {
+                  prodRefRecomendados.current.scrollBy({
+                    left: 140,
+                    behavior: "smooth",
+                  });
+                }
+              }}
             >
-              <img
-                src={arrowR}
-                alt="right"
-                style={{ width: "100%", height: "100%" }}
-              />
+              <img src={arrowR} alt="right" style={{ width: "100%", height: "100%" }} />
             </button>
           </div>
         </div>
@@ -1357,6 +1215,13 @@ const descripcionHTML =
     </div>
   );
 };
+
+function getStars(obj) {
+  const n = Math.round(
+    Number(obj?.estrellas ?? obj?.rating ?? obj?.valoracion ?? 0)
+  );
+  return Math.max(0, Math.min(5, isNaN(n) ? 0 : n));
+}
 
 const styles = {
   container: {
@@ -1374,23 +1239,10 @@ const styles = {
     padding: "20px",
     minHeight: "100%",
   },
-  headerWrapper: {
-    marginBottom: "20px",
-  },
-  header: {
-    fontSize: "28px",
-    fontWeight: "650",
-    color: "#f97316",
-    margin: 0,
-  },
-  headerLineWrapper: {
-    marginTop: "4px",
-  },
-  headerLine: {
-    width: "100%",
-    height: "2px",
-    backgroundColor: "#f97316",
-  },
+  headerWrapper: { marginBottom: "20px" },
+  header: { fontSize: "28px", fontWeight: "650", color: "#f97316", margin: 0 },
+  headerLineWrapper: { marginTop: "4px" },
+  headerLine: { width: "100%", height: "2px", backgroundColor: "#f97316" },
   mainLayout: {
     display: "grid",
     gridTemplateColumns: "1fr 380px",
@@ -1414,14 +1266,8 @@ const styles = {
     position: "sticky",
     top: "20px",
   },
-  section: {
-    padding: "20px",
-    borderBottom: "1px solid #e9ecef",
-  },
-  lastSection: {
-    padding: "20px",
-    borderBottom: "none",
-  },
+  section: { padding: "20px", borderBottom: "1px solid #e9ecef" },
+  lastSection: { padding: "20px", borderBottom: "none" },
   sectionTitle: {
     fontSize: "1.2rem",
     color: "#2b6daf",
@@ -1429,9 +1275,7 @@ const styles = {
     marginBottom: "15px",
     margin: "0 0 15px 0",
   },
-  formGroup: {
-    marginBottom: "15px",
-  },
+  formGroup: { marginBottom: "15px" },
   label: {
     display: "block",
     marginBottom: "6px",
@@ -1450,38 +1294,10 @@ const styles = {
     outline: "none",
     transition: "border-color 0.15s ease-in-out",
   },
-  input: {
-    flex: "1",
-    padding: "10px",
-    border: "1px solid #ced4da",
-    borderRadius: "4px",
-    fontSize: "0.9rem",
-    backgroundColor: "#ffffff",
-    color: "#495057",
-    outline: "none",
-  },
-  radioGroup: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "8px",
-  },
-  radioItem: {
-    display: "flex",
-    alignItems: "center",
-    padding: "0",
-    borderBottom: "1px solid #ccc",
-  },
-  radioInput: {
-    marginRight: "10px",
-    accentColor: "#2ca9e3",
-    cursor: "pointer",
-  },
-  radioLabel: {
-    fontSize: "0.9rem",
-    color: "#495057",
-    cursor: "pointer",
-    textAlign: " left",
-  },
+  radioGroup: { display: "flex", flexDirection: "column", gap: "8px" },
+  radioItem: { display: "flex", alignItems: "center", padding: "0", borderBottom: "1px solid #ccc" },
+  radioInput: { marginRight: "10px", accentColor: "#2ca9e3", cursor: "pointer" },
+  radioLabel: { fontSize: "0.9rem", color: "#495057", cursor: "pointer", textAlign: " left" },
   button: {
     backgroundColor: "#2ca9e3",
     color: "#ffffff",
@@ -1518,15 +1334,8 @@ const styles = {
     cursor: "pointer",
     whiteSpace: "nowrap",
   },
-  sidebar: {
-    width: "100%",
-  },
-  sidebarTitle: {
-    fontSize: "1rem",
-    color: "#495057",
-    fontWeight: "600",
-    marginBottom: "12px",
-  },
+  sidebar: { width: "100%" },
+  sidebarTitle: { fontSize: "1rem", color: "#495057", fontWeight: "600", marginBottom: "12px" },
   sucursalInfo: {
     width: "100%",
     padding: "12px",
@@ -1546,30 +1355,11 @@ const styles = {
     paddingBottom: "8px",
     borderBottom: "1px solid #e9ecef",
   },
-  proteccionBox: {
-    display: "flex",
-    alignItems: "flex-start",
-    padding: "12px 0",
-  },
-  proteccionIcon: {
-    marginRight: "8px",
-    marginTop: "2px",
-    fontSize: "16px",
-  },
-  proteccionContent: {
-    flex: "1",
-  },
-  proteccionTitle: {
-    fontSize: "0.9rem",
-    color: "#495057",
-    fontWeight: "600",
-    marginBottom: "4px",
-  },
-  proteccionText: {
-    fontSize: "0.8rem",
-    color: "#6c757d",
-    lineHeight: "1.3",
-  },
+  proteccionBox: { display: "flex", alignItems: "flex-start", padding: "12px 0" },
+  proteccionIcon: { marginRight: "8px", marginTop: "2px", fontSize: "16px" },
+  proteccionContent: { flex: "1" },
+  proteccionTitle: { fontSize: "0.9rem", color: "#495057", fontWeight: "600", marginBottom: "4px" },
+  proteccionText: { fontSize: "0.8rem", color: "#6c757d", lineHeight: "1.3" },
   promoSuccess: {
     backgroundColor: "#d1ecf1",
     border: "1px solid #bee5eb",
@@ -1592,62 +1382,20 @@ const styles = {
     marginRight: "12px",
     borderRadius: "4px",
   },
-  productInfo: {
-    flex: "1",
-  },
-  productName: {
-    fontWeight: "500",
-    marginBottom: "4px",
-    fontSize: "0.95rem",
-  },
-  productQuantity: {
-    color: "#6c757d",
-    fontSize: "0.85rem",
-  },
-  productPrice: {
-    fontWeight: "600",
-    color: "#2b6daf",
-    fontSize: "0.95rem",
-  },
-  emptyState: {
-    textAlign: "center",
-    padding: "40px 20px",
-    color: "#6c757d",
-  },
-  emptyIcon: {
-    fontSize: "3rem",
-    marginBottom: "15px",
-  },
-  emptyText: {
-    fontSize: "1.3rem",
-    marginBottom: "10px",
-  },
-  emptySubtext: {
-    marginBottom: "20px",
-    color: "#868e96",
-  },
+  productInfo: { flex: "1" },
+  productName: { fontWeight: "500", marginBottom: "4px", fontSize: "0.95rem" },
+  productQuantity: { color: "#6c757d", fontSize: "0.85rem" },
+  productPrice: { fontWeight: "600", color: "#2b6daf", fontSize: "0.95rem" },
+  emptyState: { textAlign: "center", padding: "40px 20px", color: "#6c757d" },
+  emptyIcon: { fontSize: "3rem", marginBottom: "15px" },
+  emptyText: { fontSize: "1.3rem", marginBottom: "10px" },
+  emptySubtext: { marginBottom: "20px", color: "#868e96" },
 
-  // Estilos para productos recomendados
-  recommendationsSection: {
-    backgroundColor: "#f8f9fa",
-    paddingTop: "40px",
-    paddingBottom: "40px",
-  },
-  recommendationsHeader: {
-    marginBottom: "20px",
-  },
-  recommendationsTitle: {
-    fontSize: "24px",
-    fontWeight: "650",
-    color: "#f97316",
-    margin: 0,
-  },
-  scrollWrapper: {
-    display: "flex",
-    alignItems: "center",
-    width: "100%",
-    padding: "0 20px",
-  },
+  // Recomendaciones
+  recommendationsSection: { backgroundColor: "#f8f9fa", paddingTop: "40px", paddingBottom: "40px" },
+  recommendationsHeader: { marginBottom: "20px" },
+  recommendationsTitle: { fontSize: "24px", fontWeight: "650", color: "#f97316", margin: 0 },
+  scrollWrapper: { display: "flex", alignItems: "center", width: "100%", padding: "0 20px" },
   arrow: {
     background: "transparent",
     width: "35px",
@@ -1679,17 +1427,8 @@ const styles = {
     backgroundColor: "#fff",
     boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.15)",
   },
-  topRow: {
-    width: "100%",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "3px",
-  },
-  stars: {
-    color: "#2b6daf",
-    fontSize: "25px",
-  },
+  topRow: { width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "3px" },
+  stars: { color: "#2b6daf", fontSize: "25px" },
   offerChip: {
     backgroundColor: "#ff1744",
     color: "#fff",
@@ -1712,39 +1451,11 @@ const styles = {
     fontSize: "10px",
     color: "#999",
   },
-  productName: {
-    width: "100%",
-    textAlign: "left",
-    fontSize: "18px",
-    marginTop: "auto",
-  },
-  priceRow: {
-    width: "100%",
-    display: "flex",
-    alignItems: "baseline",
-    gap: "10px",
-    justifyContent: "center",
-    marginBottom: "10px",
-  },
-  productPrice: {
-    width: "100%",
-    textAlign: "left",
-    fontSize: "17px",
-    color: "#999",
-    marginTop: "auto",
-  },
-  newPrice: {
-    fontSize: "16px",
-    fontWeight: 900,
-    color: "#16a34a", // verde
-    lineHeight: 1.1,
-  },
-  strikePrice: {
-    fontSize: "14px",
-    color: "#94a3b8", // gris
-    textDecoration: "line-through",
-    lineHeight: 1.1,
-  },
+  productName: { width: "100%", textAlign: "left", fontSize: "18px", marginTop: "auto" },
+  priceRow: { width: "100%", display: "flex", alignItems: "baseline", gap: "10px", justifyContent: "center", marginBottom: "10px" },
+  productPrice: { width: "100%", textAlign: "left", fontSize: "17px", color: "#999", marginTop: "auto" },
+  newPrice: { fontSize: "16px", fontWeight: 900, color: "#16a34a", lineHeight: 1.1 },
+  strikePrice: { fontSize: "14px", color: "#94a3b8", textDecoration: "line-through", lineHeight: 1.1 },
   addButton: {
     marginTop: "auto",
     width: "100%",

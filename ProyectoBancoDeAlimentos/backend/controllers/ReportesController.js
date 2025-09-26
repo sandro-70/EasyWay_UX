@@ -1,6 +1,6 @@
 const { Sequelize,Op, fn, col, literal  } = require('sequelize');
 const { factura_detalle, producto, factura, pedido, estado_pedido, promocion, promocion_pedido, Usuario, categoria, 
-  subcategoria, promocion_producto, metodo_pago, sequelize } = require("../models");
+  subcategoria, promocion_producto, metodo_pago, sequelize, sucursal } = require("../models");
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 
@@ -22,7 +22,10 @@ exports.getVentasConFiltros = async (req, res) => {
     const ventas = await factura_detalle.findAll({
       attributes: [
         ['id_producto', 'id_producto'],
-        [Sequelize.fn('SUM', Sequelize.col('factura_detalle.cantidad_unidad_medida')), 'total_vendido']
+        [Sequelize.fn('SUM', Sequelize.col('factura_detalle.cantidad_unidad_medida')), 'total_vendido'],
+        [Sequelize.fn('MAX', Sequelize.col('factura.fecha_emision')), 'ultima_fecha_venta'],
+        [Sequelize.col('producto.subcategoria.categoria.nombre'), 'categoria'],
+        [Sequelize.col('factura.pedido.sucursal.nombre_sucursal'), 'sucursal']
       ],
       include: [
         {
@@ -37,6 +40,10 @@ exports.getVentasConFiltros = async (req, res) => {
                   model: estado_pedido,
                   attributes: [],
                   where: { nombre_pedido: 'Enviado' }
+                },
+                {
+                  model: sucursal,
+                  attributes: ['nombre_sucursal']
                 }
               ]
             }
@@ -44,11 +51,25 @@ exports.getVentasConFiltros = async (req, res) => {
         },
         {
           model: producto,
-          attributes: ['nombre', 'precio_base']
+          attributes: ['nombre', 'precio_base'],
+          include: [
+            {
+              model: subcategoria,
+              as: 'subcategoria',
+              attributes: [],
+              include: [
+                {
+                  model: categoria,
+                  as: 'categoria',
+                  attributes: ['nombre']
+                }
+              ]
+            }
+          ]
         }
       ],
       where: whereCondition,
-      group: ['factura_detalle.id_producto', 'producto.id_producto', 'producto.nombre', 'producto.precio_base'],
+      group: ['factura_detalle.id_producto', 'producto.id_producto', 'producto.nombre', 'producto.precio_base', 'producto.subcategoria.categoria.id_categoria', 'producto.subcategoria.categoria.nombre', 'factura.pedido.sucursal.id_sucursal', 'factura.pedido.sucursal.nombre_sucursal'],
       order: [[Sequelize.literal('total_vendido'), 'DESC']],
       subQuery: false
     });
@@ -78,7 +99,10 @@ exports.exportVentasExcel = async (req, res) => {
     const ventas = await factura_detalle.findAll({
       attributes: [
         ['id_producto', 'id_producto'],
-        [Sequelize.fn('SUM', Sequelize.col('factura_detalle.cantidad_unidad_medida')), 'total_vendido']
+        [Sequelize.fn('SUM', Sequelize.col('factura_detalle.cantidad_unidad_medida')), 'total_vendido'],
+        [Sequelize.fn('MAX', Sequelize.col('factura.fecha_emision')), 'ultima_fecha_venta'],
+        [Sequelize.col('producto.subcategoria.categoria.nombre'), 'categoria'],
+        [Sequelize.col('factura.pedido.sucursal.nombre_sucursal'), 'sucursal']
       ],
       include: [
         {
@@ -93,6 +117,10 @@ exports.exportVentasExcel = async (req, res) => {
                   model: estado_pedido,
                   attributes: [],
                   where: { nombre_pedido: 'Enviado' }
+                },
+                {
+                  model: sucursal,
+                  attributes: ['nombre_sucursal']
                 }
               ]
             }
@@ -100,11 +128,25 @@ exports.exportVentasExcel = async (req, res) => {
         },
         {
           model: producto,
-          attributes: ['nombre', 'precio_base']
+          attributes: ['nombre', 'precio_base'],
+          include: [
+            {
+              model: subcategoria,
+              as: 'subcategoria',
+              attributes: [],
+              include: [
+                {
+                  model: categoria,
+                  as: 'categoria',
+                  attributes: ['nombre']
+                }
+              ]
+            }
+          ]
         }
       ],
       where: whereCondition,
-      group: ['factura_detalle.id_producto', 'producto.id_producto', 'producto.nombre', 'producto.precio_base'],
+      group: ['factura_detalle.id_producto', 'producto.id_producto', 'producto.nombre', 'producto.precio_base', 'producto.subcategoria.categoria.id_categoria', 'producto.subcategoria.categoria.nombre', 'factura.pedido.sucursal.id_sucursal', 'factura.pedido.sucursal.nombre_sucursal'],
       order: [[Sequelize.literal('total_vendido'), 'DESC']],
       subQuery: false
     });
@@ -115,16 +157,22 @@ exports.exportVentasExcel = async (req, res) => {
     worksheet.columns = [
       { header: 'ID Producto', key: 'id_producto', width: 15 },
       { header: 'Nombre Producto', key: 'nombre', width: 30 },
+      { header: 'Categoria', key: 'categoria', width: 20 },
+      { header: 'Sucursal', key: 'sucursal', width: 20 },
       { header: 'Precio Base', key: 'precio_base', width: 15 },
-      { header: 'Total Vendido', key: 'total_vendido', width: 15 }
+      { header: 'Total Vendido', key: 'total_vendido', width: 15 },
+      { header: 'Ultima Fecha Venta', key: 'ultima_fecha_venta', width: 20 }
     ];
 
     ventas.forEach(venta => {
       worksheet.addRow({
         id_producto: venta.dataValues.id_producto,
         nombre: venta.producto.nombre,
+        categoria: venta.dataValues.categoria || '',
+        sucursal: venta.dataValues.sucursal || 'Sucursal no definida',
         precio_base: venta.producto.precio_base,
-        total_vendido: venta.dataValues.total_vendido
+        total_vendido: venta.dataValues.total_vendido,
+        ultima_fecha_venta: venta.dataValues.ultima_fecha_venta ? new Date(venta.dataValues.ultima_fecha_venta).toLocaleDateString('es-HN') : ''
       });
     });
 
@@ -157,7 +205,10 @@ exports.exportVentasPDF = async (req, res) => {
     const ventas = await factura_detalle.findAll({
       attributes: [
         ['id_producto', 'id_producto'],
-        [Sequelize.fn('SUM', Sequelize.col('factura_detalle.cantidad_unidad_medida')), 'total_vendido']
+        [Sequelize.fn('SUM', Sequelize.col('factura_detalle.cantidad_unidad_medida')), 'total_vendido'],
+        [Sequelize.fn('MAX', Sequelize.col('factura.fecha_emision')), 'ultima_fecha_venta'],
+        [Sequelize.col('producto.subcategoria.categoria.nombre'), 'categoria'],
+        [Sequelize.col('factura.pedido.sucursal.nombre_sucursal'), 'sucursal']
       ],
       include: [
         {
@@ -172,6 +223,10 @@ exports.exportVentasPDF = async (req, res) => {
                   model: estado_pedido,
                   attributes: [],
                   where: { nombre_pedido: 'Enviado' }
+                },
+                {
+                  model: sucursal,
+                  attributes: ['nombre_sucursal']
                 }
               ]
             }
@@ -179,11 +234,25 @@ exports.exportVentasPDF = async (req, res) => {
         },
         {
           model: producto,
-          attributes: ['nombre', 'precio_base']
+          attributes: ['nombre', 'precio_base'],
+          include: [
+            {
+              model: subcategoria,
+              as: 'subcategoria',
+              attributes: [],
+              include: [
+                {
+                  model: categoria,
+                  as: 'categoria',
+                  attributes: ['nombre']
+                }
+              ]
+            }
+          ]
         }
       ],
       where: whereCondition,
-      group: ['factura_detalle.id_producto', 'producto.id_producto', 'producto.nombre', 'producto.precio_base'],
+      group: ['factura_detalle.id_producto', 'producto.id_producto', 'producto.nombre', 'producto.precio_base', 'producto.subcategoria.categoria.id_categoria', 'producto.subcategoria.categoria.nombre', 'factura.pedido.sucursal.id_sucursal', 'factura.pedido.sucursal.nombre_sucursal'],
       order: [[Sequelize.literal('total_vendido'), 'DESC']],
       subQuery: false
     });
@@ -200,8 +269,11 @@ exports.exportVentasPDF = async (req, res) => {
     ventas.forEach(venta => {
       doc.fontSize(12).text(`ID Producto: ${venta.dataValues.id_producto}`);
       doc.text(`Nombre: ${venta.producto.nombre}`);
+      doc.text(`Categoria: ${venta.dataValues.categoria || 'N/A'}`);
+      doc.text(`Sucursal: ${venta.dataValues.sucursal || 'Sucursal no definida'}`);
       doc.text(`Precio Base: ${venta.producto.precio_base}`);
       doc.text(`Total Vendido: ${venta.dataValues.total_vendido}`);
+      doc.text(`Ultima Fecha Venta: ${venta.dataValues.ultima_fecha_venta ? new Date(venta.dataValues.ultima_fecha_venta).toLocaleDateString('es-HN') : 'N/A'}`);
       doc.moveDown();
     });
 

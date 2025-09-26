@@ -278,3 +278,26 @@
     transform: scale(1);
   }
 }
+
+/* Savings Card Styles */
+.savings-card {
+  background: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 10px 0;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.savings-card h3 {
+  margin: 0 0 8px 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.savings-amount {
+  font-size: 24px;
+  font-weight: bold;
+  color: #d8572f;
+}

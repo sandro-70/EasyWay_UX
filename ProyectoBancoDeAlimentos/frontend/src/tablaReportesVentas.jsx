@@ -95,7 +95,6 @@ function TablaReportesVentas() {
   const [appliedFilters, setAppliedFilters] = useState({
     producto: "",
     categoria: "",
-    sucursal: "",
   });
   const [orderDesc, setOrderDesc] = useState(true);
   const [trimestre, setTrimestre] = useState(""); // filtro por trimestre
@@ -110,13 +109,13 @@ function TablaReportesVentas() {
         const formatted = res.data.map((v, index) => ({
           id: index + 1,
           producto: v.producto.nombre,
-          categoria: v.producto.categoria || "-",
-          sucursal: v.sucursal?.nombre || "Sucursal no definida",
+          categoria: v.categoria || "-",
+          sucursal: v.sucursal || "Sucursal no definida",
           cantidad: v.total_vendido,
           precioVenta: v.producto.precio_base,
           total: v.total_vendido * v.producto.precio_base,
           // ✅ Extraer fecha directamente desde la API
-          fecha: v.fecha ? new Date(v.fecha) : null,
+          fecha: v.ultima_fecha_venta ? new Date(v.ultima_fecha_venta) : null,
         }));
         setVentas(formatted);
         setLoading(false);
@@ -140,9 +139,6 @@ function TablaReportesVentas() {
     const matchCategoria = appliedFilters.categoria
       ? item.categoria.toLowerCase().includes(appliedFilters.categoria.toLowerCase())
       : true;
-    const matchSucursal = appliedFilters.sucursal
-      ? item.sucursal.toLowerCase().includes(appliedFilters.sucursal.toLowerCase())
-      : true;
 
     let matchTrimestre = true;
     if (trimestre && item.fecha) {
@@ -151,7 +147,7 @@ function TablaReportesVentas() {
       matchTrimestre = trimestreCalculado === parseInt(trimestre);
     }
 
-    return matchProducto && matchCategoria && matchSucursal && matchTrimestre;
+    return matchProducto && matchCategoria && matchTrimestre;
   });
 
   // Paginación
@@ -252,18 +248,6 @@ function TablaReportesVentas() {
                     </div>
                   </th>
                   <th>Cantidad</th>
-                  <th>
-                    <div className="flex items-center justify-center">
-                      <span>Sucursal</span>
-                      <span
-                        className="ventas-search-icon ml-1 cursor-pointer"
-                        onClick={() => setShowFilter("sucursal")}
-                        title="Filtrar sucursal"
-                      >
-                        <Icon.Search />
-                      </span>
-                    </div>
-                  </th>
                   <th>Precio Venta</th>
                   <th>Total Vendido</th>
                   <th>Fecha</th>
@@ -272,7 +256,7 @@ function TablaReportesVentas() {
               <tbody>
                 {paginatedData.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="ventas-table-empty">
+                    <td colSpan={7} className="ventas-table-empty">
                       ⚠ Sin resultados
                     </td>
                   </tr>
@@ -283,7 +267,6 @@ function TablaReportesVentas() {
                       <td>{row.producto}</td>
                       <td>{row.categoria}</td>
                       <td>{row.cantidad}</td>
-                      <td>{row.sucursal}</td>
                       <td>L. {row.precioVenta}</td>
                       <td>L. {row.total}</td>
                       <td>

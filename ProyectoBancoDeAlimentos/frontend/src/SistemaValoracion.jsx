@@ -86,12 +86,16 @@ export default function SistemaValoracion() {
           getTotalAhorrado(USER_ID),
         ]);
 
+        console.log('Ahorro Response:', ahorroResp); // Debug log for savings API response
+
         if (!mounted) return;
 
         const topArr = (Array.isArray(top?.data) ? top.data : []).map(normProd);
         const recArr = (Array.isArray(recs?.data) ? recs.data : []).map(normProd);
         const diasArr = Array.isArray(dias?.data) ? dias.data : [];
         const totalAh = Number(ahorroResp?.data?.total_ahorrado ?? 0);
+
+        console.log('Calculated totalAh:', totalAh); // Debug log for calculated savings
 
         setRecurrentes(topArr);
         setRecomendados(recArr);

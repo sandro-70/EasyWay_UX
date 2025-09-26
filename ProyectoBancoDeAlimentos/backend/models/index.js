@@ -161,6 +161,9 @@ producto.belongsToMany(promocion, { through: promocion_producto, foreignKey: 'id
 promocion.belongsToMany(pedido, { through: promocion_pedido, foreignKey: 'id_promocion', otherKey: 'id_pedido' });
 pedido.belongsToMany(promocion, { through: promocion_pedido, foreignKey: 'id_pedido', otherKey: 'id_promocion' });
 
+promocion_pedido.belongsTo(pedido, { foreignKey: 'id_pedido' });
+pedido.hasMany(promocion_pedido, { foreignKey: 'id_pedido' });
+
 // --- Cupones ---
 cupon.hasMany(historial_cupon, { foreignKey: 'id_cupon' });
 historial_cupon.belongsTo(cupon, { foreignKey: 'id_cupon' });

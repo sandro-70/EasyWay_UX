@@ -1,5 +1,5 @@
 const {Sequelize} = require('sequelize');
-const { factura, factura_detalle, producto, pedido, Usuario, estado_pedido, valoracion_producto } = require("../models");
+const { factura, factura_detalle, producto, pedido, Usuario, estado_pedido, valoracion_producto, promocion_pedido } = require("../models");
 
 exports.getTopProductosUsuario = async (req, res) => {
   try {
@@ -104,33 +104,44 @@ exports.getDiasCompra = async (req, res) => {
     res.status(500).json({ error: "Error al obtener días de compra" });
   }
 };
-
 exports.getTotalAhorrado = async (req, res) => {
   try {
     const { id_usuario } = req.body;
 
-    const resultado = await pedido.findOne({
+    // Suma de descuentos de pedidos (cupones) para todos los pedidos del usuario
+    const descuentoPedidos = await pedido.findAll({
       attributes: [
-        [Sequelize.fn("SUM", Sequelize.col("descuento")), "total_ahorrado"]
+        [Sequelize.fn("SUM", Sequelize.fn("COALESCE", Sequelize.col("descuento"), 0)), "total_descuento_pedidos"]
       ],
       where: { id_usuario },
+      raw: true
+    });
+
+    // Suma de descuentos de promociones aplicadas a todos los pedidos del usuario
+    const descuentoPromociones = await promocion_pedido.findAll({
+      attributes: [
+        [Sequelize.fn("SUM", Sequelize.fn("COALESCE", Sequelize.col("monto_descuento"), 0)), "total_descuento_promociones"]
+      ],
       include: [
         {
-          model: estado_pedido,
+          model: pedido,
           attributes: [],
-          where: { nombre_pedido: "Enviado" }
+          where: { id_usuario }
         }
       ],
       raw: true
     });
 
-    res.json({ total_ahorrado: resultado.total_ahorrado ?? 0 });
+    const totalDescuentoPedidos = Number(descuentoPedidos?.[0]?.total_descuento_pedidos ?? 0);
+    const totalDescuentoPromociones = Number(descuentoPromociones?.[0]?.total_descuento_promociones ?? 0);
+    const totalAhorrado = totalDescuentoPedidos + totalDescuentoPromociones;
+
+    res.json({ total_ahorrado: totalAhorrado });
   } catch (error) {
     console.error("Error al calcular total ahorrado:", error);
     res.status(500).json({ error: "Error al calcular el ahorro del usuario!" });
   }
 };
-
 
 exports.getUsuariosReporte = async (req, res) => {
   try {

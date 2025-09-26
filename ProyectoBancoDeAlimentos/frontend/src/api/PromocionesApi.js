@@ -63,3 +63,6 @@ export function aplicarPreciosEscalonados(payload) {
 export function getReportePromociones() {
   return axiosInstance.get(`/api/reportes/promociones`);
 }
+
+export const getReglasEscalonadas = () =>
+  axiosInstance.get("/api/promociones/escalonados");

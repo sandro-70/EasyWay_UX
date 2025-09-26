@@ -5,7 +5,6 @@ import { useRef } from "react";
 import arrowL from "./images/arrowL.png";
 import arrowR from "./images/arrowR.png";
 import React from "react";
-import { useTranslation } from "react-i18next";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   SumarItem,
@@ -94,7 +93,6 @@ function Carrito() {
   const [idSucursal, setIdSucursal] = useState(null);
   const [promociones, setPromociones] = useState([]);
   const [promocionAplicada, setPromocionAplicada] = useState(null);
-  const { t } = useTranslation();
 
   console.log("Header user carrito", user);
 
@@ -1057,7 +1055,7 @@ function Carrito() {
       <div className="px-32">
         <div>
           <h1 className="font-roboto text-[#f0833e] text-5xl justify-center pb-3 text-left">
-            {t("Carrito")}
+            Carrito
           </h1>
           <hr className="bg-[#f0833e] h-[2px] mb-4"></hr>
         </div>
@@ -1068,14 +1066,14 @@ function Carrito() {
                 <img src={carrito} className="object-cover mt-16" />
 
                 <div className="mx-4 flex flex-col gap-y-6 font-medium">
-                  <p className="text-[24px] mt-8">{t("cart_empty")}</p>
+                  <p className="text-[24px] mt-8">Tu carrito esta vacio</p>
                   <button
                     onClick={() => {
                       navigate("/");
                     }}
                     className="bg-[#2B6DAF] text-[28px] text-white rounded-[10px] p-3 px-6"
                   >
-                    {t("Explorar")}
+                    Explora articulos
                   </button>
                 </div>
               </div>
@@ -1136,7 +1134,7 @@ function Carrito() {
                                 <span
                                   style={{ ...styles.offerChip, marginLeft: 8 }}
                                 >
-                                  {t("offers")}
+                                  OFERTA
                                 </span>
                               )}
 
@@ -1145,7 +1143,7 @@ function Carrito() {
                                 <span
                                   style={{ ...styles.offerChip, marginLeft: 8 }}
                                 >
-                                  {t("mostPurchased")}
+                                  MÁS COMPRADO
                                 </span>
                               )}
                               {Number(p.producto.id_producto) ===
@@ -1153,7 +1151,7 @@ function Carrito() {
                                 <span
                                   style={{ ...styles.offerChip, marginLeft: 6 }}
                                 >
-                                  {t("newest")}
+                                  MÁS NUEVO
                                 </span>
                               )}
                             </p>
@@ -1178,11 +1176,11 @@ function Carrito() {
                             <div className="mb-2">
                               {sinStock ? (
                                 <span className="text-red-600 font-semibold text-sm">
-                                  {t("outStock")}
+                                  Sin stock en esta sucursal
                                 </span>
                               ) : (
                                 <span className="text-green-600 text-sm">
-                                  {stockDisponible} {t("available")}
+                                  {stockDisponible} disponibles
                                 </span>
                               )}
                             </div>
@@ -1254,36 +1252,53 @@ function Carrito() {
                               {/* Precio a la derecha (subtotal con OFERTA si aplica) */}
                               <div className="flex w-full h-full justify-end items-center">
                                 {(() => {
-                                  const best = bestPromoPriceForProduct(
-                                    p.producto,
-                                    total
-                                  ); // 👈
-                                  const qty =
-                                    Number(p.cantidad_unidad_medida) || 0;
-                                  const unitBase =
-                                    Number(p.producto.precio_base) || 0;
-                                  const subBase = unitBase * qty;
+  const best = bestPromoPriceForProduct(p.producto, total);
+  const qty = Number(p.cantidad_unidad_medida) || 0;
+  const unitBase = Number(p.producto.precio_base) || 0;
+  const subBase = unitBase * qty;
 
-                                  if (best) {
-                                    const subPromo = best.finalPrice * qty;
-                                    return (
-                                      <div className="text-right">
-                                        <div className="text-2xl font-extrabold text-green-600">
-                                          L. {subPromo.toFixed(2)}
-                                        </div>
-                                        <div className="text-lg text-slate-400 line-through">
-                                          L. {subBase.toFixed(2)}
-                                        </div>
-                                      </div>
-                                    );
-                                  }
+  if (best) {
+    const info = promosInfo[best.promoId];
+    const subPromo = best.finalPrice * qty;
 
-                                  return (
-                                    <div className="text-2xl font-bold">
-                                      L. {subBase.toFixed(2)}
-                                    </div>
-                                  );
-                                })()}
+    const esFijo = Number(info?.id_tipo_promo) === 2;
+    const esGratis = esFijo && best.finalPrice <= 0.009; // ~0
+
+    if (esGratis) {
+      // ✅ Visualización "bonita" para monto fijo que cubre todo
+      return (
+        <div className="text-right">
+          <div className="text-2xl font-extrabold text-green-600">
+            
+          </div>
+          <div className="text-lg text-slate-400 line-through">
+            L. {subBase.toFixed(2)}
+          </div>
+        </div>
+      );
+    }
+
+    // Caso normal de oferta
+    return (
+      <div className="text-right">
+        <div className="text-2xl font-extrabold text-green-600">
+          L. {subPromo.toFixed(2)}
+        </div>
+        <div className="text-lg text-slate-400 line-through">
+          L. {subBase.toFixed(2)}
+        </div>
+      </div>
+    );
+  }
+
+  // Sin oferta
+  return (
+    <div className="text-2xl font-bold">
+      L. {subBase.toFixed(2)}
+    </div>
+  );
+})()}
+
                               </div>
                             </div>
                           </div>
@@ -1313,12 +1328,12 @@ function Carrito() {
             {/* Solo formulario de cupones */}
             {showProducts && (
               <div className="pb-2">
-                <p className="text-left pb-2 font-medium">{t("haveCoupon")}</p>
+                <p className="text-left pb-2 font-medium">¿Tienes un cupón?</p>
 
                 <form className="flex gap-2 mb-2" onSubmit={checkCupon}>
                   <input
                     type="text"
-                    placeholder={t("couponPlaceholder")}
+                    placeholder="Código de cupón"
                     value={cupon === "EMPTY" ? "" : cupon}
                     onChange={(e) => setCupon(e.target.value)}
                     className="input-field rounded-xl bg-gray-100 border-black border-2 pl-2 text-sm"
@@ -1327,7 +1342,7 @@ function Carrito() {
                     type="submit"
                     className="bg-[#114C87] rounded-md py-1 text-white px-6 text-sm"
                   >
-                    {t("apply")}
+                    Aplicar Cupón
                   </button>
                 </form>
 
@@ -1337,11 +1352,11 @@ function Carrito() {
                     <div className="flex justify-between items-center text-left">
                       <div>
                         <p className="text-sm font-medium text-green-800">
-                          {t("promAplicada")}:{" "}
+                          Promoción aplicada:{" "}
                           {promocionAplicada.nombre_promocion}
                         </p>
                         <p className="text-xs text-green-600">
-                          {t("discount")}:{" "}
+                          Descuento:{" "}
                           {promocionAplicada.id_tipo_promo === 1
                             ? `${(
                                 parseFloat(
@@ -1354,8 +1369,7 @@ function Carrito() {
                         </p>
 
                         <p className="text-xs text-gray-500">
-                          {t("minimumPurchase")}: L.{" "}
-                          {promocionAplicada.compra_min}
+                          En compra mínima de: L. {promocionAplicada.compra_min}
                         </p>
                       </div>
                     </div>
@@ -1393,14 +1407,16 @@ function Carrito() {
 
             <div>
               <h1 className="font-roboto text-[#80838A] text-2xl font-medium justify-center pb-1 text-left">
-                {t("OrderSummary")}
+                Resumen de pago
               </h1>
               <hr className="bg-[#80838A] h-[2px] w-full mb-1"></hr>
             </div>
 
             {hayProductoSinStock ? (
               <div className="mt-2 p-4 bg-red-50 border border-red-400 rounded-md text-red-800 font-medium max-w-xs">
-                ⚠️ {t("nostocks")}
+                ⚠️ Tienes uno o más productos sin stock en la sucursal
+                seleccionada. No puedes realizar la compra hasta ajustar la
+                cantidad o cambiar de sucursal.
               </div>
             ) : (
               showProducts && (
@@ -1408,7 +1424,7 @@ function Carrito() {
                   <ul className="text-left space-y-3 font-medium text-md">
                     {/* Subtotal */}
                     <li className="flex justify-between">
-                      <span>{t("subtotal")}</span>
+                      <span>Subtotal</span>
                       <span>L. {total.toFixed(2)}</span>
                     </li>
 
@@ -1416,7 +1432,7 @@ function Carrito() {
                     {discount && descCupon?.valor > 0 && (
                       <li className="flex justify-between text-blue-600">
                         <span>
-                          {t("couponDiscount")}:{" "}
+                          Descuento cupón{" "}
                           {descCupon?.codigo
                             ? `(${descCupon.codigo})`
                             : descCupon.tipo === "porcentaje"
@@ -1443,7 +1459,7 @@ function Carrito() {
                     {promocionAplicada && (
                       <li className="flex justify-between text-green-600">
                         <span>
-                          {t("promotion")}:(
+                          Promoción (
                           {promocionAplicada.id_tipo_promo === 1
                             ? `${(
                                 parseFloat(
@@ -1463,19 +1479,19 @@ function Carrito() {
                     )}
                     {/* Impuesto */}
                     <li className="flex justify-between">
-                      <span>{t("tax")} (15%)</span>
+                      <span>Impuesto (15%)</span>
                       <span>L. {obtenerImpuesto()}</span>
                     </li>
 
                     {/* Costo de Envio */}
                     <li className="flex justify-between">
-                      <span>{t("Envio")}:</span>
+                      <span>Costo de Envío</span>
                       <span>L. 10.00</span>
                     </li>
 
                     <hr className="bg-black h-[3px] w-full" />
                     <li className="text-lg font-bold flex justify-between">
-                      <span>{t("total")}</span>
+                      <span>Total</span>
                       <span>L. {obtenerTotal()}</span>
                     </li>
 
@@ -1488,7 +1504,7 @@ function Carrito() {
                       }}
                       className="bg-[#F0833E] rounded-md text-white text-xl w-full p-1"
                     >
-                      {t("EfectuarPago")}
+                      Efectuar Compra
                     </button>
                   </ul>
                 </div>
@@ -1501,12 +1517,14 @@ function Carrito() {
                   <span className="material-symbols-outlined text-4xl pr-2">
                     verified_user
                   </span>
-                  <h1 className="font-bold text-lg">{t("secureCheckout")}</h1>
+                  <h1 className="font-bold text-lg">
+                    Proteccion del comprador
+                  </h1>
                 </div>
                 <p className="text-md">
-                  {t("recibe")}
+                  Recibe un reembolso de tu dinero si el articulo
                   <br />
-                  {t("nollega")}
+                  no llega o es diferente al de la descripcion.
                 </p>
               </div>
             )}
@@ -1519,7 +1537,7 @@ function Carrito() {
         style={{ ...styles.fixedShell2, backgroundColor: "#f3f4f6" }}
       >
         <h1 className="font-roboto text-[#f0833e] text-3xl justify-center text-left px-32">
-          {t("recommended")}
+          Recomendaciones
         </h1>
         <hr className="bg-[#f0833e] h-[2px]"></hr>
         <div className="p-4">
@@ -1557,12 +1575,12 @@ function Carrito() {
                   <div style={styles.topRow}>
                     {bestPromoPriceForProduct(p) && (
                       <span style={{ ...styles.offerChip, marginLeft: 8 }}>
-                        {t("offer")}
+                        OFERTA
                       </span>
                     )}
                     {Number(p.id_producto) === Number(topSellerId) && (
                       <span style={{ ...styles.offerChip, marginLeft: 8 }}>
-                        {t("MostBought")}
+                        MÁS COMPRADO
                       </span>
                     )}
                     <div style={styles.stars}>
@@ -1597,25 +1615,41 @@ function Carrito() {
                   <p style={styles.productName}>{p.nombre}</p>
                   <div style={styles.priceRow}>
                     {(() => {
-                      const best = bestPromoPriceForProduct(p);
-                      if (best) {
-                        return (
-                          <>
-                            <span style={styles.newPrice}>
-                              L. {best.finalPrice.toFixed(2)}
-                            </span>
-                            <span style={styles.strikePrice}>
-                              L. {Number(p.precio_base).toFixed(2)}
-                            </span>
-                          </>
-                        );
-                      }
-                      return (
-                        <span style={styles.productPrice}>
-                          L. {Number(p.precio_base).toFixed(2)}
-                        </span>
-                      );
-                    })()}
+  const best = bestPromoPriceForProduct(p);
+  if (best) {
+    const info = promosInfo[best.promoId];
+    const esFijo = Number(info?.id_tipo_promo) === 2;
+    const esGratis = esFijo && best.finalPrice <= 0.009;
+
+    if (esGratis) {
+      return (
+        <>
+          <span style={styles.newPrice}></span>
+          <span style={styles.strikePrice}>
+            L. {Number(p.precio_base).toFixed(2)}
+          </span>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <span style={styles.newPrice}>
+          L. {best.finalPrice.toFixed(2)}
+        </span>
+        <span style={styles.strikePrice}>
+          L. {Number(p.precio_base).toFixed(2)}
+        </span>
+      </>
+    );
+  }
+  return (
+    <span style={styles.productPrice}>
+      L. {Number(p.precio_base).toFixed(2)}
+    </span>
+  );
+})()}
+
                   </div>
                   <button
                     style={{
@@ -1628,8 +1662,7 @@ function Carrito() {
                       handleAgregar(p.id_producto, 1);
                     }}
                   >
-                    {}
-                    {t("add")}
+                    Agregar
                   </button>
                 </div>
               ))}

@@ -176,7 +176,6 @@ exports.listarProductos = async (req, res) => {
         porcentaje_ganancia,
         stock_total: productJSON.stock_total || 0,
         precio_venta: precio_venta.toFixed(2),
-        precio_base: precio_venta,
         categoria: productJSON.subcategoria?.categoria || null,
       };
     });
@@ -252,7 +251,6 @@ exports.listarProductosporsucursal = async (req, res) => {
         porcentaje_ganancia,
         stock_en_sucursal: productJSON.stock_en_sucursal || 0,
         precio_venta: precio_venta.toFixed(2),
-         precio_base: precio_venta,
         categoria: productJSON.subcategoria?.categoria || null,
       };
     });

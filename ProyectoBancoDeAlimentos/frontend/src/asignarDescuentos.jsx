@@ -176,15 +176,15 @@ export default function AsignarDescuentos() {
   async function onApplyGeneral() {
     const v = Number(genValor);
     if (genTipo === "PORCENTAJE" && (isNaN(v) || v < 1 || v > 100)) {
-      alert("El porcentaje debe estar entre 1% y 100%.");
+      toast.info("El porcentaje debe estar entre 1% y 100%.", { className: "toast-info" });
       return;
     }
     if (genTipo === "FIJO" && (isNaN(v) || v < 0)) {
-      alert("El monto fijo no puede ser negativo.");
+      toast.warn("El monto fijo no puede ser negativo.", { className: "toast-warn" });
       return;
     }
     if (!selectedItems.length) {
-      alert("Selecciona al menos un producto.");
+      toast.info("Selecciona al menos un producto.", { className: "toast-info" });
       return;
     }
 
@@ -199,17 +199,17 @@ export default function AsignarDescuentos() {
     try {
       setSavingGeneral(true);
       await aplicarDescuentoseleccionados(payload);
-      alert("Descuento aplicado correctamente ✔");
+      toast.success("Descuento aplicado correctamente", { className: "toast-success" });
       setMode(null);
       setSelectedItems([]);
       setGenValor("");
       await refreshProductsBySucursal(selectedSucursalId);
     } catch (e) {
       console.error(e);
-      alert(
+      toast.error(
         e?.response?.data?.message ||
           e?.response?.data?.error ||
-          "No se pudo aplicar el descuento."
+          "No se pudo aplicar el descuento.", { className: "toast-error" }
       );
     } finally {
       setSavingGeneral(false);
@@ -265,11 +265,11 @@ export default function AsignarDescuentos() {
     const tiersClean = normalizeTiers(tiers);
 
     if (productIds.length === 0) {
-      alert("Selecciona al menos un producto.");
+      toast.info("Selecciona al menos un producto.", { className: "toast-info" });
       return;
     }
     if (tiersClean.length === 0) {
-      alert("Agrega al menos un escalón válido (cantidad ≥ 1, precio ≥ 0).");
+      toast.warn("Agrega al menos un escalón válido (cantidad ≥ 1, precio ≥ 0).", { className: "toast-warn" });
       return;
     }
 
@@ -282,7 +282,7 @@ export default function AsignarDescuentos() {
         !(ed instanceof Date && !isNaN(ed)) ||
         sd > ed
       ) {
-        alert("Rango de fechas inválido (Desde debe ser ≤ Hasta).");
+        toast.info("Rango de fechas inválido (Desde debe ser ≤ Hasta).", { className: "toast-info" });
         return;
       }
     }
@@ -297,7 +297,7 @@ export default function AsignarDescuentos() {
     try {
       setSavingTiered(true);
       await aplicarPreciosEscalonados(payload);
-      alert("Precios escalonados aplicados correctamente ✔");
+      toast.success("Precios escalonados aplicados correctamente", { className: "toast-success" });
       setMode(null);
       setSelectedItems([]);
       await refreshProductsBySucursal(selectedSucursalId);
@@ -308,7 +308,7 @@ export default function AsignarDescuentos() {
         e?.response?.data?.error ||
         e?.message ||
         "No se pudo aplicar precios escalonados.";
-      alert(msg);
+      toast.error(msg, { className: "toast-error" });
       console.error("Escalonados ERROR:", e?.response?.data || e);
     } finally {
       setSavingTiered(false);

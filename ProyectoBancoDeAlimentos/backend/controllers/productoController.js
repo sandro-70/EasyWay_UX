@@ -11,6 +11,7 @@ const { Op } = Sequelize;
 const fs = require("fs");
 const path = require("path");
 // Productos destacados (últimos creados) con 1 imagen
+
 exports.destacados = async (req, res) => {
   try {
     const products = await producto.findAll({
@@ -175,6 +176,7 @@ exports.listarProductos = async (req, res) => {
         porcentaje_ganancia,
         stock_total: productJSON.stock_total || 0,
         precio_venta: precio_venta.toFixed(2),
+        precio_base: precio_venta,
         categoria: productJSON.subcategoria?.categoria || null,
       };
     });
@@ -250,6 +252,7 @@ exports.listarProductosporsucursal = async (req, res) => {
         porcentaje_ganancia,
         stock_en_sucursal: productJSON.stock_en_sucursal || 0,
         precio_venta: precio_venta.toFixed(2),
+         precio_base: precio_venta,
         categoria: productJSON.subcategoria?.categoria || null,
       };
     });
@@ -558,13 +561,35 @@ exports.productosRecomendados = async (req, res) => {
             },
           ],
         },
+        {
+          model: marca_producto,
+          as: "marca",
+          attributes: ["id_marca_producto", "nombre"],
+        },
       ],
       order: [
         ["estrellas", "DESC"],
         ["id_producto", "DESC"],
       ],
     });
-    res.json(products);
+
+    // Calcular porcentaje_ganancia y precio_venta usando la categoría asociada
+    const productsWithCalculations = products.map((product) => {
+      const productJSON = product.toJSON();
+      const porcentaje_ganancia =
+        productJSON.subcategoria?.categoria?.PorcentajeDeGananciaMinimo ?? 0;
+      const precio_venta =
+        parseFloat(productJSON.precio_base) * (1 + porcentaje_ganancia / 100);
+      return {
+        ...productJSON,
+        porcentaje_ganancia,
+        precio_venta: precio_venta.toFixed(2),
+        precio_base:precio_venta.toFixed(2),
+        categoria: productJSON.subcategoria?.categoria || null,
+      };
+    });
+
+    res.json(productsWithCalculations);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

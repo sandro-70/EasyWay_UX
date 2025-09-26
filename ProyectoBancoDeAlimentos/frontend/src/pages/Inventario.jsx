@@ -1177,18 +1177,9 @@ export default function Inventario() {
       
       // Obtener el ID del producto recién creado
       const newProduct = createResponse?.data;
-      productId = newProduct?.id_producto || newProduct?.id || d.id;
-      
-      // Registrar auditoría de ENTRADA inicial solo si tenemos usuario
-      if (id_usuario) {
-        await agregarAuditoria(
-          productId,
-          id_usuario,
-          null, // sucursalId
-          0,    // cantidad - 0 para creación
-          'ENTRADA'
-        );
-      }
+      productId = newProduct?.producto?.id_producto || newProduct?.id || d.id;
+
+
       
       // Actualizar la lista de productos
       const prodRes = await getAllProducts();
@@ -2029,6 +2020,23 @@ export default function Inventario() {
               if (e.key === "-") e.preventDefault();
             }}
           />
+
+          <Input
+            type="number"
+            label="Porcentaje de Ganancia (%)"
+            min={0}
+            step="0.01"
+            value={modal.draft.porcentajeGanancia ?? ""}
+            onChange={(v) => {
+              const n = v === "" ? "" : Math.max(0, Number(v));
+              setModal((m) => ({ ...m, draft: { ...m.draft, porcentajeGanancia: n } }));
+            }}
+            onKeyDown={(e) => {
+              // opcional: bloquea teclear el signo -
+              if (e.key === "-") e.preventDefault();
+            }}
+          />
+
           {/* Unidad de medida */}
           <label className="flex flex-col gap-1 col-span-2 sm:col-span-1">
             <span className="text-sm text-gray-700">Unidad de medida</span>

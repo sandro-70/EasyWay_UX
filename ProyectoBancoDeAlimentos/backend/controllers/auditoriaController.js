@@ -5,6 +5,10 @@ exports.agregarAuditoria = async (req, res) => {
     try{
         const {id_producto, id_usuario, id_sucursal, cantidad, nombre_operacion } = req.body;
 
+        if (!id_producto || isNaN(id_producto)) {
+            return res.status(400).json({ message: "id_producto inválido" });
+        }
+
         const prod = await producto.findByPk(id_producto);
         if (!prod) {
         return res.status(404).json({ message: "Producto no encontrado" });
